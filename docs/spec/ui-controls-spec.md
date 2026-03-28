@@ -39,11 +39,387 @@ This revision owns the following controls:
 - `Modal`
 - `Alert`
 
-The foundation contracts for event propagation, focus, responsive rules, runtime layers, render effects, and theming remain authoritative and are not redefined here.
+The foundation contracts for event propagation, focus, responsive rules, runtime layers, render effects, theming, contract stability, and failure semantics remain authoritative and are not redefined here.
+
+## 4A. Control Classification And Identity
+
+The component-model rules in Section 3A of [UI Foundation Specification](./ui-foundation-spec.md) are binding for all controls in this document.
+
+`Boundary type` is normative:
+
+- `fixed` means the consumer may configure or style the control but may not extend what the library treats as the control's correctness boundary
+- `extensible through documented slots only` means consumer content may be supplied through named slots or descendants, but the control's owned behavior remains fixed
+
+| Control | Tier | Sole responsibility | Explicitly does not manage | Boundary type |
+|---------|------|---------------------|----------------------------|---------------|
+| `Text` | Primitive | text measurement, wrapping, alignment, and text-style resolution for supplied content | editing, selection, activation, text-entry lifecycle | fixed |
+| `Button` | Composite | activation semantics around one content slot, including disabled, hover, press, and focus behavior | business action side effects, nested interactive coordination, application state ownership | extensible through documented slots only |
+| `Checkbox` | Composite | checked, unchecked, and indeterminate state requests plus associated activation semantics | external state storage, form submission orchestration, nested interactive content | extensible through documented slots only |
+| `Switch` | Composite | binary state requests with tap, drag, and disabled semantics | indeterminate state, settings persistence, nested interactive content | extensible through documented slots only |
+| `TextInput` | Composite | single-line text entry, caret, selection, composition, clipboard, and active text-input ownership | multiline editing, rich-text authoring, consumer-managed native text-input lifecycle | fixed |
+| `TextArea` | Composite | multiline text entry with internal scrolling on the owned field content | single-line submit semantics, external scroll orchestration on owned axes, rich-text authoring | fixed |
+| `Tabs` | Composite | one-to-one trigger and panel coordination, active-value resolution, and roving focus | closable or reorderable tabs, swipe navigation, business state inside panels | extensible through documented slots only |
+| `Modal` | Composite | blocking overlay behavior, open-state requests, focus trapping, focus restoration, and backdrop policy | scene navigation, workflow policy, overlay stacking outside the overlay layer contract | extensible through documented slots only |
+| `Alert` | Composite | alert-dialog pattern over `Modal`, including title, message, actions, and initial-focus rules | arbitrary modal taxonomies, non-dismissible flows, action side effects | extensible through documented slots only |
+
+Additional control identity rules:
+
+- `TextArea` inherits behavior from `TextInput` but remains a distinct component identity with its own multiline and scroll contract.
+- `Alert` is not an alias of `Modal`; it is a separate composite with a stronger content contract and a distinct accessible role.
+- The exact control names in this table are the canonical names for this revision. No aliases are stabilized.
+- Named anatomy parts and stabilized theming parts are contract surface. Internal helper structure that is not named remains an implementation detail.
+
+## 4B. Control Composition Grammar
+
+The composition-grammar rules in Section 3B of [UI Foundation Specification](./ui-foundation-spec.md) are binding for all controls in this document.
+
+### 4B.1 Control validity rules
+
+| Control | Allowed parents | Allowed children or fillers | Prohibited children or fillers | Required children or slots | Standalone validity |
+|---------|-----------------|-----------------------------|-------------------------------|----------------------------|--------------------|
+| `Text` | any component with an open descendant slot or text-bearing content slot | none | all child nodes | none | valid |
+| `Button` | any component with an open descendant slot or action-bearing slot | zero or one `content` subtree composed of text or drawable structure | nested interactive controls inside `content` | `content` slot exists as part of the contract, but it may be empty | valid |
+| `Checkbox` | any component with an open descendant slot or action-bearing slot | optional `label`; optional `description` | nested interactive controls inside label or description regions | none | valid |
+| `Switch` | any component with an open descendant slot or action-bearing slot | optional `label`; optional `description` | nested interactive controls inside label or description regions | none | valid |
+| `TextInput` | any layout or drawable container that permits interactive descendants | none | interactive child nodes; nesting inside another text-entry control | none | valid |
+| `TextArea` | any layout or drawable container that permits interactive descendants | none | interactive child nodes; nesting inside another text-entry control; nesting inside a scroll container that intercepts the same owned scroll axis | none | valid |
+| `Modal` | only the `overlay layer` owned by `Stage` | one `surface` subtree containing one `content` subtree; optional consumer close controls | placement in the base scene layer; direct interaction with underlying scene content while mounted | `surface`, `content` | invalid when detached from the overlay layer |
+| `Alert` | only the `overlay layer` owned by `Stage` as a specialized `Modal` | required `title` and `actions`; optional `message`; optional close controls | absence of any action control; placement outside the overlay layer | `title`, `actions` | invalid when detached from the overlay layer |
+| `Tabs` | any component with an open descendant slot | one `list` region and one `panels` region containing mapped `trigger` and `panel` sub-parts | unmatched triggers or panels; duplicate trigger values; trigger lists without panels or panels without triggers | `list`, `panels`, at least one mapped `trigger`/`panel` pair | valid only when the required pair structure is complete |
+
+Validity notes:
+
+- `Button`, `Checkbox`, and `Switch` are compositionally open only through their documented content-bearing regions.
+- `TextInput` and `TextArea` expose named presentational parts but no consumer-fillable descendant slots in this revision.
+- `Modal` and `Alert` are invalid as ordinary descendants of base-scene layout or control containers because their parent relationship is defined by overlay mounting, not ordinary containment.
+- `Tabs` validity is re-evaluated whenever trigger or panel structure changes; insertion into an arbitrary ancestor does not preserve validity unless the full `Tabs` contract remains satisfied.
+
+### 4B.2 Compound control contracts
+
+| Root | Required sub-parts | Optional sub-parts | Independent meaning outside the root | Structural communication mechanism | Sub-part set |
+|------|--------------------|--------------------|--------------------------------------|-----------------------------------|--------------|
+| `Button` | `root`, `content` | `indicator` | `content` may contain independent components; `indicator` has no independent meaning outside `Button` | root-owned slot resolution for `content` | closed except for the open `content` slot |
+| `Checkbox` | `root`, `box` | `indicator`, `label`, `description` | `label` and `description` may contain independent components; `box` and `indicator` are meaningful only within `Checkbox` | root-owned role resolution of label-participation and activation region | closed except for `label` and `description` content |
+| `Switch` | `root`, `track`, `thumb` | `label`, `description` | `label` and `description` may contain independent components; `track` and `thumb` are meaningful only within `Switch` | root-owned role resolution of drag region and associated content | closed except for `label` and `description` content |
+| `Modal` | `root`, `backdrop`, `surface`, `content` | `close controls` | `content` may contain independent components; the structural roles have no independent overlay meaning outside `Modal` | overlay-layer mounting plus root-owned slot resolution inside `surface` | closed except for the open `content` region |
+| `Alert` | `root`, `backdrop`, `surface`, `title`, `actions` | `message`, `close controls` | `title`, `message`, and `actions` may contain independent components, but their alert roles exist only within `Alert` | specialized `Modal` slot resolution with required action-region presence | closed except for documented content regions |
+| `Tabs` | `root`, `list`, `panels`, one or more `trigger`, one or more `panel` | `indicator` | `trigger` and `panel` roles have no valid independent meaning outside one owning `Tabs` root | structural registration of each `trigger` and `panel` to the owning `Tabs` root by mapped value and role | closed |
+
+### 4B.3 Control slot declarations
+
+| Control | Slot or region | Multiplicity | Filler constraints | Default content |
+|---------|----------------|--------------|--------------------|-----------------|
+| `Button` | `content` | zero or one subtree | text or drawable structure; no nested interactive controls | empty content is allowed |
+| `Checkbox` | `label` | zero or one subtree | non-interactive associated content | none |
+| `Checkbox` | `description` | zero or one subtree | non-interactive associated content | none |
+| `Switch` | `label` | zero or one subtree | non-interactive associated content | none |
+| `Switch` | `description` | zero or one subtree | non-interactive associated content | none |
+| `Modal` | `content` | exactly one subtree | any layout or control components valid in overlay content | none |
+| `Alert` | `title` | exactly one subtree | non-interactive heading content | none |
+| `Alert` | `message` | zero or one subtree | non-interactive explanatory content | none |
+| `Alert` | `actions` | one or more activation controls | controls that provide an explicit dismissal or confirmation path | none |
+| `Tabs` | `list` | exactly one region | contains only `trigger` sub-parts for the owning `Tabs` root | none |
+| `Tabs` | `panels` | exactly one region | contains only `panel` sub-parts for the owning `Tabs` root | none |
+
+## 4C. Control State Model
+
+The state-model rules in Section 3C of [UI Foundation Specification](./ui-foundation-spec.md) are binding for all controls in this document.
+
+### 4C.1 Shared control ownership rules
+
+All interactive controls in this revision additionally own library-managed interaction state for hover, focus participation, pointer capture, drag progress, and composition-candidate presence when those concepts apply.
+
+That shared interaction state:
+
+- is library-owned unless a control explicitly exposes one of those values as a negotiated public property
+- is not readable through a stable imperative API in this revision
+- may affect behavior and visual variant resolution without becoming consumer-owned state
+
+### 4C.2 Public state ownership matrix
+
+| Control | Public state property | Category | Ownership mode | Controlled signal | Uncontrolled default |
+|---------|-----------------------|----------|----------------|-------------------|----------------------|
+| `Text` | `text` content | application state | consumer-owned only | `text` prop | none; `Text` does not own mutable public text state |
+| `Button` | `pressed` | interaction state | negotiated | `pressed` with `onPressedChange` | `false` |
+| `Checkbox` | `checked` | application state | negotiated | `checked` with `onCheckedChange` | `unchecked` |
+| `Switch` | `checked` | application state | negotiated | `checked` with `onCheckedChange` | `false` |
+| `TextInput` | `value` | application state | negotiated | `value` with `onValueChange` | empty string |
+| `TextInput` | `selectionStart` and `selectionEnd` as one property pair | UI state | negotiated | both selection boundaries plus `onSelectionChange` | collapsed selection at end of current value |
+| `TextArea` | `value` | application state | negotiated | `value` with `onValueChange` | empty string |
+| `TextArea` | `selectionStart` and `selectionEnd` as one property pair | UI state | negotiated | both selection boundaries plus `onSelectionChange` | collapsed selection at end of current value |
+| `Modal` | `open` | UI state | negotiated | `open` with `onOpenChange` | `false` |
+| `Alert` | `open` | UI state | negotiated through `Modal` | `open` with `onOpenChange` | `false` |
+| `Tabs` | `value` | composition state | negotiated | `value` with `onValueChange` | first enabled mapped trigger value, otherwise `nil` |
+
+Hybrid notes:
+
+- `TextInput` and `TextArea` may control `value` and selection independently because those properties have separate ownership signals.
+- `Checkbox`, `Switch`, `Modal`, `Alert`, and `Tabs` expose one negotiable public state property each in this revision.
+- `Button` exposes negotiable `pressed` state, but hover and focus remain library-owned interaction state.
+
+### 4C.3 Pending and uncontrolled behavior
+
+Pending controlled behavior:
+
+- `Button`, `Checkbox`, `Switch`, `Modal`, `Alert`, and `Tabs` must continue to render and behave from the last committed controlled value until the consumer updates that value.
+- `TextInput` and `TextArea` must continue to render the last committed controlled `value` and controlled selection while allowing library-owned interaction state such as focus and composition candidate presence to continue updating.
+
+Uncontrolled observation:
+
+- no control in this revision exposes a stable imperative getter or setter for uncontrolled public state
+- uncontrolled state changes remain observable through change callbacks, accessibility metadata, composition effects, and visible committed output
+
+### 4C.4 Composition-state scope and coordination
+
+Composition-state rules for concrete controls:
+
+- `Tabs` is the only concrete control in this revision with public composition state. Its active value is scoped to the nearest `Tabs` root and coordinates registered triggers and panels only within that root.
+- `Modal` and `Alert` use library-owned focus-trap coordination and overlay ownership state scoped to the mounted overlay subtree. That coordination state is not a consumer-owned public value.
+- `Checkbox` and `Switch` do not automatically coordinate with sibling selection controls in this revision. Any shared checked-value semantics across multiple controls must be provided explicitly by the consumer.
+
+### 4C.5 Control derived state
+
+| Control | Stable derived state | Derivation rule |
+|---------|----------------------|-----------------|
+| `Button` | effective pressed state | controlled `pressed` when present, otherwise library-owned press interaction state |
+| `Checkbox` | effective checked state | controlled `checked` when present, otherwise the uncontrolled checked value after toggle-order resolution |
+| `Switch` | effective checked state | controlled `checked` when present, otherwise the uncontrolled checked value after tap or drag resolution |
+| `TextInput` | effective value, effective selection | controlled value and selection when present, otherwise uncontrolled committed text and library-managed selection |
+| `TextArea` | effective value, effective selection, effective scrollability | `TextArea` derives the same committed editing values as `TextInput`, plus scrollability from content extent, wrap mode, and visible field size |
+| `Modal` | effective open state | controlled `open` when present, otherwise uncontrolled mounted state |
+| `Alert` | effective open state | `Alert` uses the `Modal` derivation for `open` |
+| `Tabs` | effective active value, active panel visibility | controlled `value` when present, otherwise uncontrolled active value resolution from the mapped enabled trigger set |
+
+The following remain implementation detail and are not stable derived-state API:
+
+- hover timers, drag velocity estimates, pointer-capture bookkeeping, and inertial decay accumulators
+- text composition candidate storage beyond the documented composing mode
+- cached layout dirtiness or visual-variant bookkeeping used only to render from committed authoritative state
+
+## 4D. Control Interaction Model
+
+The interaction-model rules in Section 3D of [UI Foundation Specification](./ui-foundation-spec.md) are binding for all controls in this document.
+
+### 4D.1 Control input-to-callback mapping
+
+| Control | Logical inputs recognized | Public callback or event surface | Default action when not cancelled |
+|---------|---------------------------|----------------------------------|-----------------------------------|
+| `Text` | none | none | no interaction default action |
+| `Button` | `Activate`, pointer-derived hover transitions | `onActivate`, `onPressedChange` when `pressed` is exposed | request pressed-state changes and dispatch activation |
+| `Checkbox` | `Activate` | `onCheckedChange` | resolve the next checked state from `toggleOrder` and propose it |
+| `Switch` | `Activate`, `Drag` | `onCheckedChange` | toggle on tap activation or resolve final checked state at drag release |
+| `TextInput` | `Activate`, `Navigate`, `TextInput`, `TextCompose`, `Submit`, pointer selection gestures | `onValueChange`, `onSelectionChange`, `onSubmit` | acquire focus, update selection, propose committed text insertion, update composition candidate, or submit according to `submitBehavior` |
+| `TextArea` | `Activate`, `Navigate`, `TextInput`, `TextCompose`, `Scroll`, `Submit`, pointer selection gestures | `onValueChange`, `onSelectionChange`, `onSubmit` | same as `TextInput`, plus internal scroll handling and newline insertion rules |
+| `Modal` | `Dismiss`, `Activate` on explicit close actions, `Activate` on backdrop when configured | `onOpenChange` | propose `open = false` when dismissal policy allows |
+| `Alert` | `Dismiss`, `Activate` on explicit actions, `Activate` on backdrop when configured | `onOpenChange` plus action-control callbacks supplied by the consumer | same as `Modal`, plus action activation inside the actions region |
+| `Tabs` | `Navigate`, `Activate` | `onValueChange` | move roving focus on navigation and propose a new active value only on activation |
+
+### 4D.2 Focus and pointer-coupling rules by control family
+
+| Control or family | Pointer-focus coupling | Focus movement responsibility | Notes |
+|-------------------|------------------------|-------------------------------|-------|
+| `Button`, `Checkbox`, `Switch` | focuses before default action | library-managed through ordinary focus traversal | pointer or touch activation may establish focus on the target control |
+| `TextInput`, `TextArea` | focuses before text-entry activation | library-managed plus platform text-entry activation cooperation | focus acquisition must establish active text-entry ownership |
+| `Modal`, `Alert` | opening moves focus into the overlay scope; backdrop activation does not move focus into underlying content | library-managed with trapping and restoration | dismissal may restore prior focus when configured |
+| `Tabs` trigger list | focus moves independently of activation | library-managed roving focus within the trigger list | focus movement alone must not activate a tab |
+
+### 4D.3 Control-specific dismissal and submission rules
+
+- `Modal` and `Alert` recognize `Dismiss` through escape-like commands and backdrop activation only when the corresponding dismissal props allow it.
+- `TextInput` recognizes `Submit` according to `submitBehavior`: `blur` proposes blur after submit, `submit` invokes `onSubmit`, and `none` takes no submit default action.
+- `TextArea` consumes `Submit` as newline insertion when multiline editing rules require it; it must not treat the newline command as `onSubmit` unless a future component revision explicitly adds that behavior.
+- `Tabs` does not recognize `Dismiss` as a tab-state-changing input in this revision.
+
+### 4D.4 Event ordering and cancellation at control level
+
+- For `Button`, `Checkbox`, `Switch`, `Tabs`, `Modal`, and `Alert`, cancellable interaction events must finish listener delivery before the library proposes any state change through the documented callback.
+- Cancelling `ui.activate` on `Button`, `Checkbox`, `Switch`, or `Tabs` prevents the default action and therefore prevents the associated callback proposal for that activation.
+- Cancelling `ui.dismiss` on `Modal` or `Alert` prevents the `onOpenChange(false)` proposal for that dismissal attempt.
+- Cancelling `ui.text.input`, `ui.text.compose`, or `ui.submit` on `TextInput` or `TextArea` prevents the associated insertion, composition update, or submit default action for that interaction.
+
+## 4E. Control Behavioral Completeness
+
+The behavioral-completeness rules in Section 3E of [UI Foundation Specification](./ui-foundation-spec.md) are binding for all controls in this document.
+
+### 4E.1 Empty and null state behavior by control
+
+| Control | No-content or empty case | Library-provided empty state | Observable empty-state transition |
+|---------|---------------------------|------------------------------|-----------------------------------|
+| `Text` | empty string renders nothing and remains valid | none | no |
+| `Button` | empty `content` slot remains valid and interactive | none | no |
+| `Checkbox` and `Switch` | absent `label` or `description` remains valid and interactive | none | no |
+| `TextInput` and `TextArea` | empty value remains valid; placeholder behavior follows the existing component contract | placeholder is consumer-provided content, not library-injected fallback | no |
+| `Modal` | no focusable content remains valid; the overlay still mounts and traps focus when configured | none | no |
+| `Alert` | missing `message` is valid; missing `actions` is prohibited by the component contract | none | no |
+| `Tabs` | zero valid trigger/panel pairs is structurally invalid per the composition contract, not an empty-but-valid interactive state | none | no |
+
+### 4E.2 Overflow and constraint behavior by control family
+
+| Control or family | Default overflow behavior | Minimum functional contract | Response to post-mount constraint changes |
+|-------------------|---------------------------|-----------------------------|-------------------------------------------|
+| `Text` | wrap when configured, otherwise overflow without clipping unless an ancestor clips | remains valid at zero or tiny width but may render no visible glyphs | re-measure on the next draw preparation |
+| `Button`, `Checkbox`, `Switch` | content may visually overflow, clip through ancestors, or compress according to skin geometry; no implicit scroll region is created | activation region remains valid even when text or indicator art no longer fits fully | recompute part layout from the latest bounds on the next pass |
+| `TextInput` | single-line content does not wrap; overflow is handled by selection/caret movement within the field contract rather than by multiline reflow | remains focusable and editable so long as the field region exists | recompute selection geometry and visible insertion region from the new field size |
+| `TextArea` | vertical overflow is handled by the internal scroll region; horizontal overflow is suppressed when `wrap = true` and allowed when wrapping is disabled | remains editable at any finite size, though visible text area may collapse to a minimal viewport | recompute wrapping, content extent, and internal scroll range |
+| `Tabs` | overflow in the trigger list may be handled by scrollable composition when enabled; panel overflow follows the panel content contract | trigger activation and focus movement remain valid even when the list is partially offscreen | re-resolve trigger list overflow and active panel layout |
+| `Modal` and `Alert` | surface content may overflow according to the layout content placed inside the surface; backdrop always fills the viewport | overlay remains dismissable and focus-managed even when surface content cannot fully fit | recompute surface placement and safe-area-aware bounds on the next pass |
+
+### 4E.3 Rapid and concurrent input behavior by control family
+
+| Control or family | Queueing or arbitration policy | Consistency guarantee |
+|-------------------|--------------------------------|-----------------------|
+| `Button`, `Checkbox`, `Switch` | each activation attempt is processed independently in arrival order; gesture ownership determines which pointer sequence may finish a press or drag | committed state remains coherent after each completed activation or drag release |
+| `TextInput` and `TextArea` | committed text and composition updates are processed in arrival order while the field owns active text-entry state | committed value and selection reflect a consistent committed pair after each processed logical input |
+| `Modal` and `Alert` | dismissal requests are processed in arrival order; once a close has been proposed, additional close requests before commit do not create a second distinct close state | open-state proposals remain coherent and focus-trap ownership does not split across concurrent dismiss inputs |
+| `Tabs` | navigation and activation inputs are processed independently in arrival order; navigation never retroactively activates a tab | roving focus and active value remain coherent and do not diverge within one `Tabs` root |
+
+No control in this revision declares a built-in throttle or debounce policy.
+
+### 4E.4 Transition interruption and destruction during activity
+
+| Control or family | Interrupted activity | Resolution rule |
+|-------------------|----------------------|-----------------|
+| `Button` | press interaction interrupted by disable, release outside, or destruction | clear press ownership, emit no activation, and leave only the last committed authoritative pressed value |
+| `Checkbox` and `Switch` | activation or drag interrupted by disable, focus loss, or destruction | abandon the in-progress gesture; only a completed uncancelled activation or drag release may propose a new checked value |
+| `TextInput` and `TextArea` | text composition interrupted by focus loss or destruction | discard the composition candidate without committing it and release active text-entry ownership |
+| `Modal` and `Alert` | open or close flow interrupted by a new authoritative `open` value or destruction | resolve to the latest authoritative open state; if destroyed while open, release focus trap ownership and stop further dismissal proposals from that instance |
+| `Tabs` | trigger or panel structure changes while focus or activation is in progress | re-resolve the next valid mapped value or focused trigger according to the existing `Tabs` contract and discard obsolete target references |
+
+### 4E.5 Loading and async support
+
+No concrete control in this revision defines a public asynchronous loading contract.
+
+Therefore:
+
+- there is no standardized loading placeholder, progress event, load failure state, or retry API for any control in this revision
+- any async content displayed inside `Text`, `Tabs` panels, `Modal` bodies, or other control regions is consumer-owned behavior layered on top of these components
+
+## 4F. Control Contract Stability
+
+The contract-stability rules in Section 3F of [UI Foundation Specification](./ui-foundation-spec.md) are binding for all controls in this document.
+
+### 4F.1 Canonical control identity tiers
+
+| Control | Tier | Current tier since | Deprecated? | Removal version | Replacement |
+|---------|------|--------------------|-------------|-----------------|-------------|
+| `Text` | `Stable` | `0.1.0` | no | n/a | n/a |
+| `Button` | `Stable` | `0.1.0` | no | n/a | n/a |
+| `Checkbox` | `Stable` | `0.1.0` | no | n/a | n/a |
+| `Switch` | `Stable` | `0.1.0` | no | n/a | n/a |
+| `TextInput` | `Stable` | `0.1.0` | no | n/a | n/a |
+| `TextArea` | `Stable` | `0.1.0` | no | n/a | n/a |
+| `Tabs` | `Stable` | `0.1.0` | no | n/a | n/a |
+| `Modal` | `Stable` | `0.1.0` | no | n/a | n/a |
+| `Alert` | `Stable` | `0.1.0` | no | n/a | n/a |
+
+### 4F.2 Control public surface classification
+
+Unless this section explicitly says otherwise, every documented control surface in this document is `Stable` as of `0.1.0`.
+
+| Control | Documented props and public state | Documented callbacks and event payload contracts | Documented slots or compound regions | Documented named visual parts | Undocumented helpers and private coordination state |
+|---------|-----------------------------------|--------------------------------------------------|--------------------------------------|-------------------------------|-----------------------------------------------------|
+| `Text` | `Stable` since `0.1.0` | no public callback surface in this revision | none | `Stable` since `0.1.0` | `Internal` |
+| `Button` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `content` slot is `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
+| `Checkbox` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `label` and `description` regions are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
+| `Switch` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `label` and `description` regions are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
+| `TextInput` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | no consumer-fillable descendant slots in this revision | `Stable` since `0.1.0` | `Internal` |
+| `TextArea` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | no consumer-fillable descendant slots in this revision | `Stable` since `0.1.0` | `Internal` |
+| `Tabs` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `list`, `panels`, `trigger`, and `panel` structure is `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
+| `Modal` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `surface`, `content`, and documented close-control regions are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
+| `Alert` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `title`, `message`, `actions`, and documented close-control regions are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
+
+Additional control-surface rulings:
+
+- unsupported nested-interactive patterns, prohibited parent relationships, and invalid structural pairings are part of the stable contract as prohibitions; making an unsupported pattern supported later is non-breaking, but making a supported pattern unsupported is breaking
+- this revision defines no stable imperative handle, ref, or method surface for any control
+- no control or control-scoped API surface is `Experimental` or `Deprecated` in this revision
+
+### 4F.3 Control-specific breaking-change rulings
+
+The general breaking-change rules in Section 3F.3 of the foundation specification apply to all controls. The following control-specific rulings are additionally binding:
+
+| Change type | Breaking? | Ruling |
+|-------------|-----------|--------|
+| removing or renaming any canonical control in Section 4F.1 | yes | control identity is stable |
+| removing or renaming a documented control callback such as `onPressedChange`, `onCheckedChange`, `onValueChange`, `onSelectionChange`, or `onOpenChange` | yes | callback names are public API |
+| changing the meaning of a documented state value such as `checked`, `open`, or `value` while keeping the same name | yes | state semantics are public contract |
+| changing a documented default behavior such as button activation timing, text wrapping defaults, or modal dismissal defaults | yes when the consumer would need to pass an explicit value or rewrite logic to preserve equivalent behavior | default behavior is part of the stable contract |
+| adding a new optional prop or optional visual variant to a control | no | additive optional surface is allowed when existing behavior is unchanged |
+| removing or renaming a documented slot or required compound region such as `content`, `actions`, `list`, or `panels` | yes | composition grammar is public API |
+| changing the role of a stable named visual part such as `backdrop`, `surface`, `trigger`, `panel`, `caret`, or `selection` | yes | part-role mapping is public API |
+| adding a new named visual part to a control | no, unless existing part names, required styling inputs, or role boundaries change | additive parts are allowed |
+| changing only undocumented internal wrappers, gesture bookkeeping, or helper layers | no | those surfaces are internal |
+
+### 4F.4 Control out-of-scope declaration
+
+Beyond the stable control surfaces listed above, this document makes no stability commitment about:
+
+- undocumented wrapper nodes inside a control's internal render tree
+- exact internal ordering of helper decorations within a named visual part
+- private gesture-tracking, composition-candidate, focus-restoration, or registration bookkeeping that is not surfaced as documented state
+- incidental timing details of internal measurements, text-layout caches, or scroll-cache updates beyond the documented behavior contracts
+- consumer reliance on unsupported nesting patterns or prohibited structural combinations
+- any future control introduced without being added to a stability table in this document
+
+Those surfaces are `Internal` by default and may change in any release.
+
+## 4G. Control Failure Semantics
+
+The failure-semantics rules in Section 3G of [UI Foundation Specification](./ui-foundation-spec.md) are binding for all controls in this document.
+
+### 4G.1 Control invalid-usage response assignment
+
+| Category | Typical control conditions | Detectable point | Failure mode | Control-specific rule |
+|----------|----------------------------|------------------|--------------|-----------------------|
+| structural invalidity | `Tabs` trigger/panel mismatches, duplicate trigger values, `Modal` or `Alert` detached from the overlay layer, prohibited child nodes in `Text`, `TextInput`, or `TextArea` | when the control structure is mounted, registered, or next reconciled | `Hard failure` | no control-specific structural repair is attempted |
+| type or value invalidity | negative `dragThreshold`, `maxLength < 0`, invalid `toggleOrder`, unsupported `activationMode`, missing required font or skin asset where no fallback exists | immediately when the value is set if knowable, otherwise on first use | `Hard failure` unless the control section explicitly names a fallback | controls do not coerce invalid values into a nearby valid value unless the contract says so |
+| state contract violation | mutable controlled value without the required change callback, incomplete controlled selection pair, controlled/uncontrolled ownership switch after first commit | when control ownership is reconciled | `Hard failure` | the control preserves the last valid committed state and rejects the invalid ownership transition |
+| lifecycle violation | no stable imperative control method surface exists in this revision | n/a | no separate control-specific surface in this revision | runtime-managed destruction behavior is covered by Behavioral Completeness, not failure semantics |
+| composition boundary violation | unsupported nested interactive controls inside prohibited slots or regions, mounting overlay controls in ordinary layout containment | when the boundary violation becomes knowable | `Hard failure` | the library does not remount or reparent the control automatically |
+| out-of-scope usage | relying on undocumented helper parts, mutating internal control bookkeeping, or consuming internal-only control symbols | not required to be detected | `Undefined` or `Passthrough` | no control-specific guarantee is made |
+
+### 4G.2 Control diagnostics and fallback contract
+
+Control-specific fallback rules in this revision:
+
+| Condition | Mode | Fallback behavior | Contract status |
+|-----------|------|-------------------|-----------------|
+| text insertion beyond `maxLength` in `TextInput` or `TextArea` | `Silent fallback` | truncate the insertion to the greatest prefix that still satisfies `maxLength`; emit no diagnostic | stable degraded-but-valid output |
+| missing optional label, description, message, or content region where the composition contract permits omission | not a failure condition | render the region as absent | governed by Behavioral Completeness rather than failure semantics |
+| missing optional visual token or skin input when the visual contract defines a fallback | `Silent fallback` | use the fallback defined by the foundation visual contract | stable degraded-but-valid output |
+| deprecated control-specific API use | `Soft failure with signal` when such an API exists | execute deprecated behavior under Section 3G.5 | no control-specific deprecated surface exists in this revision |
+| all other detected invalid control usage | `Hard failure` | no fallback | fail-stop for the invalid control operation |
+
+Rejected invalid control updates must not emit the ordinary change callback for the rejected state change.
+
+### 4G.3 Deprecated control API runtime behavior
+
+No control, control prop, control callback, or control slot is marked `Deprecated` in this revision.
+
+If a future revision deprecates a control-specific surface, runtime use must follow Section 3G.5 exactly.
+
+### 4G.4 Undefined control behavior declaration
+
+The following control-specific usages are intentionally undefined in this revision:
+
+- direct consumer mutation of undocumented internal text-layout, gesture, selection, focus-restoration, or registration state
+- reliance on undocumented helper wrappers or decorative layers inside a control's named visual parts
+- importing or invoking internal-only control helpers that are not declared as public API
+
+Future revisions may define some of these cases, but this revision makes no stability commitment about them.
+
+### 4G.5 Control graceful degradation contract
+
+In addition to the foundation degradation guarantees:
+
+- one control failing validation must not corrupt sibling controls or unrelated runtime roots
+- a control that enters a documented fallback path must remain renderable and behaviorally coherent within that fallback
+- invalid `Tabs`, `Modal`, or `Alert` operations must not leave split active-value ownership, split focus-trap ownership, or partially committed overlay state across unrelated roots
+- if a control operation hard-fails and the error is caught by the consumer, the last valid committed control state remains authoritative
 
 ## 5. Design Principles
 
-1. Every stateful control must use controlled consumer-owned state for public stateful behavior.
+1. Every stateful control must declare each public state property as consumer-owned or negotiated and must define the controlled and uncontrolled contracts when negotiation is allowed.
 2. Every concrete control must bind to the foundation event and focus model without inventing a private routing system.
 3. Every control must remain skinnable through the foundation render-skin contract.
 4. Every control must fail deterministically on invalid prop combinations.
@@ -821,7 +1197,7 @@ ERRORS:
 
 ## 7. Composition And Interaction Patterns
 
-All concrete controls in this document inherit the event propagation, focus, responsive, render-effects, and theming contracts defined in [UI Foundation Specification](./ui-foundation-spec.md).
+All concrete controls in this document inherit the interaction, event propagation, focus, responsive, render-effects, and theming contracts defined in [UI Foundation Specification](./ui-foundation-spec.md).
 
 Additional shared control rules for this revision:
 
@@ -830,21 +1206,70 @@ Additional shared control rules for this revision:
 - controls that own text entry must own native text input lifecycle through the foundation runtime model
 - overlay controls must bind to the overlay layer and focus-trap rules defined in the foundation specification
 - tab-family controls must use roving focus within the trigger list and must not activate on focus movement in this revision
-- stateful controls must render from consumer-owned state and may only request state changes through their change callbacks
+- stateful controls must render from their authoritative committed state and may only propose public state changes through their documented callbacks
 
-## 8. Token And Theming Contract
+## 8. Visual Contract And Theming Contract
 
-Concrete controls inherit the foundation theming contract.
+Concrete controls inherit the foundation visual and theming contract.
 
-This document stabilizes control part names used by skins:
+### 8.1 Stable control presentational parts
 
-- `Button`: `surface`, `border`, `content`, `indicator`
-- `Checkbox`: `box`, `indicator`, `label`
-- `Switch`: `track`, `thumb`, `label`
-- `TextInput`: `field`, `placeholder`, `selection`, `caret`
-- `Tabs`: `list`, `trigger`, `indicator`, `panel`
-- `Modal`: `backdrop`, `surface`, `content`, `close controls`
-- `Alert`: `backdrop`, `surface`, `title`, `message`, `actions`
+This document stabilizes these control part names used by skins:
+
+| Control | Stable presentational parts |
+|---------|----------------------------|
+| `Text` | `content` |
+| `Button` | `surface`, `border`, `content`, `indicator` |
+| `Checkbox` | `box`, `indicator`, `label`, `description` |
+| `Switch` | `track`, `thumb`, `label`, `description` |
+| `TextInput` | `field`, `placeholder`, `selection`, `caret` |
+| `TextArea` | `field`, `placeholder`, `selection`, `caret`, `scroll region` |
+| `Tabs` | `list`, `trigger`, `indicator`, `panel` |
+| `Modal` | `backdrop`, `surface`, `content`, `close controls` |
+| `Alert` | `backdrop`, `surface`, `title`, `message`, `actions`, `close controls` |
+
+### 8.2 Control visual surfaces
+
+| Control or family | Library-owned visual structure | Shared overridable appearance surface | Consumer-owned surface |
+|-------------------|--------------------------------|--------------------------------------|------------------------|
+| `Text` | existence of one `content` part and text measurement boundary | font selection, color, alignment treatment, wrapping presentation | supplied text content |
+| `Button`, `Checkbox`, `Switch` | required part split between press region and indicators such as `surface`, `box`, `track`, `thumb`, and label-bearing regions | part skins, border treatment, typography, indicator art, focus styling, disabled styling | content supplied through open content-bearing regions |
+| `TextInput`, `TextArea` | field-versus-content separation, caret/selection/placeholder part roles, internal editable region ownership | field chrome, placeholder styling, caret styling, selection styling, read-only and disabled skins | input value text supplied by consumer state |
+| `Tabs` | required separation of `list`, `trigger`, `indicator`, and `panel` roles | trigger chrome, indicator treatment, panel chrome, disabled and active trigger skins | panel content and trigger content |
+| `Modal`, `Alert` | required separation of `backdrop`, `surface`, content regions, and alert title/action roles | backdrop fill, surface chrome, title/message typography, action-region styling, close-control styling | modal body content and alert action content |
+
+### 8.3 Stateful variant priority order
+
+These priority orders satisfy Section 8.12 of the foundation specification:
+
+- `Button`: `disabled > pressed > hovered > focused > base`
+- `Checkbox`: `disabled > indeterminate > checked > focused > base`
+- `Switch`: `disabled > dragging > checked > focused > base`
+- `TextInput`: `disabled > readOnly > composing > focused > base`
+- `TextArea`: `disabled > readOnly > composing > focused > base`
+- `Tabs` trigger parts: `disabled > active > focused > base`
+- `Tabs` panel parts: `active > inactive`
+- `Modal` and `Alert` do not define additional stateful skin priority beyond mounted versus unmounted presence in this revision
+
+### 8.4 Control structure versus appearance boundary
+
+The following are structural and therefore stable:
+
+- the presentational part names in Section 8.1
+- required role separation such as `backdrop` versus `surface`, `list` versus `panel`, and `field` versus `caret` and `selection`
+- the existence of indicator-bearing regions such as `Checkbox.indicator`, `Switch.thumb`, and `Tabs.indicator` when those parts are named by the control contract
+
+The following are appearance and therefore overridable through the documented visual surface:
+
+- colors, fonts, textures, border widths, radii, shadows, opacity values, shader choice, and decorative indicator art
+- whether a stable part renders via solid fill, texture, quad, nine-slice, text draw, or custom renderer slot
+- exact spacing and decorative geometry inside a stable part so long as the structural role of the part remains intact
+
+The following remain implementation detail and are not stable API:
+
+- undocumented helper wrappers or draw-only layers inside a control
+- exact draw-call decomposition, batching, and cache strategy
+- any internal ordering between undocumented decorative layers within a single named part
 
 ## 9. Deferred Items
 
