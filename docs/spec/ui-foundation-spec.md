@@ -1,15 +1,6 @@
 # UI Foundation Specification
 
-## 1. Version Header
-
-Version: `0.1.0`
-Revision type: `additive`
-Finalized: `2026-03-27`
-Inputs: current library implementation review.
-
-## 2. Changelog Summary
-
-1. Initial publication of the foundation standard for the UI library.
+> Version `0.1.0` — initial publication. Release history and change management policy: [UI Evolution Specification](./ui-evolution-spec.md).
 
 ## 3. Glossary
 
@@ -71,7 +62,7 @@ Inputs: current library implementation review.
 
 ## 3A. Component Model
 
-### 3A.1 Definition of a component
+### 3A.1 Definition Of A Component
 
 A component is a named, retained library artifact with a stable responsibility boundary, a documented public contract, and lifecycle participation in the `Stage`-rooted runtime model.
 
@@ -90,7 +81,7 @@ The following artifacts are not components in this revision:
 - theme tokens, skin assets, breakpoint tables, callbacks, and scene params
 - internal helper nodes used to implement a component but not stabilized as named public parts
 
-### 3A.2 Classification taxonomy
+### 3A.2 Classification Taxonomy
 
 | Tier | Qualifies when | Disqualifies when | Canonical examples |
 |------|----------------|-------------------|--------------------|
@@ -99,7 +90,7 @@ The following artifacts are not components in this revision:
 | Layout | The component exists solely to measure, align, or place descendants and has no semantic control meaning of its own | The component owns activation, selection, text entry, scroll state, or runtime scene orchestration as its primary contract | `Stack`, `Row`, `Column`, `Flow`, `SafeAreaContainer` |
 | Utility | The component has no required visual output and primarily provides runtime, context, or orchestration behavior | The component's primary correctness depends on presenting semantic UI content or arranging ordinary descendants as its main job | `Stage`, `Scene`, `Composer` |
 
-### 3A.3 Component responsibility boundary
+### 3A.3 Component Responsibility Boundary
 
 `Boundary type` is normative:
 
@@ -122,7 +113,7 @@ The following artifacts are not components in this revision:
 
 The concrete control boundaries that depend on this taxonomy are defined in [UI Controls Specification](./ui-controls-spec.md).
 
-### 3A.4 Identity contract
+### 3A.4 Identity Contract
 
 The identity of a component is the combination of:
 
@@ -139,7 +130,7 @@ Additional identity rules:
 - Changing a component's tier, required named parts, root ownership rules, or lifecycle observability is a breaking change.
 - Re-implementing a component internally without changing its canonical name, boundary, anatomy, or lifecycle guarantees is non-breaking.
 
-### 3A.5 Rendering model declaration
+### 3A.5 Rendering Model Declaration
 
 The library uses a retained rendering model.
 
@@ -157,7 +148,7 @@ Named exceptions:
 
 `Stage`, `Scene`, and `Composer` orchestrate retained subtrees but do not create a hybrid rendering model. They are runtime utilities operating on the same retained component graph.
 
-### 3A.6 Lifecycle model
+### 3A.6 Lifecycle Model
 
 Every component participates in the following lifecycle phases:
 
@@ -181,7 +172,7 @@ Concrete terms:
 
 ## 3B. Composition Grammar
 
-### 3B.1 Relationship types
+### 3B.1 Relationship Types
 
 | Relationship type | Direction | Cardinality | Initiator | Mechanism | Status in this revision |
 |-------------------|-----------|-------------|-----------|-----------|-------------------------|
@@ -199,7 +190,7 @@ Relationship definitions:
 - `Structural registration` means a descendant becomes meaningful to a compound root by occupying a required role or slot recognized by that root.
 - `Context provision` is intentionally excluded as a public structural relationship in this revision. Structural meaning must remain decidable from containment, slots, and registration.
 
-### 3B.2 Composition validity rules
+### 3B.2 Composition Validity Rules
 
 Composition validity is determined from the static structure of the retained tree and slot occupancy. Runtime state, event history, and visual output are not required to decide validity.
 
@@ -224,7 +215,7 @@ Family-level validity matrix:
 | `Scene` | only the `base scene layer` owned by `Stage` through `Composer` management | any primitive, layout, or composite component in its content region | direct child scenes and runtime utility descendants | none | invalid when detached from `Composer` management |
 | `Composer` | none | one owned `Stage` runtime root and registered `Scene` definitions | any parent; multiple owned stages | one owned `Stage` | valid |
 
-### 3B.3 Foundation compound component contract
+### 3B.3 Foundation Compound Component Contract
 
 Foundation-level compounds and delegated structures are:
 
@@ -236,7 +227,7 @@ Foundation-level compounds and delegated structures are:
 
 Control-level compounds such as `Button`, `Tabs`, `Modal`, and `Alert` are defined in [UI Controls Specification](./ui-controls-spec.md).
 
-### 3B.4 Slot model
+### 3B.4 Slot Model
 
 Slot rules in this revision:
 
@@ -249,7 +240,7 @@ Slot rules in this revision:
 - Unfilled optional slots contribute no structure by default unless the component explicitly defines fallback content.
 - No component in this revision defines consumer-extensible arbitrary named slots beyond the slots named in the specification.
 
-### 3B.5 Structural communication
+### 3B.5 Structural Communication
 
 The library permits only these categories of structural information to be exchanged:
 
@@ -268,21 +259,11 @@ Structural communication rules:
 - structural communication does not skip across ownership boundaries unless the compound contract explicitly allows descendant registration across wrappers
 - no public component in this revision uses context-style broadcast structural lookup
 
-### 3B.6 Composition depth model
-
-This revision defines no hard maximum nesting depth.
-
-Depth rules:
-
-- correctness is guaranteed for any finite acyclic composition that satisfies the validity rules in Section 3B.2
-- performance cost may increase with depth because transform resolution, layout traversal, hit testing, clipping, and effect isolation all scale with subtree size and ancestry length
-- no advisory numeric threshold is standardized in this revision
-- `Stage` establishes the root of composition semantics for the runtime tree
-- scene activation and overlay mounting change runtime ownership and layer priority, but they do not create a second independent composition grammar
+Composition depth: this revision defines no hard maximum nesting depth. Correctness is guaranteed for any finite acyclic composition that satisfies the validity rules in Section 3B.2. Performance cost scales with subtree depth across transform resolution, layout traversal, hit testing, clipping, and effect isolation. `Stage` establishes the root of composition semantics; scene activation and overlay mounting change runtime ownership and layer priority but do not create a second independent composition grammar.
 
 ## 3C. State Model
 
-### 3C.1 State category taxonomy
+### 3C.1 State Category Taxonomy
 
 Every authoritative piece of state in this library belongs to exactly one of these categories:
 
@@ -293,7 +274,7 @@ Every authoritative piece of state in this library belongs to exactly one of the
 | Application state | domain-meaningful user data exposed through a component, such as text value, checked value, or selected item value | yes in uncontrolled mode | yes in controlled mode | yes |
 | Composition state | state scoped to a named composition root and used to coordinate registered sub-parts, such as the active tab value within one `Tabs` root or the active scene within one `Composer` | yes | yes at the composition root boundary | yes |
 
-### 3C.2 Ownership model
+### 3C.2 Ownership Model
 
 Ownership definitions for this revision:
 
@@ -308,7 +289,7 @@ Negotiated-state rules:
 - uncontrolled mode is the default when the authoritative value prop is omitted
 - ownership mode cannot transfer during the lifetime of one component instance
 
-### 3C.3 Controlled vs. uncontrolled model
+### 3C.3 Controlled Vs. Uncontrolled Model
 
 Controlled mode:
 
@@ -329,7 +310,7 @@ Hybrid restriction:
 - a component may mix controlled and uncontrolled ownership across different public state properties only when each property has an independent ownership signal
 - one state property may not be partially controlled and partially uncontrolled at the same time
 
-### 3C.4 State flow within composition
+### 3C.4 State Flow Within Composition
 
 State flow rules:
 
@@ -343,7 +324,7 @@ Sharing model:
 - public consumer-owned state sharing is explicit: the consumer passes the same authoritative value into the components or root that need it
 - root-scoped library coordination state is implicit for registered sub-parts within a documented compound root such as `Tabs`, `Modal`, `Alert`, `Scene`, or `Composer`
 
-### 3C.5 Consistency guarantees
+### 3C.5 Consistency Guarantees
 
 This revision makes these binary commitments:
 
@@ -354,7 +335,7 @@ This revision makes these binary commitments:
 
 For controlled properties, the callback that proposes a change is not itself a committed state transition. Commitment occurs only when the authoritative consumer value changes.
 
-### 3C.6 Derived state
+### 3C.6 Derived State
 
 The library computes these derived state classes:
 
@@ -369,7 +350,7 @@ The library computes these derived state classes:
 
 ## 3D. Interaction Model
 
-### 3D.1 Input abstraction model
+### 3D.1 Input Abstraction Model
 
 The library recognizes input as logical intents rather than as device-specific events.
 
@@ -390,7 +371,7 @@ Mapping rules:
 - text composition and committed text may already arrive normalized by the platform; the library still treats them as `TextCompose` and `TextInput` logical inputs respectively
 - once a logical input is consumed by a component during dispatch, the corresponding physical callback must not produce an additional second logical dispatch within the same runtime turn
 
-### 3D.2 Event contract
+### 3D.2 Event Contract
 
 Sections 7.1 and 7.2 define propagation and focus mechanics. This section defines the named public interaction events emitted through that mechanism.
 
@@ -443,7 +424,7 @@ Event deduplication and synthetic events:
 - the library may emit synthetic `ui.focus.change` when focus changes due to component opening, closing, restoration, or explicit consumer focus request
 - programmatic state changes do not emit synthetic `ui.activate`, `ui.dismiss`, `ui.navigate`, `ui.scroll`, or `ui.submit` unless a component contract explicitly says they do
 
-### 3D.3 Input-to-state-proposal mapping
+### 3D.3 Input-To-State-Proposal Mapping
 
 | Logical input | State categories it may propose to change | Proposal rule | Proposal mode |
 |---------------|-------------------------------------------|---------------|---------------|
@@ -458,7 +439,7 @@ Event deduplication and synthetic events:
 
 If a logical input has no state implication for a target component, that component may still emit the corresponding event but must take no default action after listener delivery.
 
-### 3D.4 Focus model
+### 3D.4 Focus Model
 
 Focus ownership:
 
@@ -478,7 +459,7 @@ Focus observation:
 - focus is observable through `ui.focus.change`
 - this revision defines one logical focus concept; keyboard focus is not separated into a second public focus type
 
-### 3D.5 Interaction propagation
+### 3D.5 Interaction Propagation
 
 Sections 7.1 and 7.2 remain normative for path resolution and focus traversal. The default propagation direction per logical input is:
 
@@ -501,7 +482,7 @@ Overriding propagation order is not stable public API in this revision. Consumer
 
 ## 3E. Behavioral Completeness
 
-### 3E.1 Empty and null state contract
+### 3E.1 Empty And Null State Contract
 
 Foundation-level empty-state rules:
 
@@ -510,8 +491,9 @@ Foundation-level empty-state rules:
 - runtime roots such as `Stage` and `Composer` remain valid when no active scene content is present; they render no scene content and continue to maintain runtime ownership invariants.
 - the library does not inject default empty-state placeholder content for foundation components in this revision.
 - transitioning into or out of an empty structural state does not emit a dedicated empty-state event in this revision.
+- foundation components define no public asynchronous content-loading contract; any consumer-composed async behavior is consumer-owned unless a future component specification defines otherwise.
 
-### 3E.2 Overflow and constraint behavior
+### 3E.2 Overflow And Constraint Behavior
 
 Foundation overflow model by family:
 
@@ -524,7 +506,7 @@ Foundation overflow model by family:
 
 The library exposes no generic overflow event or overflow flag in this revision unless a component contract names one explicitly.
 
-### 3E.3 Concurrent and rapid input behavior
+### 3E.3 Concurrent And Rapid Input Behavior
 
 Library-wide rapid-input policy:
 
@@ -534,7 +516,7 @@ Library-wide rapid-input policy:
 - when multiple input sources target different recipients simultaneously, arbitration resolves per active recipient rules from the Interaction Model; there is no cross-tree multi-recipient merge step
 - when multiple input sources target the same active interaction owner, the owner that currently holds gesture or text-entry ownership keeps priority until it releases that ownership or is destroyed
 
-### 3E.4 Transition interruption
+### 3E.4 Transition Interruption
 
 Transition interruption rules for foundation/runtime components:
 
@@ -543,7 +525,7 @@ Transition interruption rules for foundation/runtime components:
 - `Composer` interruptions resolve by cancelling the active visual transition, committing to the last authoritative runtime state defined by the `Composer` contract, and then processing the new request
 - layout, transform, and render-dirty passes are not treated as interruptible animations; they simply recompute from the latest authoritative inputs on the next pass
 
-### 3E.5 Destruction during activity
+### 3E.5 Destruction During Activity
 
 Foundation destruction guarantees:
 
@@ -554,18 +536,9 @@ Foundation destruction guarantees:
 | active interaction | release gesture ownership, text-entry ownership, and focus participation held by the destroyed component; ancestor focus and routing must remain coherent | clean up application-side effects that were waiting on completion of that interaction |
 | pending async operation | no foundation component in this revision owns a public async load operation; any consumer-owned async work is outside the library responsibility boundary | cancel or ignore consumer-owned async work |
 
-### 3E.6 Loading and async state
-
-No foundation component in this revision defines a public asynchronous content-loading contract.
-
-Therefore:
-
-- there is no standardized loading event, loading placeholder, load-failure surface, or retry contract at the foundation level
-- if a consumer composes async behavior around foundation components, that async contract is consumer-owned unless a future component specification defines otherwise
-
 ## 3F. Contract Stability
 
-### 3F.1 Stability tier taxonomy
+### 3F.1 Stability Tier Taxonomy
 
 The stability tiers in this section are binding promises.
 
@@ -578,7 +551,7 @@ No additional tier such as `preview`, `beta`, or `legacy` exists in this revisio
 | `Deprecated` | the surface remains supported and behaviorally equivalent until its declared removal version; a replacement or explicit `no direct replacement` statement must be declared at deprecation time |
 | `Internal` | the surface is not public API, consumer usage is unsupported, and no compatibility promise is made |
 
-### 3F.2 API surface classification
+### 3F.2 API Surface Classification
 
 The stability taxonomy applies to the full documented API surface of this library.
 
@@ -598,116 +571,11 @@ The stability taxonomy applies to the full documented API surface of this librar
 
 The controls specification in [UI Controls Specification](./ui-controls-spec.md) assigns these same stability tiers to each concrete control family and its documented public surfaces.
 
-### 3F.3 Breaking change definition
-
-A breaking change is any change to a `Stable` or `Deprecated` surface that requires a consumer to modify usage, assumptions, styling inputs, or tests in order to preserve equivalent documented behavior.
-
-The following rulings are binding:
-
-| Change type | Breaking? | Ruling |
-|-------------|-----------|--------|
-| removing a stable component | yes | component existence is a stable contract surface |
-| renaming a stable component | yes, unless the old name remains as a deprecated alias through the full deprecation window | canonical exported names are stable |
-| removing a stable property, parameter, callback, slot, token key, or named visual part | yes | removal changes the documented surface |
-| changing the type or accepted domain of a stable property or callback payload field | yes | consumer code must change to remain valid |
-| adding a required property to a stable component or making an optional property required | yes | existing call sites become invalid |
-| adding an optional property, optional callback, optional token, or optional slot | no | additive surfaces are allowed so long as existing behavior is unchanged |
-| changing the documented default value or default resolution rule of an existing optional property | yes | if a consumer must now pass the old value to preserve equivalent behavior, the change is breaking |
-| changing the payload schema of a stable event or callback | yes | payload shape is contract surface |
-| adding a new optional field to a stable event payload | no | additive payload fields are allowed when existing fields, names, and meanings remain unchanged |
-| changing component structure or render-tree decomposition | no, unless it changes documented named parts, slot topology, structural validity, hit or focus regions, event propagation guarantees, or another observable contract surface | internal helper structure is not public API |
-| changing internal behavior without changing documented observable behavior | no | implementation changes are allowed |
-| changing documented observable behavior while keeping the same signature | yes | behavior is part of the contract |
-| removing or changing an experimental surface | no | experimental surfaces carry no compatibility promise |
-| changing a deprecated surface before its declared removal version | yes, except for adding deprecation diagnostics that do not alter behavior | deprecated surfaces remain behaviorally stable until removal |
-| renaming a documented token key or changing a documented token-to-part binding | yes | the consumer's theming surface changes |
-| adding a new stable named visual part | no, unless existing required part names, roles, or required styling inputs change | additive part surfaces are allowed when prior part contracts remain valid |
-
-### 3F.4 Versioning semantics
-
-This specification uses monolithic semantic versioning for the library as a whole.
-
-Compatibility boundary rules:
-
-- while the library version is in the `0.x.y` range, the `MINOR` field is treated as the breaking-change boundary and `PATCH` remains non-breaking
-- starting at `1.0.0`, the `MAJOR` field is the breaking-change boundary in ordinary SemVer terms
-- the library does not version components independently in this revision
-
-Release-type guarantees:
-
-| Release type | Guarantee |
-|--------------|-----------|
-| breaking-boundary release (`0.MINOR.0` before `1.0.0`, `MAJOR.0.0` at and after `1.0.0`) | may include breaking changes to stable surfaces and removals whose deprecation window has completed |
-| non-breaking feature release (`0.x.0` where `x` is unchanged, or `MAJOR.MINOR.0` at and after `1.0.0`) | may add stable surfaces, declare deprecations, graduate experimental surfaces, and add optional payload fields or props without breaking existing consumers |
-| patch release | may fix bugs, adjust internal or experimental surfaces, and improve performance, but may not break stable documented behavior |
-
-Support window:
-
-- after a new breaking compatibility line is released, the immediately previous compatibility line receives critical fixes for at least six months
-
-### 3F.5 Deprecation protocol
-
-Every deprecation must declare all of the following at the same time:
-
-- the deprecated surface
-- the first version in which it is deprecated
-- the earliest removal version
-- the replacement surface, or an explicit `no direct replacement` statement
-
-Deprecation communication channels:
-
-- the specification must mark the surface as `Deprecated` in the relevant stability table
-- the changelog for the deprecating release must include a deprecation entry with the same removal and replacement information
-- the runtime should emit a development-time warning when use of the deprecated surface is detectable; when it is not detectable at runtime, the spec and changelog remain authoritative
-
-Minimum deprecation window:
-
-- at least one subsequent non-breaking feature release must ship after the deprecation release before removal is allowed
-- removal may occur only in the next breaking-boundary release after that minimum window has completed
-
-Behavior during deprecation:
-
-- deprecated surfaces must continue to function with the same documented behavior until removal
-- the library may add diagnostics, documentation banners, or changelog guidance during the deprecation window, but it must not silently narrow or repurpose the deprecated contract
-
-Removal mechanics:
-
-- removal occurs only in a breaking-boundary release
-- the removal release must include a migration guide entry describing the replacement or confirming that no direct replacement exists
-
-### 3F.6 Experimental gate
-
-No surface in this revision is marked `Experimental`.
-
-If a future revision introduces an experimental surface, all of the following are required:
-
-- the surface must be labeled `Experimental` in the relevant specification table
-- the consumer must opt in explicitly through an experimental export path, experimental feature flag, or experimental name marker defined by the component contract
-- the surface may ship in the normal package distribution, but it must not appear as an unlabeled stable default entry point
-- graduation to `Stable` requires a release that assigns the stable name and tier explicitly in the specification and changelog
-- abandonment or removal of the experimental surface requires a changelog note but does not require a deprecation window
-- no backward-compatibility guarantee exists within the experimental tier
-
-### 3F.7 Out-of-scope declaration
-
-The library makes no stability commitment about any surface not explicitly documented as public API.
-
-That includes:
-
-- undocumented helper nodes, wrapper layers, render passes, batching layout, and internal draw ordering
-- exact callback timing relative to internal dirty-pass scheduling except where the Interaction Model or component contract says otherwise
-- exact internal cache structure, invalidation granularity, and scheduling of recomputation passes
-- undocumented token keys, undocumented visual parts, undocumented variant names, and undocumented skin-input fallbacks
-- undocumented native primitive choices, backend integration choices, and private adapter APIs
-- unsupported composition patterns or prop combinations beyond the deterministic failure guarantees already stated by the component contract
-- performance characteristics not explicitly stated as guarantees
-- any consumer reliance on behavior that this specification marks as implementation detail, unsupported, or internal
-
-If a consumer depends on one of these out-of-scope surfaces, that dependency is unsupported and may break in any release.
+Breaking change definition, versioning semantics, deprecation protocol, experimental gate, and stability scope are governed by [UI Evolution Specification](./ui-evolution-spec.md).
 
 ## 3G. Failure Semantics
 
-### 3G.1 Failure response taxonomy
+### 3G.1 Failure Response Taxonomy
 
 The library recognizes exactly these failure response modes:
 
@@ -721,7 +589,7 @@ The library recognizes exactly these failure response modes:
 
 In this specification, `fail deterministically` means the condition is assigned one exact failure mode by this section or by a component-specific failure table. Unless a more specific rule says otherwise, deterministic failure for invalid configuration is a `Hard failure`.
 
-### 3G.2 Invalid usage classification
+### 3G.2 Invalid Usage Classification
 
 | Category | Class of invalid usage | Detectable point | Default failure mode | Notes |
 |----------|------------------------|------------------|----------------------|-------|
@@ -732,7 +600,7 @@ In this specification, `fail deterministically` means the condition is assigned 
 | E | composition boundary violation such as mounting a component outside its required parent or runtime layer | when the parent/layer requirement is first knowable | `Hard failure` | boundary violations are distinct from merely optional empty states |
 | F | out-of-scope usage such as relying on internal structures, mutating undocumented internals, or using explicitly unsupported extension patterns | generally not required to be detected | `Undefined` or `Passthrough` | the library disclaims responsibility for these cases |
 
-### 3G.3 Diagnostic signal contract
+### 3G.3 Diagnostic Signal Contract
 
 Soft-failure diagnostics use the following contract:
 
@@ -742,7 +610,7 @@ Soft-failure diagnostics use the following contract:
 - `Signal environment`: warnings for soft failures and deprecated APIs are emitted in all supported runtime environments in this revision.
 - `Signal suppression`: this revision defines no stable API for suppressing, redirecting, or subscribing to diagnostics. The transport may be implementation-specific, but the presence of the warning is contract surface when a rule selects `Soft failure with signal`.
 
-### 3G.4 Fallback behavior contract
+### 3G.4 Fallback Behavior Contract
 
 The library does not provide a generic best-effort recovery path for invalid configuration. If a fallback exists, it must be explicitly declared.
 
@@ -754,7 +622,7 @@ The library does not provide a generic best-effort recovery path for invalid con
 | documented component-specific truncation, clamping, or rejection fallback | the mode named by the component section | apply exactly the fallback named by that section and no stronger recovery behavior | stable for that specific condition |
 | all other detected invalid usage | `Hard failure` | no fallback is provided | fail-stop for the current invalid operation |
 
-### 3G.5 Deprecated API runtime behavior
+### 3G.5 Deprecated API Runtime Behavior
 
 When a deprecated API is exercised at runtime:
 
@@ -763,7 +631,7 @@ When a deprecated API is exercised at runtime:
 - the deprecated behavior remains guaranteed until the declared removal version
 - no deprecated API may be removed before its declared removal version
 
-### 3G.6 Undefined behavior declaration
+### 3G.6 Undefined Behavior Declaration
 
 The following classes of usage are intentionally undefined in this revision:
 
@@ -776,7 +644,7 @@ These classes are intentionally undefined rather than accidentally unspecified.
 
 Future revisions may define some of them, but this revision makes no stability commitment about them and they may change without version increment.
 
-### 3G.7 Graceful degradation contract
+### 3G.7 Graceful Degradation Contract
 
 When the library encounters a failure condition, it guarantees the following minimum floor:
 
@@ -1586,7 +1454,7 @@ ERRORS:
 
 ## 7. Composition And Interaction Patterns
 
-### 7.1 Event propagation
+### 7.1 Event Propagation
 
 The library must implement three ordered propagation phases:
 
@@ -1707,7 +1575,7 @@ The component contract must define whether pointer activation:
 - focuses after default action
 - does not change focus
 
-### 7.3 Responsive rules
+### 7.3 Responsive Rules
 
 Responsive behavior must be declarative.
 
@@ -1727,7 +1595,7 @@ This revision supports:
 - min and max clamps
 - declarative breakpoints
 
-### 7.4 Render effects and shaders
+### 7.4 Render Effects And Shaders
 
 Effects inherit from parent to child by default.
 
@@ -1746,7 +1614,7 @@ The renderer must isolate a subtree when required by:
 
 The theming contract is the stable interface between the library and the consumer's design system.
 
-### 8.1 Visual ownership model
+### 8.1 Visual Ownership Model
 
 The library sits in the middle of the opinionated-to-headless axis, leaning opinionated for render-capable controls and leaning headless for structural and runtime primitives.
 
@@ -1767,7 +1635,7 @@ The library must remain in this range because:
 - moving further toward fully opinionated would make design-system integration depend on undocumented internal rendering rather than on explicit public skin surfaces
 - accessibility-significant visual affordances such as focus indicators, selection regions, and modal backdrop separation require a minimum stable visual structure even when appearance is customized
 
-### 8.2 Visual property taxonomy
+### 8.2 Visual Property Taxonomy
 
 | Category | Ownership | Default source | Override mechanism | Stable API status |
 |----------|-----------|----------------|--------------------|-------------------|
@@ -1778,7 +1646,7 @@ The library must remain in this range because:
 | Brand identity choices, custom art direction, and consumer-provided renderer behavior inside a documented extension slot | consumer-owned | none required from the library | consumer-provided tokens, assets, or custom renderer slot | stable only through the documented extension slot boundary |
 | Internal draw-call decomposition, helper layers, batching strategy, and cache layout | library-owned implementation detail | implementation-defined | not overridable | not public API |
 
-### 8.3 Customization mechanism
+### 8.3 Customization Mechanism
 
 This revision standardizes these visual customization mechanisms:
 
@@ -1800,7 +1668,7 @@ Precedence order, from highest to lowest:
 
 The custom renderer extension slot replaces the ordinary render mode for its target part after part resolution but before node-level inherited effects, opacity, masking, and blend behavior are applied.
 
-### 8.4 Token model
+### 8.4 Token Model
 
 This revision standardizes:
 
@@ -1838,7 +1706,7 @@ Required versus optional tokens:
 
 Token-to-component binding is explicit. A component part resolves tokens only through documented part-property bindings; there is no implicit CSS-like selector or descendant-based token matching in this revision.
 
-### 8.5 Structure vs. appearance boundary
+### 8.5 Structure Vs. Appearance Boundary
 
 Criteria:
 
@@ -1854,7 +1722,7 @@ Per-family boundary:
 | Render-capable primitives | named renderable part surfaces and content-box contract | skin mode, tokens, textures, fonts, colors, border treatment, shader choice | internal draw order within a part is implementation detail unless a named part contract says otherwise |
 | Concrete controls | required named parts, control-region separation, indicator/panel/surface roles, stable part names | all documented part skins, typography, decorative assets, and visual variants | internal wrapper hierarchy is implementation detail; consumers must not depend on undocumented helper parts |
 
-### 8.6 Visual inheritance within composition
+### 8.6 Visual Inheritance Within Composition
 
 Visual propagation rules:
 
@@ -1867,7 +1735,7 @@ Visual propagation rules:
 
 The consumer may interrupt visual propagation only through documented local effect overrides or by causing subtree isolation under the rules in Section 8.14. No general-purpose style reset node is standardized in this revision.
 
-### 8.7 Token classes
+### 8.7 Token Classes
 
 This revision standardizes these token classes:
 
@@ -1885,7 +1753,7 @@ This revision standardizes these token classes:
 - `opacity`
 - `blendMode`
 
-### 8.8 Part-level skin contract
+### 8.8 Part-Level Skin Contract
 
 Each skinnable component part may resolve one of these render modes:
 
@@ -1898,7 +1766,7 @@ Each skinnable component part may resolve one of these render modes:
 - shader-modified draw
 - fully custom consumer renderer through a defined extension slot
 
-### 8.9 Render skin resolution
+### 8.9 Render Skin Resolution
 
 The library must treat presentation as a resolved render skin rather than as ad hoc draw behavior embedded in each control.
 
@@ -1916,7 +1784,7 @@ A render skin may be composed from:
 
 Each render-capable component must expose named presentational parts that can be skinned independently.
 
-### 8.10 Texture and atlas contract
+### 8.10 Texture And Atlas Contract
 
 A texture-backed skin may reference:
 
@@ -1925,7 +1793,7 @@ A texture-backed skin may reference:
 - a precomputed quad region
 - a nine-slice definition over either a full image or a quad region
 
-### 8.11 Nine-slice contract
+### 8.11 Nine-Slice Contract
 
 A nine-slice definition divides a texture region into nine rectangular cells using two horizontal and two vertical cut lines, each measured as an inset from the corresponding edge of the source texture region.
 
@@ -1935,7 +1803,7 @@ A nine-slice definition must specify the four edge inset measurements that defin
 
 When the component's drawn size along an axis is smaller than the sum of the two opposing corner insets along that axis, the corners must scale down proportionally to fit. In this condition the edge and center cells for that axis are omitted.
 
-### 8.12 Stateful variant resolution
+### 8.12 Stateful Variant Resolution
 
 A component resolves its active skin variant by evaluating its current state flags in a defined priority order. Each component that exposes state-driven presentation must document the priority order of its states in its specification.
 
@@ -1945,7 +1813,7 @@ When no state-specific variant is defined for the currently active state, the co
 
 When no base variant skin is defined, the component must apply any available default token values. If a required token is absent and no default exists, the component must fail deterministically.
 
-### 8.13 Shader contract
+### 8.13 Shader Contract
 
 A shader applied at the node level executes over the node's rendered output, after the node draws and before its descendants draw, unless the composition requires isolation.
 
@@ -1955,7 +1823,7 @@ Shaders in the inherited effect chain compose in tree order. A node whose shader
 
 A component must fail deterministically if a shader is invalid or if the shader requires rendering capabilities unavailable in the current context.
 
-### 8.14 Isolation rules
+### 8.14 Isolation Rules
 
 Isolation requires drawing a subtree to an offscreen target and compositing the result into the parent using the subtree root's opacity and blend mode.
 
@@ -1967,7 +1835,7 @@ Isolation is required when:
 
 Isolation carries a performance cost and must not be applied speculatively when inline drawing satisfies the contract.
 
-### 8.15 Performance rules
+### 8.15 Performance Rules
 
 The implementation should:
 
@@ -1977,7 +1845,7 @@ The implementation should:
 
 Batch draw primitives are an implementation optimization and are not part of the public component contract.
 
-### 8.16 Missing or invalid skin inputs
+### 8.16 Missing Or Invalid Skin Inputs
 
 If a token is absent, the component may fall back to a stable default token. If no default token exists, the component must fail deterministically.
 
