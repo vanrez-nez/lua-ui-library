@@ -2,6 +2,12 @@
 
 Source under review: `docs/implementation/phase-09-modal-responsive.md`
 
+Task-set authority:
+
+- `docs/spec/ui-foundation-spec.md` is authoritative for overlay ownership, Composer lifecycle boundaries, focus trapping/restoration, and responsive-rule behavior.
+- `docs/spec/ui-controls-spec.md` is authoritative for `Modal` and `Alert` public props, structure, and validity rules.
+- `docs/implementation/phase-09-modal-responsive.md` is planning context only and cannot widen the public contract.
+
 Primary findings, ordered by severity:
 
 1. `Scene` lifecycle is over-specified again through public overlay wiring.
@@ -46,4 +52,4 @@ Primary findings, ordered by severity:
 Secondary scoping notes:
 
 - The phase doc’s nested overlay test intent is compatible with the spec requirement that nested Modals be supported, but that does not imply a public overlay registry API.
-- The safe-area percentage-sizing behavior is plausible, but it should be treated as an implementation choice unless separately standardized in the specification.
+- Safe-area-relative percentage resolution is now settled by the published spec against the effective parent content region; task wording should treat that as closed rather than as optional interpretation.

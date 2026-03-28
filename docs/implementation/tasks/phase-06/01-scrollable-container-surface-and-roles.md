@@ -2,7 +2,7 @@
 
 ## Goal
 
-Implement `ScrollableContainer` as the spec-backed primitive with the correct anatomy and public prop surface, without freezing extra attachment APIs.
+Implement `ScrollableContainer` as the spec-backed primitive with the correct anatomy and public prop surface, treating the required `content` subtree as settled structure while leaving attachment mechanics unspecified.
 
 ## Spec Anchors
 
@@ -15,19 +15,20 @@ Implement `ScrollableContainer` as the spec-backed primitive with the correct an
 - Implement `lib/ui/scroll/scrollable_container.lua`
 - Root, viewport, content, and scrollbar roles
 - Public prop surface
-- Content-slot attachment boundary
+- Required single `content` subtree boundary
 
 ## Required Behavior
 
 - The component exposes the spec-backed anatomy: `root`, `viewport`, `content`, `scrollbars`.
 - `scrollXEnabled`, `scrollYEnabled`, `momentum`, `momentumDecay`, `overscroll`, `scrollStep`, and `showScrollbars` exist as the public prop surface.
 - The component remains structurally valid only when the required `content` subtree exists.
+- The component contains exactly one consumer content subtree; additional root-level consumer children outside the `content` slot are unsupported.
 - The viewport clips descendant drawing and hit testing.
 
-## Missing Detail Normalization
+## Settled Boundary
 
 - Do not stabilize method names such as `addContent` or `getContentContainer` unless the spec is amended.
-- If the implementation needs an internal content-attachment helper, keep it internal and route public construction through the existing component surface.
+- If the implementation needs an internal content-attachment helper, keep it internal and avoid documenting helper names as public API.
 
 ## Non-Goals
 
@@ -38,5 +39,5 @@ Implement `ScrollableContainer` as the spec-backed primitive with the correct an
 ## Acceptance Checks
 
 - A ScrollableContainer instance can be composed with a required content subtree and optional scrollbar visuals.
-- The component rejects or otherwise deterministically handles missing required content.
+- The component rejects or otherwise deterministically handles missing required content as structural invalidity.
 - Public docs and constructor surfaces do not introduce new attachment methods.

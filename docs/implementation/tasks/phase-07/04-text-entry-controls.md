@@ -2,42 +2,34 @@
 
 ## Goal
 
-Implement `TextInput` and `TextArea` on the spec-backed text-entry contract, including controlled state, selection, composition, clipboard, and scroll behavior.
+Implement `TextInput` and `TextArea` on the settled text-entry contract, including negotiated value and selection ownership, composition handling, clipboard behavior, and `TextArea`-owned scrolling.
 
-## Spec Anchors
+## Authority
 
-- `docs/spec/ui-controls-spec.md:735-909`
-- `docs/spec/ui-controls-spec.md:1168-1173`
-- `docs/spec/ui-controls-spec.md:1201-1203`
+- `docs/spec/ui-controls-spec.md §6.5 TextInput`
+- `docs/spec/ui-controls-spec.md §6.6 TextArea`
+- `docs/spec/ui-controls-spec.md §4C.2 Public State Ownership Matrix`
+- `docs/spec/ui-foundation-spec.md §3D`
 
-## Scope
+## Settled Contract Points
 
-- Implement `lib/ui/controls/text_input.lua`
-- Implement `lib/ui/controls/text_area.lua`
-- Preserve the documented public props, callbacks, and state models
+- `TextInput` exposes `value`, `onValueChange`, `selectionStart`, `selectionEnd`, `onSelectionChange`, `placeholder`, `disabled`, `readOnly`, `maxLength`, `inputMode`, `submitBehavior`, and `onSubmit`.
+- `TextInput` supports active text-entry ownership distinct from logical focus, native text input while active, committed text insertion, composition candidates, selection, and clipboard operations when available.
+- `TextArea` inherits the full `TextInput` contract and adds `wrap`, `rows`, `scrollXEnabled`, `scrollYEnabled`, and `momentum`.
+- `TextArea` owns its internal scroll region and keeps same-axis scroll interception scoped to that internal field content.
 
-## Required Behavior
+## Implementation Guardrails
 
-- `TextInput` exposes `value`, `selectionStart`, `selectionEnd`, `placeholder`, `disabled`, `readOnly`, `maxLength`, `inputMode`, `submitBehavior`, and `onSubmit`.
-- Uncontrolled text state remains library-owned without inventing a new stable imperative getter/setter API.
-- Composition candidate handling follows the documented compose/input split.
-- `TextArea` inherits the `TextInput` contract and adds `wrap`, `rows`, `scrollXEnabled`, `scrollYEnabled`, and `momentum`.
-- `TextArea` keeps its scroll region scoped to the internal field content.
-
-## Internal-Only Boundaries
-
-- `defaultValue` is not a spec-stabilized public prop in this revision.
-- Raw platform key handling and `love.keyboard.setTextInput` wiring should stay internal behind the logical input boundary.
-
-## Non-Goals
-
-- No rich-text authoring.
-- No multiline submit semantics for `TextArea`.
-- No externally managed native text-input lifecycle.
+- Do not reintroduce a public `defaultValue` prop. Uncontrolled initial value is the spec-owned uncontrolled default.
+- Raw host key handling, clipboard plumbing, and native text-input activation wiring remain internal beneath the logical input contract.
+- Controlled selection requires both boundaries together; a one-sided controlled selection is invalid.
+- `TextArea` newline insertion replaces submit behavior for multiline editing.
+- When `wrap = true`, horizontal scrolling is suppressed regardless of `scrollXEnabled`.
 
 ## Acceptance Checks
 
-- `maxLength` truncates input silently rather than failing.
-- `readOnly` still allows focus, selection, and copy.
-- `TextArea` newline insertion does not trigger submit.
-- Composition cancellation discards the candidate without committing text.
+- `readOnly` still allows focus, selection, and copy, but blocks mutation.
+- `maxLength` truncates typed or pasted insertion without raising an error.
+- Losing focus while composing discards the candidate without committing text.
+- `TextArea` inserts newline on confirm input and does not treat that command as `onSubmit`.
+- `rows` and internal scroll behavior remain compatible with the `ScrollableContainer` contract without exposing new public scroll helpers.

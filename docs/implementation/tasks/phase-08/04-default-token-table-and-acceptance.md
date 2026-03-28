@@ -17,12 +17,14 @@ Populate the default token table for all spec-backed control surfaces and valida
 - Cover documented control parts and state variants
 - Verify that missing tokens fail or fall back exactly as the spec allows
 - Build a Phase 8 demonstration harness
+- Keep the acceptance surface rooted in documented bindings even if implementation coverage is broader internally
 
 ## Required Behavior
 
 - Default tokens may exist for all documented bindings, but they must remain rooted in the documented part/property surfaces.
 - Partial theme overrides must fall through to base tokens and library defaults exactly as the token-resolution order requires.
 - Text styling must stay within the documented `Text` content surface and not rely on extra role taxonomies.
+- The demo and acceptance checks must not treat internal convenience aliases, broad fallback tables, or helper APIs as public contract.
 
 ## Demo Expectations
 
@@ -43,3 +45,4 @@ Populate the default token table for all spec-backed control surfaces and valida
 - Every documented control part resolves a token or a documented fallback.
 - Theme overrides can be applied without editing control behavior.
 - The harness makes spec-visible failures obvious and deterministic.
+- Passing acceptance does not depend on undocumented helper APIs or extra public token families.

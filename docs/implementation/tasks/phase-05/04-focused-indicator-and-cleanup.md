@@ -2,7 +2,7 @@
 
 ## Goal
 
-Implement the focus indicator protocol and cleanup rules so focused state never leaks across reparenting, destruction, or draw cycles.
+Implement the Phase 05 default focus indicator and cleanup rules so focus-derived rendering state never leaks across reparenting, destruction, or draw cycles.
 
 ## Spec Anchors
 
@@ -24,10 +24,10 @@ Implement the focus indicator protocol and cleanup rules so focused state never 
 - Destroying the focused node clears Stage focus ownership.
 - Reparented or hidden nodes cannot retain stale focus indicators.
 
-## Missing Detail Normalization
+## Authority Boundaries
 
-- The exact ring geometry in the implementation doc is acceptable as a rendering choice, but it should remain a presentation decision, not a public contract surface unless later stabilized.
-- The draw-time mutation of a `focused` field should be treated as an internal draw context rather than as part of the public node API.
+- `docs/spec/ui-foundation-spec.md §3C.6` settles that any transient `focused` render flag is internal derived state unless a later contract exposes it.
+- The exact ring geometry from the phase plan may be used as the Phase 05 default rendering choice, but it remains presentation detail rather than a new public API surface unless later stabilized.
 
 ## Non-Goals
 

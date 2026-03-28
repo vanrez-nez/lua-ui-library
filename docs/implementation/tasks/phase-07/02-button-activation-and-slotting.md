@@ -2,41 +2,33 @@
 
 ## Goal
 
-Implement `Button` with the negotiated pressed-state contract, activation semantics, and documented content slot, without stabilizing imperative builder methods.
+Implement `Button` with its settled activation, disabled, and negotiated pressed-state contract while keeping content population structural rather than imperative.
 
-## Spec Anchors
+## Authority
 
-- `docs/spec/ui-controls-spec.md:442-549`
-- `docs/spec/ui-controls-spec.md:322-326`
-- `docs/spec/ui-controls-spec.md:1183-1201`
+- `docs/spec/ui-controls-spec.md §6.2 Button`
+- `docs/spec/ui-controls-spec.md §4B.3 Control Slot Declarations`
+- `docs/spec/ui-controls-spec.md §8.1-§8.3`
+- `docs/spec/ui-foundation-spec.md §3D`
 
-## Scope
+## Settled Contract Points
 
-- Implement `lib/ui/controls/button.lua`
-- Expose `pressed` and `onPressedChange`
-- Expose `onActivate` and `disabled`
-- Support the documented `content` slot/region
+- The public `Button` surface is `pressed`, `onPressedChange`, `onActivate`, `disabled`, and `content`.
+- `content` is a documented slot or region, not a stable imperative setter API.
+- `Button` supports pointer, touch, keyboard, and programmatic activation.
+- Disabled buttons suppress hover, pressed, focus-acquisition, and activation behavior.
+- The Phase 07 rendering path must preserve the stable state priority order `disabled > pressed > hovered > focused > base`.
 
-## Required Behavior
+## Implementation Guardrails
 
-- Pointer, keyboard, and programmatic activation must follow the spec-backed callback ordering.
-- Disabled buttons suppress activation and focus acquisition.
-- Empty content remains valid and functional.
-- Variant priority follows the spec order: `disabled > pressed > hovered > focused > base`.
-
-## Internal-Only Boundaries
-
-- `button:setContent(node)` may exist as an internal helper, but it is not a spec-stabilized public method.
-- `pointerFocusCoupling` is a behavior requirement, not a new public prop.
-
-## Non-Goals
-
-- No stable imperative handle/ref surface.
-- No theming token resolution yet.
-- No nested interactive descendants inside the content slot.
+- A helper that attaches content may exist internally, but it must not be documented as public API.
+- Nested interactive controls inside the content slot remain unsupported in this revision.
+- Event ordering must stay spec-shaped: cancellable activation delivery finishes before any callback-driven state proposal.
+- Controlled pressed-state behavior must render from the last committed authoritative value, not from speculative internal mutation.
 
 ## Acceptance Checks
 
-- Pressed state reflects the last committed authoritative value.
-- Pointer release outside the target does not activate.
-- Focus and hover semantics remain coherent under disable/enable changes.
+- Releasing outside the target clears the press without dispatching activation.
+- Cancelling the activation event suppresses the default action and the associated activation outcome.
+- `pressed` without `onPressedChange` is treated as invalid mutable configuration.
+- Empty content remains valid and does not break interaction.

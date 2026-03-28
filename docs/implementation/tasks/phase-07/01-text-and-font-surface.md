@@ -2,40 +2,32 @@
 
 ## Goal
 
-Implement `Text` as the primitive control with the spec-backed measurement and wrapping contract, while keeping font-loading helpers internal.
+Implement `Text` on the settled spec contract and keep all font-loading conveniences internal to the control implementation.
 
-## Spec Anchors
+## Authority
 
-- `docs/spec/ui-controls-spec.md:394-440`
-- `docs/spec/ui-controls-spec.md:1179-1203`
-- `docs/spec/ui-foundation-spec.md:712-896`
+- `docs/spec/ui-controls-spec.md §6.1 Text`
+- `docs/spec/ui-controls-spec.md §8.1-§8.4`
+- `docs/spec/ui-foundation-spec.md §3A-§3B`
 
-## Scope
+## Settled Contract Points
 
-- Implement `lib/ui/controls/text.lua`
-- Keep the public prop surface aligned to `text`, `font`, `fontSize`, `maxWidth`, `textAlign`, `textVariant`, `color`, and `wrap`
-- Resolve measurement and wrapping through the `Drawable` content box
+- The public `Text` surface is exactly `text`, `font`, `fontSize`, `maxWidth`, `textAlign`, `textVariant`, `color`, and `wrap`.
+- `textVariant` is a stable visual-selector surface for the `Text.content` part, but semantic role aliases such as `heading`, `body`, or `caption` remain internal unless a later spec names them.
+- `Text` is non-interactive, owns no editing behavior, and may not contain child nodes.
+- Empty text remains valid and renders nothing.
+- Missing or invalid font references fail deterministically.
 
-## Required Behavior
+## Implementation Guardrails
 
-- Empty text renders nothing and remains valid.
-- Wrapping at `maxWidth` follows the spec-backed behavior.
-- Horizontal alignment uses `textAlign`, not a new drawable alignment prop.
-- Text remains non-interactive and does not own editing behavior.
-
-## Internal-Only Boundaries
-
-- `font_cache.lua` may exist as a helper, but it is not a public control API.
-- `fontPath` should not become a stable public prop unless the spec is updated.
-
-## Non-Goals
-
-- No activation or selection semantics.
-- No theming-token surface.
-- No imperative child-management API.
+- A font cache or asset-path helper may exist internally, but it is not public API.
+- Do not promote `fontPath`, `alignX`, or any other draft-only convenience prop into the stable contract.
+- Wrapping with `wrap = true` and no `maxWidth` must follow the spec rule of wrapping at the node's own measured width.
+- Phase 07 visuals may be hardcoded, but they must still resolve through the stable `content` part and the documented text-style surface.
 
 ## Acceptance Checks
 
-- The control measures correctly in both wrapped and unwrapped modes.
-- `textVariant` is preserved as part of the public surface even if Phase 7 uses hardcoded visuals.
-- Missing or invalid font resolution fails deterministically.
+- Wrapped and unwrapped measurement both follow the spec-backed behavior.
+- `textAlign` is the only public horizontal alignment prop.
+- `textVariant` remains visible in the public task contract even if the current implementation uses provisional visuals.
+- No child-management or imperative slot API is documented for `Text`.

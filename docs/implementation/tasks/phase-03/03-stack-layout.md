@@ -23,7 +23,7 @@ Implement `Stack` as the layered layout primitive with no sequential axis and wi
 - Overlapping children draw in ascending z-order and hit-test in reverse draw order.
 - Children beyond stack bounds clip only when `clipChildren = true`.
 
-## Missing Detail Normalization
+## Settled Boundaries
 
 - If `Stack` supports `width = "content"` by computing a child bounding box, that policy should be treated as implementation-level measurement behavior, not a newly stabilized public promise.
 

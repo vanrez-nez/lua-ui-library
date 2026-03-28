@@ -2,39 +2,34 @@
 
 ## Goal
 
-Implement `Checkbox` and `Switch` with the spec-backed ownership, toggle, and drag semantics.
+Implement `Checkbox` and `Switch` on the settled selection-control contract, including negotiated ownership, structural content regions, and the published toggle and drag rules.
 
-## Spec Anchors
+## Authority
 
-- `docs/spec/ui-controls-spec.md:551-733`
-- `docs/spec/ui-controls-spec.md:1210-1212`
+- `docs/spec/ui-controls-spec.md §6.3 Checkbox`
+- `docs/spec/ui-controls-spec.md §6.4 Switch`
+- `docs/spec/ui-controls-spec.md §4C.2 Public State Ownership Matrix`
+- `docs/spec/ui-controls-spec.md §8.1-§8.3`
 
-## Scope
+## Settled Contract Points
 
-- Implement `lib/ui/controls/checkbox.lua`
-- Implement `lib/ui/controls/switch.lua`
-- Keep the public state and callback surfaces aligned to the spec
+- `Checkbox` uses `checked`, `onCheckedChange`, `disabled`, `label`, and `toggleOrder`.
+- `Checkbox` supports `checked`, `unchecked`, and `indeterminate`, and `toggleOrder` is the public toggle contract.
+- `Checkbox` label and description are structural content regions; the label may participate in activation, while the description must not.
+- `Switch` uses `checked`, `onCheckedChange`, `disabled`, `dragThreshold`, and `snapBehavior`.
+- `Switch` supports tap and drag semantics, with drag resolution governed by `dragThreshold` and `snapBehavior`.
+- `Switch` label and description remain structural content regions that do not participate in the drag gesture.
 
-## Required Behavior
+## Implementation Guardrails
 
-- `Checkbox` uses negotiated `checked` plus `onCheckedChange`.
-- `Checkbox` uses `toggleOrder` to define the activation cycle, including the indeterminate case.
-- `Switch` uses negotiated `checked` plus `onCheckedChange`.
-- `Switch` exposes `dragThreshold` and `snapBehavior`.
-- Labels and descriptions are structural content, not string-only convenience props.
-
-## Internal-Only Boundaries
-
-- `defaultChecked`, `allowIndeterminate`, and midpoint-only drag resolution are not spec-stabilized public API.
-- Any helper methods for wiring label or description content should remain internal if they are not part of the documented contract.
-
-## Non-Goals
-
-- No nested interactive content inside label or description regions.
-- No theming-token or skin-resolution surface yet.
+- Do not preserve draft-only public props such as `defaultChecked` or `allowIndeterminate`.
+- Uncontrolled behavior uses the spec-owned uncontrolled defaults; it does not imply a public `default*` prop surface.
+- Nested interactive controls inside label or description regions remain unsupported.
+- Midpoint-only drag resolution is not the public `Switch` contract.
 
 ## Acceptance Checks
 
-- Disabled controls reject activation and drag input.
-- Checkbox toggles follow the configured order, including the default order.
-- Switch drag release honors threshold and snap behavior rather than a fixed midpoint heuristic.
+- `Checkbox` follows the default order `unchecked -> checked -> unchecked` when `toggleOrder` is nil.
+- `Checkbox` with current state `indeterminate` and nil `toggleOrder` resolves the next state to `checked`.
+- `Switch` ignores tap and drag input while disabled.
+- Drag release honors `dragThreshold` and `snapBehavior`, including the no-change case when the gesture stays below threshold and does not cross the midpoint.

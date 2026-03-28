@@ -2,13 +2,14 @@
 
 ## Goal
 
-Implement hover tracking as internal interaction-state plumbing that supports controls without turning hover into a new stable public event surface.
+Implement hover tracking as internal interaction-state plumbing, matching the spec’s explicit classification of hover ownership as derived internal state rather than public API.
 
 ## Spec Anchors
 
 - `docs/spec/ui-foundation-spec.md §3C.1 State Category Taxonomy`
 - `docs/spec/ui-foundation-spec.md §3C.6 Derived State`
 - `docs/spec/ui-foundation-spec.md §3D.4 Focus Model`
+- `docs/spec/ui-foundation-spec.md §7.1.2 Target resolution rules`
 
 ## Scope
 
@@ -24,14 +25,14 @@ Implement hover tracking as internal interaction-state plumbing that supports co
 
 ## Normalization Rules
 
-- `hovered` should be treated as an internal or derived interaction state unless a later spec revision explicitly stabilizes it.
+- `hovered` should be treated as internal derived interaction state in this task set, not as a public node contract.
 - Synthetic pointer-enter / pointer-leave notifications should remain internal plumbing, not named public events in this phase.
 - Hover tracking should not alter the propagation contract for Activate, Navigate, Dismiss, Scroll, or Drag.
 
 ## Non-Goals
 
 - No new public hover event names.
-- No focus ownership API in this phase.
+- No public focus-request helper naming in this phase.
 
 ## Acceptance Checks
 

@@ -23,7 +23,7 @@ Integrate layout resolution into Stage update traversal in a way that preserves 
 - Draw traversal remains read-only with respect to layout state.
 - Child addition, removal, size mutation, visibility mutation, and responsive-rule changes mark affected layout roots dirty.
 
-## Missing Detail Normalization
+## Settled Boundaries
 
 - A distinct "layout pass then transform pass" execution model is acceptable as internal implementation detail.
 - That split must not be documented as a new public runtime guarantee beyond the spec’s update-pass contract.

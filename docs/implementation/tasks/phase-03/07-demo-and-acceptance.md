@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build a Phase 3 verification harness that demonstrates spec-backed layout behavior without over-claiming unresolved responsive and measurement semantics.
+Build a Phase 3 verification harness that demonstrates spec-backed layout behavior without over-claiming implementation-local responsive schemas or measurement algorithms.
 
 ## Spec Anchors
 
@@ -18,9 +18,11 @@ Build a Phase 3 verification harness that demonstrates spec-backed layout behavi
 ## Screen Normalization
 
 - Keep Stack, Row/Column, Flow, SafeAreaContainer, nested layout, and breakpoint demonstrations.
+- Responsive demos must treat `responsive` and `breakpoints` as alternate entry points into the same pre-measure step, not as cumulative sources.
 - Breakpoint demos must not imply that the chosen breakpoint data schema is itself stabilized by the spec.
 - Flow demos must use the common layout prop surface rather than introducing public `gapX` / `gapY` controls.
-- Circular-dependency and unknown-layout handling may be demonstrated as error or pass-through behavior according to the normalized scope.
+- Nested and safe-area demos should make it clear that percentages resolve against the effective parent content region.
+- Circular-dependency and dual-source responsive invalidity may be demonstrated as deterministic error cases according to the normalized scope.
 
 ## Non-Goals
 

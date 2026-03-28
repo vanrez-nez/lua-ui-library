@@ -1,12 +1,16 @@
 # Phase 06 Task Set
 
-Source implementation document used for this phase: `docs/implementation/phase-06-scroll.md`.
+Primary authority for this task set: `docs/spec/ui-foundation-spec.md` and, where `TextArea` integration is relevant, `docs/spec/ui-controls-spec.md`.
+
+Parent planning context: `docs/implementation/phase-06-scroll.md`.
+Use the parent phase document as historical implementation draft only. When it conflicts with `docs/spec`, the spec wins.
 
 Normalization rules for this phase:
 
 - Treat `docs/spec/ui-foundation-spec.md` as normative for `ScrollableContainer`.
+- Treat the `ScrollableContainer` trace notes as settled clarifications of the public contract, not as open gaps.
 - Keep the public surface limited to the spec-backed props and anatomy: `scrollXEnabled`, `scrollYEnabled`, `momentum`, `momentumDecay`, `overscroll`, `scrollStep`, `showScrollbars`, and the required `root` / `viewport` / `content` / `scrollbars` roles.
-- Do not freeze consumer child APIs, exact momentum curves, scrollbar geometry, or keyboard key mappings unless the spec explicitly does so.
+- Do not freeze consumer attachment helper names, exact momentum curves, scrollbar geometry, key-mapping tables, or other internal mechanics unless the spec explicitly does so.
 - The scroll container must remain spec-shaped for later `TextArea` integration, but that integration should not leak new public scroll APIs into the foundation contract.
 
 Key corrections applied to the original phase document:
@@ -14,12 +18,9 @@ Key corrections applied to the original phase document:
 - `addContent` and `getContentContainer` are not stabilized as public APIs by the spec.
 - `ui.navigate`-based scroll translation is not a spec-backed public contract.
 - Exact overscroll damping, inertial thresholds, and velocity-buffer details are implementation choices, not public contract.
-- Scrollbars are optional structural/visual children, but their exact geometry and interaction treatment should stay internal unless separately standardized.
+- Scrollbars are an optional `scrollbars` role whose geometry, hit regions, and drag policy remain internal unless separately standardized; the task set must not freeze the older draft's non-interactive-only assumption.
 - `ScrollableContainer` must still obey the spec’s requirement to support touch, wheel, keyboard, and programmatic scrolling, and to remain valid when empty or when both axes are disabled.
-
-Unresolved spec gap carried into this phase:
-
-- The foundation spec defines the `ScrollableContainer` anatomy and props, but it does not define a public consumer API for attaching content to the internal `content` subtree. The implementation may need an internal attachment boundary, but that boundary should not be frozen into public API names unless the spec is updated.
+- The required `content` subtree is settled public structure, while the consumer-facing mechanics used to populate it remain intentionally unspecified at the foundation level.
 
 Task order:
 

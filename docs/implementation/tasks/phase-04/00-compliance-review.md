@@ -1,8 +1,11 @@
 # Phase 04 Compliance Review
 
-Source under review: `docs/implementation/phase-04-events.md`
+Authority used for this review:
 
-Primary findings, ordered by severity:
+1. `docs/spec/ui-foundation-spec.md`
+2. `docs/implementation/phase-04-events.md`
+
+Primary corrections required for compliance, ordered by severity:
 
 1. Pointer activation is specified in a way that can double-fire `ui.activate` for a single tap or click.
    Source: `phase-04-events.md:75-80`
@@ -16,25 +19,26 @@ Primary findings, ordered by severity:
    Problem: the target resolution algorithm checks `interactive=true`, `enabled=true`, `visible=true`, and `containsPoint(wx,wy)` but does not explicitly account for ancestor clipping or effective visibility. The spec requires target resolution among hit-test-eligible descendants, which is broader than local flags alone.
    Required normalization: define target eligibility in terms of effective visibility and clipping, not only local node flags.
 
-3. The phase harness depends on a future Phase 5 focus API.
+3. The phase harness names a concrete focus helper surface that the spec does not standardize.
    Source: `phase-04-events.md:154-155`
-   Spec anchors: `ui-foundation-spec.md §7.2 Focus`, `ui-foundation-spec.md §3A.6 Lifecycle Model`
-   Problem: the `Navigate and dismiss` screen uses `stage:requestFocus()` and labels it as introduced in Phase 5 but stubbed here. That makes the Phase 4 demo depend on a later-phase API rather than on Phase 4’s own runtime contract.
-   Required normalization: remove the future-phase API dependency from the Phase 4 acceptance harness and use a Phase-4-local focus target or internal test harness fixture instead.
+   Spec anchors: `ui-foundation-spec.md §3D.4 Focus Model`, `ui-foundation-spec.md §7.2 Focus`
+   Problem: the draft names `stage:requestFocus()` as if it were the public path for explicit focus requests. The current spec now clarifies that explicit focus request support is behavioral, not a commitment to one public imperative method name.
+   Required normalization: remove the public `stage:requestFocus()` assumption from Phase 4 acceptance. Use an internal harness fixture or other non-promoted test-only seeding path.
 
-4. Hover tracking is being promoted to public-ish container state without spec stabilization.
+4. Hover tracking is being promoted to public-ish container state even though the spec now classifies it as internal derived state.
    Source: `phase-04-events.md:111-115`
    Spec anchors: `ui-foundation-spec.md §3C.6 Derived State`, `ui-foundation-spec.md §7.2 Focus`, `ui-foundation-spec.md §3F.2 API Surface Classification`
-   Problem: the draft defines `hovered` as a derived interaction-state flag on `Container` and describes synthetic `ui.pointer-enter` / `ui.pointer-leave` notifications. The spec does not stabilize either surface as a public contract in this revision.
-   Required normalization: keep hover ownership and pointer-enter/leave plumbing internal unless a later spec revision names them publicly.
+   Problem: the draft defines `hovered` as a derived interaction-state flag on `Container` and describes synthetic `ui.pointer-enter` / `ui.pointer-leave` notifications. The current spec now explicitly classifies hover ownership and pointer-entry/exit bookkeeping as internal derived state.
+   Required normalization: keep hover ownership and pointer-enter/leave plumbing internal in the Phase 4 task set rather than describing them as public surface.
 
-5. The listener method surface is not spec-defined but is written as if it were stable API.
+5. The listener helper surface is now explicitly outside the stabilized API contract, but the draft still reads as if it were public API.
    Source: `phase-04-events.md:117-123`
    Spec anchors: `ui-foundation-spec.md §7.1 Event Propagation`, `ui-foundation-spec.md §3F.2 API Surface Classification`
-   Problem: `node:on`, `node:off`, `node:capture`, and `node:bubble` are implementation choices in the phase doc. The spec requires propagation semantics but does not stabilize a concrete listener-registration API surface.
-   Required normalization: implement a listener surface if needed, but keep it provisional and avoid treating the method names as a spec-level compatibility promise.
+   Problem: `node:on`, `node:off`, `node:capture`, and `node:bubble` are implementation choices in the phase doc. The current spec now states this boundary directly: propagation phases and payloads are public, but one listener-registration method surface is not.
+   Required normalization: implement a listener surface if needed, but treat helper names, storage, and registration mechanics as internal and undocumented for compatibility purposes.
 
 Secondary scoping notes:
 
 - The event object fields themselves are broadly spec-aligned, including `phase`, `immediatePropagationStopped`, and spatial coordinate fields.
 - The 4px drag threshold is an implementation choice, not a spec commitment, and should stay internal.
+- No unresolved Phase 04 spec gap remains in this task set around hover, listener helpers, or explicit focus-request method naming; those boundaries are now settled by the published spec.

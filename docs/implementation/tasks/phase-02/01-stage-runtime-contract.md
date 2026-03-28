@@ -2,13 +2,13 @@
 
 ## Goal
 
-Implement `Stage` as the runtime root with the full runtime boundary required by the foundation spec.
+Implement `Stage` as the runtime root exactly within the boundary published in `docs/spec/ui-foundation-spec.md`.
 
 ## Spec Anchors
 
 - `docs/spec/ui-foundation-spec.md §6.4.1 Stage`
 - `docs/spec/ui-foundation-spec.md §3A.6 Lifecycle Model`
-- `docs/spec/ui-foundation-spec.md §3D Interaction Model`
+- `docs/spec/ui-foundation-spec.md §7.1 Event Propagation`
 
 ## Scope
 
@@ -23,16 +23,18 @@ Implement `Stage` as the runtime root with the full runtime boundary required by
 
 - `Stage` has no parent and only one instance may exist per application runtime.
 - `Stage` owns exactly two logical layers: base scene layer and overlay layer.
+- `Stage` reflects current viewport dimensions and exposes both full viewport bounds and safe area bounds as queryable rectangles.
+- `Stage` keeps `safeAreaInsets` synchronized with the environment alongside the bounds-based safe-area view.
 - Update traversal resolves dirty geometry, layout placeholders, world transforms, and queued state changes before returning.
 - Draw traversal issues draw commands without performing state resolution.
-- Root input delivery is a real runtime boundary, even if Phase 4 later deepens dispatch and propagation.
-- Event resolution precedence checks overlay layer before base scene layer.
+- Raw host input enters only through `Stage`. Phase 02 may keep downstream routing shallower than later event phases, but the root intake boundary cannot be a documented no-op and cannot be duplicated beneath `Stage`.
+- Event resolution precedence checks the overlay layer before the base scene layer.
 
-## Missing Detail Normalization
+## Settled Spec Clarifications
 
-- `getSafeArea()` insets-only is insufficient; Stage must also expose safe-area bounds as a queryable rectangle.
-- If raw input cannot yet flow through the full propagation system, the Stage task must still define deterministic intake and forwarding behavior rather than a no-op contract.
-- Two-pass assertion behavior is allowed, but it is enforcement of the runtime contract, not a substitute for the runtime contract itself.
+- The safe-area contract is bounds-based as well as inset-based; `safeAreaInsets` alone is insufficient.
+- The Stage-owned raw-input boundary is already part of the published contract; later phases deepen dispatch mechanics without moving that boundary.
+- A two-pass draw assertion is valid as enforcement of the runtime contract, but it does not replace the runtime contract itself.
 
 ## Non-Goals
 
@@ -43,5 +45,6 @@ Implement `Stage` as the runtime root with the full runtime boundary required by
 ## Acceptance Checks
 
 - Overlay precedence is structural and independent of child `zIndex`.
-- Viewport resize updates viewport dimensions, safe-area insets, and safe-area bounds.
+- Viewport resize updates viewport dimensions, `safeAreaInsets`, and safe area bounds.
 - Calling draw before a valid update in the same frame hard-fails deterministically.
+- No scene or overlay path beneath `Stage` becomes a second raw-input intake boundary.

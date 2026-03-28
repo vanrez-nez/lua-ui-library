@@ -30,7 +30,7 @@ Implement event target resolution and the capture/target/bubble pipeline in the 
 
 - Target eligibility must consider effective visibility and clipping, not only local node flags.
 - If no valid target exists, the raw event is silently dropped.
-- Listener ordering on a single node must be deterministic, but the concrete listener API surface stays provisional unless separately documented.
+- Listener ordering on a single node must be deterministic, but any helper method names used to realize that ordering remain internal implementation detail under the current spec boundary.
 
 ## Non-Goals
 

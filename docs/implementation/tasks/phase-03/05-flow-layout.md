@@ -26,7 +26,7 @@ Implement `Flow` as the fluid reading-order layout primitive without adding unsu
 - The last row of a wrapped flow aligns to the `align` value and is not stretched to fill available space.
 - Invisible children do not occupy space in the flow.
 
-## Missing Detail Normalization
+## Settled Boundaries
 
 - Do not expose `gapX` or `gapY` as public props.
 - If the implementation needs axis-specific internal gap handling, derive it from the common `gap` contract or keep the extra representation internal.

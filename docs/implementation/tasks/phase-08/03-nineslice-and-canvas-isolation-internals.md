@@ -17,6 +17,7 @@ Implement the render helpers needed for nine-slice drawing and subtree isolation
 - Implement nine-slice texture subdivision and draw support
 - Implement canvas-isolation internals for opacity, blend mode, shader, and mask cases that require offscreen compositing
 - Implement caching behavior for geometry and render descriptions where safe
+- Keep the implementation aligned to the foundation visual contract even when the phase draft describes concrete helper policies
 
 ## Required Behavior
 
@@ -28,7 +29,7 @@ Implement the render helpers needed for nine-slice drawing and subtree isolation
 ## Public Surface Boundary
 
 - The concrete module names, helper structs, and pool internals are implementation detail.
-- The phase doc’s bucket sizing and release policy can remain an internal policy, but it should not be treated as public contract.
+- The phase doc’s bucket sizing, release policy, and helper-module layout can remain internal policy, but none of them should be treated as public contract.
 
 ## Non-Goals
 
@@ -40,3 +41,4 @@ Implement the render helpers needed for nine-slice drawing and subtree isolation
 - Nine-slice output respects the spec’s edge and center rules.
 - Isolation is used when opacity, blend mode, or shader composition requires it.
 - Custom renderer errors are not swallowed.
+- The helper implementation does not expose a new public API beyond the documented skin and effect contract.

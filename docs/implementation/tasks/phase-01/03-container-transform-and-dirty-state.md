@@ -23,7 +23,8 @@ Implement the `Container` state model around local/world transform resolution, m
 
 - Geometry mutation marks local measurement or transform state dirty.
 - Tree mutation marks ordering and world state dirty.
-- Breakpoint resolution hooks may remain placeholders, but the dirty-state model must reserve that transition path because it is part of the spec.
+- Breakpoint resolution changes must participate in the dirty-state model even if Phase 1 only provides placeholder resolution hooks.
+- `visible = false` must not be treated as an escape hatch from geometry, transform, or descendant-state resolution while the node remains attached.
 - Dirty resolution completes during Stage update traversal before draw traversal begins.
 
 ## Required APIs
@@ -33,10 +34,10 @@ Implement the `Container` state model around local/world transform resolution, m
 - `worldToLocal(...)`
 - Bounds query support needed by clipping and hit testing
 
-## Missing Detail Normalization
+## Settled Spec Clarifications
 
-- The phase doc currently describes dirtiness propagating only to layout ancestors. The spec model is broader: local measurement, local transform, descendant world state, and bounds all need separate invalidation coverage.
-- The task must treat responsive input re-resolution as a first-class future hook, not an afterthought added in Phase 3.
+- Dirty coverage is broader than the original phase draft: local measurement, local transform, descendant world state, and bounds all need explicit invalidation coverage.
+- Responsive input re-resolution is part of the spec-shaped state model now, not an optional follow-up refinement.
 
 ## Non-Goals
 

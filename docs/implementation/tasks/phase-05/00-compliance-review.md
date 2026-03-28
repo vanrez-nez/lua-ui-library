@@ -1,40 +1,55 @@
 # Phase 05 Compliance Review
 
-Source under review: `docs/implementation/phase-05-focus.md`
+Task-set authority:
 
-Primary findings, ordered by severity:
+- Authoritative spec: `docs/spec/ui-foundation-spec.md`
+- Planning context: `docs/implementation/phase-05-focus.md`
+- This review records the consolidated Phase 05 position after the focus-related trace-note clarifications in the spec.
 
-1. Phase 5 stabilizes generic focus-related `Container` props that the spec does not define.
-   Source: `phase-05-focus.md:27-33`, `phase-05-focus.md:128-132`
-   Spec anchors: `ui-foundation-spec.md §6.1.1 Props and API surface`, `ui-foundation-spec.md §7.2 Focus`, `ui-foundation-spec.md §7.2.5 Focus and overlays`
-   Problems:
-   - `focusScope = true` is presented as a generic `Container` property, but the spec only says Stage defines the root focus scope and some component/runtime primitives may define nested scopes
-   - `trapFocus = true` is presented as a generic `Container` property, but the spec only stabilizes trap behavior in the context of overlays
-   - `pointerFocusCoupling` is introduced as a new `Container` property, while the spec says coupling must be defined by the component contract
-   Required normalization: keep focus-scope, trap, and pointer-coupling mechanics internal or component-specific; do not freeze them as generic foundation props in Phase 5.
+Consolidated findings:
 
-2. The phase doc overcommits a public imperative focus API.
-   Source: `phase-05-focus.md:70-76`
-   Spec anchors: `ui-foundation-spec.md §7.2 Focus`, `ui-foundation-spec.md §3F.2 API Surface Classification`
-   Problem: the spec requires explicit focus request support, but it does not stabilize a `stage:requestFocus(node)` public method. Imperative handles are explicitly not a standardized public surface in this revision.
-   Required normalization: implement the runtime boundary internally, but avoid presenting a new stable imperative method as part of the public API unless the spec later names it.
+1. Nested focus scopes are part of the settled behavior contract, but a generic `Container` scope marker is still not public API.
+   Implementation reading:
+   - Phase 05 should implement Stage-owned active-scope behavior and bounded traversal.
+   - If the runtime uses metadata such as `focusScope` internally, that remains an internal encoding choice unless a later component contract exposes it.
+   Spec basis:
+   - `ui-foundation-spec.md §7.2.1 Focus scopes`
+   - `ui-foundation-spec.md §3D.4 Focus Model`
 
-3. The focus-trap model is broader than the spec and tied to a generic container abstraction.
-   Source: `phase-05-focus.md:91-107`
-   Spec anchors: `ui-foundation-spec.md §7.2.1 Focus scopes`, `ui-foundation-spec.md §7.2.5 Focus and overlays`, `ui-foundation-spec.md §6.4.2 Scene`
-   Problems:
-   - the phase doc activates traps on any `Container` with `trapFocus = true` and `focusScope = true`
-   - the spec only names overlay focus trapping and names `Modal` and `Alert` as nested focus-scope examples
-   - the phase doc adds Stage behavior for swallowing `ui.navigate` and pointer activation outside the trap, which is a detailed runtime policy not stabilized as a generic container contract
-   Required normalization: keep the focus-trap implementation ready for overlays, but do not stabilize generic container-level trap behavior as public foundation API.
+2. Explicit focus request support is settled behavior, but no public imperative method surface is standardized.
+   Implementation reading:
+   - Phase 05 must support explicit consumer-requested focus movement.
+   - Test harnesses or runtime plumbing may call internal helpers, but task docs must not present a public `requestFocus(...)` method as part of the stable API.
+   Spec basis:
+   - `ui-foundation-spec.md §7.2`
+   - `ui-foundation-spec.md §3D.4 Focus Model`
+   - `ui-foundation-spec.md §3F.2 API Surface Classification`
 
-4. The `focused` indicator is treated as a mutable draw-time field on nodes rather than as derived focus ownership state.
-   Source: `phase-05-focus.md:17-24`, `phase-05-focus.md:122-124`
-   Spec anchors: `ui-foundation-spec.md §3C.6 Derived State`, `ui-foundation-spec.md §7.2 Focus`
-   Problem: the phase doc describes Stage setting `focused = true` on the node before draw and resetting it after. The spec only stabilizes effective focus ownership as derived state; it does not stabilize a node-local mutable `focused` property surface.
-   Required normalization: keep `focused` as derived rendering state or internal draw context, not as a durable node property surface.
+3. Focus trapping and restoration are settled for overlays, not as a generic foundation trap contract.
+   Implementation reading:
+   - Phase 05 should implement the runtime stack and restoration behavior needed for overlay scopes.
+   - Generic `Container` trap flags remain internal implementation detail unless a later component or runtime contract documents them.
+   Spec basis:
+   - `ui-foundation-spec.md §7.2.5 Focus and overlays`
+   - `ui-foundation-spec.md §3D.4 Focus Model`
 
-Secondary scoping notes:
+4. Pointer-focus coupling is settled as a component-behavior decision, not as a generic prop schema.
+   Implementation reading:
+   - Phase 05 should support focus changes on pointer activation where the relevant component contract allows it.
+   - Any runtime metadata used to encode timing such as before-action or after-action coupling remains internal unless documented by a component contract.
+   Spec basis:
+   - `ui-foundation-spec.md §7.2.2 Focus acquisition rules`
+   - `ui-foundation-spec.md §7.2.6 Pointer and focus coupling`
 
-- The sequential and directional traversal algorithms are broadly aligned with the spec, but their exact implementation should remain internal where the spec does not define a strict helper surface.
-- The test harness can demonstrate focus-change logging, but it should not imply a public `requestFocus` API if that method is kept internal.
+5. Focused rendering remains derived state, not durable public node state.
+   Implementation reading:
+   - Phase 05 may render a default visible focus indicator.
+   - Any transient `focused` flag or equivalent render hint must remain internal derived state tied to current focus ownership.
+   Spec basis:
+   - `ui-foundation-spec.md §3C.6 Derived State`
+   - `ui-foundation-spec.md §7.2 Focus`
+
+Residual implementation guidance:
+
+- The parent phase plan remains useful for algorithms, bookkeeping, and demo coverage where it does not widen the public contract.
+- The task docs in this directory should treat phase-plan prop names such as `focusScope`, `trapFocus`, and `pointerFocusCoupling` as implementation vocabulary only, not as settled foundation API.

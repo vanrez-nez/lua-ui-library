@@ -112,6 +112,8 @@ Validity notes:
 | `Tabs` | `list` | exactly one region | contains only `trigger` sub-parts for the owning `Tabs` root | none |
 | `Tabs` | `panels` | exactly one region | contains only `panel` sub-parts for the owning `Tabs` root | none |
 
+Trace note: documented slots, regions, and structural registration are public composition surface, but they do not imply a stable imperative builder API such as `setContent(...)`, `addTab(...)`, or similar helper methods unless a control section explicitly documents one.
+
 ## 4C. Control State Model
 
 The state-model rules in Section 3C of [UI Foundation Specification](./ui-foundation-spec.md) are binding for all controls in this document.
@@ -147,6 +149,8 @@ Hybrid notes:
 - `TextInput` and `TextArea` may control `value` and selection independently because those properties have separate ownership signals.
 - `Checkbox`, `Switch`, `Modal`, `Alert`, and `Tabs` expose one negotiable public state property each in this revision.
 - `Button` exposes negotiable `pressed` state, but hover and focus remain library-owned interaction state.
+
+Trace note: the `Uncontrolled default` column defines the initial uncontrolled state when a control owns that value; it does not by itself standardize a corresponding `default*` prop unless the control's own props section names one explicitly.
 
 ### 4C.3 Pending And Uncontrolled Behavior
 
@@ -420,6 +424,12 @@ In addition to the foundation degradation guarantees:
 - `color`
 - `wrap: boolean`
 
+`textVariant` selects among visual variants for the single stable `Text.content` part. This revision does not standardize a library-wide text-role taxonomy such as `heading`, `body`, or `caption`; any such aliases remain internal unless separately documented.
+
+Trace note: the public text-style surface is the set listed here. Font caches, asset-path helpers, or other convenience loaders may exist internally, but they are not stable public props unless documented in this section.
+
+Trace note: clarified `textVariant` so Phase 8 theming can vary text presentation without turning undocumented semantic text-role names into stable public API.
+
 **State model**
 
 `Text` is stateless unless the consumer changes content or style. Any content or style change marks the node render-dirty and triggers re-measurement on the next draw preparation.
@@ -465,6 +475,8 @@ In addition to the foundation degradation guarantees:
 - `onActivate`
 - `disabled`
 - `content`
+
+Trace note: `content` names the documented slot/region, not a stable imperative setter surface. Any helper used to populate the slot remains internal unless separately documented.
 
 **State model**
 
@@ -775,6 +787,8 @@ ERRORS:
 - `submitBehavior: "blur" | "submit" | "none"`
 - `onSubmit: function | nil`
 
+Trace note: the public text-entry surface is the set listed here together with the ownership rules above. Raw host key handling, clipboard plumbing, and native text-input activation wiring remain internal beneath the logical input contract, and this revision does not add a separate `defaultValue` prop.
+
 **State model**
 
 STATE unfocused
@@ -941,6 +955,8 @@ ERRORS:
 - `safeAreaAware: boolean`
 - `backdropDismissBehavior: "close" | "ignore"`
 
+Trace note: the public `Modal` surface is the prop set listed here plus the documented structure. Convenience methods such as `open()` or `close()` may exist internally, but they are not stable public API unless this section is amended to name them.
+
 **State model**
 
 STATE closed
@@ -1045,6 +1061,8 @@ ERRORS:
 - `variant: "default" | "destructive" | "success" | "warning"`
 - `initialFocus: action identifier | nil`
 
+Trace note: `Alert` is specified through these props and required regions, not through one constructor signature or list-building API. Any constructor helpers, title/message coercion helpers, or action-registration helpers remain internal unless separately documented.
+
 **State model**
 
 `Alert` inherits the full `Modal` state model.
@@ -1106,6 +1124,8 @@ ERRORS:
 - `listScrollable: boolean`
 - `loopFocus: boolean`
 - `disabledValues: table | nil`
+
+Trace note: the public `Tabs` surface is structural and value-driven. Helper registration or mutation methods such as `addTab(...)` or `setTriggerDisabled(...)` may exist internally, but they are not stable public API unless this section is amended to name them.
 
 **State model**
 
@@ -1201,6 +1221,10 @@ This document stabilizes these control part names used by skins:
 | `TextInput`, `TextArea` | field-versus-content separation, caret/selection/placeholder part roles, internal editable region ownership | field chrome, placeholder styling, caret styling, selection styling, read-only and disabled skins | input value text supplied by consumer state |
 | `Tabs` | required separation of `list`, `trigger`, `indicator`, and `panel` roles | trigger chrome, indicator treatment, panel chrome, disabled and active trigger skins | panel content and trigger content |
 | `Modal`, `Alert` | required separation of `backdrop`, `surface`, content regions, and alert title/action roles | backdrop fill, surface chrome, title/message typography, action-region styling, close-control styling | modal body content and alert action content |
+
+Focus styling in this table is expressed through the documented part surfaces and their stateful variants. This revision does not standardize a separate focus-indicator token family distinct from the documented part/property bindings.
+
+Trace note: clarified the focus-styling boundary so Phase 8 theming can render focus affordances through documented parts without inventing a new public token taxonomy.
 
 ### 8.3 Stateful Variant Priority Order
 

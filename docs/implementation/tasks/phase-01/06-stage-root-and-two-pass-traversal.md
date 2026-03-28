@@ -2,13 +2,15 @@
 
 ## Goal
 
-Implement `Stage` as the runtime root with its required layers, traversal entry points, and root-owned environment data.
+Implement `Stage` as the runtime root with its required layers, traversal entry points, and root-owned environment data, using the parent phase plan only as implementation context.
 
 ## Spec Anchors
 
 - `docs/spec/ui-foundation-spec.md §6.4.1 Stage`
 - `docs/spec/ui-foundation-spec.md §3A.6 Lifecycle Model`
 - `docs/spec/ui-foundation-spec.md §3D Interaction Model`
+- `docs/spec/ui-foundation-spec.md §7.1 Event Propagation`
+- `docs/spec/ui-foundation-spec.md §7.2 Focus`
 
 ## Scope
 
@@ -18,6 +20,7 @@ Implement `Stage` as the runtime root with its required layers, traversal entry 
 - Expose safe-area insets and queryable safe-area bounds
 - Provide update traversal and draw traversal entry points
 - Provide a root input-delivery surface
+- Establish the root focus-scope boundary
 
 ## Required Behavior
 
@@ -26,8 +29,10 @@ Implement `Stage` as the runtime root with its required layers, traversal entry 
 - Overlay traversal precedence is structural, not derived from child `zIndex`.
 - Update traversal resolves dirty geometry, layout placeholders, and world transforms so the tree is internally consistent before draw.
 - Draw traversal issues draw commands and performs no state resolution.
+- All raw host input enters through the `Stage` boundary. Even before full propagation ships, Phase 1 must not create a second raw-input intake path below `Stage`.
+- `Stage` defines the root focus scope even if Phase 1 does not yet implement full focus traversal behavior.
 
-## Missing Detail Normalization
+## Settled Spec Clarifications
 
 - The phase draft's `getSafeArea()` insets-only shape is insufficient on its own. This task must define both:
   - safe-area insets storage

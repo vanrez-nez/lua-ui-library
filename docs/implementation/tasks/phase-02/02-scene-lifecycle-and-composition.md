@@ -2,7 +2,7 @@
 
 ## Goal
 
-Implement `Scene` as a Composer-managed runtime boundary without adding extra public lifecycle phases.
+Implement `Scene` as the spec-defined, Composer-managed runtime boundary.
 
 ## Spec Anchors
 
@@ -20,26 +20,28 @@ Implement `Scene` as a Composer-managed runtime boundary without adding extra pu
 
 ## Required Behavior
 
-- A Scene owns a screen-level subtree by default.
-- A Scene exposes creation, enter-before, enter-after, leave-before, leave-after, and destruction hooks.
-- A Scene is valid only when registered with and managed by Composer in the Stage base scene layer.
-- Active scenes receive runtime participation appropriate to the Stage traversal; inactive scenes do not receive input forwarding.
+- A `Scene` owns a full-screen or stage-sized subtree by default.
+- A `Scene` exposes creation, enter-before, enter-after, leave-before, leave-after, and destruction hooks.
+- A `Scene` integrates with `Composer` and must not manage other scenes directly.
+- A `Scene` receives active-scene logical input routed through the `Stage`/`Composer` runtime boundary into its subtree.
+- Detached scene instances may exist during creation and registration flow, but they are not standalone valid runtime content outside `Composer` management.
+- Inactive scenes receive no input events.
 
-## Missing Detail Normalization
+## Settled Spec Clarifications
 
-- Do not define `show()` and `hide()` as the primary public activation API.
-- Do not expose `"running"` enter/leave phases publicly.
-- Detached Scene instances may exist during creation and registration flow, but the task must preserve the spec rule that detached scenes are not standalone valid runtime content.
+- No public in-transition `"running"` enter or leave phase is part of the `Scene` contract.
+- Activation and deactivation remain `Composer`-owned; scene-local visibility helpers, if they exist, stay internal.
+- `Scene` does not create a second raw-input boundary beneath `Stage`.
 
 ## Non-Goals
 
 - No scene-managed navigation.
-- No overlay ownership in Scene itself.
-- No separate public visibility contract beyond active/inactive Composer management.
+- No overlay ownership in `Scene` itself.
+- No separate public visibility contract beyond active/inactive `Composer` management.
 
 ## Acceptance Checks
 
-- Activation fires enter-before then enter-after in the correct Composer-managed sequence.
-- Deactivation fires leave-before then leave-after in the correct Composer-managed sequence.
-- A Scene with no content remains valid and renders nothing.
-- Hook errors are surfaced to Composer handling rather than leaving partial activation state behind.
+- Activation fires enter-before then enter-after in the correct `Composer`-managed sequence.
+- Deactivation fires leave-before then leave-after in the correct `Composer`-managed sequence.
+- A `Scene` with no content remains valid and renders nothing.
+- Hook errors are surfaced to `Composer` handling and do not leave activation state indeterminate.

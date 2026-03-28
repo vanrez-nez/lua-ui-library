@@ -28,7 +28,7 @@ Implement `Alert` as a specialized `Modal` with the stronger content and initial
 - When `initialFocus` is absent or invalid, the first action becomes focused.
 - Alert inherits the full Modal contract unless this task narrows it only where the spec says so.
 
-## Missing Detail Normalization
+## Settled Boundaries
 
 - Avoid freezing a custom constructor signature as public API.
 - Keep alert action ordering and container management aligned to the required slot contract, not to an implementation-specific list API.

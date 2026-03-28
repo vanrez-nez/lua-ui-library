@@ -2,30 +2,31 @@
 
 ## Goal
 
-Keep Phase 07 scoped to the controls it actually implements, and explicitly defer `Modal` and `Alert` so they do not leak into the Phase 07 contract.
+Record the explicit boundary between the settled controls spec and the narrower implementation scope of this Phase 07 directory.
 
-## Spec Anchors
+## Authority
 
-- `docs/spec/ui-controls-spec.md:911-1066`
-- `docs/spec/ui-controls-spec.md:1238-1240`
+- `docs/spec/ui-controls-spec.md §6.7 Modal`
+- `docs/spec/ui-controls-spec.md §6.8 Alert`
+- `docs/spec/ui-controls-spec.md §4B.1-§4B.3`
+- `docs/spec/ui-foundation-spec.md §3B`
 
-## Scope
+## Settled Contract Points
 
-- Record that `Modal` and `Alert` are part of the controls specification but not implemented by Phase 07
-- Prevent Phase 07 tests, docs, or helpers from implying overlay-control coverage
+- `Modal` and `Alert` are already stable controls in `docs/spec`; they are not open design work.
+- Both controls are overlay-bound compounds mounted in the `Stage` overlay layer, not ordinary descendants of base-scene layout.
+- Their documented props, required regions, and dismissal or focus behavior are already authoritative even though this directory does not implement them.
+- Their documented structure likewise does not imply stable imperative helpers such as `open()`, `close()`, constructor coercion helpers, or action-registration builders.
 
-## Required Behavior
+## Phase Boundary For This Directory
 
-- Phase 07 should not introduce overlay-layer APIs in the controls package just to cover missing controls early.
-- Phase 07 should not freeze `Modal`/`Alert` behavior indirectly through the button, text-entry, or tabs implementations.
-
-## Non-Goals
-
-- No `Modal` implementation.
-- No `Alert` implementation.
-- No overlay-focus or backdrop-specific API stabilization.
+- This Phase 07 task set covers `Text`, `Button`, `Checkbox`, `Switch`, `TextInput`, `TextArea`, and `Tabs`.
+- It does not add `Modal` or `Alert` implementation work inside this directory.
+- It does not invent overlay helper APIs to compensate for that deferred scope.
+- It keeps the other Phase 07 control tasks compatible with the later overlay-control implementation by respecting the current spec boundaries now.
 
 ## Acceptance Checks
 
-- Phase 07 task documentation clearly states the deferred boundary.
-- The phase 07 harness does not claim Modal/Alert coverage.
+- The Phase 07 task docs describe `Modal` and `Alert` as deferred implementation scope, not as missing or unresolved spec content.
+- The harness scope in this directory does not claim modal or alert coverage.
+- No Phase 07 task in this directory freezes a modal-specific or alert-specific helper API ahead of the settled spec.

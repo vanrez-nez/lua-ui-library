@@ -1,21 +1,26 @@
 # Phase 02 Task Set
 
-This task set normalizes Phase 2 against the authoritative spec set in `docs/spec`.
+This task set consolidates Phase 02 onto the authoritative runtime contract in `docs/spec`.
 
-Normalization rules for this phase:
+Authority order for this folder:
 
-- Treat `docs/spec/ui-foundation-spec.md` as normative for `Stage`, `Scene`, and `Composer`.
-- Keep the runtime public surface limited to what the spec names or clearly requires.
-- Extra transition helpers, hook plumbing, and caching mechanics may exist, but they must be treated as internal implementation detail unless the spec stabilizes them.
-- Do not make overlay APIs or transition APIs public just because they are convenient to implement early.
+- `docs/spec/ui-foundation-spec.md` is normative for `Stage`, `Scene`, and `Composer`.
+- Trace note additions in that spec are part of the settled contract for this phase and close earlier draft ambiguities.
+- `docs/implementation/phase-02-runtime.md` remains useful for sequencing, examples, and harness intent, but it is not authoritative where it diverges from `docs/spec`.
 
-Key corrections applied to the original phase document:
+Relevant trace-note clarifications now treated as settled:
 
-- `Scene` lifecycle is normalized to creation, enter-before, enter-after, leave-before, leave-after, and destruction. No public `"running"` phase is introduced.
-- `Scene` validity remains tied to `Composer` management and mounting in the Stage base scene layer.
-- `Stage` root input delivery remains a required runtime surface and cannot be documented as a pure no-op if Phase 2 claims full runtime compliance.
-- Transition composition helpers are scoped as internal support code unless and until the spec names them as public API.
-- Overlay management stays within the spec boundary of `Stage`/`Composer` layer ownership and must not freeze a public overlay-scene API early.
+- `Stage`: `safeAreaInsets` does not replace safe-area bounds, and raw host input still enters only through `Stage`.
+- `Scene`: no public `"running"` lifecycle phase is standardized, and scene-local visibility helpers do not define activation.
+- `Composer`: transition helper surfaces and overlay helper methods remain internal even though overlay ownership itself is part of the runtime contract.
+
+Consolidated spec decisions carried through these tasks:
+
+- `Stage` must expose both `safeAreaInsets` and safe area bounds, and it remains the only raw-input intake boundary.
+- `Scene` public lifecycle is limited to creation, enter-before, enter-after, leave-before, leave-after, and destruction.
+- Scene activation and deactivation are owned by `Composer`; scene-local visibility helpers do not define a parallel public contract.
+- `Composer` interruption handling follows the published state machine, including the no-intermediate-hooks rule during interrupted transitions.
+- Transition catalogs, helper modules, canvas-composition mechanics, and overlay helper methods remain internal unless the spec later promotes them.
 
 Task order:
 

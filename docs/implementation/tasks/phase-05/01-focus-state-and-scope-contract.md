@@ -2,7 +2,7 @@
 
 ## Goal
 
-Implement the logical focus model owned by Stage, while keeping scope metadata aligned with the spec and not freezing unsupported generic props.
+Implement the Stage-owned logical focus model and active-scope bookkeeping in a way that follows the settled spec contract and keeps unnamed marker surfaces internal.
 
 ## Spec Anchors
 
@@ -22,21 +22,21 @@ Implement the logical focus model owned by Stage, while keeping scope metadata a
 - Stage remains the single owner of logical focus state.
 - Exactly one node may own logical focus within the active focus scope chain at a time.
 - Root focus scope is Stage.
-- Nested focus scope support is available as a runtime behavior, but the public property shape for marking a scope is not stabilized by the spec in this phase.
+- Nested focus scopes are supported behavior when a component or runtime contract requires bounded traversal.
 
-## Spec Gap Handling
+## Authority Boundaries
 
-- Do not freeze `focusScope` as a generic `Container` prop surface.
-- If implementation needs a scope marker internally, keep it internal until a component contract or spec revision names the public shape.
+- `docs/spec/ui-foundation-spec.md §7.2.1` settles the behavior boundary: nested scope support is required, but a generic `Container` marker schema is still intentionally not standardized.
+- If implementation needs a scope marker internally, keep it inside the runtime boundary until a component or runtime contract names the public shape.
 - `focused` should be derived from focus ownership, not stored as durable node-local public state.
 
 ## Non-Goals
 
-- No new public focus-related props.
+- No new generic public focus-related props.
 - No focus restoration policy beyond what the spec names.
 
 ## Acceptance Checks
 
 - Stage can identify the current focus owner and active scope chain deterministically.
 - Reparented or destroyed nodes cannot retain stale focus ownership state.
-- Derived focus state is available to draw-time rendering without mutating public node API.
+- Derived focus state is available to draw-time rendering without adding durable public node state.

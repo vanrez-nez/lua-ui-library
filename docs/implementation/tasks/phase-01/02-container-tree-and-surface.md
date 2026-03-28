@@ -2,7 +2,7 @@
 
 ## Goal
 
-Implement `Container` as the retained structural primitive while keeping its public API aligned with the foundation spec.
+Implement `Container` as the retained structural primitive while keeping its public API aligned with the settled foundation spec.
 
 ## Spec Anchors
 
@@ -36,10 +36,12 @@ Implement `Container` as the retained structural primitive while keeping its pub
 - Cyclic parenting attempts hard-fail deterministically.
 - `destroy()` detaches the subtree and ends further retained-tree participation for that instance.
 
-## Deferred But Shape-Stable Requirements
+## Settled Surface Constraints
 
-- `width` and `height` must preserve the full spec surface now.
+- `width` and `height` must preserve the full spec surface now; Phase 1 must not narrow them to a numeric-only API.
 - Phase 1 only needs concrete execution paths for explicit numeric sizes and direct-root `fill` cases required by the test harness.
+- `width = "content"` on a node with no intrinsic measurement rule remains an invalid configuration and must fail deterministically.
+- `breakpoints` stays part of the public surface even if its resolution hooks are placeholders in this phase.
 - Unsupported measurement paths must not silently redefine the API; they must remain deferred behind later tasks or follow the spec's documented failure behavior.
 
 ## Non-Goals

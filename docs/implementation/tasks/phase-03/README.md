@@ -1,27 +1,27 @@
 # Phase 03 Task Set
 
-Source implementation document used for this phase: `docs/implementation/phase-03-layout.md`.
+Authoritative source for this task set: `docs/spec/ui-foundation-spec.md`.
 
-Note: `docs/implementation/phase-03-foundation.md` does not exist in the repo. This task set normalizes the existing Phase 3 layout document against the authoritative spec set in `docs/spec`.
+Implementation-plan input for this phase: `docs/implementation/phase-03-layout.md`.
+
+Note: `docs/implementation/phase-03-foundation.md` does not exist in the repo. This task set reconciles the existing Phase 3 layout plan against the current foundation spec rather than treating the older implementation draft as normative.
 
 Normalization rules for this phase:
 
 - Treat `docs/spec/ui-foundation-spec.md` as normative for all layout families, layout state, and responsive rules.
 - Do not freeze a public measurement or breakpoint schema where the spec does not define one.
 - Keep implementation-specific layout algorithms internal unless the spec clearly promotes them to contract surface.
-- When the spec itself is underspecified or internally inconsistent, capture the gap explicitly and avoid turning one interpretation into stable API by accident.
+- Prefer settled spec text and Trace note clarifications over older implementation-plan assumptions.
 
 Key corrections applied to the original phase document:
 
 - `Flow` must not gain extra public props such as `gapX` and `gapY`; its public surface remains the common layout props unless the spec changes.
-- Responsive-rule handling must not be narrowed to a viewport-only breakpoint list with a fixed schema.
+- `responsive` and inherited `breakpoints` are two public entry points into the same pre-measure responsive resolution step; supplying both on one node is invalid and must fail deterministically.
+- Responsive-rule handling must not be narrowed to a viewport-only breakpoint list; the spec allows viewport size, orientation, safe area, and parent dimensions as dependencies.
 - Equal-share `fill` allocation and similar measurement policies are implementation choices, not current spec commitments.
 - `SafeAreaContainer` must derive from safe-area bounds, not just inset values.
+- Percentage sizing resolves against the effective parent content region, including safe-area-derived content boxes.
 - Defaults that are not named by the spec should not be documented as stable public defaults.
-
-Unresolved spec gap carried into this phase:
-
-- The foundation spec names `breakpoints` on `Container` and `responsive` in layout common props without defining the exact relationship or public data shape. Phase 3 implementation may need an internal normalization layer, but it must not freeze a public schema beyond what the spec says.
 
 Task order:
 

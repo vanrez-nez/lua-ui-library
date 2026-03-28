@@ -17,6 +17,7 @@ Wire the documented control part surfaces and stateful skin variant resolution i
 - Apply the state priority orders already stabilized by the controls spec
 - Support instance-level visual overrides and part skin overrides where documented
 - Respect the appearance-versus-structure boundary
+- Treat control slots, regions, and helper methods according to the spec’s structural-boundary clarifications
 
 ## Required Behavior
 
@@ -24,11 +25,8 @@ Wire the documented control part surfaces and stateful skin variant resolution i
 - Do not invent new part names as stable API.
 - Preserve the documented priority orders for Button, Checkbox, Switch, TextInput, TextArea, Tabs, Modal, and Alert.
 - Keep `Text` limited to its stable `content` part.
-
-## Spec Gap Handling
-
-- Focus styling may be rendered as part of the documented part surface, but this task must not stabilize a new focus-ring token family unless the spec adds one.
-- Any convenience styling alias used by the implementation must remain internal and map back to documented part/property bindings.
+- Render focus affordances through documented parts and state variants only; do not create a separate public focus-token family.
+- Keep any convenience styling alias or helper surface internal unless the relevant control section explicitly documents it as public API.
 
 ## Non-Goals
 
@@ -41,3 +39,4 @@ Wire the documented control part surfaces and stateful skin variant resolution i
 - Each control resolves the correct active variant for the current state combination.
 - Part skins can be overridden without changing control behavior.
 - Internal wrappers and decorative layers remain implementation detail.
+- Control theming does not imply stable builder methods for slot population, modal open/close helpers, or tab-registration helpers.

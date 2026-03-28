@@ -2,7 +2,7 @@
 
 ## Goal
 
-Implement the shared event object and the Stage-level raw-input delivery boundary without overcommitting a listener API or activation timing policy.
+Implement the shared event object and the `Stage` raw-input delivery boundary in the form now required by `docs/spec`, without promoting helper APIs the spec leaves internal.
 
 ## Spec Anchors
 
@@ -28,7 +28,8 @@ Implement the shared event object and the Stage-level raw-input delivery boundar
 
 - Pointer activation must resolve through a single activation gesture per user action. Press/release mapping may exist internally, but it must not produce duplicate public `ui.activate` dispatches for one pointer sequence.
 - The drag-threshold value is an internal gesture-recognition detail, not a new public API.
-- Text and focus dispatch remain phase-5-facing public behaviors; Phase 4 may build the event object and routing scaffolding without claiming to finalize those future surfaces.
+- `Stage` remains the only raw-input intake boundary; no scene-local or component-local raw-input path may be introduced.
+- Text, submit, and focus-change event families may share the same event-object scaffolding, but Phase 04 acceptance remains centered on the public dispatch set described by the parent implementation plan.
 
 ## Non-Goals
 

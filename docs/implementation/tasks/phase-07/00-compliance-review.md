@@ -2,59 +2,92 @@
 
 Source under review: `docs/implementation/phase-07-controls.md`
 
+Task-set authority:
+
+- `docs/spec/ui-controls-spec.md`
+- `docs/spec/ui-foundation-spec.md`
+
+This review records the consolidated Phase 07 position after the current controls spec and its `Trace note` clarifications. The parent phase document remains useful planning context, but it is not the authority for public API or behavior.
+
 Primary findings, ordered by severity:
 
-1. The phase scope is overstated relative to the controls spec.
-   Source: `phase-07-controls.md:5`
-   Spec anchors: `ui-controls-spec.md:911-1066`, `ui-controls-spec.md:1238-1240`
-   Problem: the phase doc says it implements the full set of concrete controls, but the controls specification also owns `Modal` and `Alert`. Those controls are not included in the phase document at all.
-   Required normalization: either state explicitly that Modal and Alert are deferred to a later phase, or include them in the phase scope. Do not imply that the phase covers the full spec control set when it does not.
+1. Phase scope in the parent draft overstates what this directory implements.
+   Source: `docs/implementation/phase-07-controls.md`
+   Spec anchors:
+   - `docs/spec/ui-controls-spec.md §4 Scope And Domain`
+   - `docs/spec/ui-controls-spec.md §6.7 Modal`
+   - `docs/spec/ui-controls-spec.md §6.8 Alert`
+   Settled requirement:
+   - The controls spec owns `Modal` and `Alert`, but this Phase 07 task directory still covers only `Text`, `Button`, `Checkbox`, `Switch`, `TextInput`, `TextArea`, and `Tabs`.
+   - `Modal` and `Alert` are therefore an explicit deferred boundary for this directory, not an unresolved spec gap and not something to backfill through ad hoc overlay APIs in Phase 07.
 
-2. `Text` exposes the wrong public surface.
-   Source: `phase-07-controls.md:27-46`
-   Spec anchors: `ui-controls-spec.md:394-440`, `ui-controls-spec.md:1179-1203`
-   Problem: the draft uses `alignX` and `fontPath`, but the spec stabilizes `textAlign`, `textVariant`, `font`, `fontSize`, `maxWidth`, `color`, and `wrap`. `Text` should not invent a new drawable-style alignment surface or a font-path API as public contract.
-   Required normalization: align the `Text` API to the spec-backed props and keep any font-loading convenience behind internal support.
+2. Control composition surfaces are structural, not imperative builder APIs.
+   Source: `docs/implementation/phase-07-controls.md`
+   Spec anchors:
+   - `docs/spec/ui-foundation-spec.md §3B Composition Grammar`
+   - `docs/spec/ui-controls-spec.md §4B.3 Control Slot Declarations`
+   - `docs/spec/ui-controls-spec.md §6.2 Button`
+   - `docs/spec/ui-controls-spec.md §6.7 Modal`
+   - `docs/spec/ui-controls-spec.md §6.8 Alert`
+   - `docs/spec/ui-controls-spec.md §6.9 Tabs`
+   Settled requirement:
+   - `content`, `label`, `description`, `title`, `actions`, `list`, `panels`, `trigger`, and `panel` are stable slot, region, or registration surfaces.
+   - Helper methods such as `button:setContent(...)`, `tabs:addTab(...)`, `tabs:setTriggerDisabled(...)`, modal `open()` / `close()`, and alert action-builder helpers remain internal unless the relevant control section explicitly promotes them.
+   Trace-note closure:
+   - The controls spec now says directly that documented slots and structural registration do not imply stable imperative setter or builder APIs.
 
-3. `Button` freezes an unsupported imperative method surface and omits the negotiated pressed-state contract.
-   Source: `phase-07-controls.md:50-81`
-   Spec anchors: `ui-controls-spec.md:442-549`, `ui-controls-spec.md:322-326`, `ui-controls-spec.md:1183-1201`
-   Problems:
-   - the draft exposes `button:setContent(node)` as a public method, but the spec explicitly says this revision defines no stable imperative handle, ref, or method surface for controls
-   - the draft does not expose the spec-backed negotiated `pressed` state with `onPressedChange`
-   Required normalization: keep button content as a spec-shaped slot/structural region and move any builder/helper API behind internal implementation detail.
+3. Uncontrolled-default semantics do not create public `default*` props by implication.
+   Source: `docs/implementation/phase-07-controls.md`
+   Spec anchors:
+   - `docs/spec/ui-controls-spec.md §4C.2 Public State Ownership Matrix`
+   - `docs/spec/ui-controls-spec.md §6.5 TextInput`
+   Settled requirement:
+   - The task set must not preserve draft-only props such as `defaultChecked` or `defaultValue` for `Checkbox`, `Switch`, `TextInput`, `TextArea`, or `Tabs`.
+   - Uncontrolled initial state follows the spec-owned defaults in the ownership matrix unless a control section explicitly names a `default*` prop, which these controls do not in this revision.
+   Trace-note closure:
+   - The ownership-matrix trace note explicitly closes the earlier ambiguity around `default*` prop inference.
 
-4. `Checkbox` uses the wrong ownership and toggle contract.
-   Source: `phase-07-controls.md:85-113`
-   Spec anchors: `ui-controls-spec.md:551-635`, `ui-controls-spec.md:1210-1212`
-   Problem: the draft introduces `defaultChecked` and `allowIndeterminate` instead of the spec-backed negotiated `checked` prop plus `toggleOrder`, and it models `label`/`description` as strings instead of content regions.
-   Required normalization: use the negotiated checked-state model, keep toggle order explicit, and represent labels/descriptions as documented structural content.
+4. `Text` and text-entry public surfaces are settled and narrower than the parent draft in specific areas.
+   Source: `docs/implementation/phase-07-controls.md`
+   Spec anchors:
+   - `docs/spec/ui-controls-spec.md §6.1 Text`
+   - `docs/spec/ui-controls-spec.md §6.5 TextInput`
+   - `docs/spec/ui-controls-spec.md §6.6 TextArea`
+   Settled requirement:
+   - `Text` keeps `textAlign` and `textVariant`; draft-only public props such as `alignX` and `fontPath` do not survive into the task set.
+   - `TextInput` and `TextArea` keep the spec-backed props and ownership rules, including `inputMode`, selection control, and `TextArea` scroll props.
+   - Raw host key handling, clipboard plumbing, and native text-input activation remain internal beneath the logical input model.
+   Trace-note closure:
+   - The `Text` section now explicitly locks the public text-style surface.
+   - The `TextInput` section now explicitly states that this revision does not add a separate `defaultValue` prop and keeps host plumbing internal.
 
-5. `Switch` omits required spec props and locks in a non-spec drag policy.
-   Source: `phase-07-controls.md:117-146`
-   Spec anchors: `ui-controls-spec.md:637-733`, `ui-controls-spec.md:1211`
-   Problem: the draft adds `defaultChecked` and resolves drag purely by midpoint, but the spec requires `checked`, `onCheckedChange`, `disabled`, `dragThreshold`, and `snapBehavior`.
-   Required normalization: expose the full spec-backed prop surface and keep drag resolution policy aligned to `dragThreshold` plus `snapBehavior`.
+5. `Checkbox`, `Switch`, and `Tabs` must follow the settled prop and structural contracts, not the older draft API shape.
+   Source: `docs/implementation/phase-07-controls.md`
+   Spec anchors:
+   - `docs/spec/ui-controls-spec.md §6.3 Checkbox`
+   - `docs/spec/ui-controls-spec.md §6.4 Switch`
+   - `docs/spec/ui-controls-spec.md §6.9 Tabs`
+   Settled requirement:
+   - `Checkbox` uses negotiated `checked`, `onCheckedChange`, and `toggleOrder`, with label and description treated as structural content regions rather than string-only convenience props.
+   - `Switch` uses negotiated `checked`, `onCheckedChange`, `dragThreshold`, and `snapBehavior`; midpoint-only drag resolution is not the public contract.
+   - `Tabs` remains structural and value-driven, with `orientation`, `activationMode`, `listScrollable`, `loopFocus`, and `disabledValues` included in the public surface and manual activation preserved.
+   Trace-note closure:
+   - The `Tabs` section now explicitly closes the builder-method question and keeps registration helpers internal.
 
-6. `TextInput` and `TextArea` are missing stable public props and use implementation-specific input handling as if it were contract.
-   Source: `phase-07-controls.md:150-233`
-   Spec anchors: `ui-controls-spec.md:735-909`, `ui-controls-spec.md:1168-1173`, `ui-controls-spec.md:1201-1203`
-   Problems:
-   - `TextInput` introduces `defaultValue`, but the spec does not stabilize that prop; it stabilizes `value`, `onValueChange`, `selectionStart`, `selectionEnd`, `onSelectionChange`, `placeholder`, `disabled`, `readOnly`, `maxLength`, `inputMode`, `submitBehavior`, and `onSubmit`
-   - `TextArea` omits the spec-backed `scrollXEnabled`, `scrollYEnabled`, and `momentum` props
-   - the draft routes behavior through raw keyboard handling and Stage-specific lifecycle assumptions instead of keeping the spec-backed logical-input contract as the public boundary
-   Required normalization: restore the documented prop surfaces and keep keyboard/platform wiring as internal implementation detail beneath the logical input model.
-
-7. `Tabs` freezes an imperative registration API and omits several stable public props.
-   Source: `phase-07-controls.md:237-269`
-   Spec anchors: `ui-controls-spec.md:1068-1160`, `ui-controls-spec.md:322-326`, `ui-controls-spec.md:1191-1203`
-   Problems:
-   - `tabs:addTab` and `tabs:setTriggerDisabled` are exposed as stable methods, but the spec does not stabilize a control method surface
-   - the draft omits `orientation`, `activationMode`, `listScrollable`, `loopFocus`, and `disabledValues`
-   - the draft relies on a default-value registration model that is not the spec-backed public contract
-   Required normalization: make trigger/panel registration an internal builder concern or a separately documented API if one is ever stabilized, and expose the full spec-backed Tabs props.
+6. Phase 07 visuals may stay provisional, but only inside the settled part and state boundaries.
+   Source: `docs/implementation/phase-07-controls.md`
+   Spec anchors:
+   - `docs/spec/ui-controls-spec.md §8.1 Control Part Names`
+   - `docs/spec/ui-controls-spec.md §8.2 Control Visual Surfaces`
+   - `docs/spec/ui-controls-spec.md §8.3 Stateful Variant Priority Order`
+   Settled requirement:
+   - Hardcoded Phase 07 visuals are acceptable as temporary implementation detail, but the task docs must preserve the spec-backed part topology and state priority order.
+   - Focus affordances are rendered through documented parts and stateful variants; the task set must not imply a new public focus-style or token family.
+   Trace-note closure:
+   - The focus-styling boundary is now explicit in the controls spec.
 
 Secondary scoping notes:
 
-- The font cache module is fine as internal support, but it should not become part of the public contract.
-- Hardcoded visual states in Phase 7 are acceptable only as placeholder rendering for Phase 8; they must not alter the stable part topology or state semantics.
+- Internal utilities such as a font cache remain acceptable so long as they do not leak into the public control contract.
+- The parent phase document remains useful for sequencing, algorithms, and harness ideas where it does not widen the stable public surface.
+- No unresolved Phase 07 compliance gap remains in this directory on builder methods, `default*` props, text-style surface, text-entry host plumbing, or focus-style boundary. These points are now settled by `docs/spec`.

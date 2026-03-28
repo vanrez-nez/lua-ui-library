@@ -29,7 +29,7 @@ Implement `Modal` strictly on the spec-backed public surface and tie it to overl
 - Dismissal via backdrop or escape only occurs when the corresponding spec-backed props allow it.
 - The control must remain valid with no focusable content in the surface.
 
-## Missing Detail Normalization
+## Settled Boundaries
 
 - Keep any `open()` / `close()` convenience methods internal unless a separate stable API is documented.
 - Do not encode a public `focusScope` prop on `Drawable` or `Modal`; the spec models focus scope as overlay behavior, not as a drawable setting.

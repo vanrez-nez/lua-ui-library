@@ -16,6 +16,7 @@ Implement the scroll container state model around content extent measurement, va
 - Resolve viewport dimensions
 - Clamp offsets to valid ranges
 - Maintain `idle`, `dragging`, and `inertial` state
+- Recompute extent and clamp offsets after dynamic constraint changes
 
 ## Required Behavior
 
@@ -27,7 +28,7 @@ Implement the scroll container state model around content extent measurement, va
 ## Implementation Boundary
 
 - Overscroll and momentum must affect observable state as the spec requires, but exact damping, spring-back, velocity sampling, and stop-threshold values remain internal.
-- `momentumDecay` validation should follow the spec surface, but do not add extra range semantics unless they are required elsewhere in the codebase and documented as internal constraints.
+- `momentumDecay` is part of the public prop surface, but the older draft's exact numeric range should not be restated as spec-backed contract unless the implementation separately documents it as an internal constraint.
 
 ## Non-Goals
 
@@ -37,5 +38,6 @@ Implement the scroll container state model around content extent measurement, va
 ## Acceptance Checks
 
 - Offset clamping is correct at both lower and upper bounds.
+- Constraint changes recalculate content extent and continue from the clamped position.
 - Empty content does not enter a scrolling state.
 - State transitions match the spec model and remain stable across repeated layout updates.

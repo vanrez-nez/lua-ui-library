@@ -2,13 +2,20 @@
 
 Source under review: `docs/implementation/phase-06-scroll.md`
 
+Authoritative normalization sources:
+
+- `docs/spec/ui-foundation-spec.md`
+- `docs/spec/ui-controls-spec.md` where `TextArea` reuse and same-axis composition boundaries matter
+
+This review treats the parent phase document as historical planning input. Where later spec text or `Trace note` additions clarified intent, those clarifications are now authoritative and Phase 06 task docs should treat them as settled.
+
 Primary findings, ordered by severity:
 
 1. Public child-management APIs are introduced without spec support.
    Source: `phase-06-scroll.md:118-121`
    Spec anchors: `ui-foundation-spec.md §6.3.1 ScrollableContainer`, `ui-foundation-spec.md §3B.4 Slot Model`
-   Problem: the phase doc stabilizes `addContent(node)` and `getContentContainer()` as public APIs. The spec defines the anatomy and required `content` subtree, but it does not stabilize public method names for attaching consumer content.
-   Required normalization: keep attachment mechanics internal or constructor-based unless the spec later defines public API names for them.
+   Problem: the phase doc stabilizes `addContent(node)` and `getContentContainer()` as public APIs. The current spec now explicitly clarifies through trace notes that the `content` subtree is required public structure while consumer-facing attachment mechanics remain unspecified.
+   Required normalization: keep attachment mechanics internal or otherwise undocumented at the foundation level unless the spec later defines public API names for them.
 
 2. Keyboard-scroll behavior is narrowed through `ui.navigate`, which is not the public scroll contract.
    Source: `phase-06-scroll.md:52-55`
@@ -22,13 +29,14 @@ Primary findings, ordered by severity:
    Problem: the phase doc freezes damping factors, velocity-window sizes, spring constants, stop thresholds, and a `momentumDecay` validity range. The spec requires momentum and overscroll support, but it does not commit to these exact algorithms or parameter ranges.
    Required normalization: treat the exact inertial and overscroll math as implementation detail while keeping the observable state machine and contract behavior intact.
 
-4. Scrollbar layout and interaction choices are being committed too early.
+4. Scrollbar behavior is framed using the older draft rather than the current spec boundary.
    Source: `phase-06-scroll.md:96-102`
    Spec anchors: `ui-foundation-spec.md §6.3.1 ScrollableContainer`, `ui-foundation-spec.md §3B.3 Foundation Compound Component Contract`
-   Problem: the phase doc fixes scrollbar geometry, thumb formulas, and non-interactive behavior as if they were stable public requirements. The spec only requires optional visual indicators and drag handles; it does not standardize the exact geometry or interaction profile in this revision.
-   Required normalization: keep scrollbar rendering and interaction policy internal unless the component spec later stabilizes specific visuals or handles.
+   Problem: the phase doc fixes scrollbar geometry, thumb formulas, and non-interactive behavior as if they were stable public requirements. The current spec names `scrollbars` as optional visual indicators and drag handles, while still leaving exact geometry and interaction policy internal.
+   Required normalization: keep scrollbar rendering, handle behavior, and hit policy internal unless the component spec later stabilizes specific visuals or interaction rules. Do not carry forward a phase-level prohibition that conflicts with the current anatomy wording.
 
 Secondary scoping notes:
 
 - The three-state `idle` / `dragging` / `inertial` model is spec-backed and should remain.
 - Nested scroll consumption is required by the spec, but the exact event-propagation wiring is an implementation detail.
+- Programmatic scrolling is part of the required contract surface, but helper names and whether it routes through imperative helpers or existing component update paths remain internal unless separately documented.

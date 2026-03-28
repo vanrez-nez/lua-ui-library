@@ -2,7 +2,7 @@
 
 ## Goal
 
-Implement the minimum listener-routing surface needed by the event system while keeping the exact listener API provisional and preserving deterministic error behavior.
+Implement the minimum listener-routing surface needed by the event system while keeping helper method names outside the public compatibility contract and preserving deterministic error behavior.
 
 ## Spec Anchors
 
@@ -25,7 +25,7 @@ Implement the minimum listener-routing surface needed by the event system while 
 
 ## Normalization Rules
 
-- Do not present `on`, `off`, `capture`, and `bubble` as spec-stabilized API unless later documentation promotes them.
+- Do not present `on`, `off`, `capture`, and `bubble` as spec-stabilized API. Under the current spec, listener helper names are implementation detail even when propagation semantics are public.
 - Do not add de-duplication or implicit listener normalization that would change the documented propagation behavior.
 - Keep any helper objects or registration bookkeeping internal.
 

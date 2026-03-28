@@ -2,24 +2,23 @@
 
 Source implementation document used for this phase: `docs/implementation/phase-09-modal-responsive.md`.
 
-Normalization rules for this phase:
+Authority rules for this phase:
 
-- Treat `docs/spec/ui-foundation-spec.md` and `docs/spec/ui-controls-spec.md` as normative for overlay behavior, modal/alert contracts, focus trapping, and responsive rules.
+- Treat `docs/spec/ui-foundation-spec.md` and `docs/spec/ui-controls-spec.md` as authoritative for overlay behavior, modal/alert contracts, focus trapping, and responsive rules.
+- Use `docs/implementation/phase-09-modal-responsive.md` only as historical implementation intent and task-sequencing context.
 - Keep overlay orchestration internal unless the spec explicitly stabilizes a public API.
 - Do not freeze a concrete responsive-rule schema beyond what the spec says.
 - Do not introduce public lifecycle phases or control props that are not named by the spec.
 
-Key corrections applied to the original phase document:
+Settled spec clarifications that control this task set:
 
 - `Scene` lifecycle must stay within the spec-defined enter/leave phases; no public `"running"` phase is stabilized.
 - `Modal` and `Alert` must use the spec-backed prop surface, including `dismissOnBackdrop`, `dismissOnEscape`, `trapFocus`, `restoreFocus`, `safeAreaAware`, `backdropDismissBehavior`, and `initialFocus`.
 - Overlay mounting through `Composer` may exist as implementation plumbing, but `showOverlay` and `hideOverlay` should not be treated as stable public API unless separately documented.
 - Responsive rules must remain declarative and may depend on viewport, orientation, safe area, and parent dimensions; a viewport-only breakpoint loop is too narrow.
 - `Alert` must be modeled as a specialized `Modal` with required title and actions semantics, not as a constructor-centered dialog API.
-
-Unresolved spec gap carried into this phase:
-
-- The foundation and controls specs require responsive rules and overlay support, but they do not stabilize a single concrete overlay registry API or breakpoint-table schema. Phase 09 must therefore preserve those as internal implementation choices unless the specification is revised.
+- Overlay orchestration helpers, stacking registries, and z-order allocation remain internal unless a future spec revision promotes them.
+- Responsive-rule normalization may exist internally, but no public breakpoint-table schema or single exact resolver algorithm is stabilized in this revision.
 
 Task order:
 

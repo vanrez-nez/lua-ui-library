@@ -25,7 +25,7 @@ Finalize responsive behavior in a way that is declarative, spec-backed, and not 
 - Percentage sizing and clamps remain supported across layout families.
 - SafeAreaContainer resolves child percentages against its safe-area content box when that is the effective parent region.
 
-## Spec Gap Handling
+## Settled Boundaries
 
 - The spec does not freeze a public breakpoint-table schema or a single exact resolver algorithm.
 - This task should preserve an internal normalization layer that can evolve without forcing a public API break.

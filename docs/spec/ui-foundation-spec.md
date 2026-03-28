@@ -355,9 +355,16 @@ The library computes these derived state classes:
 | effective enabled / disabled participation | local enabled flags plus ancestor constraints | yes | stable when referenced by a component contract |
 | effective focus eligibility and active focus owner | focusable flags, focus scopes, and current focus root | yes | stable |
 | effective visibility for hit testing and rendering eligibility | local visibility plus ancestor clipping and visibility | yes | stable for behavior, internal storage is implementation detail |
+| hover ownership and pointer-entry/exit bookkeeping | current pointer-derived hit target plus gesture ownership constraints | yes | internal unless a later component contract explicitly exposes it |
 | resolved content box, layout dirtiness, world transform dirtiness, scroll range, and similar runtime caches | authoritative geometry, layout inputs, and content extents | yes at stable pass boundaries | implementation detail unless a component contract names the value explicitly |
 | effective committed value for negotiated properties | authoritative controlled or uncontrolled property value | yes | stable |
 | root-scoped coordination results such as active scene, active tab mapping, active panel visibility, or modal focus scope ownership | composition-root authoritative state plus registration data | yes | stable when named by the root contract |
+
+Any transient `focused` render flag, draw-context hint, or equivalent rendering helper derived from focus ownership is internal unless a later component contract explicitly exposes it.
+
+Trace note: added hover ownership to derived-state taxonomy so Phase 4 can use it for control plumbing without promoting hover or pointer-enter/leave notifications to stable public API.
+
+Trace note: clarified that derived focused rendering state may exist, but it is not a durable public node property in this revision.
 
 ## 3D. Interaction Model
 
@@ -381,6 +388,9 @@ Mapping rules:
 - the runtime may deliver platform-specific callbacks, but the library is responsible for translating supported callbacks into these logical input types before they reach components
 - text composition and committed text may already arrive normalized by the platform; the library still treats them as `TextCompose` and `TextInput` logical inputs respectively
 - once a logical input is consumed by a component during dispatch, the corresponding physical callback must not produce an additional second logical dispatch within the same runtime turn
+- one pointer press-release gesture may use press, move, and release callbacks internally for recognition, but it must not emit more than one public `Activate` dispatch unless a component contract explicitly defines distinct press and release semantics
+
+Trace note: clarified pointer-gesture activation deduplication because Phase 4 planning exposed a real risk of double-dispatch from naïve press-plus-release translation.
 
 Input delivery rules:
 
@@ -464,6 +474,10 @@ Focus ownership:
 - the library owns logical focus targeting, traversal, focus trapping, and focus restoration within the component tree
 - the consumer owns explicit requests to move focus and any application policy that decides which request to issue
 - native operating-system focus outside the library tree is outside the library scope except where text-entry activation requires platform cooperation
+
+The requirement for explicit focus request support is behavioral, not a commitment to one public imperative method name on `Stage` or on ordinary nodes. Any helper API used to submit such a request remains internal unless a later revision documents it.
+
+Trace note: added the explicit-request boundary because Phase 5 planning exposed pressure to stabilize `requestFocus(...)` as public API even though imperative handles are not generally standardized in this revision.
 
 Focus movement rules:
 
@@ -749,6 +763,8 @@ The consumer owns business meaning, application state orchestration, scene regis
 - `skewX`, `skewY: number`
 - `breakpoints: table | nil`
 
+Trace note: clarified that the accepted `width` and `height` surface is stable at first publication. Implementation phases may stage resolution-path completion, but they must not narrow the accepted prop domain.
+
 **State model**
 
 STATE clean
@@ -808,13 +824,22 @@ Hit testing must resolve in reverse draw order among eligible siblings.
 
 A `Container` that is not interactive does not participate as a hit-test target but still participates as a propagation ancestor for its descendants. Event propagation continues through non-interactive containers in both the capture and bubble phases.
 
+Direct target eligibility is determined from effective participation after applying visibility, ancestor clipping, and enabled-state constraints, not from raw local flags alone.
+
+Trace note: added an explicit effective-targeting sentence because Phase 1 planning exposed ambiguity between structural traversal and direct target eligibility.
+
 **Behavioral edge cases**
 
 - A `Container` with no children must remain valid and render nothing.
 - A `Container` marked `visible = false` must not participate in hit testing, event propagation targeting, or rendering. It must retain its position in the tree and continue to contribute its transform to any descendants that may be independently made visible.
 - A `Container` with `clipChildren = true` must clip both rendering and hit testing to its own bounds.
+- A `Container` with `clipChildren = true` whose resolved clip bounds are degenerate produces an empty effective clip region.
 - A `Container` with `width = "fill"` as a direct child of `Stage` resolves against the full viewport width.
 - A `Container` with `enabled = false` must not receive activated events and must suppress focus acquisition for itself and its descendants.
+
+Trace note: clarified that `visible = false` changes rendering and direct-target participation, but does not detach the node from retained-tree geometry, transform, or descendant-state resolution while it remains attached.
+
+Trace note: added the degenerate-clip case explicitly so implementation plans do not diverge between "no-op clip" and "empty clip region" behavior.
 
 #### 6.1.2 Drawable
 
@@ -1017,6 +1042,9 @@ Plus all common layout props.
 - An empty `Row` renders nothing and must not fail.
 - When total child measurement exceeds available width with `wrap = false`, the overflow policy applies. The default overflow policy allows overflow without clipping unless `clipChildren = true`.
 - A single child in a `Row` with `justify = "space-between"` resolves to the start position.
+- When one or more children consume remaining horizontal space through a fill-sized width, `Row` must resolve those widths deterministically and apply min/max clamps, but this revision does not standardize a specific sibling allocation algorithm.
+
+Trace note: added an explicit non-commitment on fill distribution so Phase 3 implementation does not accidentally freeze one policy, such as equal-share allocation, as public contract.
 
 #### 6.2.6 Column
 
@@ -1057,6 +1085,9 @@ Plus all common layout props.
 - An empty `Column` renders nothing and must not fail.
 - When total child measurement exceeds available height with `wrap = false`, the overflow policy applies. The default overflow policy allows overflow without clipping unless `clipChildren = true`.
 - A single child in a `Column` with `justify = "space-between"` resolves to the start position.
+- When one or more children consume remaining vertical space through a fill-sized height, `Column` must resolve those heights deterministically and apply min/max clamps, but this revision does not standardize a specific sibling allocation algorithm.
+
+Trace note: added an explicit non-commitment on fill distribution so Phase 3 implementation does not accidentally freeze one policy, such as equal-share allocation, as public contract.
 
 #### 6.2.7 Flow
 
@@ -1145,6 +1176,8 @@ In addition:
 
 `SafeAreaContainer` may contain any layout or drawable descendants. It must be placed in the tree where full safe-area context is available. Multiple nested `SafeAreaContainer` instances each apply insets relative to the same environment-reported safe area, not relative to the parent container's insets.
 
+Trace note: clarified that `SafeAreaContainer` remains bounds-based even when an implementation derives per-edge inset distances from those bounds internally. The public contract is not an insets-only environment API.
+
 **Behavioral edge cases**
 
 - When the environment reports no safe area insets, `SafeAreaContainer` renders identically to a plain container of the same dimensions.
@@ -1176,6 +1209,8 @@ In addition:
 - `content`: the scrollable child subtree. Required.
 - `scrollbars`: optional visual indicators and drag handles.
 
+Trace note: the required `content` subtree is part of the public structure, but this revision does not standardize one consumer-facing attachment method surface such as `addContent(...)` or `getContentContainer()`.
+
 **Props and API surface**
 
 - `scrollXEnabled: boolean`
@@ -1185,6 +1220,8 @@ In addition:
 - `overscroll: boolean`
 - `scrollStep: number`
 - `showScrollbars: boolean`
+
+Trace note: these props standardize scroll behavior categories, not one exact inertial curve, damping formula, stop threshold, overscroll spring model, or scrollbar geometry policy. Those mechanics remain internal unless later documented.
 
 **State model**
 
@@ -1209,6 +1246,8 @@ STATE idle
       1. Adjust scroll offset by configured step or page amount.
       2. Clamp or overscroll according to policy.
       → idle
+
+Trace note: `keyboard scroll command` is a behavioral contract, not a commitment to one key-mapping table or to `Navigate` as the public scroll entry point. Implementations may translate host keys internally so long as the resulting behavior follows the `Scroll` contract.
 
 STATE dragging
 
@@ -1250,6 +1289,8 @@ When focused, `ScrollableContainer` must respond to keyboard scroll commands as 
 
 `ScrollableContainer` must contain exactly one content child subtree. Additional children outside the content slot are unsupported. `ScrollableContainer` may be nested; each nested instance manages its own offset, gesture capture, and clipping independently. A nested scroll container must not propagate scroll events to its ancestor when the inner container still has remaining scroll range in the requested direction.
 
+Trace note: clarified that the content subtree is structurally required while the consumer-facing mechanics used to populate it remain unspecified at the foundation level. This keeps the component reusable by controls such as `TextArea` without freezing helper method names as public API.
+
 **Behavioral edge cases**
 
 - When content extent is less than or equal to the viewport size along a given axis, scrolling on that axis must be suppressed regardless of `scrollXEnabled` or `scrollYEnabled`.
@@ -1289,6 +1330,8 @@ When focused, `ScrollableContainer` must respond to keyboard scroll commands as 
 - `height: number`
 - `safeAreaInsets: { top, bottom, left, right }`
 
+Trace note: `safeAreaInsets` and safe-area bounds are both part of the Stage environment surface. Exposing only raw insets without a queryable bounds view is insufficient for full Stage compliance.
+
 **State model**
 
 STATE synchronized
@@ -1323,6 +1366,8 @@ STATE synchronized
       3. Dispatch the logical event through the propagation system.
       → synchronized
 
+Trace note: all raw host input enters through this Stage-owned boundary. Implementation phases may stage downstream mechanics, but they must not create a second raw-input intake path beneath Stage.
+
 ERRORS:
   - Attempting to assign a parent to `Stage` → invalid configuration and deterministic failure.
   - Creating more than one `Stage` instance → invalid configuration and deterministic failure.
@@ -1351,7 +1396,9 @@ ERRORS:
 - own a full-screen or stage-sized subtree by default
 - expose creation, enter, leave, and destruction lifecycle hooks
 - integrate with `Composer`
-- receive input forwarded by `Composer` and dispatch it into its subtree
+- receive active-scene logical input routed through the `Stage`/`Composer` runtime boundary and dispatch it into its subtree
+
+Trace note: clarified that `Scene` participates in routed logical input only after `Stage` owns raw input intake. This avoids implying a second raw-input boundary or a scene-local input entry point.
 
 **Anatomy**
 
@@ -1361,6 +1408,8 @@ ERRORS:
 **Props and API surface**
 
 - `params: table | nil`
+
+Trace note: `Scene` public lifecycle surface is limited to creation, enter-before, enter-after, leave-before, leave-after, and destruction. No additional public in-transition `"running"` phase is standardized in this revision.
 
 **State model**
 
@@ -1398,6 +1447,8 @@ STATE active
 
 `Scene` must be registered with and managed by `Composer`. A `Scene` must not manage other scenes directly. `Scene` may contain any layout or control components as descendants. Consumer lifecycle hooks must not invoke `Composer` navigation during the enter or leave phases of the same transition.
 
+Trace note: activation and deactivation are owned by `Composer`. Scene-local visibility helpers may exist internally, but they are not a parallel public activation contract.
+
 **Behavioral edge cases**
 
 - A `Scene` with no content must remain valid and render nothing.
@@ -1429,6 +1480,8 @@ STATE active
 
 - `defaultTransition`
 - `defaultTransitionDuration`
+
+Trace note: these properties stabilize transition configuration concepts only. Built-in transition catalogs, helper modules, callback signatures, and canvas-composition mechanics remain internal unless separately documented.
 
 **State model**
 
@@ -1486,6 +1539,10 @@ ERRORS:
 
 `Composer` owns one `Stage` and must not share stage ownership with other `Composer` instances. Scene activation is exclusively managed through the defined navigation interface. Consumer code must not directly manipulate the scene tree during an active transition.
 
+Trace note: overlay-layer ownership is part of the runtime contract, but this revision does not standardize a separate public overlay-scene API beyond the documented `Composer` responsibilities.
+
+Trace note: overlay mounting, stacking registries, helper methods such as `showOverlay(...)` or `hideOverlay(...)`, and any overlay z-order allocation policy remain internal unless a later revision documents them explicitly.
+
 **Behavioral edge cases**
 
 - When `gotoScene` is called with the currently active scene name, `Composer` must treat it as a full navigation request with complete lifecycle hook execution, not as a no-op.
@@ -1509,6 +1566,10 @@ Each dispatched input event must resolve a target path from `Stage` to the deepe
 Backdrop-based blocking for overlays must work through normal propagation semantics.
 
 The active overlay layer must be considered before ordinary scene content during target resolution.
+
+This revision standardizes propagation phases, event names, and payload contracts, but it does not standardize one listener-registration method surface. Implementations may provide listener helpers, yet undocumented method names, storage models, and registration helpers remain internal.
+
+Trace note: added the listener-surface boundary so Phase 4 implementations can route events without turning provisional helper methods into stable API.
 
 #### 7.1.1 Event object contract
 
@@ -1541,6 +1602,12 @@ Target resolution must occur in this order:
 2. active base scene layer, from highest eligible sibling-local z-order to lowest
 3. within any sibling set, reverse draw order among hit-test-eligible descendants
 
+For spatial events, hit-test eligibility is determined from effective participation, not raw local flags alone. Eligibility must account for effective visibility, enabled participation, ancestor clipping, and the current layer precedence rules before a node may become the resolved target.
+
+If a spatial event resolves no eligible target in either active layer, no propagation path is built and no propagation occurs for that event.
+
+Trace note: added explicit effective-targeting and no-target behavior because Phase 4 planning showed that local-flag-only hit testing leaves clipping and visibility semantics underdefined at dispatch time.
+
 #### 7.1.3 Default actions
 
 For a component with a defined default action:
@@ -1571,6 +1638,10 @@ A component or runtime primitive may define a nested focus scope when it needs b
 - `Alert`
 
 Exactly one node may own logical focus within the active focus scope chain at a time.
+
+This revision standardizes the existence and behavior of nested focus scopes, but it does not standardize one generic `Container` property or marker schema for declaring them. Scope participation is public only when a component or runtime contract names it explicitly.
+
+Trace note: added the scope-marker boundary so Phase 5 implementation can support nested scopes without freezing `focusScope` as a generic foundation prop.
 
 #### 7.2.2 Focus acquisition rules
 
@@ -1607,6 +1678,10 @@ When an overlay with `trapFocus = true` becomes active:
 2. move focus into the overlay according to overlay-specific rules
 3. restrict traversal to the overlay scope
 
+This overlay trapping rule defines behavior, not a generic trap contract for arbitrary foundation nodes. A general-purpose `Container` trap property is not standardized by this section.
+
+Trace note: clarified that focus trapping is currently standardized through overlay behavior, preventing Phase 5 from generalizing `trapFocus` into a generic foundation prop by implication.
+
 #### 7.2.6 Pointer and focus coupling
 
 Pointer activation does not automatically imply focus for every component.
@@ -1617,9 +1692,19 @@ The component contract must define whether pointer activation:
 - focuses after default action
 - does not change focus
 
+This revision standardizes pointer-focus coupling as component behavior, not as one generic foundation property schema. If an implementation uses metadata to encode the coupling policy, that metadata remains internal unless a component contract documents it.
+
+Trace note: added the coupling-surface boundary so Phase 5 implementation can support pointer-driven focus changes without freezing `pointerFocusCoupling` as a generic `Container` prop.
+
 ### 7.3 Responsive Rules
 
 Responsive behavior must be declarative.
+
+`responsive` and inherited `breakpoints` are two public entry points into the same pre-measure responsive resolution step. `breakpoints` is the breakpoint-oriented shorthand inherited from `Container`; `responsive` is the layout-family-facing responsive surface. This revision standardizes responsive timing and dependency categories, but not one serialized rule schema shared by every implementation.
+
+A node must not rely on implementation-specific breakpoint object shapes as stable public API. If a node supplies both `responsive` and `breakpoints`, the configuration is invalid and must fail deterministically rather than depend on undocumented precedence.
+
+Trace note: added the relationship between `responsive` and `breakpoints` because Phase 3 planning exposed a real spec gap. The goal is to preserve both published entry points while preventing ambiguous dual-source configuration.
 
 Responsive rules may depend on:
 
@@ -1630,6 +1715,10 @@ Responsive rules may depend on:
 - parent dimensions
 
 Responsive rules must resolve before measurement and layout for the affected subtree.
+
+Percentage-based size resolution uses the effective parent content region for the relevant axis. When the parent region is itself derived from safe-area bounds or another delegated content box, percentages resolve against that effective region rather than against raw viewport size.
+
+Trace note: clarified percentage resolution against the effective parent region so Phase 09 can complete responsive behavior for `SafeAreaContainer` and other delegated content regions without introducing a viewport-only exception.
 
 This revision supports:
 
@@ -1748,6 +1837,10 @@ Required versus optional tokens:
 
 Token-to-component binding is explicit. A component part resolves tokens only through documented part-property bindings; there is no implicit CSS-like selector or descendant-based token matching in this revision.
 
+Library default tokens and fallback skin inputs need to cover only documented part-property bindings and documented fallback render inputs. Extra convenience aliases, authoring shorthands, or undocumented coverage tables may exist internally, but they are not public contract surface.
+
+Trace note: clarified the boundary of library default token coverage so Phase 8 can ship broad internal fallback tables without implying that every convenience alias or undocumented binding is stable API.
+
 ### 8.5 Structure Vs. Appearance Boundary
 
 Criteria:
@@ -1794,6 +1887,10 @@ This revision standardizes these token classes:
 - `shader`
 - `opacity`
 - `blendMode`
+
+This list is exhaustive for this revision. Additional public token classes are not implied by focus-indicator styling, text-role aliases, renderer helpers, or other implementation conveniences unless a later revision documents them explicitly.
+
+Trace note: added an explicit exhaustiveness statement because Phase 8 planning exposed pressure to invent new token families without amending the stable token-class contract.
 
 ### 8.8 Part-Level Skin Contract
 

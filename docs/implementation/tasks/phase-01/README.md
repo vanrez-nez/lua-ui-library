@@ -1,21 +1,25 @@
 # Phase 01 Task Set
 
-This task set normalizes Phase 1 against the authoritative spec set in `docs/spec`.
+This task set consolidates Phase 01 against the authoritative spec set in `docs/spec`.
 
-Normalization rules for this phase:
+`docs/spec/ui-foundation-spec.md` is the source of truth for public behavior and surface area. `docs/implementation/phase-01-foundation.md` is retained as planning context only; where the draft and the spec differ, the spec wins.
+
+Consolidation rules for this phase:
 
 - Treat `docs/spec/ui-foundation-spec.md` as normative for all public component and runtime surfaces.
 - Do not narrow a stable spec surface just because a later phase deepens its implementation.
 - Do not add new public props or defaults unless the spec names them.
 - Keep later-phase systems out of scope unless Phase 1 needs a stable placeholder surface to stay spec-shaped.
 
-Key corrections applied to the original phase document:
+Settled spec clarifications carried into this task set:
 
-- `Container.width` and `Container.height` remain the full spec surface, not a Phase-1-only numeric API.
+- `Container.width` and `Container.height` keep the full accepted domain from `§6.1.1`; the `Trace note` there closes the earlier draft ambiguity.
 - `focusScope` and `trapFocus` are not introduced as public `Container` props in Phase 1.
-- `visible = false` is not treated as a blanket escape from retained-tree consistency work during update traversal.
-- Disabled targeting and clipping behavior are aligned to the foundation spec rather than the earlier draft wording.
-- `Stage` must expose viewport bounds, safe-area insets, safe-area bounds, and a root input entry point, even before full event propagation ships.
+- `visible = false` changes rendering and direct-target participation, but does not detach the node from retained-tree geometry or descendant-state resolution while attached.
+- Effective targeting is ancestor-aware: visibility, clipping, and enabled participation all constrain direct targets.
+- Degenerate clip bounds produce an empty effective clip region, not a no-op clip.
+- `Drawable` may derive focused rendering state internally, but that state is not a durable public node property.
+- `Stage` must expose viewport bounds, safe-area insets, safe-area bounds, the root input entry point, and the root focus-scope boundary even before later interaction systems are fully implemented.
 
 Task order:
 

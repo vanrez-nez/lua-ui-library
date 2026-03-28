@@ -22,8 +22,9 @@ Implement `SafeAreaContainer` against environment-reported safe-area bounds, not
 - It updates when safe-area bounds change.
 - Nested SafeAreaContainers apply relative to the same environment-reported safe area, not parent-adjusted insets.
 - When all edge flags are false, no inset adjustment is applied.
+- Descendant percentage sizing resolves against the safe-area-derived effective content region, not raw viewport bounds.
 
-## Missing Detail Normalization
+## Settled Boundaries
 
 - Desktop zero-inset behavior is fine as an implementation outcome, but the normative model remains bounds-based.
 - Filling the viewport may be a common usage pattern, but it should not be documented as the component’s only or default size behavior unless the spec says so.
@@ -38,3 +39,4 @@ Implement `SafeAreaContainer` against environment-reported safe-area bounds, not
 - Safe-area changes mark layout dirty and re-derive the content region.
 - Zero-inset environments behave the same as plain non-inset layout.
 - Nested SafeAreaContainers do not compound insets relative to parent content.
+- Percentage-sized descendants inside the safe-area content region resolve against that effective region.

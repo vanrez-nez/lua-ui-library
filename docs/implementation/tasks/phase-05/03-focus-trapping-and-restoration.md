@@ -2,7 +2,7 @@
 
 ## Goal
 
-Implement focus trapping and restoration as runtime behavior that is spec-backed for overlays, without generalizing it into a new public foundation prop contract.
+Implement overlay-focused trapping and restoration behavior that matches the settled spec without generalizing it into a new public generic-node contract.
 
 ## Spec Anchors
 
@@ -15,19 +15,19 @@ Implement focus trapping and restoration as runtime behavior that is spec-backed
 - Trap stack bookkeeping
 - Pre-trap focus history
 - Focus restoration on trap close
-- Overlay-specific scope restriction
+- Overlay-scope traversal restriction
 
 ## Required Behavior
 
-- When an overlay with trapFocus becomes active, the previous focused node is recorded.
+- When an overlay focus trap becomes active, the previous focused node is recorded.
 - Focus moves into the overlay according to overlay-specific rules.
 - Traversal is restricted to the active trap scope.
 - Closing or destroying the trap restores focus if the previous node remains eligible.
 
-## Spec Gap Handling
+## Authority Boundaries
 
-- The phase doc uses a generic `Container` trap model. The spec only stabilizes trap behavior in overlay contexts.
-- Implement the runtime support internally, but do not treat generic trap flags on `Container` as stable public API.
+- `docs/spec/ui-foundation-spec.md §7.2.5` settles the public behavior around overlays while explicitly declining to standardize a generic foundation trap contract.
+- Implement the runtime support needed for overlays, but do not treat generic trap flags on `Container` as stable public API.
 - Overlay-specific rules may be different for Modal and Alert later; keep the support flexible.
 
 ## Non-Goals
@@ -40,3 +40,4 @@ Implement focus trapping and restoration as runtime behavior that is spec-backed
 - Nested traps restore focus to the immediately prior owner, not the outer trap owner.
 - Trap close clears trap bookkeeping without dangling references.
 - Focus outside the trap is not eligible while the trap is active.
+- Any implementation hook analogous to `trapFocus` is documented as internal unless a later overlay contract exposes it.

@@ -17,6 +17,7 @@ Implement the stable theming surface exactly as the foundation and controls spec
 - Preserve the documented naming schema
 - Normalize token lookups to documented component-part-property bindings
 - Keep theme resolution independent from undocumented selectors or implicit cascading
+- Treat `docs/spec` as the source of truth when the older phase draft suggests a broader public surface
 
 ## Required Behavior
 
@@ -26,11 +27,9 @@ Implement the stable theming surface exactly as the foundation and controls spec
   - `<component>.<part>.<property>.<variant>`
 - Support the full spec token-class set, including `color`, `spacing`, `radius`, `border`, `font`, `timing`, `texture`, `atlas`, `quad`, `nineSlice`, `shader`, `opacity`, and `blendMode`.
 - Keep theme resolution pure and deterministic.
-
-## Spec Gap Handling
-
-- Do not freeze any extra public role taxonomy for `Text`.
-- If the implementation wants convenience aliases for authoring, keep them internal and map them onto the documented `content` part or other spec-backed bindings.
+- Keep `Text` styling rooted in the single documented `content` part; presentation variants must flow through the published `textVariant` surface rather than undocumented semantic text-role names.
+- Do not infer public helper APIs or extra token bindings from documented slots, regions, or uncontrolled-default tables.
+- Allow broad internal fallback coverage if useful, but expose only the documented token bindings as stable contract.
 
 ## Non-Goals
 
@@ -43,3 +42,4 @@ Implement the stable theming surface exactly as the foundation and controls spec
 - Valid token keys resolve according to the documented naming schema.
 - Invalid or missing keys fail according to the spec’s missing-token rules.
 - Internal authoring conveniences do not leak into the public contract surface.
+- `Text` theming remains expressible without stabilizing undocumented semantic role names.

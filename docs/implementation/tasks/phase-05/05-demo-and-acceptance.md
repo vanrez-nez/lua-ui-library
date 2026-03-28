@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build a Phase 5 verification harness that proves focus traversal, explicit focus request, pointer coupling, trap restoration, and the focus-change event without over-claiming unsupported public API.
+Build a Phase 05 verification harness that proves the settled focus behaviors from `docs/spec` while avoiding demos that overstate internal helpers as public API.
 
 ## Spec Anchors
 
@@ -15,15 +15,16 @@ Build a Phase 5 verification harness that proves focus traversal, explicit focus
 - Create or revise `test/phase5/`
 - Sequential traversal demo
 - Directional traversal demo
-- Focus restoration demo
+- Overlay-style focus restoration demo
 - Pointer-focus coupling demo
 - `ui.focus.change` logging
 
-## Screen Normalization
+## Demo Boundaries
 
-- Demonstrate focus movement and restoration as runtime behavior, but avoid presenting `requestFocus` as a stable public handle if it remains an internal helper.
-- The focus-trap screen should be framed as overlay behavior support, not as a generic public `Container` trap prop commitment.
-- Pointer coupling should be shown as a contract decision, not as a generic foundation prop guarantee.
+- Demonstrate explicit focus request support as behavior, but do not present any runtime helper such as `requestFocus(...)` as a stable public handle unless the spec later names it.
+- Frame the trap screen as overlay behavior support, not as a generic public `Container` trap prop commitment.
+- Frame pointer coupling as a component-contract decision, not as a generic foundation prop guarantee.
+- Use the parent phase plan for scenario coverage, but keep the user-facing acceptance language anchored to `docs/spec`.
 
 ## Non-Goals
 
@@ -35,4 +36,5 @@ Build a Phase 5 verification harness that proves focus traversal, explicit focus
 - Sequential traversal matches depth-first pre-order behavior.
 - Directional traversal uses the nearest eligible candidate algorithm.
 - `ui.focus.change` logs previous and next targets for each acquisition path.
+- Overlay-style trap close restores the prior eligible focus target.
 - The harness remains usable after hard failures when `pcall` is appropriate.

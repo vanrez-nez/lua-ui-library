@@ -8,6 +8,7 @@ Implement sibling-local z-order, clip enforcement, and hit testing in a way that
 
 - `docs/spec/ui-foundation-spec.md §6.1.1 Container`
 - `docs/spec/ui-foundation-spec.md §3D Interaction Model`
+- `docs/spec/ui-foundation-spec.md §7.1.2 Target resolution rules`
 - `docs/spec/ui-foundation-spec.md Glossary: hit test, disabled, local space, world space`
 
 ## Scope
@@ -23,8 +24,10 @@ Implement sibling-local z-order, clip enforcement, and hit testing in a way that
 - Draw order resolves by ascending `zIndex`, then stable insertion order.
 - Hit testing resolves in reverse draw order among eligible siblings.
 - Non-interactive nodes are never hit targets, but they remain structural ancestors for descendant routing and later propagation.
+- Effective target eligibility must account for visibility, ancestor clipping, layer precedence, and enabled participation rather than raw local flags alone.
 - Disabled nodes are not valid interactive targets, and disabled participation must not leak targetability to descendants in contradiction to the spec's disabled semantics.
 - `clipChildren = true` clips both rendering and hit testing to the node's own bounds.
+- When no node is effectively targetable at a tested point, the result is no target rather than a fallback local-flags-only hit.
 
 ## Implementation Constraints
 
@@ -32,7 +35,7 @@ Implement sibling-local z-order, clip enforcement, and hit testing in a way that
 - Nested clip regions must compose correctly.
 - Zero-area clip bounds must produce an empty effective clip region, not a no-op clip.
 
-## Missing Detail Normalization
+## Settled Spec Clarifications
 
 - The original phase draft's `enabled = false` pass-through behavior is not accepted.
 - The task must define one internal helper for "effective target eligibility" so hit testing, later event dispatch, and focus gating share the same semantics.

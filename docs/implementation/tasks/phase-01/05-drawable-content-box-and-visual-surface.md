@@ -7,6 +7,7 @@ Implement `Drawable` as the first render-capable primitive with a stable content
 ## Spec Anchors
 
 - `docs/spec/ui-foundation-spec.md §6.1.2 Drawable`
+- `docs/spec/ui-foundation-spec.md §3C.6 Derived State`
 - `docs/spec/ui-foundation-spec.md §8 Visual Contract And Theming Contract`
 
 ## Scope
@@ -25,7 +26,7 @@ Implement `Drawable` as the first render-capable primitive with a stable content
 - `getContentRect()` returns a local-space rectangle after padding.
 - `alignX` and `alignY` values remain constrained to the documented enum surface.
 
-## Deferred Surface Rules
+## Settled Surface Requirements
 
 - `skin`, `shader`, `opacity`, `blendMode`, and `mask` must exist as part of the stable `Drawable` surface.
 - Phase 1 may store these without full visual effect application, but it must not rename or postpone the surface itself.

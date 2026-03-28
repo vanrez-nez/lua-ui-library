@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build a Phase 4 verification harness that demonstrates event propagation, target resolution, and cancellation behavior without depending on future-phase APIs.
+Build a Phase 4 verification harness that demonstrates event propagation, target resolution, and cancellation behavior without inventing public API surface beyond what the current spec settles.
 
 ## Spec Anchors
 
@@ -21,7 +21,7 @@ Build a Phase 4 verification harness that demonstrates event propagation, target
 
 ## Screen Normalization
 
-- The navigate/dismiss screen must not call a Phase 5-only `stage:requestFocus()` API.
+- The navigate/dismiss screen must not present `stage:requestFocus()` or any other specific imperative focus helper as spec-backed public API.
 - Use a Phase 4-local focus anchor or internal test harness fixture instead.
 - The hover demo, if present, must remain internal-state-driven and not rely on nonexistent public hover events.
 

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build a Phase 1 verification harness that proves the implemented behavior against the normalized scope without pretending later systems already exist.
+Build a Phase 1 verification harness that proves the implemented behavior against the settled spec-backed scope without pretending later systems already exist.
 
 ## Spec Anchors
 
@@ -17,19 +17,21 @@ Build a Phase 1 verification harness that proves the implemented behavior agains
 - Raw Love2D chrome only
 - Deterministic screens for clipping, ordering, hit resolution, clamps, content box, and layer precedence
 
-## Screen Normalization
+## Screen Requirements
 
 - Keep z-order and clip demonstrations.
 - Keep min/max clamp demonstrations.
 - Keep Drawable content-box and alignment demonstrations.
 - Keep overlay precedence demonstrations, but use Stage-owned hit-resolution probes rather than claiming full event propagation already exists.
 - If a screen visually depends on "clicking" behavior, the harness should explicitly call the current Stage hit-resolution surface and display the resolved node label.
+- Do not preserve draft-era semantics such as disabled pass-through targeting or degenerate clips acting as no-op clips.
 
 ## Required Checks
 
 - Scissor and stencil clipping both operate against retained-tree bounds and nested clip composition.
 - Reverse draw-order hit resolution matches z-order behavior.
 - Overlay precedence is determined by Stage layers, not by cross-layer `zIndex`.
+- Empty effective targeting states are observable as "no target" results rather than implicit fallback hits.
 - The two-pass violation can be triggered and observed safely in the harness.
 
 ## Non-Goals

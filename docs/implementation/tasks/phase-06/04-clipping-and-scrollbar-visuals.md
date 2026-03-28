@@ -2,7 +2,7 @@
 
 ## Goal
 
-Implement viewport clipping and scrollbar rendering without turning the current visual treatment into hard public contract.
+Implement viewport clipping and optional scrollbar parts without turning the current visual or handle treatment into hard public contract.
 
 ## Spec Anchors
 
@@ -14,27 +14,28 @@ Implement viewport clipping and scrollbar rendering without turning the current 
 
 - Viewport clipping
 - Stencil/scissor reuse from the foundation clipping system
-- Optional scrollbar visuals
+- Optional scrollbar visuals and handles
 - Scrollbar part placement and update from current scroll state
 
 ## Required Behavior
 
 - The viewport clips descendant drawing and hit testing.
-- Scrollbar parts, when present, remain non-focusable decorations or visual helpers in practice.
+- Scrollbar parts, when present, remain non-focusable.
+- Any implemented scrollbar-handle dragging must stay within the `scrollbars` role and must not introduce a separate public API surface.
 - The component remains valid when scrollbars are disabled.
 
 ## Implementation Boundary
 
-- Exact scrollbar thickness, placement, thumb interpolation, and visibility heuristics should remain internal unless separately standardized.
+- Exact scrollbar thickness, placement, thumb interpolation, visibility heuristics, and handle hit policy should remain internal unless separately standardized.
 - The choice to use thin rectangles or other primitives is a rendering decision, not a new public contract.
 
 ## Non-Goals
 
-- No drag-to-scroll on the scrollbar itself in this phase.
 - No public scrollbar geometry API.
+- No separate public imperative scrollbar-handle API.
 
 ## Acceptance Checks
 
 - Rotated and non-rotated clipping both preserve scroll bounds correctly.
-- Scrollbar visuals update from scroll state without changing the public API.
+- Scrollbar visuals, and any implemented drag handles, update from scroll state without changing the public API.
 - Disabling scrollbars does not alter content scrolling behavior.
