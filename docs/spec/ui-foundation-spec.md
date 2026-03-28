@@ -148,6 +148,17 @@ Named exceptions:
 
 `Stage`, `Scene`, and `Composer` orchestrate retained subtrees but do not create a hybrid rendering model. They are runtime utilities operating on the same retained component graph.
 
+Frame traversal model:
+
+`Stage` drives two ordered, sequential passes per frame:
+
+| Pass | Responsibility | Initiator |
+|------|---------------|-----------|
+| Update pass | resolve dirty geometry, layout, world transforms, and any queued state changes; the retained tree must be internally consistent before this pass completes | the host runtime initiates; `Stage` drives the traversal |
+| Draw pass | traverse all visible retained nodes in tree order and issue draw commands; no state resolution occurs during this pass | the host runtime initiates; `Stage` drives the traversal |
+
+The update pass must complete before the draw pass begins for the same frame. The host runtime is responsible for calling both entry points; the library defines what each traversal does and guarantees internal consistency within each pass.
+
 ### 3A.6 Lifecycle Model
 
 Every component participates in the following lifecycle phases:
@@ -370,6 +381,13 @@ Mapping rules:
 - the runtime may deliver platform-specific callbacks, but the library is responsible for translating supported callbacks into these logical input types before they reach components
 - text composition and committed text may already arrive normalized by the platform; the library still treats them as `TextCompose` and `TextInput` logical inputs respectively
 - once a logical input is consumed by a component during dispatch, the corresponding physical callback must not produce an additional second logical dispatch within the same runtime turn
+
+Input delivery rules:
+
+- `Stage` is the single delivery point for all raw platform input; no component in the retained tree may receive raw input directly from the host runtime
+- all translation from raw platform events to logical intents occurs inside the library, at or before `Stage` dispatch, before any component listener is invoked
+- components participate in input only through the propagation system defined in Section 7.1; components must not read raw platform input state directly
+- the host runtime is responsible for delivering raw input to `Stage`; the library is responsible for everything that follows delivery
 
 ### 3D.2 Event Contract
 
@@ -685,6 +703,7 @@ The consumer owns business meaning, application state orchestration, scene regis
 9. Layout and scrolling must be invalidation-driven.
 10. Z-order must be explicit and local to siblings.
 11. Stateful primitives and controls that expose mutable public state must declare ownership as consumer-owned or negotiated; when negotiated, the controlled and uncontrolled contracts must both be explicit.
+12. All input must enter the retained tree through `Stage`'s dispatch entry point and reach components only through the propagation system. No component may read raw platform input state directly.
 
 ## 6. Component Specifications
 
@@ -1252,7 +1271,9 @@ When focused, `ScrollableContainer` must respond to keyboard scroll commands as 
 - reflect current viewport dimensions at all times
 - expose full viewport bounds as a queryable rectangle
 - expose safe area bounds as a queryable rectangle
-- provide the root event dispatch entry point for all input types
+- provide an update traversal entry point that drives one update pass over the retained tree
+- provide a draw traversal entry point that drives one draw pass over the retained tree
+- provide the root input delivery entry point; translate all delivered raw input into logical intents before dispatching; no component beneath `Stage` may receive raw input directly
 - provide the root focus scope
 - propagate viewport resize to the full tree
 
@@ -1281,6 +1302,25 @@ STATE synchronized
       1. Update width and height to new dimensions.
       2. Update safe area insets if they changed.
       3. Mark the full tree dirty for layout resolution.
+      → synchronized
+
+    ON update traversal entry invoked:
+      1. Traverse the retained tree in tree order.
+      2. Resolve dirty geometry, layout, and world transforms for each dirty node.
+      3. Process any queued state changes.
+      4. The tree is internally consistent when this traversal completes.
+      → synchronized
+
+    ON draw traversal entry invoked:
+      1. Traverse visible retained nodes in tree order.
+      2. Issue draw commands for each visible node.
+      3. No state resolution occurs during this traversal.
+      → synchronized
+
+    ON raw input delivered:
+      1. Translate the raw input to the corresponding logical intent.
+      2. Resolve the target path from Stage to the deepest eligible hit-test result.
+      3. Dispatch the logical event through the propagation system.
       → synchronized
 
 ERRORS:
@@ -1455,6 +1495,8 @@ ERRORS:
 ## 7. Composition And Interaction Patterns
 
 ### 7.1 Event Propagation
+
+`Stage` is the dispatch root for all input. Raw input delivered to `Stage` is translated to a logical intent and dispatched as an event through the propagation system described in this section. No event enters the propagation tree except through `Stage`.
 
 The library must implement three ordered propagation phases:
 
