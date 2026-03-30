@@ -5,5 +5,12 @@ return {
     Vec2 = require('lib.ui.core.vec2'),
     Container = require('lib.ui.core.container'),
     Drawable = require('lib.ui.core.drawable'),
+    Stack = require('lib.ui.layout.stack'),
+    Row = require('lib.ui.layout.row'),
+    Column = require('lib.ui.layout.column'),
+    Flow = require('lib.ui.layout.flow'),
+    SafeAreaContainer = require('lib.ui.layout.safe_area_container'),
+    Scene = require('lib.ui.scene.scene'),
     Stage = require('lib.ui.scene.stage'),
+    Composer = require('lib.ui.scene.composer'),
 }

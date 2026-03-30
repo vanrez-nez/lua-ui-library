@@ -9,6 +9,10 @@ local CLIP_EPSILON = 1e-9
 local mark_parent_order_dirty
 
 local Container = {}
+local VALID_EVENT_LISTENER_PHASES = {
+    capture = true,
+    bubble = true,
+}
 
 local BASE_PUBLIC_KEYS = {
     tag = true,
@@ -91,6 +95,19 @@ local function copy_array(values)
     end
 
     return copy
+end
+
+local function validate_listener_phase(phase, level)
+    if not VALID_EVENT_LISTENER_PHASES[phase] then
+        Assert.fail('listener phase must be "capture" or "bubble"', level or 1)
+    end
+
+    return phase
+end
+
+local function is_layout_node(node)
+    return type(node) == 'table' and node._ui_layout_instance == true and
+        not node._destroyed
 end
 
 local default = MathUtils.default
@@ -243,8 +260,48 @@ local function get_root(node)
     return current
 end
 
+local function invalidate_stage_update_token(node)
+    local root = get_root(node)
+
+    if root ~= nil and root._ui_stage_instance == true and
+        not root._destroyed then
+        rawset(root, '_update_ran', false)
+    end
+end
+
+local function mark_layout_node_dirty(node)
+    if not is_layout_node(node) then
+        return false
+    end
+
+    if node._layout_dirty then
+        return false
+    end
+
+    node._layout_dirty = true
+    invalidate_stage_update_token(node)
+
+    return true
+end
+
+local function mark_ancestor_layouts_dirty(node)
+    local current = node
+
+    while current ~= nil do
+        mark_layout_node_dirty(current)
+        current = current.parent
+    end
+end
+
 local function ensure_current(node)
     local root = get_root(node)
+    local synchronize_for_read = root._synchronize_for_read
+
+    if type(synchronize_for_read) == 'function' then
+        synchronize_for_read(root)
+        return
+    end
+
     root:update()
 end
 
@@ -395,6 +452,16 @@ local function validate_public_value(self, key, value, level)
     if key == 'breakpoints' then
         if value ~= nil then
             Assert.table('Container.breakpoints', value, level)
+
+            if self._allowed_public_keys ~= nil and
+                self._allowed_public_keys.responsive == true and
+                self._public_values ~= nil and
+                self._public_values.responsive ~= nil then
+                Assert.fail(
+                    'responsive and breakpoints cannot both be supplied on the same node',
+                    level
+                )
+            end
         end
 
         return value
@@ -445,8 +512,9 @@ local function refresh_measurement(self)
     local parent_height
 
     if self.parent then
-        parent_width = self.parent._resolved_width
-        parent_height = self.parent._resolved_height
+        local parent_content_rect = self.parent:_get_effective_content_rect()
+        parent_width = parent_content_rect.width
+        parent_height = parent_content_rect.height
     else
         parent_width = self._measurement_context_width
         parent_height = self._measurement_context_height
@@ -474,8 +542,9 @@ local function refresh_local_transform(self)
     local parent_height = 0
 
     if self.parent then
-        parent_width = self.parent._resolved_width or 0
-        parent_height = self.parent._resolved_height or 0
+        local parent_content_rect = self.parent:_get_effective_content_rect()
+        parent_width = parent_content_rect.width
+        parent_height = parent_content_rect.height
     elseif self._measurement_context_width ~= nil or
         self._measurement_context_height ~= nil then
         parent_width = self._measurement_context_width or 0
@@ -488,10 +557,12 @@ local function refresh_local_transform(self)
     local pivot_y = get_effective_value(self, 'pivotY') * height
     local anchor_x = get_effective_value(self, 'anchorX') * parent_width
     local anchor_y = get_effective_value(self, 'anchorY') * parent_height
+    local layout_offset_x = self._layout_offset_x or 0
+    local layout_offset_y = self._layout_offset_y or 0
 
     self._local_transform_cache = Matrix.from_transform(
-        anchor_x + get_effective_value(self, 'x'),
-        anchor_y + get_effective_value(self, 'y'),
+        layout_offset_x + anchor_x + get_effective_value(self, 'x'),
+        layout_offset_y + anchor_y + get_effective_value(self, 'y'),
         pivot_x,
         pivot_y,
         get_effective_value(self, 'scaleX'),
@@ -894,8 +965,10 @@ local function set_public_value(self, key, value, level)
 
     self._public_values[key] = value
     self._responsive_dirty = true
+    invalidate_stage_update_token(self)
 
     if key == 'breakpoints' then
+        mark_ancestor_layouts_dirty(self)
         self._measurement_dirty = true
         self._local_transform_dirty = true
         mark_world_dirty(self)
@@ -904,10 +977,16 @@ local function set_public_value(self, key, value, level)
     end
 
     if MEASUREMENT_KEYS[key] then
+        mark_ancestor_layouts_dirty(self)
         self._measurement_dirty = true
         self._local_transform_dirty = true
         mark_world_dirty(self)
         mark_descendant_geometry_dirty(self)
+        return value
+    end
+
+    if key == 'visible' then
+        mark_ancestor_layouts_dirty(self)
         return value
     end
 
@@ -934,7 +1013,11 @@ local function detach_child(parent, child)
 
     table.remove(parent._children, index)
     parent._child_order_dirty = true
+    invalidate_stage_update_token(parent)
+    mark_ancestor_layouts_dirty(parent)
     child.parent = nil
+    child._layout_offset_x = 0
+    child._layout_offset_y = 0
     child._responsive_dirty = true
     child._measurement_dirty = true
     child._local_transform_dirty = true
@@ -1011,6 +1094,11 @@ function Container._initialize(self, opts, extra_public_keys, config)
     self._effective_values = {}
     self._children = {}
     self._ordered_children = {}
+    self._event_listeners = {
+        capture = {},
+        bubble = {},
+    }
+    self._event_default_actions = {}
     self.parent = nil
     self._destroyed = false
 
@@ -1026,6 +1114,8 @@ function Container._initialize(self, opts, extra_public_keys, config)
 
     self._measurement_context_width = nil
     self._measurement_context_height = nil
+    self._layout_offset_x = 0
+    self._layout_offset_y = 0
 
     self._resolved_width = 0
     self._resolved_height = 0
@@ -1121,8 +1211,32 @@ function Container:_refresh_if_dirty()
     refresh_child_order_cache(self)
 end
 
+function Container:_prepare_for_layout_pass()
+    assert_not_destroyed(self, 2)
+
+    if self._responsive_dirty then
+        refresh_effective_values(self)
+    end
+
+    if self._measurement_dirty then
+        refresh_measurement(self)
+    end
+
+    refresh_child_order_cache(self)
+
+    return self
+end
+
 function Container:update(_)
     assert_not_destroyed(self, 2)
+
+    local root = get_root(self)
+    local resolve_responsive_for_node = root._resolve_responsive_for_node
+
+    if type(resolve_responsive_for_node) == 'function' then
+        resolve_responsive_for_node(root, self)
+    end
+
     self:_refresh_if_dirty()
 
     for index = 1, #self._children do
@@ -1152,6 +1266,8 @@ function Container:addChild(child)
     child.parent = self
     self._children[#self._children + 1] = child
     self._child_order_dirty = true
+    invalidate_stage_update_token(self)
+    mark_ancestor_layouts_dirty(self)
 
     child._responsive_dirty = true
     child._measurement_dirty = true
@@ -1171,6 +1287,98 @@ end
 
 function Container:getChildren()
     return copy_array(self._children)
+end
+
+function Container:_add_event_listener(event_type, listener, phase)
+    assert_not_destroyed(self, 2)
+    Assert.string('event_type', event_type, 2)
+
+    if type(listener) ~= 'function' then
+        Assert.fail('listener must be a function', 2)
+    end
+
+    phase = validate_listener_phase(phase or 'bubble', 2)
+
+    local listeners_by_type = self._event_listeners[phase]
+    local listeners = listeners_by_type[event_type]
+
+    if listeners == nil then
+        listeners = {}
+        listeners_by_type[event_type] = listeners
+    end
+
+    listeners[#listeners + 1] = listener
+
+    return listener
+end
+
+function Container:_remove_event_listener(event_type, listener, phase)
+    assert_not_destroyed(self, 2)
+    Assert.string('event_type', event_type, 2)
+
+    if type(listener) ~= 'function' then
+        Assert.fail('listener must be a function', 2)
+    end
+
+    local phases = nil
+
+    if phase == nil then
+        phases = { 'capture', 'bubble' }
+    else
+        validate_listener_phase(phase, 2)
+        phases = { phase }
+    end
+
+    for index = 1, #phases do
+        local listeners = self._event_listeners[phases[index]][event_type]
+
+        if listeners ~= nil then
+            for listener_index = #listeners, 1, -1 do
+                if listeners[listener_index] == listener then
+                    table.remove(listeners, listener_index)
+                end
+            end
+
+            if #listeners == 0 then
+                self._event_listeners[phases[index]][event_type] = nil
+            end
+        end
+    end
+
+    return self
+end
+
+function Container:_get_event_listener_snapshot(event_type, phase)
+    assert_not_destroyed(self, 2)
+    Assert.string('event_type', event_type, 2)
+    phase = validate_listener_phase(phase, 2)
+
+    local listeners = self._event_listeners[phase][event_type]
+
+    if listeners == nil then
+        return {}
+    end
+
+    return copy_array(listeners)
+end
+
+function Container:_set_event_default_action(event_type, handler)
+    assert_not_destroyed(self, 2)
+    Assert.string('event_type', event_type, 2)
+
+    if handler ~= nil and type(handler) ~= 'function' then
+        Assert.fail('handler must be a function or nil', 2)
+    end
+
+    self._event_default_actions[event_type] = handler
+
+    return self
+end
+
+function Container:_get_event_default_action(event_type)
+    assert_not_destroyed(self, 2)
+    Assert.string('event_type', event_type, 2)
+    return self._event_default_actions[event_type]
 end
 
 function Container:_get_ordered_children()
@@ -1333,12 +1541,49 @@ end
 
 function Container:markDirty()
     assert_not_destroyed(self, 2)
+    invalidate_stage_update_token(self)
     self._responsive_dirty = true
     self._measurement_dirty = true
     self._local_transform_dirty = true
     mark_world_dirty(self)
     mark_descendant_geometry_dirty(self)
     return self
+end
+
+function Container:_set_layout_offset(x, y)
+    assert_not_destroyed(self, 2)
+    Assert.number('x', x, 2)
+    Assert.number('y', y, 2)
+
+    if self._layout_offset_x == x and self._layout_offset_y == y then
+        return self
+    end
+
+    self._layout_offset_x = x
+    self._layout_offset_y = y
+    self._local_transform_dirty = true
+    mark_world_dirty(self)
+    mark_descendant_world_dirty(self)
+    return self
+end
+
+function Container:_mark_parent_layout_dependency_dirty()
+    assert_not_destroyed(self, 2)
+    self._measurement_dirty = true
+    self._local_transform_dirty = true
+    mark_world_dirty(self)
+    mark_descendant_geometry_dirty(self)
+    return self
+end
+
+function Container:_get_effective_content_rect()
+    assert_not_destroyed(self, 2)
+    return Rectangle.new(
+        0,
+        0,
+        self._resolved_width or 0,
+        self._resolved_height or 0
+    )
 end
 
 function Container:_set_measurement_context(width, height)
@@ -1357,8 +1602,10 @@ function Container:_set_measurement_context(width, height)
         return self
     end
 
+    invalidate_stage_update_token(self)
     self._measurement_context_width = width
     self._measurement_context_height = height
+    mark_ancestor_layouts_dirty(self)
     self._measurement_dirty = true
     self._local_transform_dirty = true
     mark_world_dirty(self)
@@ -1387,8 +1634,10 @@ function Container:_set_resolved_responsive_overrides(token, overrides)
         return self
     end
 
+    invalidate_stage_update_token(self)
     self._responsive_token = token
     self._responsive_overrides = overrides
+    mark_ancestor_layouts_dirty(self)
     self._responsive_dirty = true
     self._measurement_dirty = true
     self._local_transform_dirty = true

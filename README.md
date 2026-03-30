@@ -21,6 +21,7 @@ That opens the default scene showcase with three library-focused scenes:
 The original focused demos were copied over so component work can stay isolated:
 
 ```bash
+love test/phase1
 love test/ui
 love test/button
 love test/text
