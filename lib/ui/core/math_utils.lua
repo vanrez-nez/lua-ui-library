@@ -1,0 +1,62 @@
+local max = math.max
+local tonumber = tonumber
+
+local MathUtils = {}
+
+function MathUtils.is_percentage_string(value)
+    if type(value) ~= 'string' then
+        return false
+    end
+
+    return value:match('^[+-]?%d*%.?%d+%%$') ~= nil
+end
+
+function MathUtils.default(value, fallback)
+    if value == nil then
+        return fallback
+    end
+
+    return value
+end
+
+function MathUtils.clamp_number(value, min_value, max_value)
+    if min_value ~= nil and value < min_value then
+        value = min_value
+    end
+
+    if max_value ~= nil and value > max_value then
+        value = max_value
+    end
+
+    return max(0, value)
+end
+
+function MathUtils.parse_percentage(value)
+    if not MathUtils.is_percentage_string(value) then
+        return nil
+    end
+
+    return tonumber(value:sub(1, -2)) / 100
+end
+
+function MathUtils.resolve_axis_size(configured, parent_size)
+    local configured_type = type(configured)
+
+    if configured_type == 'number' then
+        return configured
+    end
+
+    if configured == 'fill' then
+        return parent_size or 0
+    end
+
+    local percentage = MathUtils.parse_percentage(configured)
+
+    if percentage ~= nil then
+        return (parent_size or 0) * percentage
+    end
+
+    return 0
+end
+
+return MathUtils
