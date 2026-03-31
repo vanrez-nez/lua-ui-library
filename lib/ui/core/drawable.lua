@@ -6,6 +6,8 @@ local Rectangle = require('lib.ui.core.rectangle')
 local max = math.max
 
 local Drawable = {}
+local DEFAULT_FOCUS_RING_OFFSET = 2
+local DEFAULT_FOCUS_RING_WIDTH = 2
 
 local EXTRA_PUBLIC_KEYS = {
     padding = true,
@@ -214,6 +216,58 @@ function Drawable:resolveContentRect(content_width, content_height)
     )
 
     return Rectangle.new(x, y, width, height)
+end
+
+function Drawable:_draw_default_focus_indicator(graphics)
+    if type(graphics) ~= 'table' or type(graphics.rectangle) ~= 'function' then
+        return self
+    end
+
+    local bounds = self:getWorldBounds()
+    local restore_red = nil
+    local restore_green = nil
+    local restore_blue = nil
+    local restore_alpha = nil
+    local restore_line_width = nil
+
+    if type(graphics.getColor) == 'function' then
+        restore_red, restore_green, restore_blue, restore_alpha = graphics.getColor()
+    end
+
+    if type(graphics.getLineWidth) == 'function' then
+        restore_line_width = graphics.getLineWidth()
+    end
+
+    if type(graphics.setColor) == 'function' then
+        graphics.setColor(1, 1, 1, 1)
+    end
+
+    if type(graphics.setLineWidth) == 'function' then
+        graphics.setLineWidth(DEFAULT_FOCUS_RING_WIDTH)
+    end
+
+    graphics.rectangle(
+        'line',
+        bounds.x - DEFAULT_FOCUS_RING_OFFSET,
+        bounds.y - DEFAULT_FOCUS_RING_OFFSET,
+        bounds.width + (DEFAULT_FOCUS_RING_OFFSET * 2),
+        bounds.height + (DEFAULT_FOCUS_RING_OFFSET * 2)
+    )
+
+    if restore_line_width ~= nil and type(graphics.setLineWidth) == 'function' then
+        graphics.setLineWidth(restore_line_width)
+    end
+
+    if restore_red ~= nil and type(graphics.setColor) == 'function' then
+        graphics.setColor(
+            restore_red,
+            restore_green,
+            restore_blue,
+            restore_alpha
+        )
+    end
+
+    return self
 end
 
 return Drawable

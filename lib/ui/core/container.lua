@@ -260,6 +260,22 @@ local function get_root(node)
     return current
 end
 
+local function notify_stage_subtree_change(stage, handler_name, child, parent)
+    if stage == nil or stage._ui_stage_instance ~= true or stage._destroyed then
+        return
+    end
+
+    local handler = rawget(stage, handler_name)
+
+    if handler == nil then
+        handler = stage[handler_name]
+    end
+
+    if type(handler) == 'function' then
+        handler(stage, child, parent)
+    end
+end
+
 local function invalidate_stage_update_token(node)
     local root = get_root(node)
 
@@ -1011,6 +1027,8 @@ local function detach_child(parent, child)
         return nil
     end
 
+    local stage = get_root(parent)
+
     table.remove(parent._children, index)
     parent._child_order_dirty = true
     invalidate_stage_update_token(parent)
@@ -1023,6 +1041,7 @@ local function detach_child(parent, child)
     child._local_transform_dirty = true
     mark_world_dirty(child)
     mark_descendant_geometry_dirty(child)
+    notify_stage_subtree_change(stage, '_handle_detached_subtree', child, parent)
     return child
 end
 
@@ -1274,6 +1293,12 @@ function Container:addChild(child)
     child._local_transform_dirty = true
     mark_world_dirty(child)
     mark_descendant_geometry_dirty(child)
+    notify_stage_subtree_change(
+        get_root(self),
+        '_handle_attached_subtree',
+        child,
+        self
+    )
 
     return child
 end

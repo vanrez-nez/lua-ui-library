@@ -1,10 +1,12 @@
 local Container = require('lib.ui.core.container')
+local Drawable = require('lib.ui.core.drawable')
 local Event = require('lib.ui.event.event')
 local Insets = require('lib.ui.core.insets')
 local Rectangle = require('lib.ui.core.rectangle')
 local Responsive = require('lib.ui.layout.responsive')
 
 local max = math.max
+local huge = math.huge
 
 local Stage = {}
 
@@ -24,6 +26,7 @@ local TWO_PASS_VIOLATION =
     'The two-pass contract requires update to complete before draw begins.'
 
 local active_stage = nil
+local build_target_path
 
 local function fail(message, level)
     error(message, (level or 1) + 1)
@@ -75,6 +78,289 @@ local function copy_options(opts)
     end
 
     return copy
+end
+
+local function copy_array(values)
+    local copy = {}
+
+    for index = 1, #values do
+        copy[index] = values[index]
+    end
+
+    return copy
+end
+
+local function assert_container_node(name, value, level)
+    if type(value) ~= 'table' or value._ui_container_instance ~= true then
+        fail(name .. ' must be a Container', level or 1)
+    end
+end
+
+local function set_stored_focus_owner(self, node)
+    rawset(self, '_focus_owner', node)
+    rawset(self, '_focused_node', node)
+end
+
+local function get_stored_focus_owner(self)
+    local owner = rawget(self, '_focus_owner')
+
+    if owner == nil then
+        owner = rawget(self, '_focused_node')
+    end
+
+    return owner
+end
+
+local function is_descendant_or_same(root, node)
+    local current = node
+
+    while current ~= nil do
+        if current == root then
+            return true
+        end
+
+        current = current.parent
+    end
+
+    return false
+end
+
+local function get_runtime_value(node, key)
+    local effective_values = rawget(node, '_effective_values')
+
+    if effective_values ~= nil and effective_values[key] ~= nil then
+        return effective_values[key]
+    end
+
+    local public_values = rawget(node, '_public_values')
+
+    if public_values ~= nil then
+        return public_values[key]
+    end
+
+    return nil
+end
+
+local function is_attached_visible_to_stage(self, node)
+    if node == nil or node._destroyed or not is_descendant_or_same(self, node) then
+        return false
+    end
+
+    local current = node
+
+    while current ~= nil do
+        if get_runtime_value(current, 'visible') == false then
+            return false
+        end
+
+        if current == self then
+            return true
+        end
+
+        current = current.parent
+    end
+
+    return false
+end
+
+local function is_attached_enabled_to_stage(self, node)
+    if node == nil or node._destroyed or not is_descendant_or_same(self, node) then
+        return false
+    end
+
+    local current = node
+
+    while current ~= nil do
+        if get_runtime_value(current, 'enabled') == false then
+            return false
+        end
+
+        if current == self then
+            return true
+        end
+
+        current = current.parent
+    end
+
+    return false
+end
+
+local function get_internal_focus_contract(node)
+    return rawget(node, '_focus_contract_internal')
+end
+
+local function is_active_focus_scope_node(self, node)
+    if node == self then
+        return true
+    end
+
+    local contract = get_internal_focus_contract(node)
+
+    return type(contract) == 'table' and contract.scope == true and
+        is_attached_visible_to_stage(self, node)
+end
+
+local function is_active_focus_trap_node(self, node)
+    local contract = get_internal_focus_contract(node)
+
+    return type(contract) == 'table' and contract.scope == true and
+        contract.trap == true and
+        is_descendant_or_same(self.overlayLayer, node) and
+        is_attached_visible_to_stage(self, node)
+end
+
+local function collect_active_focus_traps(self, node, traps)
+    if node ~= self and is_active_focus_trap_node(self, node) then
+        traps[#traps + 1] = node
+    end
+
+    local children = rawget(node, '_children') or {}
+
+    for index = 1, #children do
+        collect_active_focus_traps(self, children[index], traps)
+    end
+
+    return traps
+end
+
+local function get_active_focus_scope(self)
+    local chain = rawget(self, '_active_focus_scope_chain') or { self }
+    return chain[#chain] or self
+end
+
+local function get_innermost_focus_trap(self)
+    local traps = rawget(self, '_focus_trap_stack') or {}
+    return traps[#traps]
+end
+
+local function get_containing_focus_scope(self, node)
+    local current = node
+
+    while current ~= nil and current ~= self do
+        if is_active_focus_scope_node(self, current) then
+            return current
+        end
+
+        current = current.parent
+    end
+
+    return self
+end
+
+local function get_pointer_focus_coupling(node)
+    local contract = get_internal_focus_contract(node)
+
+    if type(contract) ~= 'table' then
+        return nil
+    end
+
+    return contract.pointer_focus_coupling
+end
+
+local function is_focus_eligible(self, node)
+    return node ~= nil and
+        not node._destroyed and
+        is_descendant_or_same(self, node) and
+        get_runtime_value(node, 'focusable') == true and
+        is_attached_visible_to_stage(self, node) and
+        is_attached_enabled_to_stage(self, node)
+end
+
+local function is_focus_owner_target(self, node)
+    if node == nil then
+        return false
+    end
+
+    if node == self then
+        return true
+    end
+
+    if node._destroyed or not is_descendant_or_same(self, node) or
+        not is_attached_visible_to_stage(self, node) or
+        not is_attached_enabled_to_stage(self, node) then
+        return false
+    end
+
+    return true
+end
+
+local function is_focus_request_allowed(self, node)
+    if not is_focus_eligible(self, node) then
+        return false
+    end
+
+    local innermost_trap = get_innermost_focus_trap(self)
+
+    if innermost_trap ~= nil and not is_descendant_or_same(innermost_trap, node) then
+        return false
+    end
+
+    return true
+end
+
+local function is_traversable_focus_candidate(self, scope_root, node)
+    return is_focus_eligible(self, node) and
+        get_containing_focus_scope(self, node) == scope_root
+end
+
+local function collect_focus_candidates(self, scope_root, node, candidates)
+    if not is_attached_visible_to_stage(self, node) or
+        not is_attached_enabled_to_stage(self, node) then
+        return candidates
+    end
+
+    if node ~= scope_root and get_containing_focus_scope(self, node) ~= scope_root then
+        return candidates
+    end
+
+    if is_traversable_focus_candidate(self, scope_root, node) then
+        candidates[#candidates + 1] = node
+    end
+
+    local children = rawget(node, '_children') or {}
+
+    for index = 1, #children do
+        collect_focus_candidates(self, scope_root, children[index], candidates)
+    end
+
+    return candidates
+end
+
+local function resolve_scope_entry_focus_target(self, scope_root)
+    local candidates = collect_focus_candidates(self, scope_root, scope_root, {})
+
+    if #candidates > 0 then
+        return candidates[1]
+    end
+
+    return scope_root
+end
+
+local function get_world_center(node)
+    local bounds = node:getWorldBounds()
+
+    return bounds.x + bounds.width * 0.5,
+        bounds.y + bounds.height * 0.5
+end
+
+local function matches_direction(direction, delta_x, delta_y)
+    if direction == 'right' then
+        return delta_x > 0
+    end
+
+    if direction == 'left' then
+        return delta_x < 0
+    end
+
+    if direction == 'down' then
+        return delta_y > 0
+    end
+
+    if direction == 'up' then
+        return delta_y < 0
+    end
+
+    return false
 end
 
 local function read_host_viewport()
@@ -215,7 +501,69 @@ local function resolve_draw_args(graphics, draw_callback)
     return graphics, draw_callback
 end
 
-local function build_target_path(self, target)
+local function create_focus_aware_draw_callback(self, draw_callback)
+    local function restore_focus_draw_state(node, previous, focused)
+        if previous ~= focused then
+            rawset(node, '_focused', previous)
+        end
+    end
+
+    local function decorate_focused_drawable(node, graphics)
+        if node._destroyed or not Drawable.is_drawable(node) then
+            return
+        end
+
+        if get_stored_focus_owner(self) == node then
+            node:_draw_default_focus_indicator(graphics)
+        end
+    end
+
+    local error_handler = function(message)
+        if debug ~= nil and type(debug.traceback) == 'function' then
+            return debug.traceback(message, 2)
+        end
+
+        return message
+    end
+
+    return function(node, graphics)
+        local previous = rawget(node, '_focused')
+        local focused = get_stored_focus_owner(self) == node or nil
+
+        if previous ~= focused then
+            rawset(node, '_focused', focused)
+        end
+
+        local ok, err = xpcall(function()
+            draw_callback(node)
+            decorate_focused_drawable(node, graphics)
+        end, error_handler)
+
+        restore_focus_draw_state(node, previous, focused)
+
+        if not ok then
+            error(err, 0)
+        end
+    end
+end
+
+local function resolve_active_focus_scope_target(self)
+    self:_refresh_focus_runtime_state()
+
+    local target = get_stored_focus_owner(self)
+
+    if target == nil then
+        target = get_active_focus_scope(self)
+    end
+
+    if target == nil then
+        return nil, nil
+    end
+
+    return target, build_target_path(self, target)
+end
+
+build_target_path = function(self, target)
     local reversed = {}
     local current = target
 
@@ -244,6 +592,15 @@ end
 
 local function resolve_target_resolved(self, x, y)
     local target = self.overlayLayer:_hit_test_resolved(x, y)
+    local innermost_trap = get_innermost_focus_trap(self)
+
+    if innermost_trap ~= nil then
+        if target ~= nil and is_descendant_or_same(innermost_trap, target) then
+            return target
+        end
+
+        return nil
+    end
 
     if target ~= nil then
         return target
@@ -413,19 +770,15 @@ local function resolve_spatial_target(self, raw_event)
 end
 
 local function resolve_focused_target(self, fallback_to_stage)
-    local target = rawget(self, '_focused_node')
+    self:_refresh_focus_runtime_state()
+
+    local target = get_stored_focus_owner(self)
 
     if target ~= nil then
-        if target._destroyed then
-            rawset(self, '_focused_node', nil)
-        else
-            local path = build_target_path(self, target)
+        local path = build_target_path(self, target)
 
-            if path ~= nil then
-                return target, path
-            end
-
-            rawset(self, '_focused_node', nil)
+        if path ~= nil then
+            return target, path
         end
     end
 
@@ -649,6 +1002,60 @@ local function dispatch_event(event)
     run_default_action(event)
 
     return event
+end
+
+local function dispatch_target_only_event(event)
+    if event == nil or event.target == nil then
+        return event
+    end
+
+    local target = event.target
+    local listener_snapshots = {
+        [target] = {
+            capture = target:_get_event_listener_snapshot(event.type, 'capture'),
+            bubble = target:_get_event_listener_snapshot(event.type, 'bubble'),
+        },
+    }
+
+    deliver_target_phase(event, listener_snapshots)
+
+    if event.target ~= nil then
+        event:_set_current_target(event.target)
+    end
+
+    return event
+end
+
+local function dispatch_focus_change_event(self, previous_target, next_target)
+    if next_target == nil then
+        return nil
+    end
+
+    return dispatch_target_only_event(create_event(
+        'ui.focus.change',
+        next_target,
+        build_target_path(self, next_target),
+        {
+            previousTarget = previous_target,
+            nextTarget = next_target,
+        }
+    ))
+end
+
+local function commit_focus_owner(self, node)
+    local previous_owner = get_stored_focus_owner(self)
+
+    if previous_owner == node then
+        return previous_owner, false
+    end
+
+    set_stored_focus_owner(self, node)
+    self:_refresh_focus_runtime_state(previous_owner)
+
+    local committed_owner = get_stored_focus_owner(self)
+    local changed = committed_owner ~= previous_owner
+
+    return committed_owner, changed
 end
 
 local function is_mouse_pointer_sequence_active(self)
@@ -899,7 +1306,7 @@ local function create_navigation_event(self, raw_event)
         return nil, nil, nil
     end
 
-    local target, path = resolve_focused_target(self, true)
+    local target, path = resolve_active_focus_scope_target(self)
 
     return create_event('ui.navigate', target, path, {
         direction = direction,
@@ -907,8 +1314,40 @@ local function create_navigation_event(self, raw_event)
     }), target, path
 end
 
+local function apply_navigation_focus_movement(self, event)
+    if event == nil or event.type ~= 'ui.navigate' or event.defaultPrevented then
+        return get_stored_focus_owner(self)
+    end
+
+    if event.navigationMode == 'sequential' then
+        return self:_move_focus_sequential_internal(event.direction)
+    end
+
+    if event.navigationMode == 'directional' then
+        return self:_move_focus_directional_internal(event.direction)
+    end
+
+    return get_stored_focus_owner(self)
+end
+
+local function apply_pointer_focus_coupling(self, target, timing, event)
+    if target == nil or event == nil or event.type ~= 'ui.activate' then
+        return get_stored_focus_owner(self)
+    end
+
+    if get_pointer_focus_coupling(target) ~= timing then
+        return get_stored_focus_owner(self)
+    end
+
+    if timing == 'after' and event.defaultPrevented then
+        return get_stored_focus_owner(self)
+    end
+
+    return self:_request_focus_internal(target)
+end
+
 local function create_dismiss_event(self)
-    local target, path = resolve_focused_target(self, true)
+    local target, path = resolve_active_focus_scope_target(self)
     return create_event('ui.dismiss', target, path), target, path
 end
 
@@ -1146,7 +1585,11 @@ function Stage.new(opts)
     rawset(self, '_last_input_delivery', nil)
     rawset(self, '_viewport_bounds_cache', Rectangle.new(0, 0, 0, 0))
     rawset(self, '_safe_area_bounds_cache', Rectangle.new(0, 0, 0, 0))
+    rawset(self, '_focus_owner', nil)
     rawset(self, '_focused_node', nil)
+    rawset(self, '_active_focus_scope_chain', { self })
+    rawset(self, '_focus_trap_stack', {})
+    rawset(self, '_pre_trap_focus_history', {})
     rawset(self, '_active_pointer_sequences', {})
     rawset(self, '_hovered_target', nil)
     rawset(self, '_hover_pointer_snapshot', nil)
@@ -1254,6 +1697,400 @@ function Stage:_get_focus_scope_root()
     return self
 end
 
+function Stage:_set_focus_contract_internal(node, contract)
+    assert_not_destroyed(self, 2)
+    assert_container_node('node', node, 2)
+
+    if contract == nil then
+        rawset(node, '_focus_contract_internal', nil)
+        self:_refresh_focus_runtime_state()
+        return node
+    end
+
+    assert_table('contract', contract, 2)
+
+    local normalized = {}
+
+    if contract.scope ~= nil and type(contract.scope) ~= 'boolean' then
+        fail('contract.scope must be a boolean or nil', 2)
+    end
+
+    if contract.trap ~= nil and type(contract.trap) ~= 'boolean' then
+        fail('contract.trap must be a boolean or nil', 2)
+    end
+
+    local pointer_coupling = contract.pointerFocusCoupling
+
+    if pointer_coupling == nil then
+        pointer_coupling = contract.pointer_focus_coupling
+    end
+
+    if pointer_coupling ~= nil and pointer_coupling ~= 'before' and
+        pointer_coupling ~= 'after' and pointer_coupling ~= 'none' then
+        fail(
+            'contract.pointerFocusCoupling must be "before", "after", "none", or nil',
+            2
+        )
+    end
+
+    if contract.scope == true or contract.trap == true then
+        normalized.scope = true
+    end
+
+    if contract.trap == true then
+        normalized.trap = true
+    end
+
+    if pointer_coupling ~= nil then
+        normalized.pointer_focus_coupling = pointer_coupling
+    end
+
+    if next(normalized) == nil then
+        normalized = nil
+    end
+
+    rawset(node, '_focus_contract_internal', normalized)
+    self:_refresh_focus_runtime_state()
+
+    return node
+end
+
+function Stage:_set_focus_owner_internal(node)
+    assert_not_destroyed(self, 2)
+
+    if node ~= nil then
+        assert_container_node('node', node, 2)
+
+        if not is_descendant_or_same(self, node) or node._destroyed then
+            return nil
+        end
+    end
+
+    set_stored_focus_owner(self, node)
+    self:_refresh_focus_runtime_state()
+
+    return get_stored_focus_owner(self)
+end
+
+-- Internal runtime/test support for explicit focus requests. This is not a
+-- stabilized public Stage API surface.
+function Stage:_request_focus_internal(node)
+    assert_not_destroyed(self, 2)
+    self:_synchronize_for_read()
+
+    if node ~= nil then
+        assert_container_node('node', node, 2)
+
+        if not is_focus_request_allowed(self, node) then
+            return get_stored_focus_owner(self)
+        end
+    end
+
+    return commit_focus_owner(self, node)
+end
+
+function Stage:_move_focus_sequential_internal(direction)
+    assert_not_destroyed(self, 2)
+
+    if direction ~= 'next' and direction ~= 'previous' then
+        fail('direction must be "next" or "previous"', 2)
+    end
+
+    self:_synchronize_for_read()
+
+    local scope_root = get_active_focus_scope(self)
+    local candidates = collect_focus_candidates(self, scope_root, scope_root, {})
+    local candidate_count = #candidates
+
+    if candidate_count == 0 then
+        return get_stored_focus_owner(self)
+    end
+
+    local current_owner = get_stored_focus_owner(self)
+    local current_index = nil
+
+    for index = 1, candidate_count do
+        if candidates[index] == current_owner then
+            current_index = index
+            break
+        end
+    end
+
+    if current_index == nil then
+        if direction == 'next' then
+            current_index = 0
+        else
+            current_index = candidate_count + 1
+        end
+    end
+
+    local next_index = nil
+
+    if direction == 'next' then
+        next_index = current_index + 1
+
+        if next_index > candidate_count then
+            next_index = 1
+        end
+    else
+        next_index = current_index - 1
+
+        if next_index < 1 then
+            next_index = candidate_count
+        end
+    end
+
+    return self:_request_focus_internal(candidates[next_index])
+end
+
+function Stage:_move_focus_directional_internal(direction)
+    assert_not_destroyed(self, 2)
+
+    if direction ~= 'up' and direction ~= 'down' and direction ~= 'left' and
+        direction ~= 'right' then
+        fail('direction must be "up", "down", "left", or "right"', 2)
+    end
+
+    self:_synchronize_for_read()
+
+    local current_owner = get_stored_focus_owner(self)
+
+    if current_owner == nil then
+        return nil
+    end
+
+    local scope_root = get_active_focus_scope(self)
+
+    if get_containing_focus_scope(self, current_owner) ~= scope_root then
+        return current_owner
+    end
+
+    local current_x, current_y = get_world_center(current_owner)
+    local candidates = collect_focus_candidates(self, scope_root, scope_root, {})
+    local best_candidate = nil
+    local best_distance = huge
+    local best_order_index = huge
+
+    for index = 1, #candidates do
+        local candidate = candidates[index]
+
+        if candidate ~= current_owner then
+            local candidate_x, candidate_y = get_world_center(candidate)
+            local delta_x = candidate_x - current_x
+            local delta_y = candidate_y - current_y
+
+            if matches_direction(direction, delta_x, delta_y) then
+                local distance = delta_x * delta_x + delta_y * delta_y
+
+                if distance < best_distance or
+                    (distance == best_distance and index < best_order_index) then
+                    best_candidate = candidate
+                    best_distance = distance
+                    best_order_index = index
+                end
+            end
+        end
+    end
+
+    if best_candidate == nil then
+        return current_owner
+    end
+
+    return self:_request_focus_internal(best_candidate)
+end
+
+function Stage:_get_focus_owner_internal()
+    assert_not_destroyed(self, 2)
+    self:_synchronize_for_read()
+    return get_stored_focus_owner(self)
+end
+
+function Stage:_get_active_focus_scope_chain_internal()
+    assert_not_destroyed(self, 2)
+    self:_synchronize_for_read()
+    return copy_array(rawget(self, '_active_focus_scope_chain') or { self })
+end
+
+function Stage:_get_focus_trap_stack_internal()
+    assert_not_destroyed(self, 2)
+    self:_synchronize_for_read()
+    return copy_array(rawget(self, '_focus_trap_stack') or {})
+end
+
+function Stage:_get_pre_trap_focus_history_internal()
+    assert_not_destroyed(self, 2)
+    self:_synchronize_for_read()
+    return copy_array(rawget(self, '_pre_trap_focus_history') or {})
+end
+
+function Stage:_handle_attached_subtree(_, _)
+    if self._destroyed then
+        return self
+    end
+
+    self:_refresh_focus_runtime_state()
+    return self
+end
+
+function Stage:_handle_detached_subtree(node, _)
+    if self._destroyed then
+        return self
+    end
+
+    local focus_owner = get_stored_focus_owner(self)
+    local previous_owner = focus_owner
+
+    if focus_owner ~= nil and is_descendant_or_same(node, focus_owner) then
+        set_stored_focus_owner(self, nil)
+    end
+
+    self:_refresh_focus_runtime_state(previous_owner)
+    return self
+end
+
+function Stage:_refresh_focus_runtime_state(previous_owner_override)
+    if self._destroyed then
+        return self
+    end
+
+    local previous_owner = previous_owner_override
+
+    if previous_owner == nil then
+        previous_owner = get_stored_focus_owner(self)
+    end
+
+    local focus_owner = get_stored_focus_owner(self)
+
+    if not is_focus_owner_target(self, focus_owner) then
+        focus_owner = nil
+    end
+
+    local active_traps = collect_active_focus_traps(self, self.overlayLayer, {})
+    local previous_stack = rawget(self, '_focus_trap_stack') or {}
+    local previous_history = rawget(self, '_pre_trap_focus_history') or {}
+    local prefix_length = 0
+    local next_stack = {}
+    local next_history = {}
+    local restoration_candidate = nil
+
+    while prefix_length < #previous_stack and prefix_length < #active_traps do
+        local next_index = prefix_length + 1
+
+        if previous_stack[next_index] ~= active_traps[next_index] then
+            break
+        end
+
+        prefix_length = next_index
+    end
+
+    for index = 1, prefix_length do
+        next_stack[index] = previous_stack[index]
+        next_history[index] = previous_history[index]
+    end
+
+    if prefix_length < #previous_stack then
+        restoration_candidate = previous_history[prefix_length + 1]
+
+        if not is_focus_owner_target(self, restoration_candidate) then
+            restoration_candidate = nil
+        end
+    end
+
+    if restoration_candidate ~= nil then
+        local innermost_retained_trap = next_stack[#next_stack]
+
+        if innermost_retained_trap == nil or
+            is_descendant_or_same(innermost_retained_trap, restoration_candidate) then
+            focus_owner = restoration_candidate
+        end
+    end
+
+    if focus_owner ~= nil and #next_stack > 0 then
+        local innermost_retained_trap = next_stack[#next_stack]
+
+        if not is_descendant_or_same(innermost_retained_trap, focus_owner) then
+            focus_owner = nil
+        end
+    end
+
+    for index = prefix_length + 1, #active_traps do
+        local trap = active_traps[index]
+
+        next_stack[#next_stack + 1] = trap
+        next_history[#next_history + 1] = focus_owner
+
+        if focus_owner == nil or not is_descendant_or_same(trap, focus_owner) then
+            focus_owner = resolve_scope_entry_focus_target(self, trap)
+        end
+    end
+
+    if focus_owner ~= nil and #next_stack > 0 then
+        local innermost_trap = next_stack[#next_stack]
+
+        if not is_descendant_or_same(innermost_trap, focus_owner) then
+            focus_owner = nil
+        end
+    end
+
+    if focus_owner == nil and #next_stack > 0 then
+        focus_owner = resolve_scope_entry_focus_target(self, next_stack[#next_stack])
+    end
+
+    if not is_focus_owner_target(self, focus_owner) then
+        focus_owner = nil
+    end
+
+    rawset(self, '_focus_trap_stack', next_stack)
+    rawset(self, '_pre_trap_focus_history', next_history)
+    set_stored_focus_owner(self, focus_owner)
+
+    local chain = { self }
+    local seen = {
+        [self] = true,
+    }
+
+    for index = 1, #next_stack do
+        local scope = next_stack[index]
+
+        if not seen[scope] then
+            chain[#chain + 1] = scope
+            seen[scope] = true
+        end
+    end
+
+    if focus_owner ~= nil then
+        local scope_path = {}
+        local current = focus_owner
+
+        while current ~= nil and current ~= self do
+            if is_active_focus_scope_node(self, current) then
+                scope_path[#scope_path + 1] = current
+            end
+
+            current = current.parent
+        end
+
+        for index = #scope_path, 1, -1 do
+            local scope = scope_path[index]
+
+            if not seen[scope] then
+                if #next_stack == 0 or is_descendant_or_same(next_stack[#next_stack], scope) then
+                    chain[#chain + 1] = scope
+                    seen[scope] = true
+                end
+            end
+        end
+    end
+
+    rawset(self, '_active_focus_scope_chain', chain)
+
+    if previous_owner ~= focus_owner and focus_owner ~= nil then
+        dispatch_focus_change_event(self, previous_owner, focus_owner)
+    end
+
+    return self
+end
+
 function Stage:_invalidate_update_token()
     if self._destroyed then
         return self
@@ -1347,6 +2184,7 @@ function Stage:_synchronize_for_read(dt)
         end
     end
 
+    self:_refresh_focus_runtime_state()
     refresh_hover_target(self)
 
     return self
@@ -1406,13 +2244,25 @@ end
 
 function Stage:_draw_base_layer_resolved(graphics, draw_callback)
     assert_not_destroyed(self, 2)
-    self.baseSceneLayer:_draw_subtree_resolved(graphics, draw_callback)
+    local focus_aware_draw = create_focus_aware_draw_callback(self, draw_callback)
+    self.baseSceneLayer:_draw_subtree_resolved(
+        graphics,
+        function(node)
+            focus_aware_draw(node, graphics)
+        end
+    )
     return self
 end
 
 function Stage:_draw_overlay_layer_resolved(graphics, draw_callback)
     assert_not_destroyed(self, 2)
-    self.overlayLayer:_draw_subtree_resolved(graphics, draw_callback)
+    local focus_aware_draw = create_focus_aware_draw_callback(self, draw_callback)
+    self.overlayLayer:_draw_subtree_resolved(
+        graphics,
+        function(node)
+            focus_aware_draw(node, graphics)
+        end
+    )
     return self
 end
 
@@ -1516,8 +2366,18 @@ function Stage:deliverInput(raw_event)
         target, path = resolve_spatial_target(self, raw_event)
     end
 
+    if event ~= nil and event.type == 'ui.activate' and event.pointerType ~= nil then
+        apply_pointer_focus_coupling(self, event.target, 'before', event)
+    end
+
     if event ~= nil then
         event = dispatch_event(event)
+
+        if event.type == 'ui.navigate' then
+            apply_navigation_focus_movement(self, event)
+        elseif event.type == 'ui.activate' and event.pointerType ~= nil then
+            apply_pointer_focus_coupling(self, event.target, 'after', event)
+        end
     end
 
     local delivery = build_delivery(raw_event, intent, event, target, path)
