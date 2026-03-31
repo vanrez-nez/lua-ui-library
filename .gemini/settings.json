@@ -1,0 +1,15 @@
+{
+  "skills": {
+    "disabled": [
+      "agent-browser",
+      "vite",
+      "modern-javascript-patterns",
+      "rust-best-practices",
+      "rust-async-patterns",
+      "docker-expert",
+      "mermaid-diagrams",
+      "css-architecture",
+      "create-specification"
+    ]
+  }
+}
