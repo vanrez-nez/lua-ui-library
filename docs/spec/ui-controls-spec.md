@@ -29,6 +29,7 @@ This revision owns the following controls:
 - `Tabs`
 - `Modal`
 - `Alert`
+- `Notification`
 
 The foundation contracts for event propagation, focus, responsive rules, runtime layers, render effects, theming, contract stability, and failure semantics remain authoritative and are not redefined here.
 
@@ -52,11 +53,13 @@ The component-model rules in Section 3A of [UI Foundation Specification](./ui-fo
 | `Tabs` | Composite | one-to-one trigger and panel coordination, active-value resolution, and roving focus | closable or reorderable tabs, swipe navigation, business state inside panels | extensible through documented slots only |
 | `Modal` | Composite | blocking overlay behavior, open-state requests, focus trapping, focus restoration, and backdrop policy | scene navigation, workflow policy, overlay stacking outside the overlay layer contract | extensible through documented slots only |
 | `Alert` | Composite | alert-dialog pattern over `Modal`, including title, message, actions, and initial-focus rules | arbitrary modal taxonomies, non-dismissible flows, action side effects | extensible through documented slots only |
+| `Notification` | Composite | non-blocking overlay status presentation, edge-based placement, timed or explicit dismissal, and stack participation | modal blocking, focus trapping, arbitrary action regions, queue-management policy beyond one instance's contract | extensible through documented slots only |
 
 Additional control identity rules:
 
 - `TextArea` inherits behavior from `TextInput` but remains a distinct component identity with its own multiline and scroll contract.
 - `Alert` is not an alias of `Modal`; it is a separate composite with a stronger content contract and a distinct accessible role.
+- `Notification` is not an alias of `Modal` or `Alert`; it is a separate overlay composite with non-modal status behavior and a single content region.
 - The exact control names in this table are the canonical names for this revision. No aliases are stabilized.
 - Named anatomy parts and stabilized theming parts are contract surface. Internal helper structure that is not named remains an implementation detail.
 
@@ -76,13 +79,14 @@ The composition-grammar rules in Section 3B of [UI Foundation Specification](./u
 | `TextArea` | any layout or drawable container that permits interactive descendants | none | interactive child nodes; nesting inside another text-entry control; nesting inside a scroll container that intercepts the same owned scroll axis | none | valid |
 | `Modal` | only the `overlay layer` owned by `Stage` | one `surface` subtree containing one `content` subtree; optional consumer close controls | placement in the base scene layer; direct interaction with underlying scene content while mounted | `surface`, `content` | invalid when detached from the overlay layer |
 | `Alert` | only the `overlay layer` owned by `Stage` as a specialized `Modal` | required `title` and `actions`; optional `message`; optional close controls | absence of any action control; placement outside the overlay layer | `title`, `actions` | invalid when detached from the overlay layer |
+| `Notification` | only the `overlay layer` owned by `Stage` | one `surface` subtree containing one `content` subtree; optional library-owned close control when `closeMethod = "button"` | placement in the base scene layer; nested interactive controls inside `content`; backdrop regions; focus-trap ownership | `surface`, `content` | invalid when detached from the overlay layer |
 | `Tabs` | any component with an open descendant slot | one `list` region and one `panels` region containing mapped `trigger` and `panel` sub-parts | unmatched triggers or panels; duplicate trigger values; trigger lists without panels or panels without triggers | `list`, `panels`, at least one mapped `trigger`/`panel` pair | valid only when the required pair structure is complete |
 
 Validity notes:
 
 - `Button`, `Checkbox`, and `Switch` are compositionally open only through their documented content-bearing regions.
 - `TextInput` and `TextArea` expose named presentational parts but no consumer-fillable descendant slots in this revision.
-- `Modal` and `Alert` are invalid as ordinary descendants of base-scene layout or control containers because their parent relationship is defined by overlay mounting, not ordinary containment.
+- `Modal`, `Alert`, and `Notification` are invalid as ordinary descendants of base-scene layout or control containers because their parent relationship is defined by overlay mounting, not ordinary containment.
 - `Tabs` validity is re-evaluated whenever trigger or panel structure changes; insertion into an arbitrary ancestor does not preserve validity unless the full `Tabs` contract remains satisfied.
 
 ### 4B.2 Compound Control Contracts
@@ -94,6 +98,7 @@ Validity notes:
 | `Switch` | `root`, `track`, `thumb` | `label`, `description` | `label` and `description` may contain independent components; `track` and `thumb` are meaningful only within `Switch` | root-owned role resolution of drag region and associated content | closed except for `label` and `description` content |
 | `Modal` | `root`, `backdrop`, `surface`, `content` | `close controls` | `content` may contain independent components; the structural roles have no independent overlay meaning outside `Modal` | overlay-layer mounting plus root-owned slot resolution inside `surface` | closed except for the open `content` region |
 | `Alert` | `root`, `backdrop`, `surface`, `title`, `actions` | `message`, `close controls` | `title`, `message`, and `actions` may contain independent components, but their alert roles exist only within `Alert` | specialized `Modal` slot resolution with required action-region presence | closed except for documented content regions |
+| `Notification` | `root`, `surface`, `content` | `close control` | `content` may contain independent non-interactive components, but its notification role exists only within `Notification` | overlay-layer mounting plus root-owned slot resolution inside `surface` | closed except for the open `content` region |
 | `Tabs` | `root`, `list`, `panels`, one or more `trigger`, one or more `panel` | `indicator` | `trigger` and `panel` roles have no valid independent meaning outside one owning `Tabs` root | structural registration of each `trigger` and `panel` to the owning `Tabs` root by mapped value and role | closed |
 
 ### 4B.3 Control Slot Declarations
@@ -109,6 +114,7 @@ Validity notes:
 | `Alert` | `title` | exactly one subtree | non-interactive heading content | none |
 | `Alert` | `message` | zero or one subtree | non-interactive explanatory content | none |
 | `Alert` | `actions` | one or more activation controls | controls that provide an explicit dismissal or confirmation path | none |
+| `Notification` | `content` | exactly one subtree | non-interactive text, drawable content, or layout structure; no nested interactive controls | none |
 | `Tabs` | `list` | exactly one region | contains only `trigger` sub-parts for the owning `Tabs` root | none |
 | `Tabs` | `panels` | exactly one region | contains only `panel` sub-parts for the owning `Tabs` root | none |
 
@@ -142,12 +148,13 @@ That shared interaction state:
 | `TextArea` | `selectionStart` and `selectionEnd` as one property pair | UI state | negotiated | both selection boundaries plus `onSelectionChange` | collapsed selection at end of current value |
 | `Modal` | `open` | UI state | negotiated | `open` with `onOpenChange` | `false` |
 | `Alert` | `open` | UI state | negotiated through `Modal` | `open` with `onOpenChange` | `false` |
+| `Notification` | `open` | UI state | negotiated | `open` with `onOpenChange` | `false` |
 | `Tabs` | `value` | composition state | negotiated | `value` with `onValueChange` | first enabled mapped trigger value, otherwise `nil` |
 
 Hybrid notes:
 
 - `TextInput` and `TextArea` may control `value` and selection independently because those properties have separate ownership signals.
-- `Checkbox`, `Switch`, `Modal`, `Alert`, and `Tabs` expose one negotiable public state property each in this revision.
+- `Checkbox`, `Switch`, `Modal`, `Alert`, `Notification`, and `Tabs` expose one negotiable public state property each in this revision.
 - `Button` exposes negotiable `pressed` state, but hover and focus remain library-owned interaction state.
 
 Trace note: the `Uncontrolled default` column defines the initial uncontrolled state when a control owns that value; it does not by itself standardize a corresponding `default*` prop unless the control's own props section names one explicitly.
@@ -156,7 +163,7 @@ Trace note: the `Uncontrolled default` column defines the initial uncontrolled s
 
 Pending controlled behavior:
 
-- `Button`, `Checkbox`, `Switch`, `Modal`, `Alert`, and `Tabs` must continue to render and behave from the last committed controlled value until the consumer updates that value.
+- `Button`, `Checkbox`, `Switch`, `Modal`, `Alert`, `Notification`, and `Tabs` must continue to render and behave from the last committed controlled value until the consumer updates that value.
 - `TextInput` and `TextArea` must continue to render the last committed controlled `value` and controlled selection while allowing library-owned interaction state such as focus and composition candidate presence to continue updating.
 
 Uncontrolled observation:
@@ -170,6 +177,7 @@ Composition-state rules for concrete controls:
 
 - `Tabs` is the only concrete control in this revision with public composition state. Its active value is scoped to the nearest `Tabs` root and coordinates registered triggers and panels only within that root.
 - `Modal` and `Alert` use library-owned focus-trap coordination and overlay ownership state scoped to the mounted overlay subtree. That coordination state is not a consumer-owned public value.
+- `Notification` uses library-owned overlay ownership, dismissal timer, and stack-placement coordination scoped to the mounted overlay subtree. That coordination state is not a consumer-owned public value.
 - `Checkbox` and `Switch` do not automatically coordinate with sibling selection controls in this revision. Any shared checked-value semantics across multiple controls must be provided explicitly by the consumer.
 
 ### 4C.5 Control Derived State
@@ -183,6 +191,7 @@ Composition-state rules for concrete controls:
 | `TextArea` | effective value, effective selection, effective scrollability | `TextArea` derives the same committed editing values as `TextInput`, plus scrollability from content extent, wrap mode, and visible field size |
 | `Modal` | effective open state | controlled `open` when present, otherwise uncontrolled mounted state |
 | `Alert` | effective open state | `Alert` uses the `Modal` derivation for `open` |
+| `Notification` | effective open state, effective dismissal mode, effective timed duration | controlled `open` when present, otherwise uncontrolled mounted state; `closeMethod` resolves the owned dismissal path; `duration` resolves to `5000` only when `closeMethod = "auto-dismiss"` and no explicit duration is supplied |
 | `Tabs` | effective active value, active panel visibility | controlled `value` when present, otherwise uncontrolled active value resolution from the mapped enabled trigger set |
 
 The following remain implementation detail and are not stable derived-state API:
@@ -207,6 +216,7 @@ The interaction-model rules in Section 3D of [UI Foundation Specification](./ui-
 | `TextArea` | `Activate`, `Navigate`, `TextInput`, `TextCompose`, `Scroll`, `Submit`, pointer selection gestures | `onValueChange`, `onSelectionChange`, `onSubmit` | same as `TextInput`, plus internal scroll handling and newline insertion rules |
 | `Modal` | `Dismiss`, `Activate` on explicit close actions, `Activate` on backdrop when configured | `onOpenChange` | propose `open = false` when dismissal policy allows |
 | `Alert` | `Dismiss`, `Activate` on explicit actions, `Activate` on backdrop when configured | `onOpenChange` plus action-control callbacks supplied by the consumer | same as `Modal`, plus action activation inside the actions region |
+| `Notification` | `Dismiss` on owned close control when configured; timer expiry when `closeMethod = "auto-dismiss"` | `onOpenChange` | propose `open = false` when the owned dismissal path resolves |
 | `Tabs` | `Navigate`, `Activate` | `onValueChange` | move roving focus on navigation and propose a new active value only on activation |
 
 ### 4D.2 Focus And Pointer-Coupling Rules By Control Family
@@ -216,20 +226,23 @@ The interaction-model rules in Section 3D of [UI Foundation Specification](./ui-
 | `Button`, `Checkbox`, `Switch` | focuses before default action | library-managed through ordinary focus traversal | pointer or touch activation may establish focus on the target control |
 | `TextInput`, `TextArea` | focuses before text-entry activation | library-managed plus platform text-entry activation cooperation | focus acquisition must establish active text-entry ownership |
 | `Modal`, `Alert` | opening moves focus into the overlay scope; backdrop activation does not move focus into underlying content | library-managed with trapping and restoration | dismissal may restore prior focus when configured |
+| `Notification` | opening does not move focus; close-control activation follows ordinary control focus rules only when that control is focused directly | library-managed through ordinary base-scene and overlay traversal without trapping | the notification surface is non-modal and must not redirect focus on open |
 | `Tabs` trigger list | focus moves independently of activation | library-managed roving focus within the trigger list | focus movement alone must not activate a tab |
 
 ### 4D.3 Control-Specific Dismissal And Submission Rules
 
 - `Modal` and `Alert` recognize `Dismiss` through escape-like commands and backdrop activation only when the corresponding dismissal props allow it.
+- `Notification` recognizes `Dismiss` only through the owned close path selected by `closeMethod`. It does not recognize backdrop dismissal or escape dismissal in this revision.
 - `TextInput` recognizes `Submit` according to `submitBehavior`: `blur` proposes blur after submit, `submit` invokes `onSubmit`, and `none` takes no submit default action.
 - `TextArea` consumes `Submit` as newline insertion when multiline editing rules require it; it must not treat the newline command as `onSubmit` unless a future component revision explicitly adds that behavior.
 - `Tabs` does not recognize `Dismiss` as a tab-state-changing input in this revision.
 
 ### 4D.4 Event Ordering And Cancellation At Control Level
 
-- For `Button`, `Checkbox`, `Switch`, `Tabs`, `Modal`, and `Alert`, cancellable interaction events must finish listener delivery before the library proposes any state change through the documented callback.
+- For `Button`, `Checkbox`, `Switch`, `Tabs`, `Modal`, `Alert`, and `Notification`, cancellable interaction events must finish listener delivery before the library proposes any state change through the documented callback.
 - Cancelling `ui.activate` on `Button`, `Checkbox`, `Switch`, or `Tabs` prevents the default action and therefore prevents the associated callback proposal for that activation.
 - Cancelling `ui.dismiss` on `Modal` or `Alert` prevents the `onOpenChange(false)` proposal for that dismissal attempt.
+- Cancelling `ui.dismiss` on `Notification` prevents the `onOpenChange(false)` proposal for the corresponding close-control activation.
 - Cancelling `ui.text.input`, `ui.text.compose`, or `ui.submit` on `TextInput` or `TextArea` prevents the associated insertion, composition update, or submit default action for that interaction.
 
 ## 4E. Control Behavioral Completeness
@@ -246,6 +259,7 @@ The behavioral-completeness rules in Section 3E of [UI Foundation Specification]
 | `TextInput` and `TextArea` | empty value remains valid; placeholder behavior follows the existing component contract | placeholder is consumer-provided content, not library-injected fallback | no |
 | `Modal` | no focusable content remains valid; the overlay still mounts and traps focus when configured | none | no |
 | `Alert` | missing `message` is valid; missing `actions` is prohibited by the component contract | none | no |
+| `Notification` | compact content remains valid; empty or omitted `content` is prohibited by the component contract | none | no |
 | `Tabs` | zero valid trigger/panel pairs is structurally invalid per the composition contract, not an empty-but-valid interactive state | none | no |
 
 ### 4E.2 Overflow And Constraint Behavior By Control Family
@@ -258,6 +272,7 @@ The behavioral-completeness rules in Section 3E of [UI Foundation Specification]
 | `TextArea` | vertical overflow is handled by the internal scroll region; horizontal overflow is suppressed when `wrap = true` and allowed when wrapping is disabled | remains editable at any finite size, though visible text area may collapse to a minimal viewport | recompute wrapping, content extent, and internal scroll range |
 | `Tabs` | overflow in the trigger list may be handled by scrollable composition when enabled; panel overflow follows the panel content contract | trigger activation and focus movement remain valid even when the list is partially offscreen | re-resolve trigger list overflow and active panel layout |
 | `Modal` and `Alert` | surface content may overflow according to the layout content placed inside the surface; backdrop always fills the viewport | overlay remains dismissable and focus-managed even when surface content cannot fully fit | recompute surface placement and safe-area-aware bounds on the next pass |
+| `Notification` | surface content may overflow according to the layout content placed inside the surface; no implicit scroll region is created | notification dismissal and placement remain valid so long as the surface exists | recompute edge placement, safe-area-aware bounds, and stack offsets on the next pass |
 
 ### 4E.3 Rapid And Concurrent Input Behavior By Control Family
 
@@ -266,6 +281,7 @@ The behavioral-completeness rules in Section 3E of [UI Foundation Specification]
 | `Button`, `Checkbox`, `Switch` | each activation attempt is processed independently in arrival order; gesture ownership determines which pointer sequence may finish a press or drag | committed state remains coherent after each completed activation or drag release |
 | `TextInput` and `TextArea` | committed text and composition updates are processed in arrival order while the field owns active text-entry state | committed value and selection reflect a consistent committed pair after each processed logical input |
 | `Modal` and `Alert` | dismissal requests are processed in arrival order; once a close has been proposed, additional close requests before commit do not create a second distinct close state | open-state proposals remain coherent and focus-trap ownership does not split across concurrent dismiss inputs |
+| `Notification` | timer completion, explicit close activation, and authoritative external close requests are processed in arrival order; once a close has been proposed, additional close requests before commit do not create a second distinct close state | open-state proposals, timer ownership, and stack-placement ownership remain coherent across concurrent close inputs |
 | `Tabs` | navigation and activation inputs are processed independently in arrival order; navigation never retroactively activates a tab | roving focus and active value remain coherent and do not diverge within one `Tabs` root |
 
 No control in this revision declares a built-in throttle or debounce policy.
@@ -278,6 +294,7 @@ No control in this revision declares a built-in throttle or debounce policy.
 | `Checkbox` and `Switch` | activation or drag interrupted by disable, focus loss, or destruction | abandon the in-progress gesture; only a completed uncancelled activation or drag release may propose a new checked value |
 | `TextInput` and `TextArea` | text composition interrupted by focus loss or destruction | discard the composition candidate without committing it and release active text-entry ownership |
 | `Modal` and `Alert` | open or close flow interrupted by a new authoritative `open` value or destruction | resolve to the latest authoritative open state; if destroyed while open, release focus trap ownership and stop further dismissal proposals from that instance |
+| `Notification` | open or close flow interrupted by a new authoritative `open` value, timer expiry race, or destruction | resolve to the latest authoritative open state; if destroyed while open, release timer ownership and stop further dismissal proposals from that instance |
 | `Tabs` | trigger or panel structure changes while focus or activation is in progress | re-resolve the next valid mapped value or focused trigger according to the existing `Tabs` contract and discard obsolete target references |
 
 ### 4E.5 Loading And Async Support
@@ -306,6 +323,7 @@ The contract-stability rules in Section 3F of [UI Foundation Specification](./ui
 | `Tabs` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `Modal` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `Alert` | `Stable` | `0.1.0` | no | n/a | n/a |
+| `Notification` | `Stable` | `0.1.0` | no | n/a | n/a |
 
 ### 4F.2 Control Public Surface Classification
 
@@ -322,6 +340,7 @@ Unless this section explicitly says otherwise, every documented control surface 
 | `Tabs` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `list`, `panels`, `trigger`, and `panel` structure is `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
 | `Modal` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `surface`, `content`, and documented close-control regions are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
 | `Alert` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `title`, `message`, `actions`, and documented close-control regions are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
+| `Notification` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `surface`, `content`, and documented close-control region are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
 
 Additional control-surface rulings:
 
@@ -339,7 +358,7 @@ The failure-semantics rules in Section 3G of [UI Foundation Specification](./ui-
 
 | Category | Typical control conditions | Detectable point | Failure mode | Control-specific rule |
 |----------|----------------------------|------------------|--------------|-----------------------|
-| structural invalidity | `Tabs` trigger/panel mismatches, duplicate trigger values, `Modal` or `Alert` detached from the overlay layer, prohibited child nodes in `Text`, `TextInput`, or `TextArea` | when the control structure is mounted, registered, or next reconciled | `Hard failure` | no control-specific structural repair is attempted |
+| structural invalidity | `Tabs` trigger/panel mismatches, duplicate trigger values, `Modal`, `Alert`, or `Notification` detached from the overlay layer, prohibited child nodes in `Text`, `TextInput`, or `TextArea` | when the control structure is mounted, registered, or next reconciled | `Hard failure` | no control-specific structural repair is attempted |
 | type or value invalidity | negative `dragThreshold`, `maxLength < 0`, invalid `toggleOrder`, unsupported `activationMode`, missing required font or skin asset where no fallback exists | immediately when the value is set if knowable, otherwise on first use | `Hard failure` unless the control section explicitly names a fallback | controls do not coerce invalid values into a nearby valid value unless the contract says so |
 | state contract violation | mutable controlled value without the required change callback, incomplete controlled selection pair, controlled/uncontrolled ownership switch after first commit | when control ownership is reconciled | `Hard failure` | the control preserves the last valid committed state and rejects the invalid ownership transition |
 | lifecycle violation | no stable imperative control method surface exists in this revision | n/a | no separate control-specific surface in this revision | runtime-managed destruction behavior is covered by Behavioral Completeness, not failure semantics |
@@ -1083,7 +1102,138 @@ Trace note: `Alert` is specified through these props and required regions, not t
 - An `Alert` where `initialFocus` references a non-existent action must fall back to the first action in the container.
 - An `Alert` with `variant = "destructive"` must present the destructive variant skin without altering behavior.
 
-### 6.9 Tabs
+### 6.9 Notification
+
+**Purpose and contract**
+
+`Notification` is a non-blocking overlay control that presents transient status content above the base scene layer without trapping focus or preventing interaction outside its own hit region.
+
+`Notification` must:
+
+- support controlled open state
+- request open-state changes through `onOpenChange`
+- support exactly one owned dismissal path selected by `closeMethod`
+- support edge-based placement with cross-axis alignment
+- support stacking of multiple open notifications
+- default to safe-area-aware placement
+- remain non-modal and non-blocking outside the notification surface
+
+**Anatomy**
+
+- `root`: the notification subtree root. Required.
+- `surface`: the visible notification container. Required.
+- `content`: the consumer-provided notification body. Required.
+- `close control`: optional library-owned dismissal control present only when `closeMethod = "button"`.
+
+**Props and API surface**
+
+- `open: boolean | nil`
+- `onOpenChange: function | nil`
+- `closeMethod: "button" | "auto-dismiss"`
+- `duration: number | nil`
+- `easing: "linear" | "ease-in" | "ease-out" | "ease-in-out"`
+- `stackable: boolean`
+- `edge: "top" | "bottom" | "left" | "right"`
+- `align: "start" | "center" | "end"`
+- `safeAreaAware: boolean`
+
+Default values:
+
+- `closeMethod = "button"`
+- `duration = 5000`
+- `easing = "ease-out"`
+- `stackable = true`
+- `edge = "top"`
+- `align = "center"`
+- `safeAreaAware = true`
+
+When `closeMethod = "auto-dismiss"` and `duration` is `nil`, the effective duration is `5000`.
+
+Trace note: the public `Notification` surface is the prop set listed here plus the documented structure. Helper methods such as `show()`, `hide()`, queue-management helpers, or imperative stack APIs may exist internally, but they are not stable public API unless this section is amended to name them.
+
+**State model**
+
+STATE closed
+
+  ENTRY:
+    1. The notification subtree is not mounted in the overlay layer.
+    2. No dismissal timer is active for this instance.
+
+  TRANSITIONS:
+    ON open request:
+      1. Mount the notification subtree into the active overlay layer.
+      2. Resolve placement from `edge`, `align`, safe area, and active stack peers.
+      3. Start the dismissal timer when `closeMethod = "auto-dismiss"`.
+      → open
+
+STATE open
+
+  ENTRY:
+    1. The notification subtree is mounted and visible.
+    2. The notification participates in stack placement according to `stackable`.
+    3. Underlying content remains interactive outside the notification hit region.
+
+  TRANSITIONS:
+    ON timer completion and `closeMethod = "auto-dismiss"`:
+      1. Emit `onOpenChange(false)`.
+      → closing
+
+    ON explicit close activation and `closeMethod = "button"`:
+      1. Emit `onOpenChange(false)`.
+      → closing
+
+STATE closing
+
+  ENTRY:
+    1. A close has been requested. The consumer has not yet committed the change.
+
+  TRANSITIONS:
+    ON close commit:
+      1. Remove the notification subtree from the overlay layer.
+      2. Release any timer owned by the instance.
+      3. Recompute placement for remaining notifications in the same stack group.
+      → closed
+
+ERRORS:
+  - `open` without `onOpenChange` when `open` is intended to be mutable → invalid configuration and deterministic failure.
+  - `closeMethod` outside the documented enum set → invalid configuration and deterministic failure.
+  - `edge` outside the documented enum set → invalid configuration and deterministic failure.
+  - `align` outside the documented enum set → invalid configuration and deterministic failure.
+  - `easing` outside the documented enum set → invalid configuration and deterministic failure.
+  - `duration <= 0` when `closeMethod = "auto-dismiss"` → invalid configuration and deterministic failure.
+
+**Accessibility contract**
+
+`Notification` must be announced to assistive systems as a status surface. Opening a `Notification` must not move focus. `Notification` must not trap focus and must not prevent focus traversal in the base scene layer. The close control, when present, must be focusable and expose dismissal semantics to assistive systems.
+
+**Composition rules**
+
+`Notification` is an overlay control. Its subtree is mounted in the overlay layer defined by `Stage`, not in the base scene layer. `Notification` contains exactly one `content` subtree. The `content` subtree may contain text, drawable content, and layout structure appropriate for compact notification presentation. Nested interactive controls inside `content` are unsupported in this revision.
+
+Placement rules:
+
+- `edge = "top"`: notifications are placed against the top edge and stack downward.
+- `edge = "bottom"`: notifications are placed against the bottom edge and stack upward.
+- `edge = "left"`: notifications are placed against the left edge and stack rightward.
+- `edge = "right"`: notifications are placed against the right edge and stack leftward.
+
+Cross-axis alignment uses the documented `align` vocabulary:
+
+- when `edge = "top"` or `edge = "bottom"`, `align` resolves horizontally
+- when `edge = "left"` or `edge = "right"`, `align` resolves vertically
+
+`stackable = true` causes notifications with the same effective `edge` and `align` to participate in shared stack offset resolution. `stackable = false` removes the notification from stack offset accumulation and may allow overlap with other notifications in the same placement group.
+
+**Behavioral edge cases**
+
+- A `Notification` with `closeMethod = "button"` must not start a dismissal timer.
+- A `Notification` with `closeMethod = "auto-dismiss"` must not render a close control.
+- A `Notification` with `stackable = true` and the same effective `edge` and `align` as its siblings must not overlap them by default.
+- A `Notification` with `stackable = false` may overlap other notifications in the same placement group.
+- A `Notification` that closes while stacked with siblings must not leave stale gaps after the next placement pass.
+- A `Notification` must not block pointer interaction outside its own visible hit region.
+
+### 6.10 Tabs
 
 **Purpose and contract**
 
@@ -1211,6 +1361,7 @@ This document stabilizes these control part names used by skins:
 | `Tabs` | `list`, `trigger`, `indicator`, `panel` |
 | `Modal` | `backdrop`, `surface`, `content`, `close controls` |
 | `Alert` | `backdrop`, `surface`, `title`, `message`, `actions`, `close controls` |
+| `Notification` | `surface`, `content`, `close control` |
 
 ### 8.2 Control Visual Surfaces
 
@@ -1221,6 +1372,7 @@ This document stabilizes these control part names used by skins:
 | `TextInput`, `TextArea` | field-versus-content separation, caret/selection/placeholder part roles, internal editable region ownership | field chrome, placeholder styling, caret styling, selection styling, read-only and disabled skins | input value text supplied by consumer state |
 | `Tabs` | required separation of `list`, `trigger`, `indicator`, and `panel` roles | trigger chrome, indicator treatment, panel chrome, disabled and active trigger skins | panel content and trigger content |
 | `Modal`, `Alert` | required separation of `backdrop`, `surface`, content regions, and alert title/action roles | backdrop fill, surface chrome, title/message typography, action-region styling, close-control styling | modal body content and alert action content |
+| `Notification` | required separation of `surface`, `content`, and optional close-control roles | surface chrome, content typography, icon treatment within consumer-owned content, close-control styling, enter/exit and reflow easing treatment | notification content supplied through the `content` region |
 
 Focus styling in this table is expressed through the documented part surfaces and their stateful variants. This revision does not standardize a separate focus-indicator token family distinct from the documented part/property bindings.
 
@@ -1238,6 +1390,7 @@ These priority orders satisfy Section 8.12 of the foundation specification:
 - `Tabs` trigger parts: `disabled > active > focused > base`
 - `Tabs` panel parts: `active > inactive`
 - `Modal` and `Alert` do not define additional stateful skin priority beyond mounted versus unmounted presence in this revision
+- `Notification` does not define additional stateful skin priority beyond mounted versus unmounted presence in this revision
 
 ### 8.4 Control Structure Versus Appearance Boundary
 
