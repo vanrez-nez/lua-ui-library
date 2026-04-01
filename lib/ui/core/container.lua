@@ -967,8 +967,18 @@ function Container:update(_)
     self:_refresh_if_dirty()
 
     local children = rawget(self, '_children') or {}
+    local snapshot = {}
+
     for index = 1, #children do
-        children[index]:update()
+        snapshot[index] = children[index]
+    end
+
+    for index = 1, #snapshot do
+        local child = snapshot[index]
+
+        if child ~= nil and child.parent == self and not rawget(child, '_destroyed') then
+            child:update()
+        end
     end
 
     if rawget(self, '_child_order_dirty') then

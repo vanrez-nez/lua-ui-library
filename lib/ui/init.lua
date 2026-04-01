@@ -18,6 +18,8 @@ return {
     TextInput = require('lib.ui.controls.text_input'),
     TextArea = require('lib.ui.controls.text_area'),
     Tabs = require('lib.ui.controls.tabs'),
+    Modal = require('lib.ui.controls.modal'),
+    Alert = require('lib.ui.controls.alert'),
     Theme = require('lib.ui.themes.theme'),
     ThemeResolver = require('lib.ui.themes.resolver'),
     ThemeRuntime = require('lib.ui.themes.runtime'),
