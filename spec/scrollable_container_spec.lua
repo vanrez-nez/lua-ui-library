@@ -3,6 +3,7 @@ local Drawable = require('lib.ui.core.drawable')
 local ScrollableContainer = require('lib.ui.scroll.scrollable_container')
 local Stage = require('lib.ui.scene.stage')
 local Rectangle = require('lib.ui.core.rectangle')
+local Column = require('lib.ui.layout.column')
 
 local function assert_equal(actual, expected, message)
     if actual ~= expected then
@@ -402,6 +403,79 @@ local function run_textarea_boundary_tests()
     stage:destroy()
 end
 
+-- ── Nested Layout Scroll Regression Tests ──────────────────────────────────
+
+local function run_nested_layout_scroll_regression_tests()
+    local stage = Stage.new({ width = 800, height = 600 })
+
+    local outer = ScrollableContainer.new({
+        width = 300,
+        height = 400,
+        scrollYEnabled = true,
+        momentum = false,
+        showScrollbars = true,
+    })
+    stage.baseSceneLayer:addChild(outer)
+
+    local outer_column = Column.new({
+        width = 'fill',
+        height = 'content',
+        gap = 12,
+    })
+
+    for i = 1, 5 do
+        outer_column:addChild(Drawable({ width = 260, height = 50, tag = 'outer_pre_' .. i }))
+    end
+
+    local inner = ScrollableContainer.new({
+        width = 260,
+        height = 150,
+        scrollYEnabled = true,
+        momentum = false,
+        showScrollbars = true,
+    })
+
+    local inner_column = Column.new({
+        width = 'fill',
+        height = 'content',
+        gap = 4,
+    })
+    for i = 1, 12 do
+        inner_column:addChild(Drawable({ width = 240, height = 30, tag = 'inner_' .. i }))
+    end
+    inner.content:addChild(inner_column)
+    outer_column:addChild(inner)
+
+    for i = 1, 5 do
+        outer_column:addChild(Drawable({ width = 260, height = 50, tag = 'outer_post_' .. i }))
+    end
+
+    outer.content:addChild(outer_column)
+
+    stage:update()
+
+    local max_x, max_y = inner:_get_scroll_range()
+    assert_true(max_y > 0, 'Nested inner layout content should produce vertical scroll range')
+
+    local inner_bounds = inner:getWorldBounds()
+    stage:deliverInput({
+        kind = 'wheelmoved',
+        x = 0,
+        y = -1,
+        stageX = inner_bounds.x + 5,
+        stageY = inner_bounds.y + 5,
+    })
+
+    local _, inner_offset_y = inner:_get_scroll_offset()
+    local _, outer_offset_y = outer:_get_scroll_offset()
+    assert_true(inner_offset_y > 0,
+        'Inner nested scroll container should consume wheel input while it has remaining range')
+    assert_equal(outer_offset_y, 0,
+        'Outer scroll container should not consume while inner still has range')
+
+    stage:destroy()
+end
+
 -- ── Run all ─────────────────────────────────────────────────────────────────
 
 return {
@@ -417,5 +491,6 @@ return {
         run_overscroll_thumb_compression_tests()
         run_schema_validation_tests()
         run_textarea_boundary_tests()
+        run_nested_layout_scroll_regression_tests()
     end,
 }

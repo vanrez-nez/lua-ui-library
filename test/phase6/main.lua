@@ -271,8 +271,47 @@ function love.draw()
     local g = love.graphics
     local w, h = g.getDimensions()
 
-    -- Draw stage tree manually (since we don't have a full render pipeline here)
-    draw_tree(g, stage)
+    -- Draw via stage renderer so clipping/hit regions stay implementation-owned.
+    stage:draw(g, function(node)
+        if rawget(node, '_destroyed') then return end
+        local ev = rawget(node, '_effective_values')
+        if ev and ev.visible == false then return end
+
+        local is_drawable = rawget(node, '_ui_drawable_instance')
+        local is_scroll = rawget(node, '_ui_scrollable_instance')
+        local bounds = rawget(node, '_world_bounds_cache')
+
+        if is_drawable and bounds then
+            local tag = (ev and ev.tag) or ''
+
+            if tag:find('scrollbar_v_track') then
+                g.setColor(SCROLLBAR_TRACK)
+                g.rectangle('fill', bounds.x, bounds.y, bounds.width, bounds.height, 2, 2)
+            elseif tag:find('scrollbar_v_thumb') or tag:find('scrollbar_h_thumb') then
+                g.setColor(SCROLLBAR_THUMB)
+                g.rectangle('fill', bounds.x, bounds.y, bounds.width, bounds.height, 3, 3)
+            elseif tag:find('scrollbar_h_track') then
+                g.setColor(SCROLLBAR_TRACK)
+                g.rectangle('fill', bounds.x, bounds.y, bounds.width, bounds.height, 2, 2)
+            else
+                local idx = tonumber(tag:match('(%d+)$')) or 0
+                local hue = (idx * 37) % 360
+                local r, gg, b = hsl_to_rgb(hue, 0.55, 0.5)
+                g.setColor(r, gg, b, 0.9)
+                g.rectangle('fill', bounds.x, bounds.y, bounds.width, bounds.height, 4, 4)
+                g.setColor(1, 1, 1, 0.7)
+                g.printf(tag, bounds.x + 4, bounds.y + 4,
+                    math.max(1, bounds.width - 8), 'left')
+            end
+        end
+
+        if is_scroll and bounds then
+            g.setColor(PANEL_BG)
+            g.rectangle('fill', bounds.x, bounds.y, bounds.width, bounds.height, 6, 6)
+            g.setColor(ACCENT_DIM[1], ACCENT_DIM[2], ACCENT_DIM[3], 0.3)
+            g.rectangle('line', bounds.x, bounds.y, bounds.width, bounds.height, 6, 6)
+        end
+    end)
 
     -- HUD
     g.setColor(WHITE)
@@ -292,72 +331,6 @@ function love.draw()
         g.setColor(ACCENT_DIM)
         g.printf(string.format('offset=(%.0f, %.0f)  range=(%.0f, %.0f)  state=%s',
             sx, sy, mx, my, st), 0, h - 44, w, 'center')
-    end
-end
-
--- ── Tree drawing ────────────────────────────────────────────────────────────
-
-function draw_tree(g, node)
-    if rawget(node, '_destroyed') then return end
-    local ev = rawget(node, '_effective_values')
-    if ev and ev.visible == false then return end
-
-    local is_drawable = rawget(node, '_ui_drawable_instance')
-    local is_scroll = rawget(node, '_ui_scrollable_instance')
-
-    -- Read cached world bounds once — stage:update() has already refreshed them.
-    -- Calling node:getWorldBounds() here would re-trigger _synchronize_for_read()
-    -- on every node, causing O(N²) layout traversals per draw frame.
-    local bounds = rawget(node, '_world_bounds_cache')
-
-    -- Draw Drawable nodes as colored rects
-    if is_drawable and bounds then
-        local tag = (ev and ev.tag) or ''
-
-        if tag:find('scrollbar_v_track') then
-            g.setColor(SCROLLBAR_TRACK)
-            g.rectangle('fill', bounds.x, bounds.y, bounds.width, bounds.height, 2, 2)
-        elseif tag:find('scrollbar_v_thumb') or tag:find('scrollbar_h_thumb') then
-            g.setColor(SCROLLBAR_THUMB)
-            g.rectangle('fill', bounds.x, bounds.y, bounds.width, bounds.height, 3, 3)
-        elseif tag:find('scrollbar_h_track') then
-            g.setColor(SCROLLBAR_TRACK)
-            g.rectangle('fill', bounds.x, bounds.y, bounds.width, bounds.height, 2, 2)
-        else
-            -- Color by tag index
-            local idx = tonumber(tag:match('(%d+)$')) or 0
-            local hue = (idx * 37) % 360
-            local r, gg, b = hsl_to_rgb(hue, 0.55, 0.5)
-            g.setColor(r, gg, b, 0.9)
-            g.rectangle('fill', bounds.x, bounds.y, bounds.width, bounds.height, 4, 4)
-            g.setColor(1, 1, 1, 0.7)
-            g.printf(tag, bounds.x + 4, bounds.y + 4,
-                math.max(1, bounds.width - 8), 'left')
-        end
-    end
-
-    -- Clip children if needed
-    local should_clip = ev and ev.clipChildren
-    if should_clip and bounds then
-        g.setScissor(bounds.x, bounds.y, bounds.width, bounds.height)
-    end
-
-    -- Draw ScrollableContainer background
-    if is_scroll and bounds then
-        g.setColor(PANEL_BG)
-        g.rectangle('fill', bounds.x, bounds.y, bounds.width, bounds.height, 6, 6)
-        g.setColor(ACCENT_DIM[1], ACCENT_DIM[2], ACCENT_DIM[3], 0.3)
-        g.rectangle('line', bounds.x, bounds.y, bounds.width, bounds.height, 6, 6)
-    end
-
-    -- Recurse into children
-    local children = rawget(node, '_children') or {}
-    for i = 1, #children do
-        draw_tree(g, children[i])
-    end
-
-    if should_clip then
-        g.setScissor()
     end
 end
 

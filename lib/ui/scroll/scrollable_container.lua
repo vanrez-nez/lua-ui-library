@@ -716,15 +716,68 @@ local function sync_viewport_size(self)
 
     local vpv = rawget(viewport_node, '_public_values')
     local vev = rawget(viewport_node, '_effective_values')
-    if vpv then vpv.width = w; vpv.height = h end
-    if vev then vev.width = w; vev.height = h end
+    local changed = false
+
+    if vpv then
+        if vpv.width ~= w then
+            vpv.width = w
+            changed = true
+        end
+        if vpv.height ~= h then
+            vpv.height = h
+            changed = true
+        end
+    end
+
+    if vev then
+        if vev.width ~= w then
+            vev.width = w
+            changed = true
+        end
+        if vev.height ~= h then
+            vev.height = h
+            changed = true
+        end
+    end
+
+    if rawget(viewport_node, '_measurement_context_width') ~= w then
+        rawset(viewport_node, '_measurement_context_width', w)
+        changed = true
+    end
+
+    if rawget(viewport_node, '_measurement_context_height') ~= h then
+        rawset(viewport_node, '_measurement_context_height', h)
+        changed = true
+    end
+
+    if not changed then
+        return
+    end
+
     rawset(viewport_node, '_measurement_dirty', true)
     rawset(viewport_node, '_local_transform_dirty', true)
     rawset(viewport_node, '_bounds_dirty', true)
+    viewport_node:invalidate_world()
+    viewport_node:invalidate_descendant_geometry()
 
-    -- Also propagate measurement context to viewport so 'fill' children resolve
-    rawset(viewport_node, '_measurement_context_width', w)
-    rawset(viewport_node, '_measurement_context_height', h)
+    local function mark_layout_subtree_dirty(node)
+        local children = rawget(node, '_children') or {}
+        for i = 1, #children do
+            local child = children[i]
+            child:mark_layout_node_dirty()
+            mark_layout_subtree_dirty(child)
+        end
+    end
+
+    mark_layout_subtree_dirty(viewport_node)
+end
+
+function ScrollableContainer:_prepare_for_layout_pass()
+    Container._prepare_for_layout_pass(self)
+    -- Ensure viewport constraints are current before the stage layout traversal
+    -- prepares/runs descendants.
+    sync_viewport_size(self)
+    return self
 end
 
 -- ── Update override ─────────────────────────────────────────────────────────

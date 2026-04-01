@@ -220,6 +220,10 @@ function LayoutNode:_apply_layout(_)
 end
 
 function LayoutNode:_run_layout_pass(stage)
+    -- Parent layout can dirty measurement dependencies after the global
+    -- prepare traversal. Refresh again here so this node's layout pass uses
+    -- current constraints and does not leave stale measurement dirtiness.
+    self:_prepare_for_layout_pass(stage)
     self:_refresh_layout_content_rect()
 
     if self._layout_dirty then

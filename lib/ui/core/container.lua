@@ -1202,6 +1202,7 @@ end
 
 function Container:_mark_parent_layout_dependency_dirty()
     assert_not_destroyed(self, 2)
+    self:mark_layout_node_dirty()
     rawset(self, '_measurement_dirty', true)
     rawset(self, '_local_transform_dirty', true)
     self:invalidate_world()
