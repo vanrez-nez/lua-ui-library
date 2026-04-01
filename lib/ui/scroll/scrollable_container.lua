@@ -156,17 +156,61 @@ end
 -- ── Scrollbar geometry ──────────────────────────────────────────────────────
 
 local function update_scrollbar_geometry(self)
+    local function mark_node_geometry_dirty(node)
+        if not node then return end
+        rawset(node, '_measurement_dirty', true)
+        rawset(node, '_local_transform_dirty', true)
+        rawset(node, '_bounds_dirty', true)
+        node:invalidate_world()
+        node:invalidate_descendant_world()
+    end
+
+    local function set_node_frame(node, x, y, width, height, visible)
+        if not node then return end
+
+        local changed = false
+        local pv = rawget(node, '_public_values')
+        local ev = rawget(node, '_effective_values')
+
+        if x ~= nil then
+            if pv and pv.x ~= x then pv.x = x; changed = true end
+            if ev and ev.x ~= x then ev.x = x; changed = true end
+        end
+
+        if y ~= nil then
+            if pv and pv.y ~= y then pv.y = y; changed = true end
+            if ev and ev.y ~= y then ev.y = y; changed = true end
+        end
+
+        if width ~= nil then
+            if pv and pv.width ~= width then pv.width = width; changed = true end
+            if ev and ev.width ~= width then ev.width = width; changed = true end
+        end
+
+        if height ~= nil then
+            if pv and pv.height ~= height then pv.height = height; changed = true end
+            if ev and ev.height ~= height then ev.height = height; changed = true end
+        end
+
+        if visible ~= nil then
+            if pv and pv.visible ~= visible then pv.visible = visible; changed = true end
+            if ev and ev.visible ~= visible then ev.visible = visible; changed = true end
+        end
+
+        if changed then
+            mark_node_geometry_dirty(node)
+        end
+    end
+
     if not get_public(self, 'showScrollbars') then
         local h_track = rawget(self, '_scrollbar_h_track')
+        local h_thumb = rawget(self, '_scrollbar_h_thumb')
         local v_track = rawget(self, '_scrollbar_v_track')
-        if h_track then
-            local hev = rawget(h_track, '_effective_values')
-            if hev then hev.visible = false end
-        end
-        if v_track then
-            local vev = rawget(v_track, '_effective_values')
-            if vev then vev.visible = false end
-        end
+        local v_thumb = rawget(self, '_scrollbar_v_thumb')
+        set_node_frame(h_track, nil, nil, nil, nil, false)
+        set_node_frame(h_thumb, nil, nil, nil, nil, false)
+        set_node_frame(v_track, nil, nil, nil, nil, false)
+        set_node_frame(v_thumb, nil, nil, nil, nil, false)
         return
     end
 
@@ -179,30 +223,27 @@ local function update_scrollbar_geometry(self)
     local max_sx = rawget(self, '_max_scroll_x') or 0
     local max_sy = rawget(self, '_max_scroll_y') or 0
 
+    local show_v = get_public(self, 'scrollYEnabled') and ch > vh
+    local show_h = get_public(self, 'scrollXEnabled') and cw > vw
+
+    local v_track_x = max(0, vw - SCROLLBAR_MARGIN - SCROLLBAR_SIZE)
+    local v_track_y = SCROLLBAR_MARGIN
+    local h_track_x = SCROLLBAR_MARGIN
+    local h_track_y = max(0, vh - SCROLLBAR_MARGIN - SCROLLBAR_SIZE)
+    local v_track_h = max(0, vh - SCROLLBAR_MARGIN * 2 - (show_h and (SCROLLBAR_SIZE + SCROLLBAR_MARGIN) or 0))
+    local h_track_w = max(0, vw - SCROLLBAR_MARGIN * 2 - (show_v and (SCROLLBAR_SIZE + SCROLLBAR_MARGIN) or 0))
+
     -- Vertical scrollbar
     local v_track = rawget(self, '_scrollbar_v_track')
     local v_thumb = rawget(self, '_scrollbar_v_thumb')
     if v_track and v_thumb then
-        local show_v = get_public(self, 'scrollYEnabled') and ch > vh
-        local vev = rawget(v_track, '_effective_values')
-        if vev then vev.visible = show_v end
+        set_node_frame(v_track, v_track_x, v_track_y, SCROLLBAR_SIZE, v_track_h, show_v)
+        set_node_frame(v_thumb, 0, nil, SCROLLBAR_SIZE, nil, show_v)
         if show_v then
-            local track_h = vh - SCROLLBAR_MARGIN * 2
+            local track_h = v_track_h
             local thumb_h = max(SCROLLBAR_MIN_THUMB, (vh / ch) * track_h)
             local thumb_y = max_sy > 0 and (sy / max_sy) * (track_h - thumb_h) or 0
-
-            local tev = rawget(v_thumb, '_effective_values')
-            if tev then
-                tev.y = thumb_y
-                tev.height = thumb_h
-            end
-            local tpv = rawget(v_thumb, '_public_values')
-            if tpv then
-                tpv.y = thumb_y
-                tpv.height = thumb_h
-            end
-            rawset(v_thumb, '_measurement_dirty', true)
-            rawset(v_thumb, '_local_transform_dirty', true)
+            set_node_frame(v_thumb, nil, thumb_y, nil, thumb_h, nil)
         end
     end
 
@@ -210,26 +251,13 @@ local function update_scrollbar_geometry(self)
     local h_track = rawget(self, '_scrollbar_h_track')
     local h_thumb = rawget(self, '_scrollbar_h_thumb')
     if h_track and h_thumb then
-        local show_h = get_public(self, 'scrollXEnabled') and cw > vw
-        local hev = rawget(h_track, '_effective_values')
-        if hev then hev.visible = show_h end
+        set_node_frame(h_track, h_track_x, h_track_y, h_track_w, SCROLLBAR_SIZE, show_h)
+        set_node_frame(h_thumb, nil, 0, nil, SCROLLBAR_SIZE, show_h)
         if show_h then
-            local track_w = vw - SCROLLBAR_MARGIN * 2
+            local track_w = h_track_w
             local thumb_w = max(SCROLLBAR_MIN_THUMB, (vw / cw) * track_w)
             local thumb_x = max_sx > 0 and (sx / max_sx) * (track_w - thumb_w) or 0
-
-            local tev = rawget(h_thumb, '_effective_values')
-            if tev then
-                tev.x = thumb_x
-                tev.width = thumb_w
-            end
-            local tpv = rawget(h_thumb, '_public_values')
-            if tpv then
-                tpv.x = thumb_x
-                tpv.width = thumb_w
-            end
-            rawset(h_thumb, '_measurement_dirty', true)
-            rawset(h_thumb, '_local_transform_dirty', true)
+            set_node_frame(h_thumb, thumb_x, nil, thumb_w, nil, nil)
         end
     end
 end
