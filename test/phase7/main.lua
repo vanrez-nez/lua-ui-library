@@ -42,9 +42,6 @@ local demo_state = {
     tabs_disabled = {},
 }
 
-local FRAME_MAX_W = 980
-local FRAME_MAX_H = 640
-
 local function styled_text(s, size, variant)
     return Text.new({
         text = s,
@@ -55,131 +52,188 @@ local function styled_text(s, size, variant)
     })
 end
 
-local function centered_column(opts)
+local function screen_root(opts)
     opts = opts or {}
     return Column.new({
         width = 'fill',
         height = 'fill',
-        gap = opts.gap or 12,
-        padding = opts.padding or { 20, 20, 20, 20 },
+        gap = opts.gap or 16,
+        padding = opts.padding or { 24, 24, 24, 24 },
         align = 'center',
-        justify = opts.justify or 'start',
+        justify = opts.justify or 'center',
     })
 end
 
 local function panel_box(width, height, tag)
-    return Drawable({
+    return Column.new({
         width = width,
         height = height,
-        interactive = false,
+        gap = 0,
+        padding = { 0, 0, 0, 0 },
+        align = 'stretch',
+        justify = 'center',
         tag = tag,
     })
 end
 
-local function build_text_screen()
-    local root = centered_column({ gap = 12 })
-    local content_panel = panel_box(700, 430, 'screen_content_box')
-    local content = Column.new({
+local function centered_fill(node)
+    local wrapper = Column.new({
         width = 'fill',
         height = 'fill',
-        gap = 12,
-        padding = { 20, 20, 20, 20 },
-        align = 'center',
-        justify = 'start',
+        align = 'stretch',
+        justify = 'center',
     })
-    content_panel:addChild(content)
-    root:addChild(content_panel)
-
-    content:addChild(Text.new({ text = 'Text Surface', font = FONT_PATH, fontSize = 38, textVariant = 'title', color = FG }))
-    content:addChild(Text.new({ text = 'textAlign + textVariant + wrap', font = FONT_PATH, fontSize = 18, color = SUB }))
-
-    local function add_align_row(label, align)
-        local slot = panel_box(640, 52, 'text_slot_box')
-        local slot_content = Column.new({
-            width = 'fill',
-            height = 'fill',
-            padding = { 10, 10, 10, 10 },
-            align = 'stretch',
-            justify = 'center',
-        })
-        slot_content:addChild(Text.new({
-            text = label,
-            font = FONT_PATH,
-            fontSize = 20,
-            textAlign = align,
-            width = 'fill',
-        }))
-        slot:addChild(slot_content)
-        content:addChild(slot)
+    if node ~= nil then
+        wrapper:addChild(node)
     end
+    return wrapper
+end
 
-    add_align_row('Aligned start', 'start')
-    add_align_row('Aligned center', 'center')
-    add_align_row('Aligned end', 'end')
-
-    local wrap_box = panel_box(640, 132, 'text_wrap_box')
-    local wrap_content = Column.new({
+local function centered_text(s, size, variant, color)
+    return centered_fill(Text.new({
+        text = s,
+        font = FONT_PATH,
+        fontSize = size or 18,
+        color = color or FG,
+        textVariant = variant,
         width = 'fill',
-        height = 'fill',
-        padding = { 10, 10, 10, 10 },
+        textAlign = 'center',
+    }))
+end
+
+local function screen_panel(opts)
+    opts = opts or {}
+    return Column.new({
+        width = opts.width or 'fill',
+        height = opts.height or 'fill',
+        gap = opts.gap or 12,
+        padding = opts.padding or { 20, 20, 20, 20 },
+        align = opts.align or 'stretch',
+        justify = opts.justify or 'start',
+        tag = opts.tag or 'screen_content_box',
+    })
+end
+
+local function build_text_screen()
+    local root = screen_root({ gap = 12 })
+    local content = screen_panel({
+        width = 760,
+        height = 420,
         align = 'stretch',
         justify = 'start',
     })
-    wrap_content:addChild(Text.new({
+    root:addChild(content)
+
+    content:addChild(Text.new({
+        text = 'Text Surface',
+        font = FONT_PATH,
+        fontSize = 38,
+        textVariant = 'title',
+        color = FG,
+        width = 'fill',
+        textAlign = 'center',
+    }))
+    content:addChild(Text.new({
+        text = 'textAlign + textVariant + wrap',
+        font = FONT_PATH,
+        fontSize = 18,
+        color = SUB,
+        width = 'fill',
+        textAlign = 'center',
+    }))
+
+    content:addChild(Text.new({
+        text = 'Aligned start',
+        font = FONT_PATH,
+        fontSize = 20,
+        textAlign = 'start',
+        width = 'fill',
+    }))
+    content:addChild(Text.new({
+        text = 'Aligned center',
+        font = FONT_PATH,
+        fontSize = 20,
+        textAlign = 'center',
+        width = 'fill',
+    }))
+    content:addChild(Text.new({
+        text = 'Aligned end',
+        font = FONT_PATH,
+        fontSize = 20,
+        textAlign = 'end',
+        width = 'fill',
+    }))
+
+    content:addChild(Text.new({
         text = 'This paragraph is wrapped. It uses wrap=true and maxWidth so line breaks are deterministic and follow the Text contract.',
         font = FONT_PATH,
         fontSize = 18,
         wrap = true,
-        maxWidth = 620,
+        maxWidth = 720,
         width = 'fill',
         color = SUB,
     }))
-    wrap_box:addChild(wrap_content)
-    content:addChild(wrap_box)
 
     return root
 end
 
 local function build_button_screen()
-    local root = centered_column({ gap = 12 })
-    local content_panel = panel_box(820, 290, 'screen_content_box')
-    local content = Column.new({
-        width = 'fill',
-        height = 'fill',
-        gap = 12,
-        padding = { 20, 20, 20, 20 },
-        align = 'center',
+    local root = screen_root({ gap = 12 })
+    local content = screen_panel({
+        width = 820,
+        height = 290,
+        align = 'stretch',
         justify = 'start',
     })
-    content_panel:addChild(content)
-    root:addChild(content_panel)
-    content:addChild(styled_text('Button Activation And Disabled Behavior', 30))
+    root:addChild(content)
+    content:addChild(Text.new({
+        text = 'Button Activation And Disabled Behavior',
+        font = FONT_PATH,
+        fontSize = 30,
+        color = FG,
+        width = 'fill',
+        textAlign = 'center',
+    }))
 
-    local row = Row.new({ width = 'content', height = 'content', gap = 12, align = 'center', justify = 'center' })
+    local row = Row.new({ width = 'fill', height = 'content', gap = 12, align = 'center', justify = 'center' })
 
+    local btn_a_label = Text.new({
+        text = 'Primary +' .. tostring(demo_state.buttons.a),
+        font = FONT_PATH,
+        fontSize = 18,
+        width = 'fill',
+        textAlign = 'center',
+    })
     local btn_a = Button.new({
         width = 220,
         height = 56,
         onActivate = function()
             demo_state.buttons.a = demo_state.buttons.a + 1
         end,
-        content = Text.new({ text = 'Primary +' .. tostring(demo_state.buttons.a), font = FONT_PATH, fontSize = 18 }),
+        content = centered_fill(btn_a_label),
     })
 
+    local btn_b_label = Text.new({
+        text = 'Secondary +' .. tostring(demo_state.buttons.b),
+        font = FONT_PATH,
+        fontSize = 18,
+        width = 'fill',
+        textAlign = 'center',
+    })
     local btn_b = Button.new({
         width = 220,
         height = 56,
         onActivate = function()
             demo_state.buttons.b = demo_state.buttons.b + 1
         end,
-        content = Text.new({ text = 'Secondary +' .. tostring(demo_state.buttons.b), font = FONT_PATH, fontSize = 18 }),
+        content = centered_fill(btn_b_label),
     })
 
     local disabled = Button.new({
         width = 220,
         height = 56,
         disabled = true,
-        content = Text.new({ text = 'Disabled Button', font = FONT_PATH, fontSize = 18 }),
+        content = centered_text('Disabled Button', 18),
     })
 
     row:addChild(btn_a)
@@ -187,47 +241,56 @@ local function build_button_screen()
     row:addChild(disabled)
     content:addChild(row)
 
-    local note_box = panel_box(760, 56)
+    local note_box = panel_box('fill', 56)
     note_box:addChild(Text.new({
         text = 'Press Space while focused for keyboard activation. Release outside keeps activation suppressed.',
         font = FONT_PATH,
         fontSize = 16,
         wrap = true,
-        maxWidth = 740,
-        width = 740,
+        maxWidth = 760,
+        width = 'fill',
         color = SUB,
+        textAlign = 'center',
     }))
     content:addChild(note_box)
 
-    rawset(root, '_demo_button_refs', { btn_a = btn_a, btn_b = btn_b })
+    rawset(root, '_demo_button_refs', {
+        btn_a = btn_a,
+        btn_b = btn_b,
+        btn_a_label = btn_a_label,
+        btn_b_label = btn_b_label,
+    })
     return root
 end
 
 local function build_checkbox_switch_screen()
-    local root = centered_column({ gap = 12 })
-    local content_panel = panel_box(820, 360, 'screen_content_box')
-    local content = Column.new({
-        width = 'fill',
-        height = 'fill',
-        gap = 12,
-        padding = { 20, 20, 20, 20 },
-        align = 'center',
+    local root = screen_root({ gap = 12 })
+    local content = screen_panel({
+        width = 820,
+        height = 360,
+        align = 'stretch',
         justify = 'start',
     })
-    content_panel:addChild(content)
-    root:addChild(content_panel)
-    content:addChild(styled_text('Checkbox And Switch', 30))
+    root:addChild(content)
+    content:addChild(Text.new({
+        text = 'Checkbox And Switch',
+        font = FONT_PATH,
+        fontSize = 30,
+        color = FG,
+        width = 'fill',
+        textAlign = 'center',
+    }))
 
-    local row = Row.new({ width = 'content', height = 'content', gap = 24, align = 'start', justify = 'center' })
+    local row = Row.new({ width = 'fill', height = 'content', gap = 24, align = 'start', justify = 'center' })
 
-    local left = Column.new({ width = 360, height = 'content', gap = 8 })
+    local left = Column.new({ width = 360, height = 'content', gap = 8, align = 'center', justify = 'start' })
     left:addChild(styled_text('Checkboxes', 22))
     left:addChild(Checkbox.new({ width = 320, height = 42, label = 'Unchecked' }))
     left:addChild(Checkbox.new({ width = 320, height = 42, checked = 'checked', onCheckedChange = function() end, label = 'Checked (controlled)' }))
     left:addChild(Checkbox.new({ width = 320, height = 42, checked = 'indeterminate', onCheckedChange = function() end, label = 'Indeterminate (controlled)' }))
     left:addChild(Checkbox.new({ width = 320, height = 42, disabled = true, label = 'Disabled' }))
 
-    local right = Column.new({ width = 360, height = 'content', gap = 8 })
+    local right = Column.new({ width = 360, height = 'content', gap = 8, align = 'center', justify = 'start' })
     right:addChild(styled_text('Switches', 22))
     right:addChild(Switch.new({ width = 320, height = 42, label = 'Off' }))
     right:addChild(Switch.new({ width = 320, height = 42, checked = true, onCheckedChange = function() end, label = 'On (controlled)' }))
@@ -242,18 +305,14 @@ local function build_checkbox_switch_screen()
 end
 
 local function build_text_input_screen()
-    local root = centered_column({ gap = 12 })
-    local content_panel = panel_box(820, 440, 'screen_content_box')
-    local content = Column.new({
-        width = 'fill',
-        height = 'fill',
-        gap = 12,
-        padding = { 20, 20, 20, 20 },
+    local root = screen_root({ gap = 12 })
+    local content = screen_panel({
+        width = 820,
+        height = 440,
         align = 'center',
         justify = 'start',
     })
-    content_panel:addChild(content)
-    root:addChild(content_panel)
+    root:addChild(content)
     content:addChild(styled_text('TextInput Scenarios', 30))
 
     content:addChild(TextInput.new({ width = 520, height = 44, placeholder = 'Type here...', font = FONT_PATH, fontSize = 18 }))
@@ -263,15 +322,16 @@ local function build_text_input_screen()
     content:addChild(TextInput.new({ width = 520, height = 44, readOnly = true, value = 'Read only', onValueChange = function() end, font = FONT_PATH, fontSize = 18 }))
     content:addChild(TextInput.new({ width = 520, height = 44, submitBehavior = 'submit', onSubmit = function(v) demo_state.input_log = 'submit: ' .. tostring(v) end, placeholder = 'Submit on Enter', font = FONT_PATH, fontSize = 18 }))
 
-    local log_box = panel_box(760, 44)
+    local log_box = panel_box('fill', 44)
     log_box:addChild(Text.new({
         text = 'Log: ' .. (demo_state.input_log or ''),
         font = FONT_PATH,
         fontSize = 16,
         color = SUB,
         wrap = true,
-        maxWidth = 740,
-        width = 740,
+        maxWidth = 760,
+        width = 'fill',
+        textAlign = 'center',
     }))
     content:addChild(log_box)
 
@@ -279,21 +339,24 @@ local function build_text_input_screen()
 end
 
 local function build_text_area_screen()
-    local root = centered_column({ gap = 12 })
-    local content_panel = panel_box(880, 410, 'screen_content_box')
-    local content = Column.new({
-        width = 'fill',
-        height = 'fill',
-        gap = 12,
-        padding = { 20, 20, 20, 20 },
-        align = 'center',
+    local root = screen_root({ gap = 12 })
+    local content = screen_panel({
+        width = 880,
+        height = 410,
+        align = 'stretch',
         justify = 'start',
     })
-    content_panel:addChild(content)
-    root:addChild(content_panel)
-    content:addChild(styled_text('TextArea Scenarios', 30))
+    root:addChild(content)
+    content:addChild(Text.new({
+        text = 'TextArea Scenarios',
+        font = FONT_PATH,
+        fontSize = 30,
+        color = FG,
+        width = 'fill',
+        textAlign = 'center',
+    }))
 
-    local row = Row.new({ width = 'content', height = 'content', gap = 16, align = 'start', justify = 'center' })
+    local row = Row.new({ width = 'fill', height = 'content', gap = 16, align = 'start', justify = 'center' })
 
     local left = TextArea.new({
         width = 560,
@@ -326,22 +389,25 @@ local function build_text_area_screen()
 end
 
 local function build_tabs_screen()
-    local root = centered_column({ gap = 12 })
-    local content_panel = panel_box(860, 560, 'screen_content_box')
-    local content = Column.new({
-        width = 'fill',
-        height = 'fill',
-        gap = 12,
-        padding = { 20, 20, 20, 20 },
-        align = 'center',
+    local root = screen_root({ gap = 12 })
+    local content = screen_panel({
+        width = 860,
+        height = 560,
+        align = 'stretch',
         justify = 'start',
     })
-    content_panel:addChild(content)
-    root:addChild(content_panel)
-    content:addChild(styled_text('Tabs (Manual Activation)', 30))
+    root:addChild(content)
+    content:addChild(Text.new({
+        text = 'Tabs (Manual Activation)',
+        font = FONT_PATH,
+        fontSize = 30,
+        color = FG,
+        width = 'fill',
+        textAlign = 'center',
+    }))
 
     local tabs = Tabs.new({
-        width = 820,
+        width = 'fill',
         height = 440,
         value = demo_state.tabs_value,
         onValueChange = function(v)
@@ -354,13 +420,19 @@ local function build_tabs_screen()
         disabledValues = demo_state.tabs_disabled,
     })
 
-    tabs:_register_tab('home', styled_text('Home', 16), styled_text('Home panel content', 20))
-    tabs:_register_tab('settings', styled_text('Settings', 16), styled_text('Settings panel content', 20))
-    tabs:_register_tab('profile', styled_text('Profile', 16), styled_text('Profile panel content', 20))
+    tabs:_register_tab('home', centered_text('Home', 16), centered_text('Home panel content', 20))
+    tabs:_register_tab('settings', centered_text('Settings', 16), centered_text('Settings panel content', 20))
+    tabs:_register_tab('profile', centered_text('Profile', 16), centered_text('Profile panel content', 20))
+    tabs:_register_tab('billing', centered_text('Billing', 16), centered_text('Billing panel content', 20))
+    tabs:_register_tab('activity', centered_text('Activity', 16), centered_text('Activity panel content', 20))
+    tabs:_register_tab('security', centered_text('Security', 16), centered_text('Security panel content', 20))
+    tabs:_register_tab('notifications', centered_text('Notifications', 16), centered_text('Notifications panel content', 20))
+    tabs:_register_tab('members', centered_text('Members', 16), centered_text('Members panel content', 20))
 
     content:addChild(tabs)
-    content:addChild(Text.new({ text = 'Press D to toggle disabled "settings" tab', font = FONT_PATH, fontSize = 16, color = SUB, width = 820, textAlign = 'center' }))
+    content:addChild(Text.new({ text = 'Press D to toggle disabled "settings" tab', font = FONT_PATH, fontSize = 16, color = SUB, width = 'fill', textAlign = 'center' }))
 
+    rawset(root, '_demo_tabs_ref', tabs)
     return root
 end
 
@@ -377,19 +449,9 @@ local function build_demo()
     if stage then stage:destroy() end
     local w, h = love.graphics.getDimensions()
     stage = Stage.new({ width = w, height = h })
-    local frame_w = math.min(FRAME_MAX_W, math.max(360, w - 40))
-    local frame_h = math.min(FRAME_MAX_H, math.max(360, h - 80))
-
-    local frame = Drawable({
-        tag = 'demo_frame',
-        width = frame_w,
-        height = frame_h,
-        x = math.floor((w - frame_w) * 0.5),
-        y = math.floor((h - frame_h) * 0.5),
-    })
     local root = builders[active]()
-    frame:addChild(root)
-    stage.baseSceneLayer:addChild(frame)
+    stage.baseSceneLayer:addChild(root)
+    stage:update(0)
 end
 
 local function draw_control_node(g, node)
@@ -554,13 +616,6 @@ local function draw_control_node(g, node)
         return
     end
 
-    if (ev and ev.tag) == 'demo_frame' then
-        g.setColor({ 0.11, 0.12, 0.16, 1 })
-        g.rectangle('fill', bounds.x, bounds.y, bounds.width, bounds.height, 14, 14)
-        g.setColor(BORDER)
-        g.rectangle('line', bounds.x, bounds.y, bounds.width, bounds.height, 14, 14)
-        return
-    end
 end
 
 function love.load()
@@ -576,32 +631,37 @@ function love.update(dt)
     end
 
     if stage and not rawget(stage, '_destroyed') then
-        stage:update(dt)
-
         if active == 2 then
-            local frame = (rawget(stage.baseSceneLayer, '_children') or {})[1]
-            local root = frame and (rawget(frame, '_children') or {})[1]
+            local root = (rawget(stage.baseSceneLayer, '_children') or {})[1]
             if root and rawget(root, '_demo_button_refs') then
                 local refs = rawget(root, '_demo_button_refs')
-                if refs.btn_a and refs.btn_a._content_slot then
-                    local c = (rawget(refs.btn_a._content_slot, '_children') or {})[1]
-                    if c and rawget(c, '_ui_text_control') then
-                        c:setText('Primary +' .. tostring(demo_state.buttons.a))
-                    end
+                if refs.btn_a_label and rawget(refs.btn_a_label, '_ui_text_control') then
+                    refs.btn_a_label:setText('Primary +' .. tostring(demo_state.buttons.a))
                 end
-                if refs.btn_b and refs.btn_b._content_slot then
-                    local c = (rawget(refs.btn_b._content_slot, '_children') or {})[1]
-                    if c and rawget(c, '_ui_text_control') then
-                        c:setText('Secondary +' .. tostring(demo_state.buttons.b))
-                    end
+                if refs.btn_b_label and rawget(refs.btn_b_label, '_ui_text_control') then
+                    refs.btn_b_label:setText('Secondary +' .. tostring(demo_state.buttons.b))
                 end
             end
         end
+
+        if active == 6 then
+            local root = (rawget(stage.baseSceneLayer, '_children') or {})[1]
+            local tabs = root and rawget(root, '_demo_tabs_ref')
+            if tabs ~= nil then
+                tabs.value = demo_state.tabs_value
+            end
+        end
+
+        stage:update(dt)
     end
 end
 
 function love.draw()
     if not stage or rawget(stage, '_destroyed') then return end
+
+    if not rawget(stage, '_update_ran') then
+        stage:update(0)
+    end
 
     local g = love.graphics
     local w, h = g.getDimensions()
