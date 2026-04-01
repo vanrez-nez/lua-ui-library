@@ -51,6 +51,7 @@ The component-model rules in Section 3A of [UI Foundation Specification](./ui-fo
 | Control | Tier | Sole responsibility | Explicitly does not manage | Boundary type |
 |---------|------|---------------------|----------------------------|---------------|
 | `Text` | Primitive | text measurement, wrapping, alignment, and text-style resolution for supplied content | editing, selection, activation, text-entry lifecycle | fixed |
+| `Image` | Primitive | image-resource presentation, optional source-region extraction, fit resolution, sampling policy, and alignment within the assigned box | activation semantics, built-in animation playback, tiling/wrap behavior, async loading lifecycle, arbitrary pixel mutation APIs | fixed |
 | `Button` | Composite | activation semantics around one content slot, including disabled, hover, press, and focus behavior | business action side effects, nested interactive coordination, application state ownership | extensible through documented slots only |
 | `Checkbox` | Composite | checked, unchecked, and indeterminate state requests plus associated activation semantics | external state storage, form submission orchestration, nested interactive content | extensible through documented slots only |
 | `Radio` | Composite | activation semantics for one single-selection option coordinated by an owning `RadioGroup`, including disabled, focus, and associated-label behavior | independent selected-state ownership, multi-select behavior, business action side effects | extensible through documented slots only |
@@ -70,6 +71,7 @@ The component-model rules in Section 3A of [UI Foundation Specification](./ui-fo
 Additional control identity rules:
 
 - `TextArea` inherits behavior from `TextInput` but remains a distinct component identity with its own multiline and scroll contract.
+- `Image` is a distinct presentational primitive with optional source-region extraction. It is not an alias of `Drawable` or a sprite-animation system.
 - `Radio` is not an alias of `Checkbox`; it is a separate single-selection option control coordinated by one owning `RadioGroup`.
 - `RadioGroup` is not a generic layout container; it is a state-owning compound root with required descendant `Radio` registration.
 - `Option` is not a generic list item; it is a selectable descendant coordinated by one owning `Select`.
@@ -90,6 +92,7 @@ The composition-grammar rules in Section 3B of [UI Foundation Specification](./u
 | Control | Allowed parents | Allowed children or fillers | Prohibited children or fillers | Required children or slots | Standalone validity |
 |---------|-----------------|-----------------------------|-------------------------------|----------------------------|--------------------|
 | `Text` | any component with an open descendant slot or text-bearing content slot | none | all child nodes | none | valid |
+| `Image` | any component with an open descendant slot or presentational content slot | none | all child nodes | none | valid |
 | `Button` | any component with an open descendant slot or action-bearing slot | zero or one `content` subtree composed of text or drawable structure | nested interactive controls inside `content` | `content` slot exists as part of the contract, but it may be empty | valid |
 | `Checkbox` | any component with an open descendant slot or action-bearing slot | optional `label`; optional `description` | nested interactive controls inside label or description regions | none | valid |
 | `Radio` | only an owning `RadioGroup` root or its required radio container region when such a region is used internally | optional `label`; optional `description` | placement outside an owning `RadioGroup`; nested interactive controls inside label or description regions | `value` prop on the `Radio` instance | invalid when detached from an owning `RadioGroup` |
@@ -109,6 +112,7 @@ The composition-grammar rules in Section 3B of [UI Foundation Specification](./u
 Validity notes:
 
 - `Button`, `Checkbox`, and `Switch` are compositionally open only through their documented content-bearing regions.
+- `Image` exposes named presentational parts but no consumer-fillable descendant slots in this revision.
 - `Radio` is compositionally open only through its documented `label` and `description` regions and must belong to exactly one owning `RadioGroup`.
 - `RadioGroup` validity is re-evaluated whenever registered radios are added, removed, disabled, or change value.
 - `Slider` exposes named presentational parts but no consumer-fillable descendant slots in this revision.
@@ -123,6 +127,7 @@ Validity notes:
 
 | Root | Required sub-parts | Optional sub-parts | Independent meaning outside the root | Structural communication mechanism | Sub-part set |
 |------|--------------------|--------------------|--------------------------------------|-----------------------------------|--------------|
+| `Image` | `root`, `content` | none | `content` is meaningful only within `Image` | root-owned source and fit resolution | closed |
 | `Button` | `root`, `content` | `indicator` | `content` may contain independent components; `indicator` has no independent meaning outside `Button` | root-owned slot resolution for `content` | closed except for the open `content` slot |
 | `Checkbox` | `root`, `box` | `indicator`, `label`, `description` | `label` and `description` may contain independent components; `box` and `indicator` are meaningful only within `Checkbox` | root-owned role resolution of label-participation and activation region | closed except for `label` and `description` content |
 | `Radio` | `root`, `indicator` | `label`, `description` | `label` and `description` may contain independent components; `indicator` is meaningful only within `Radio` | structural registration to the owning `RadioGroup` root by `value` and role | closed except for `label` and `description` content |
@@ -180,6 +185,7 @@ That shared interaction state:
 | Control | Public state property | Category | Ownership mode | Controlled signal | Uncontrolled default |
 |---------|-----------------------|----------|----------------|-------------------|----------------------|
 | `Text` | `text` content | application state | consumer-owned only | `text` prop | none; `Text` does not own mutable public text state |
+| `Image` | `source` | application state | consumer-owned only | `source` prop | none; `Image` does not own mutable public source state |
 | `Button` | `pressed` | interaction state | negotiated | `pressed` with `onPressedChange` | `false` |
 | `Checkbox` | `checked` | application state | negotiated | `checked` with `onCheckedChange` | `unchecked` |
 | `RadioGroup` | `value` | application state | negotiated | `value` with `onValueChange` | first enabled registered radio value |
@@ -234,6 +240,7 @@ Composition-state rules for concrete controls:
 | Control | Stable derived state | Derivation rule |
 |---------|----------------------|-----------------|
 | `Button` | effective pressed state | controlled `pressed` when present, otherwise library-owned press interaction state |
+| `Image` | effective source region, effective intrinsic size, effective fit geometry | resolve the full source when `sourceRegion` is absent; otherwise resolve the clipped source region and derive intrinsic size from that resolved region; place the resulting image according to fit and alignment |
 | `Checkbox` | effective checked state | controlled `checked` when present, otherwise the uncontrolled checked value after toggle-order resolution |
 | `Radio` | effective selected state, effective disabled state within the group | selected when its `value` matches the owning `RadioGroup` effective value; disabled when the radio is disabled directly or its value is disabled by group policy |
 | `RadioGroup` | effective selected value, focused radio candidate | controlled `value` when present, otherwise the first enabled registered radio value after registration and invalid-value repair |
@@ -264,6 +271,7 @@ The interaction-model rules in Section 3D of [UI Foundation Specification](./ui-
 | Control | Logical inputs recognized | Public callback or event surface | Default action when not cancelled |
 |---------|---------------------------|----------------------------------|-----------------------------------|
 | `Text` | none | none | no interaction default action |
+| `Image` | none | none | no interaction default action |
 | `Button` | `Activate`, pointer-derived hover transitions | `onActivate`, `onPressedChange` when `pressed` is exposed | request pressed-state changes and dispatch activation |
 | `Checkbox` | `Activate` | `onCheckedChange` | resolve the next checked state from `toggleOrder` and propose it |
 | `Radio` | `Activate` | `onValueChange` on the owning `RadioGroup` | propose the radio's value through the owning group when the target radio is enabled and not already selected |
@@ -284,6 +292,7 @@ The interaction-model rules in Section 3D of [UI Foundation Specification](./ui-
 
 | Control or family | Pointer-focus coupling | Focus movement responsibility | Notes |
 |-------------------|------------------------|-------------------------------|-------|
+| `Image` | no pointer-focus coupling | no focus movement responsibility in this revision | the control is presentational and non-interactive |
 | `Button`, `Checkbox`, `Switch` | focuses before default action | library-managed through ordinary focus traversal | pointer or touch activation may establish focus on the target control |
 | `RadioGroup` and registered `Radio` controls | focus moves among enabled radios in group order; activation may establish focus on the target radio before value proposal | library-managed roving focus within the owning group | directional focus movement alone must not change the group's selected value |
 | `Slider` | focuses before drag or keyboard adjustment | library-managed through ordinary focus traversal | directional keys adjust the value when focused; pointer drag may establish focus before value changes |
@@ -326,6 +335,7 @@ The behavioral-completeness rules in Section 3E of [UI Foundation Specification]
 | Control | No-content or empty case | Library-provided empty state | Observable empty-state transition |
 |---------|---------------------------|------------------------------|-----------------------------------|
 | `Text` | empty string renders nothing and remains valid | none | no |
+| `Image` | a valid source with or without a source region remains valid; out-of-bounds source regions degrade by clipping with warning | none | yes, when the resolved source region or fit result changes |
 | `Button` | empty `content` slot remains valid and interactive | none | no |
 | `Checkbox` and `Switch` | absent `label` or `description` remains valid and interactive | none | no |
 | `Slider` | any finite range and value pair remains valid after clamping and optional step quantization | none | yes, when the clamped or stepped value changes |
@@ -345,6 +355,7 @@ The behavioral-completeness rules in Section 3E of [UI Foundation Specification]
 | Control or family | Default overflow behavior | Minimum functional contract | Response to post-mount constraint changes |
 |-------------------|---------------------------|-----------------------------|-------------------------------------------|
 | `Text` | wrap when configured, otherwise overflow without clipping unless an ancestor clips | remains valid at zero or tiny width but may render no visible glyphs | re-measure on the next draw preparation |
+| `Image` | content may letterbox, crop, stretch, or render at intrinsic size according to fit policy; no implicit scroll region is created | the image remains renderable at any finite size, though visible pixels may be minimal | recompute source-region bounds, fit geometry, and alignment on the next pass |
 | `Button`, `Checkbox`, `Radio`, `Switch` | content may visually overflow, clip through ancestors, or compress according to skin geometry; no implicit scroll region is created | activation region remains valid even when text or indicator art no longer fits fully | recompute part layout from the latest bounds on the next pass |
 | `RadioGroup` | group overflow follows the consumer-owned layout containing its registered radios; no implicit scroll region is created | selection, focus movement, and activation remain valid so long as one enabled radio exists | re-resolve radio ordering, roving focus targets, and selected-value repair on the next pass |
 | `Slider` | track and thumb may visually compress according to current bounds; no implicit scroll region is created | drag, tap-to-set, and keyboard adjustment remain valid so long as the track and thumb exist | recompute normalized thumb geometry, orientation-specific placement, and stepped value mapping on the next pass |
@@ -360,6 +371,7 @@ The behavioral-completeness rules in Section 3E of [UI Foundation Specification]
 
 | Control or family | Queueing or arbitration policy | Consistency guarantee |
 |-------------------|--------------------------------|-----------------------|
+| `Image` | rapid authoritative source or size changes are processed in arrival order with no interactive side effect | visible output remains coherent with the latest committed source, region, and fit inputs |
 | `Button`, `Checkbox`, `Radio`, `Switch` | each activation attempt is processed independently in arrival order; gesture ownership determines which pointer sequence may finish a press or drag | committed state remains coherent after each completed activation or drag release |
 | `RadioGroup` | navigation and activation inputs are processed independently in arrival order; navigation never retroactively changes the selected value | roving focus and selected value remain coherent and do not diverge within one `RadioGroup` root |
 | `Slider` | drag movement, repeated key adjustment, and track activation are processed in arrival order with the latest uncancelled proposal winning | the committed value remains coherent with the latest clamped and stepped adjustment |
@@ -376,6 +388,7 @@ No control in this revision declares a built-in throttle or debounce policy.
 
 | Control or family | Interrupted activity | Resolution rule |
 |-------------------|----------------------|-----------------|
+| `Image` | source, source-region, or fit changes during active rendering | resolve to the latest authoritative source, clipped region, and fit result on the next draw preparation pass |
 | `Button` | press interaction interrupted by disable, release outside, or destruction | clear press ownership, emit no activation, and leave only the last committed authoritative pressed value |
 | `Checkbox` and `Switch` | activation or drag interrupted by disable, focus loss, or destruction | abandon the in-progress gesture; only a completed uncancelled activation or drag release may propose a new checked value |
 | `Radio` and `RadioGroup` | activation or roving-focus movement interrupted by disable, radio removal, or destruction | abandon the obsolete target reference; preserve the last authoritative selected value or repair to the next enabled radio when the selected radio becomes invalid |
@@ -405,6 +418,7 @@ The contract-stability rules in Section 3F of [UI Foundation Specification](./ui
 | Control | Tier | Current tier since | Deprecated? | Removal version | Replacement |
 |---------|------|--------------------|-------------|-----------------|-------------|
 | `Text` | `Stable` | `0.1.0` | no | n/a | n/a |
+| `Image` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `Button` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `Checkbox` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `Radio` | `Stable` | `0.1.0` | no | n/a | n/a |
@@ -428,6 +442,7 @@ Unless this section explicitly says otherwise, every documented control surface 
 | Control | Documented props and public state | Documented callbacks and event payload contracts | Documented slots or compound regions | Documented named visual parts | Undocumented helpers and private coordination state |
 |---------|-----------------------------------|--------------------------------------------------|--------------------------------------|-------------------------------|-----------------------------------------------------|
 | `Text` | `Stable` since `0.1.0` | no public callback surface in this revision | none | `Stable` since `0.1.0` | `Internal` |
+| `Image` | `Stable` since `0.1.0` | no public callback surface in this revision | no consumer-fillable descendant slots in this revision | `Stable` since `0.1.0` | `Internal` |
 | `Button` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `content` slot is `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
 | `Checkbox` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `label` and `description` regions are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
 | `Radio` | `Stable` since `0.1.0` | coordinated through `RadioGroup` `onValueChange`, stable since `0.1.0` | `label` and `description` regions are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
@@ -460,7 +475,7 @@ The failure-semantics rules in Section 3G of [UI Foundation Specification](./ui-
 
 | Category | Typical control conditions | Detectable point | Failure mode | Control-specific rule |
 |----------|----------------------------|------------------|--------------|-----------------------|
-| structural invalidity | `Tabs` trigger/panel mismatches, duplicate trigger values, `RadioGroup` duplicate or missing radio values, `Select` duplicate or missing option values, `Modal`, `Alert`, or `Notification` detached from the overlay layer, prohibited child nodes in `Text`, `TextInput`, or `TextArea` | when the control structure is mounted, registered, or next reconciled | `Hard failure` | no control-specific structural repair is attempted |
+| structural invalidity | `Tabs` trigger/panel mismatches, duplicate trigger values, `RadioGroup` duplicate or missing radio values, `Select` duplicate or missing option values, `Modal`, `Alert`, or `Notification` detached from the overlay layer, prohibited child nodes in `Text`, `Image`, `TextInput`, or `TextArea` | when the control structure is mounted, registered, or next reconciled | `Hard failure` | no control-specific structural repair is attempted |
 | type or value invalidity | negative `dragThreshold`, `maxLength < 0`, invalid `toggleOrder`, unsupported `activationMode`, missing required font or skin asset where no fallback exists | immediately when the value is set if knowable, otherwise on first use | `Hard failure` unless the control section explicitly names a fallback | controls do not coerce invalid values into a nearby valid value unless the contract says so |
 | state contract violation | mutable controlled value without the required change callback, incomplete controlled selection pair, controlled/uncontrolled ownership switch after first commit | when control ownership is reconciled | `Hard failure` | the control preserves the last valid committed state and rejects the invalid ownership transition |
 | lifecycle violation | no stable imperative control method surface exists in this revision | n/a | no separate control-specific surface in this revision | runtime-managed destruction behavior is covered by Behavioral Completeness, not failure semantics |
@@ -473,6 +488,7 @@ Control-specific fallback rules in this revision:
 
 | Condition | Mode | Fallback behavior | Contract status |
 |-----------|------|-------------------|-----------------|
+| source region extends outside the available image bounds in `Image` | `Soft failure with signal` | clip the region to the available source bounds and emit a warning diagnostic | stable degraded-but-valid output |
 | text insertion beyond `maxLength` in `TextInput` or `TextArea` | `Silent fallback` | truncate the insertion to the greatest prefix that still satisfies `maxLength`; emit no diagnostic | stable degraded-but-valid output |
 | missing optional label, description, message, or content region where the composition contract permits omission | not a failure condition | render the region as absent | governed by Behavioral Completeness rather than failure semantics |
 | missing optional visual token or skin input when the visual contract defines a fallback | `Silent fallback` | use the fallback defined by the foundation visual contract | stable degraded-but-valid output |
@@ -570,7 +586,92 @@ Trace note: clarified `textVariant` so Phase 8 theming can vary text presentatio
 - A `Text` node whose content exceeds its bounds when wrapping is disabled must overflow without clipping unless `clipChildren = true` is set on the parent.
 - A `Text` referencing a missing or invalid font must fail deterministically.
 
-### 6.2 Button
+### 6.2 Image
+
+**Purpose and contract**
+
+`Image` is a presentational primitive that renders an image resource or an extracted source region from that resource. It owns source-region resolution, intrinsic-size derivation, fit behavior, alignment inside the assigned box, and sampling policy.
+
+`Image` must:
+
+- render a resolved image resource
+- support optional source-region extraction from the source image
+- derive intrinsic size from the resolved source region
+- support fit behavior within the assigned layout box
+- support horizontal and vertical content alignment
+- remain non-interactive in this revision
+
+`Image` must not:
+
+- expose built-in animation playback
+- expose native file-loading lifecycle as part of the control contract
+- expose public tiling or wrap behavior in this revision
+
+**Anatomy**
+
+- `root`: the image subtree root. Required.
+- `content`: the resolved image presentation region. Required.
+
+**Props and API surface**
+
+- `source`
+- `sourceRegion: { x, y, width, height } | nil`
+- `fit: "contain" | "cover" | "stretch" | "none"`
+- `alignX: "start" | "center" | "end"`
+- `alignY: "start" | "center" | "end"`
+- `sampling: "nearest" | "linear"`
+- `decorative: boolean`
+- `accessibleName: string | nil`
+
+Default values:
+
+- `sourceRegion = nil`
+- `fit = "contain"`
+- `alignX = "center"`
+- `alignY = "center"`
+- `sampling = "linear"`
+- `decorative = false`
+
+When `sourceRegion` is omitted, the full source image is used. When `sourceRegion` is present, intrinsic sizing and fit behavior resolve against the effective source region rather than the full source bounds.
+
+**State model**
+
+STATE ready
+
+  ENTRY:
+    1. A valid source image is available.
+    2. The effective source region is resolved from `sourceRegion` or the full source bounds.
+    3. The resolved image geometry is placed according to `fit`, `alignX`, and `alignY`.
+
+  TRANSITIONS:
+    ON source, source-region, fit, alignment, or bounds change:
+      1. Re-resolve the effective source region.
+      2. Clip the requested source region to available source bounds when needed.
+      3. Emit a warning diagnostic when clipping was required.
+      4. Recompute intrinsic size and fit geometry.
+      → ready
+
+ERRORS:
+  - missing or invalid `source` → invalid configuration and deterministic failure.
+  - `sourceRegion.width <= 0` or `sourceRegion.height <= 0` → invalid configuration and deterministic failure.
+  - `fit`, `alignX`, `alignY`, or `sampling` outside the documented enum sets → invalid configuration and deterministic failure.
+
+**Accessibility contract**
+
+`Image` must support decorative and named-image usage. When `decorative = true`, the image contributes no semantic accessible name. When `decorative = false`, the consumer is responsible for supplying a meaningful `accessibleName`. `Image` does not participate in focus traversal in this revision.
+
+**Composition rules**
+
+`Image` is a closed presentational primitive with no consumer-fillable descendant slots in this revision. It may be placed inside any component that permits presentational descendants.
+
+**Behavioral edge cases**
+
+- An `Image` whose requested `sourceRegion` extends outside the available source bounds must clip the region to the valid bounds and emit a warning diagnostic.
+- An `Image` with `fit = "none"` renders at intrinsic size derived from the effective source region.
+- An `Image` with `fit = "cover"` may crop rendered pixels to satisfy cover behavior.
+- An `Image` at zero or tiny size must remain valid, though visible pixels may be minimal or absent.
+
+### 6.3 Button
 
 **Purpose and contract**
 
@@ -681,7 +782,7 @@ ERRORS:
 - A `Button` with an empty content slot must remain valid and functional.
 - A press gesture that begins inside the target and ends outside must not dispatch activation.
 
-### 6.3 Checkbox
+### 6.4 Checkbox
 
 **Purpose and contract**
 
@@ -767,7 +868,7 @@ ERRORS:
 - When `toggleOrder` is nil and the current state is `indeterminate`, the next state must be `checked` using the default order.
 - A `Checkbox` receiving an activation gesture that begins inside the hit region and ends outside must not change state.
 
-### 6.4 Radio
+### 6.5 Radio
 
 **Purpose and contract**
 
@@ -837,7 +938,7 @@ ERRORS:
 - A selected `Radio` receiving activation must not emit a second selection proposal.
 - A `Radio` with no label must remain valid and functional.
 
-### 6.5 RadioGroup
+### 6.6 RadioGroup
 
 **Purpose and contract**
 
@@ -920,7 +1021,7 @@ ERRORS:
 - When the selected `value` does not match any enabled radio, the group must repair selection to the next enabled radio by sibling order and must not fail.
 - When all registered radios are disabled, no enabled selected value can be resolved. The group must remain structurally valid and must not fail.
 
-### 6.6 Switch
+### 6.7 Switch
 
 **Purpose and contract**
 
@@ -1018,7 +1119,7 @@ ERRORS:
 - A drag gesture that crosses the midpoint but does not exceed `dragThreshold` must resolve according to `snapBehavior`: `"nearest"` snaps to the closer end, `"directional"` commits based on the direction of the final gesture movement.
 - A drag gesture that begins inside the track and ends outside must still resolve according to the release position relative to the track.
 
-### 6.7 Slider
+### 6.8 Slider
 
 **Purpose and contract**
 
@@ -1132,7 +1233,7 @@ ERRORS:
 - A `Slider` with `step = nil` must adjust continuously within the declared range.
 - A `Slider` at zero or tiny size must remain valid, though the thumb may render minimally or movement precision may be visually limited.
 
-### 6.8 ProgressBar
+### 6.9 ProgressBar
 
 **Purpose and contract**
 
@@ -1227,7 +1328,7 @@ ERRORS:
 - A `ProgressBar` with `indeterminate = true` must remain valid regardless of `value`.
 - A `ProgressBar` at zero or tiny size must remain valid, though the indicator may render minimally or not visibly.
 
-### 6.9 Option
+### 6.10 Option
 
 **Purpose and contract**
 
@@ -1297,7 +1398,7 @@ ERRORS:
 - In `single` mode, activating the already selected `Option` must not emit a second selection proposal.
 - In `multiple` mode, activating a selected `Option` toggles it out of the selected set.
 
-### 6.10 Select
+### 6.11 Select
 
 **Purpose and contract**
 
@@ -1451,7 +1552,7 @@ ERRORS:
 - Outside activation and escape must close the popup when it is open.
 - When the selected `value` references missing or disabled options, the invalid entries are omitted from the effective selected set and the control must not fail.
 
-### 6.11 TextInput
+### 6.12 TextInput
 
 **Purpose and contract**
 
@@ -1574,7 +1675,7 @@ ERRORS:
 - A paste operation that would cause the value to exceed `maxLength` must truncate the pasted content to fit.
 - A `TextInput` that loses focus while a composition candidate is active must discard the candidate without emitting a value change.
 
-### 6.12 TextArea
+### 6.13 TextArea
 
 **Purpose and contract**
 
@@ -1629,7 +1730,7 @@ ERRORS:
 - A newline insertion command in `TextArea` inserts a newline into the value rather than triggering `onSubmit`.
 - When the content height is less than or equal to the visible area, the scroll region behaves as a non-scrolling container.
 
-### 6.13 Modal
+### 6.14 Modal
 
 **Purpose and contract**
 
@@ -1734,7 +1835,7 @@ ERRORS:
 - A `Modal` with `dismissOnBackdrop = false` must not dismiss when the backdrop receives a pointer event.
 - A `Modal` with `open = false` that receives an explicit close request must take no action.
 
-### 6.14 Alert
+### 6.15 Alert
 
 **Purpose and contract**
 
@@ -1790,7 +1891,7 @@ Trace note: `Alert` is specified through these props and required regions, not t
 - An `Alert` where `initialFocus` references a non-existent action must fall back to the first action in the container.
 - An `Alert` with `variant = "destructive"` must present the destructive variant skin without altering behavior.
 
-### 6.15 Notification
+### 6.16 Notification
 
 **Purpose and contract**
 
@@ -1921,7 +2022,7 @@ Cross-axis alignment uses the documented `align` vocabulary:
 - A `Notification` that closes while stacked with siblings must not leave stale gaps after the next placement pass.
 - A `Notification` must not block pointer interaction outside its own visible hit region.
 
-### 6.16 Tabs
+### 6.17 Tabs
 
 **Purpose and contract**
 
@@ -2041,6 +2142,7 @@ This document stabilizes these control part names used by skins:
 | Control | Stable presentational parts |
 |---------|----------------------------|
 | `Text` | `content` |
+| `Image` | `content` |
 | `Button` | `surface`, `border`, `content`, `indicator` |
 | `Checkbox` | `box`, `indicator`, `label`, `description` |
 | `Radio` | `indicator`, `label`, `description` |
@@ -2062,6 +2164,7 @@ This document stabilizes these control part names used by skins:
 | Control or family | Library-owned visual structure | Shared overridable appearance surface | Consumer-owned surface |
 |-------------------|--------------------------------|--------------------------------------|------------------------|
 | `Text` | existence of one `content` part and text measurement boundary | font selection, color, alignment treatment, wrapping presentation | supplied text content |
+| `Image` | existence of one `content` part and source-region-aware intrinsic measurement boundary | fit treatment, alignment treatment, sampling treatment, decorative-versus-named presentation treatment | supplied image source and optional source region |
 | `Button`, `Checkbox`, `Radio`, `Switch` | required part split between press region and indicators such as `surface`, `box`, `indicator`, `track`, `thumb`, and label-bearing regions | part skins, border treatment, typography, indicator art, focus styling, disabled styling | content supplied through open content-bearing regions |
 | `RadioGroup` | required coordination boundary between the group root and registered radio option roles | group-level spacing and orientation treatment, disabled-option styling, selected-option styling through registered radio parts | radio labels and descriptions supplied through registered radios |
 | `Slider` | required separation of `track` and `thumb` roles | track fill, thumb styling, disabled styling, orientation treatment, focused styling | consumer-supplied value and range |
@@ -2080,6 +2183,7 @@ Trace note: clarified the focus-styling boundary so Phase 8 theming can render f
 
 These priority orders satisfy Section 8.12 of the foundation specification:
 
+- `Image`: no additional stateful skin priority beyond the resolved source and fit result in this revision
 - `Button`: `disabled > pressed > hovered > focused > base`
 - `Checkbox`: `disabled > indeterminate > checked > focused > base`
 - `Radio`: `disabled > selected > focused > base`
@@ -2101,6 +2205,7 @@ The following are structural and therefore stable:
 
 - the presentational part names in Section 8.1
 - required role separation such as `backdrop` versus `surface`, `list` versus `panel`, and `field` versus `caret` and `selection`
+- `Image.content` as the sole presentational region and the existence of optional source-region extraction against the supplied source
 - the existence of indicator-bearing regions such as `Checkbox.indicator`, `Radio.indicator`, `Switch.thumb`, and `Tabs.indicator` when those parts are named by the control contract
 - the required separation of `Slider.track` and `Slider.thumb`
 - the required separation of `ProgressBar.track` and `ProgressBar.indicator`
