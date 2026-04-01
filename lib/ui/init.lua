@@ -10,6 +10,7 @@ return {
     Column = require('lib.ui.layout.column'),
     Flow = require('lib.ui.layout.flow'),
     SafeAreaContainer = require('lib.ui.layout.safe_area_container'),
+    ScrollableContainer = require('lib.ui.scroll.scrollable_container'),
     Scene = require('lib.ui.scene.scene'),
     Stage = require('lib.ui.scene.stage'),
     Composer = require('lib.ui.scene.composer'),
