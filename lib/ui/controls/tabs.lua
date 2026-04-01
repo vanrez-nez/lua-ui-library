@@ -1,5 +1,7 @@
 local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
+local Row = require('lib.ui.layout.row')
+local Column = require('lib.ui.layout.column')
 local ScrollableContainer = require('lib.ui.scroll.scrollable_container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
@@ -165,6 +167,28 @@ local function next_focus_value(self, current, direction)
     return values[next_idx]
 end
 
+local function build_list_layout(orientation)
+    if orientation == 'vertical' then
+        return Column.new({
+            tag = 'tabs_list',
+            width = 'fill',
+            height = 'content',
+            gap = 4,
+            align = 'stretch',
+            justify = 'start',
+        })
+    end
+
+    return Row.new({
+        tag = 'tabs_list',
+        width = 'content',
+        height = 'fill',
+        gap = 4,
+        align = 'stretch',
+        justify = 'start',
+    })
+end
+
 function Tabs:constructor(opts)
     opts = opts or {}
     local drawable_opts = ControlUtils.base_opts(opts, {
@@ -201,23 +225,30 @@ function Tabs:constructor(opts)
     rawset(self, '_trigger_order', {})
 
     local list_root
+    local list_region = build_list_layout(self.orientation)
     if self.listScrollable then
         list_root = ScrollableContainer.new({
             width = 'fill',
             height = 44,
-            scrollXEnabled = true,
-            scrollYEnabled = false,
+            scrollXEnabled = self.orientation == 'horizontal',
+            scrollYEnabled = self.orientation == 'vertical',
             showScrollbars = false,
             momentum = false,
         })
         Container.addChild(self, list_root)
         rawset(self, '_list_root', list_root)
-        rawset(self, '_list_region', list_root.content)
+        list_root.content:addChild(list_region)
+        rawset(self, '_list_region', list_region)
     else
-        list_root = Container({ tag = 'tabs_list', width = 'fill', height = 44, interactive = false })
+        list_root = list_region
+        if self.orientation == 'vertical' then
+            list_root.height = 'content'
+        else
+            list_root.height = 44
+        end
         Container.addChild(self, list_root)
         rawset(self, '_list_root', list_root)
-        rawset(self, '_list_region', list_root)
+        rawset(self, '_list_region', list_region)
     end
 
     local panels = Container({ tag = 'tabs_panels', width = 'fill', height = 'fill', y = 52, interactive = false })
