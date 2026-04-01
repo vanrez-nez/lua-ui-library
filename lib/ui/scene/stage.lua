@@ -1263,6 +1263,24 @@ local function create_pointer_activation_event(self, raw_event, sequence)
     }), release_target, release_path
 end
 
+local function stop_inertial_scroll_in_path(path)
+    if path == nil then
+        return
+    end
+
+    for index = 1, #path do
+        local node = path[index]
+
+        if node ~= nil and rawget(node, '_ui_scrollable_instance') == true and
+            not rawget(node, '_destroyed') then
+            local cancel = rawget(node, '_cancel_momentum') or node._cancel_momentum
+            if Types.is_function(cancel) then
+                cancel(node)
+            end
+        end
+    end
+end
+
 local function create_drag_event(sequence, raw_event, drag_phase)
     if sequence == nil or sequence.target == nil then
         return nil
@@ -2232,6 +2250,7 @@ function Stage:deliverInput(raw_event)
     if intent == 'Activate' then
         if raw_event.kind == 'mousepressed' or raw_event.kind == 'touchpressed' then
             local _, target, path, sequence_id = begin_pointer_sequence(self, raw_event)
+            stop_inertial_scroll_in_path(path)
 
             if sequence_id == 'mouse:1' then
                 update_mouse_hover_target(self, raw_event.x, raw_event.y)

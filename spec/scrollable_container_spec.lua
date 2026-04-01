@@ -258,6 +258,95 @@ local function run_programmatic_scroll_tests()
     stage:destroy()
 end
 
+-- ── Momentum Cancellation Tests ─────────────────────────────────────────────
+
+local function run_momentum_cancellation_tests()
+    local stage = Stage.new({ width = 400, height = 300 })
+
+    local sc = ScrollableContainer.new({
+        width = 200,
+        height = 150,
+        scrollYEnabled = true,
+        momentum = true,
+        overscroll = false,
+    })
+    stage.baseSceneLayer:addChild(sc)
+
+    local tall_content = Container.new({ width = 200, height = 900 })
+    sc.content:addChild(tall_content)
+    stage:update()
+
+    stage:deliverInput({
+        kind = 'wheelmoved',
+        x = 0,
+        y = -1,
+        stageX = 20,
+        stageY = 20,
+    })
+
+    assert_equal(sc:_get_scroll_state(), 'inertial',
+        'Coarse wheel input with momentum should enter inertial state')
+
+    stage:deliverInput({
+        kind = 'mousepressed',
+        x = 20,
+        y = 20,
+        button = 1,
+    })
+
+    assert_equal(sc:_get_scroll_state(), 'idle',
+        'Pointer press should stop inertial scrolling')
+
+    local vx = rawget(sc, '_velocity_x') or 0
+    local vy = rawget(sc, '_velocity_y') or 0
+    assert_near(vx, 0, 1e-6, 'Velocity X should be reset when momentum is cancelled')
+    assert_near(vy, 0, 1e-6, 'Velocity Y should be reset when momentum is cancelled')
+
+    stage:destroy()
+end
+
+-- ── Overscroll Thumb Compression Tests ──────────────────────────────────────
+
+local function run_overscroll_thumb_compression_tests()
+    local stage = Stage.new({ width = 400, height = 300 })
+
+    local sc = ScrollableContainer.new({
+        width = 200,
+        height = 150,
+        scrollYEnabled = true,
+        momentum = false,
+        overscroll = true,
+        showScrollbars = true,
+    })
+    stage.baseSceneLayer:addChild(sc)
+
+    local tall_content = Container.new({ width = 200, height = 900 })
+    sc.content:addChild(tall_content)
+    stage:update()
+
+    local v_thumb = rawget(sc, '_scrollbar_v_thumb')
+    assert_true(v_thumb ~= nil, 'Vertical scrollbar thumb should exist')
+
+    local function thumb_height_for_scroll(scroll_y)
+        rawset(sc, '_scroll_state', 'dragging')
+        rawset(sc, '_scroll_y', scroll_y)
+        stage:update()
+        local ev = rawget(v_thumb, '_effective_values')
+        return (ev and ev.height) or 0
+    end
+
+    local h0 = thumb_height_for_scroll(0)
+    local h1 = thumb_height_for_scroll(-20)
+    local h2 = thumb_height_for_scroll(-60)
+    local h3 = thumb_height_for_scroll(-120)
+
+    assert_true(h1 < h0, 'Thumb should shrink on overscroll')
+    assert_true(h2 < h1, 'Thumb should continue shrinking as overscroll grows')
+    assert_true(h3 < h2, 'Thumb should keep shrinking without early plateau')
+
+    stage:destroy()
+end
+
 -- ── Schema Validation Tests ─────────────────────────────────────────────────
 
 local function run_schema_validation_tests()
@@ -324,6 +413,8 @@ return {
         run_both_axes_disabled_tests()
         run_state_transition_tests()
         run_programmatic_scroll_tests()
+        run_momentum_cancellation_tests()
+        run_overscroll_thumb_compression_tests()
         run_schema_validation_tests()
         run_textarea_boundary_tests()
     end,

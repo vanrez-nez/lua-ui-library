@@ -34,6 +34,7 @@ local OVERSCROLL_SNAP_SPEED   = 0.15
 local SCROLLBAR_SIZE          = 6
 local SCROLLBAR_MIN_THUMB     = 20
 local SCROLLBAR_MARGIN        = 2
+local SCROLLBAR_MIN_OVERSHOOT_THUMB = 2
 local DELTA_EPSILON           = 1e-6
 
 local STATE_IDLE     = 'idle'
@@ -203,6 +204,47 @@ local function update_scrollbar_geometry(self)
         end
     end
 
+    local function compute_thumb_geometry(track_len, viewport_len, content_len, scroll, max_scroll)
+        track_len = max(0, track_len or 0)
+        viewport_len = max(0, viewport_len or 0)
+        content_len = max(0, content_len or 0)
+        max_scroll = max(0, max_scroll or 0)
+
+        if track_len <= 0 then
+            return 0, 0
+        end
+
+        local min_thumb = min(SCROLLBAR_MIN_THUMB, track_len)
+        local base_thumb = max(min_thumb, (viewport_len / max(content_len, 1)) * track_len)
+        base_thumb = clamp(base_thumb, min_thumb, track_len)
+
+        -- Keep thumb inside track while reflecting overscroll by compressing
+        -- thumb size at the active edge. Use a continuous proportion instead
+        -- of a hard linear clamp to avoid early visual plateau during snapback.
+        local function overshoot_thumb_length(overshoot)
+            local mapped_overshoot = overshoot * (track_len / max(viewport_len, 1))
+            local compressed = base_thumb / (1 + (mapped_overshoot / max(base_thumb, 1)))
+            local min_overshoot_thumb = min(SCROLLBAR_MIN_OVERSHOOT_THUMB, track_len)
+            return clamp(compressed, min_overshoot_thumb, track_len)
+        end
+
+        if scroll < 0 then
+            local overshoot = -scroll
+            local thumb_len = overshoot_thumb_length(overshoot)
+            return 0, thumb_len
+        end
+
+        if scroll > max_scroll then
+            local overshoot = scroll - max_scroll
+            local thumb_len = overshoot_thumb_length(overshoot)
+            return max(0, track_len - thumb_len), thumb_len
+        end
+
+        local thumb_pos = max_scroll > 0 and (scroll / max_scroll) * (track_len - base_thumb) or 0
+        thumb_pos = clamp(thumb_pos, 0, max(0, track_len - base_thumb))
+        return thumb_pos, base_thumb
+    end
+
     if not get_public(self, 'showScrollbars') then
         local h_track = rawget(self, '_scrollbar_h_track')
         local h_thumb = rawget(self, '_scrollbar_h_thumb')
@@ -241,9 +283,7 @@ local function update_scrollbar_geometry(self)
         set_node_frame(v_track, v_track_x, v_track_y, SCROLLBAR_SIZE, v_track_h, show_v)
         set_node_frame(v_thumb, 0, nil, SCROLLBAR_SIZE, nil, show_v)
         if show_v then
-            local track_h = v_track_h
-            local thumb_h = max(SCROLLBAR_MIN_THUMB, (vh / ch) * track_h)
-            local thumb_y = max_sy > 0 and (sy / max_sy) * (track_h - thumb_h) or 0
+            local thumb_y, thumb_h = compute_thumb_geometry(v_track_h, vh, ch, sy, max_sy)
             set_node_frame(v_thumb, nil, thumb_y, nil, thumb_h, nil)
         end
     end
@@ -255,9 +295,7 @@ local function update_scrollbar_geometry(self)
         set_node_frame(h_track, h_track_x, h_track_y, h_track_w, SCROLLBAR_SIZE, show_h)
         set_node_frame(h_thumb, nil, 0, nil, SCROLLBAR_SIZE, show_h)
         if show_h then
-            local track_w = h_track_w
-            local thumb_w = max(SCROLLBAR_MIN_THUMB, (vw / cw) * track_w)
-            local thumb_x = max_sx > 0 and (sx / max_sx) * (track_w - thumb_w) or 0
+            local thumb_x, thumb_w = compute_thumb_geometry(h_track_w, vw, cw, sx, max_sx)
             set_node_frame(h_thumb, thumb_x, nil, thumb_w, nil, nil)
         end
     end
@@ -579,8 +617,10 @@ function ScrollableContainer:_wire_scroll_events()
             rawset(self_ref, '_drag_start_y', event.y or 0)
             rawset(self_ref, '_drag_scroll_start_x', rawget(self_ref, '_scroll_x') or 0)
             rawset(self_ref, '_drag_scroll_start_y', rawget(self_ref, '_scroll_y') or 0)
-            rawset(self_ref, '_prev_drag_delta_x', 0)
-            rawset(self_ref, '_prev_drag_delta_y', 0)
+            -- Drag deltas are cumulative from gesture origin; seed previous
+            -- deltas on start so first move uses only incremental motion.
+            rawset(self_ref, '_prev_drag_delta_x', event.deltaX or 0)
+            rawset(self_ref, '_prev_drag_delta_y', event.deltaY or 0)
             record_velocity(self_ref, 0, 0)
             event:stopPropagation()
             return
@@ -599,8 +639,8 @@ function ScrollableContainer:_wire_scroll_events()
             rawset(self_ref, '_prev_drag_delta_y', cur_dy)
 
             local can_overscroll = get_public(self_ref, 'overscroll')
-            apply_scroll(self_ref, dx, dy, can_overscroll)
-            record_velocity(self_ref, dx, dy)
+            local consumed_x, consumed_y = apply_scroll(self_ref, dx, dy, can_overscroll)
+            record_velocity(self_ref, consumed_x, consumed_y)
             event:stopPropagation()
             return
         end
@@ -740,6 +780,22 @@ end
 
 function ScrollableContainer:_get_scroll_state()
     return rawget(self, '_scroll_state') or STATE_IDLE
+end
+
+function ScrollableContainer:_cancel_momentum()
+    if rawget(self, '_scroll_state') ~= STATE_INERTIAL then
+        return self
+    end
+
+    rawset(self, '_velocity_x', 0)
+    rawset(self, '_velocity_y', 0)
+    rawset(self, '_scroll_state', STATE_IDLE)
+    clamp_offsets(self, false)
+    apply_content_offset(self)
+    update_scrollbar_geometry(self)
+    self:invalidate_stage_update_token()
+
+    return self
 end
 
 function ScrollableContainer:_get_content_extent()
