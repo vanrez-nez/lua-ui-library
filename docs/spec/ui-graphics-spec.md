@@ -4,7 +4,7 @@
 
 ## 3. Glossary
 
-All terminology defined in [UI Foundation Specification](./ui-foundation-spec.md) is binding in this document.
+All terminology defined in [UI Foundation Specification](./ui-foundation-spec.md) and [UI Motion Specification](./ui-motion-spec.md) is binding in this document.
 
 `Graphics object`: A first-class library artifact that represents image-source data, a region view over image-source data, or a retained presentational image primitive.
 
@@ -25,7 +25,7 @@ This revision owns the following first-class graphics objects:
 - `Sprite`
 - `Image`
 
-The foundation contracts for render assets, token classes, failure semantics, render effects, theming, and stability remain authoritative and are not redefined here.
+The foundation contracts for render assets, token classes, failure semantics, render effects, theming, motion integration, and stability remain authoritative and are not redefined here.
 
 ## 4A. Graphics Object Classification And Identity
 

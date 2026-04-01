@@ -40,6 +40,18 @@ Changelog:
 
 1. Initial publication of the graphics-object standard for `Texture`, `Atlas`, `Sprite`, and `Image`.
 
+### Motion
+
+| Field | Value |
+|-------|-------|
+| Version | `0.1.0` |
+| Revision type | `additive` |
+| Finalized | `2026-04-01` |
+
+Changelog:
+
+1. Initial publication of the motion integration standard, including motion surfaces, motion phases, motion properties, presets, easing inputs, and motion adapters.
+
 ## 2. Breaking Change Definition
 
 A breaking change is any change to a `Stable` or `Deprecated` surface that requires a consumer to modify usage, assumptions, styling inputs, or tests in order to preserve equivalent documented behavior.

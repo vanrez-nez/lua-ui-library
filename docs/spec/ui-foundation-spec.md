@@ -48,6 +48,10 @@
 
 `Safe area`: The unobstructed region reported by the environment and suitable for critical content placement.
 
+`Anchored overlay`: A non-blocking overlay surface positioned relative to an owning anchor region while remaining constrained by viewport, safe-area, and clipping-fit rules.
+
+`Preferred placement`: The consumer-requested initial side or alignment for an anchored overlay before fallback resolution is applied.
+
 `Disabled`: A state in which a component accepts no input events, does not participate in focus traversal, and suppresses all activation behavior. A disabled component remains visible and retains its position in the tree unless additionally hidden.
 
 `Activation`: The event signaling that a control's primary purpose has been fulfilled. The specific gesture or input sequence constituting activation is defined by the component contract.
@@ -111,7 +115,7 @@ The following artifacts are not components in this revision:
 | `Scene` | Utility | screen-level subtree lifecycle boundary and active/inactive participation | scene registry ownership, navigation policy, sibling scene orchestration | extensible through documented slots only |
 | `Composer` | Utility | scene registration, transition sequencing, scene activation, runtime routing | business navigation decisions, control-local behavior, application data ownership | fixed |
 
-The concrete control boundaries that depend on this taxonomy are defined in [UI Controls Specification](./ui-controls-spec.md). Concrete first-class graphics-object contracts are defined in [UI Graphics Specification](./ui-graphics-spec.md).
+The concrete control boundaries that depend on this taxonomy are defined in [UI Controls Specification](./ui-controls-spec.md). Concrete first-class graphics-object contracts are defined in [UI Graphics Specification](./ui-graphics-spec.md). Motion integration contracts are defined in [UI Motion Specification](./ui-motion-spec.md).
 
 ### 3A.4 Identity Contract
 
@@ -1616,6 +1620,32 @@ For a component with a defined default action:
 2. target listeners fire
 3. bubble listeners fire
 4. if `defaultPrevented = false`, the component default action executes
+
+#### 7.1.4 Anchored overlay placement
+
+When a component contract defines an anchored overlay surface, placement must resolve in two ordered stages:
+
+1. attempt the consumer-declared preferred placement
+2. apply fallback placement resolution when the preferred placement would place required overlay content outside the effective visible region
+
+The effective visible region for anchored-overlay placement is the intersection of:
+
+- the current viewport bounds
+- the current safe area when the owning component contract enables safe-area-aware placement
+- any ancestor clipping region that the anchored overlay is documented to respect
+
+Fallback placement resolution must:
+
+- preserve visual association with the owning anchor region
+- choose a placement that maximizes visible overlay area within the effective visible region
+- prefer same-axis alternatives before cross-axis alternatives when multiple fallback candidates are equally valid
+- allow the final resolved placement to differ from the preferred placement without treating that difference as an error
+
+If no placement allows the overlay to fit fully, the implementation must choose the placement that yields the greatest visible area and the least clipping within the effective visible region.
+
+This section standardizes placement behavior, not one generic public positioning object schema. Concrete props such as `placement`, `align`, `offset`, or fallback-candidate lists remain the responsibility of the owning component contract.
+
+Trace note: anchored overlay placement is standardized here so controls such as `Tooltip` and other anchor-bound popup surfaces can share one fallback-fitting rule without freezing a generic overlay manager or geometry helper API.
 
 ### 7.2 Focus
 

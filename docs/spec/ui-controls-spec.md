@@ -4,7 +4,7 @@
 
 ## 3. Glossary
 
-All terminology defined in [UI Foundation Specification](./ui-foundation-spec.md) and [UI Graphics Specification](./ui-graphics-spec.md) is binding in this document.
+All terminology defined in [UI Foundation Specification](./ui-foundation-spec.md), [UI Graphics Specification](./ui-graphics-spec.md), and [UI Motion Specification](./ui-motion-spec.md) is binding in this document.
 
 `Control`: An interactive component whose primary purpose is to receive input, expose state, or trigger actions.
 
@@ -36,8 +36,9 @@ This revision owns the following controls:
 - `Modal`
 - `Alert`
 - `Notification`
+- `Tooltip`
 
-The foundation contracts for event propagation, focus, responsive rules, runtime layers, render effects, theming, contract stability, and failure semantics remain authoritative and are not redefined here.
+The foundation contracts for event propagation, focus, responsive rules, runtime layers, render effects, theming, motion integration, contract stability, and failure semantics remain authoritative and are not redefined here.
 
 ## 4A. Control Classification And Identity
 
@@ -66,6 +67,7 @@ The component-model rules in Section 3A of [UI Foundation Specification](./ui-fo
 | `Modal` | Composite | blocking overlay behavior, open-state requests, focus trapping, focus restoration, and backdrop policy | scene navigation, workflow policy, overlay stacking outside the overlay layer contract | extensible through documented slots only |
 | `Alert` | Composite | alert-dialog pattern over `Modal`, including title, message, actions, and initial-focus rules | arbitrary modal taxonomies, non-dismissible flows, action side effects | extensible through documented slots only |
 | `Notification` | Composite | non-blocking overlay status presentation, edge-based placement, timed or explicit dismissal, and stack participation | modal blocking, focus trapping, arbitrary action regions, queue-management policy beyond one instance's contract | extensible through documented slots only |
+| `Tooltip` | Composite | anchored non-modal descriptive overlay presentation, preferred-placement fallback resolution, open-state requests, and trigger-to-surface association | modal blocking, focus trapping, arbitrary interactive popup content, generic overlay-manager policy | extensible through documented slots only |
 
 Additional control identity rules:
 
@@ -78,6 +80,7 @@ Additional control identity rules:
 - `ProgressBar` is a distinct progress-indication control, not an alias of `Drawable` or a theme-only fill helper.
 - `Alert` is not an alias of `Modal`; it is a separate composite with a stronger content contract and a distinct accessible role.
 - `Notification` is not an alias of `Modal` or `Alert`; it is a separate overlay composite with non-modal status behavior and a single content region.
+- `Tooltip` is not an alias of `Notification`, `Select`, or `Modal`; it is a distinct anchored overlay composite with trigger-associated descriptive content.
 - The exact control names in this table are the canonical names for this revision. No aliases are stabilized.
 - Named anatomy parts and stabilized theming parts are contract surface. Internal helper structure that is not named remains an implementation detail.
 
@@ -104,6 +107,7 @@ The composition-grammar rules in Section 3B of [UI Foundation Specification](./u
 | `Modal` | only the `overlay layer` owned by `Stage` | one `surface` subtree containing one `content` subtree; optional consumer close controls | placement in the base scene layer; direct interaction with underlying scene content while mounted | `surface`, `content` | invalid when detached from the overlay layer |
 | `Alert` | only the `overlay layer` owned by `Stage` as a specialized `Modal` | required `title` and `actions`; optional `message`; optional close controls | absence of any action control; placement outside the overlay layer | `title`, `actions` | invalid when detached from the overlay layer |
 | `Notification` | only the `overlay layer` owned by `Stage` | one `surface` subtree containing one `content` subtree; optional library-owned close control when `closeMethod = "button"` | placement in the base scene layer; nested interactive controls inside `content`; backdrop regions; focus-trap ownership | `surface`, `content` | invalid when detached from the overlay layer |
+| `Tooltip` | any component with an open descendant slot or action-bearing slot | exactly one `trigger` subtree in ordinary composition; one overlay-mounted `surface` subtree containing one `content` subtree while open | nested interactive controls inside `content`; backdrop regions; focus-trap ownership; detached tooltip surface with no owning trigger | `trigger`, `content` | valid only when the trigger subtree exists |
 | `Tabs` | any component with an open descendant slot | one `list` region and one `panels` region containing mapped `trigger` and `panel` sub-parts | unmatched triggers or panels; duplicate trigger values; trigger lists without panels or panels without triggers | `list`, `panels`, at least one mapped `trigger`/`panel` pair | valid only when the required pair structure is complete |
 
 Validity notes:
@@ -117,6 +121,7 @@ Validity notes:
 - `Select` validity is re-evaluated whenever registered options are added, removed, disabled, or change value.
 - `TextInput` and `TextArea` expose named presentational parts but no consumer-fillable descendant slots in this revision.
 - `Modal`, `Alert`, and `Notification` are invalid as ordinary descendants of base-scene layout or control containers because their parent relationship is defined by overlay mounting, not ordinary containment.
+- `Tooltip` remains an ordinary descendant through its `trigger` subtree but mounts its owned tooltip surface into the overlay layer while open.
 - `Tabs` validity is re-evaluated whenever trigger or panel structure changes; insertion into an arbitrary ancestor does not preserve validity unless the full `Tabs` contract remains satisfied.
 
 ### 4B.2 Compound Control Contracts
@@ -135,6 +140,7 @@ Validity notes:
 | `Modal` | `root`, `backdrop`, `surface`, `content` | `close controls` | `content` may contain independent components; the structural roles have no independent overlay meaning outside `Modal` | overlay-layer mounting plus root-owned slot resolution inside `surface` | closed except for the open `content` region |
 | `Alert` | `root`, `backdrop`, `surface`, `title`, `actions` | `message`, `close controls` | `title`, `message`, and `actions` may contain independent components, but their alert roles exist only within `Alert` | specialized `Modal` slot resolution with required action-region presence | closed except for documented content regions |
 | `Notification` | `root`, `surface`, `content` | `close control` | `content` may contain independent non-interactive components, but its notification role exists only within `Notification` | overlay-layer mounting plus root-owned slot resolution inside `surface` | closed except for the open `content` region |
+| `Tooltip` | `root`, `trigger`, `surface`, `content` | none | `trigger` may contain independent components; `content` may contain independent non-interactive components, but the tooltip role exists only within `Tooltip` | root-owned trigger association plus overlay-layer mounting of the `surface` while open | closed except for the open `trigger` and `content` regions |
 | `Tabs` | `root`, `list`, `panels`, one or more `trigger`, one or more `panel` | `indicator` | `trigger` and `panel` roles have no valid independent meaning outside one owning `Tabs` root | structural registration of each `trigger` and `panel` to the owning `Tabs` root by mapped value and role | closed |
 
 ### 4B.3 Control Slot Declarations
@@ -156,6 +162,8 @@ Validity notes:
 | `Alert` | `message` | zero or one subtree | non-interactive explanatory content | none |
 | `Alert` | `actions` | one or more activation controls | controls that provide an explicit dismissal or confirmation path | none |
 | `Notification` | `content` | exactly one subtree | non-interactive text, drawable content, or layout structure; no nested interactive controls | none |
+| `Tooltip` | `trigger` | exactly one subtree | any single subtree valid in ordinary scene composition; becomes the tooltip anchor region | none |
+| `Tooltip` | `content` | exactly one subtree | non-interactive text, drawable content, or layout structure; no nested interactive controls | none |
 | `Tabs` | `list` | exactly one region | contains only `trigger` sub-parts for the owning `Tabs` root | none |
 | `Tabs` | `panels` | exactly one region | contains only `panel` sub-parts for the owning `Tabs` root | none |
 
@@ -196,12 +204,13 @@ That shared interaction state:
 | `Modal` | `open` | UI state | negotiated | `open` with `onOpenChange` | `false` |
 | `Alert` | `open` | UI state | negotiated through `Modal` | `open` with `onOpenChange` | `false` |
 | `Notification` | `open` | UI state | negotiated | `open` with `onOpenChange` | `false` |
+| `Tooltip` | `open` | UI state | negotiated | `open` with `onOpenChange` | `false` |
 | `Tabs` | `value` | composition state | negotiated | `value` with `onValueChange` | first enabled mapped trigger value, otherwise `nil` |
 
 Hybrid notes:
 
 - `TextInput` and `TextArea` may control `value` and selection independently because those properties have separate ownership signals.
-- `Checkbox`, `RadioGroup`, `Switch`, `Slider`, `Select`, `Modal`, `Alert`, `Notification`, and `Tabs` expose one or more negotiable public state properties in this revision.
+- `Checkbox`, `RadioGroup`, `Switch`, `Slider`, `Select`, `Modal`, `Alert`, `Notification`, `Tooltip`, and `Tabs` expose one or more negotiable public state properties in this revision.
 - `Button` exposes negotiable `pressed` state, but hover and focus remain library-owned interaction state.
 
 Trace note: the `Uncontrolled default` column defines the initial uncontrolled state when a control owns that value; it does not by itself standardize a corresponding `default*` prop unless the control's own props section names one explicitly.
@@ -210,7 +219,7 @@ Trace note: the `Uncontrolled default` column defines the initial uncontrolled s
 
 Pending controlled behavior:
 
-- `Button`, `Checkbox`, `RadioGroup`, `Switch`, `Slider`, `Select`, `Modal`, `Alert`, `Notification`, and `Tabs` must continue to render and behave from the last committed controlled value until the consumer updates that value.
+- `Button`, `Checkbox`, `RadioGroup`, `Switch`, `Slider`, `Select`, `Modal`, `Alert`, `Notification`, `Tooltip`, and `Tabs` must continue to render and behave from the last committed controlled value until the consumer updates that value.
 - `TextInput` and `TextArea` must continue to render the last committed controlled `value` and controlled selection while allowing library-owned interaction state such as focus and composition candidate presence to continue updating.
 
 Uncontrolled observation:
@@ -227,6 +236,7 @@ Composition-state rules for concrete controls:
 - `Select` owns public selection and open state scoped to the nearest `Select` root and coordinates registered options only within that root.
 - `Modal` and `Alert` use library-owned focus-trap coordination and overlay ownership state scoped to the mounted overlay subtree. That coordination state is not a consumer-owned public value.
 - `Notification` uses library-owned overlay ownership, dismissal timer, and stack-placement coordination scoped to the mounted overlay subtree. That coordination state is not a consumer-owned public value.
+- `Tooltip` uses library-owned anchor-geometry, hover and focus observation, and fallback-placement coordination scoped to the owning root and mounted tooltip surface. That coordination state is not a consumer-owned public value.
 - `Checkbox` and `Switch` do not automatically coordinate with sibling selection controls in this revision. Any shared checked-value semantics across multiple controls must be provided explicitly by the consumer.
 
 ### 4C.5 Control Derived State
@@ -247,6 +257,7 @@ Composition-state rules for concrete controls:
 | `Modal` | effective open state | controlled `open` when present, otherwise uncontrolled mounted state |
 | `Alert` | effective open state | `Alert` uses the `Modal` derivation for `open` |
 | `Notification` | effective open state, effective dismissal mode, effective timed duration | controlled `open` when present, otherwise uncontrolled mounted state; `closeMethod` resolves the owned dismissal path; `duration` resolves to `5000` only when `closeMethod = "auto-dismiss"` and no explicit duration is supplied |
+| `Tooltip` | effective open state, resolved placement, effective anchor region | controlled `open` when present, otherwise uncontrolled hover or focus driven mounted state according to `triggerMode`; resolve placement from the preferred `placement`, `align`, `offset`, and the anchored-overlay fallback rules in the foundation specification |
 | `Tabs` | effective active value, active panel visibility | controlled `value` when present, otherwise uncontrolled active value resolution from the mapped enabled trigger set |
 
 The following remain implementation detail and are not stable derived-state API:
@@ -278,6 +289,7 @@ The interaction-model rules in Section 3D of [UI Foundation Specification](./ui-
 | `Modal` | `Dismiss`, `Activate` on explicit close actions, `Activate` on backdrop when configured | `onOpenChange` | propose `open = false` when dismissal policy allows |
 | `Alert` | `Dismiss`, `Activate` on explicit actions, `Activate` on backdrop when configured | `onOpenChange` plus action-control callbacks supplied by the consumer | same as `Modal`, plus action activation inside the actions region |
 | `Notification` | `Dismiss` on owned close control when configured; timer expiry when `closeMethod = "auto-dismiss"` | `onOpenChange` | propose `open = false` when the owned dismissal path resolves |
+| `Tooltip` | `Dismiss`, pointer-derived hover transitions, focus transitions, and explicit open or close requests | `onOpenChange` | propose `open = true` or `open = false` according to `triggerMode`, explicit control requests, and tooltip visibility rules |
 | `Tabs` | `Navigate`, `Activate` | `onValueChange` | move roving focus on navigation and propose a new active value only on activation |
 
 ### 4D.2 Focus And Pointer-Coupling Rules By Control Family
@@ -292,6 +304,7 @@ The interaction-model rules in Section 3D of [UI Foundation Specification](./ui-
 | `TextInput`, `TextArea` | focuses before text-entry activation | library-managed plus platform text-entry activation cooperation | focus acquisition must establish active text-entry ownership |
 | `Modal`, `Alert` | opening moves focus into the overlay scope; backdrop activation does not move focus into underlying content | library-managed with trapping and restoration | dismissal may restore prior focus when configured |
 | `Notification` | opening does not move focus; close-control activation follows ordinary control focus rules only when that control is focused directly | library-managed through ordinary base-scene and overlay traversal without trapping | the notification surface is non-modal and must not redirect focus on open |
+| `Tooltip` | opening does not move focus; trigger focus follows the trigger subtree's own control contract rather than the tooltip surface | library-managed through ordinary trigger focus plus overlay-mounted surface positioning without trapping | the tooltip surface is non-modal, does not participate in ordinary focus traversal, and must not redirect focus on open |
 | `Tabs` trigger list | focus moves independently of activation | library-managed roving focus within the trigger list | focus movement alone must not activate a tab |
 
 ### 4D.3 Control-Specific Dismissal And Submission Rules
@@ -301,13 +314,14 @@ The interaction-model rules in Section 3D of [UI Foundation Specification](./ui-
 - `Slider` recognizes directional navigation, page-step commands, home/end commands, track activation, and drag as value-adjustment inputs.
 - `Select` recognizes `Dismiss` through outside activation when allowed, escape, and selection-commit close rules. It recognizes directional navigation and activation while the popup is open. Focus movement alone must not change the selected value set.
 - `Notification` recognizes `Dismiss` only through the owned close path selected by `closeMethod`. It does not recognize backdrop dismissal or escape dismissal in this revision.
+- `Tooltip` recognizes `Dismiss` through trigger hover loss, trigger focus loss when `triggerMode` allows it, and explicit close requests. It does not recognize backdrop dismissal or focus trapping in this revision.
 - `TextInput` recognizes `Submit` according to `submitBehavior`: `blur` proposes blur after submit, `submit` invokes `onSubmit`, and `none` takes no submit default action.
 - `TextArea` consumes `Submit` as newline insertion when multiline editing rules require it; it must not treat the newline command as `onSubmit` unless a future component revision explicitly adds that behavior.
 - `Tabs` does not recognize `Dismiss` as a tab-state-changing input in this revision.
 
 ### 4D.4 Event Ordering And Cancellation At Control Level
 
-- For `Button`, `Checkbox`, `RadioGroup`, `Switch`, `Slider`, `Select`, `Tabs`, `Modal`, `Alert`, and `Notification`, cancellable interaction events must finish listener delivery before the library proposes any state change through the documented callback.
+- For `Button`, `Checkbox`, `RadioGroup`, `Switch`, `Slider`, `Select`, `Tabs`, `Modal`, `Alert`, `Notification`, and `Tooltip`, cancellable interaction events must finish listener delivery before the library proposes any state change through the documented callback.
 - Cancelling `ui.activate` on `Button`, `Checkbox`, `Switch`, or `Tabs` prevents the default action and therefore prevents the associated callback proposal for that activation.
 - Cancelling `ui.activate` on `Radio` or the owning `RadioGroup` prevents the associated `onValueChange` proposal for that activation.
 - Cancelling `ui.activate`, `ui.drag`, or `ui.navigate` on `Slider` prevents the associated `onValueChange` proposal for that interaction.
@@ -315,6 +329,7 @@ The interaction-model rules in Section 3D of [UI Foundation Specification](./ui-
 - Cancelling `ui.dismiss` on `Select` prevents the associated `onOpenChange(false)` proposal for that dismissal attempt.
 - Cancelling `ui.dismiss` on `Modal` or `Alert` prevents the `onOpenChange(false)` proposal for that dismissal attempt.
 - Cancelling `ui.dismiss` on `Notification` prevents the `onOpenChange(false)` proposal for the corresponding close-control activation.
+- Cancelling `ui.open`, `ui.close`, or `ui.dismiss` on `Tooltip` prevents the associated `onOpenChange(...)` proposal for that visibility transition attempt.
 - Cancelling `ui.text.input`, `ui.text.compose`, or `ui.submit` on `TextInput` or `TextArea` prevents the associated insertion, composition update, or submit default action for that interaction.
 
 ## 4E. Control Behavioral Completeness
@@ -338,6 +353,7 @@ The behavioral-completeness rules in Section 3E of [UI Foundation Specification]
 | `Modal` | no focusable content remains valid; the overlay still mounts and traps focus when configured | none | no |
 | `Alert` | missing `message` is valid; missing `actions` is prohibited by the component contract | none | no |
 | `Notification` | compact content remains valid; empty or omitted `content` is prohibited by the component contract | none | no |
+| `Tooltip` | compact content remains valid; empty or omitted `content` is prohibited by the component contract | none | no |
 | `Tabs` | zero valid trigger/panel pairs is structurally invalid per the composition contract, not an empty-but-valid interactive state | none | no |
 
 ### 4E.2 Overflow And Constraint Behavior By Control Family
@@ -355,6 +371,7 @@ The behavioral-completeness rules in Section 3E of [UI Foundation Specification]
 | `Tabs` | overflow in the trigger list may be handled by scrollable composition when enabled; panel overflow follows the panel content contract | trigger activation and focus movement remain valid even when the list is partially offscreen | re-resolve trigger list overflow and active panel layout |
 | `Modal` and `Alert` | surface content may overflow according to the layout content placed inside the surface; backdrop always fills the viewport | overlay remains dismissable and focus-managed even when surface content cannot fully fit | recompute surface placement and safe-area-aware bounds on the next pass |
 | `Notification` | surface content may overflow according to the layout content placed inside the surface; no implicit scroll region is created | notification dismissal and placement remain valid so long as the surface exists | recompute edge placement, safe-area-aware bounds, and stack offsets on the next pass |
+| `Tooltip` | surface content may overflow according to the layout content placed inside the surface; no implicit scroll region is created | tooltip association and visibility remain valid so long as the trigger subtree exists | recompute anchor geometry, preferred-versus-fallback placement, and effective visible-region fitting on the next pass |
 
 ### 4E.3 Rapid And Concurrent Input Behavior By Control Family
 
@@ -368,6 +385,7 @@ The behavioral-completeness rules in Section 3E of [UI Foundation Specification]
 | `TextInput` and `TextArea` | committed text and composition updates are processed in arrival order while the field owns active text-entry state | committed value and selection reflect a consistent committed pair after each processed logical input |
 | `Modal` and `Alert` | dismissal requests are processed in arrival order; once a close has been proposed, additional close requests before commit do not create a second distinct close state | open-state proposals remain coherent and focus-trap ownership does not split across concurrent dismiss inputs |
 | `Notification` | timer completion, explicit close activation, and authoritative external close requests are processed in arrival order; once a close has been proposed, additional close requests before commit do not create a second distinct close state | open-state proposals, timer ownership, and stack-placement ownership remain coherent across concurrent close inputs |
+| `Tooltip` | hover transitions, focus transitions, and authoritative external open-state requests are processed in arrival order with the latest uncancelled visibility proposal winning | open-state proposals, trigger association, and fallback-placement ownership remain coherent across concurrent visibility inputs |
 | `Tabs` | navigation and activation inputs are processed independently in arrival order; navigation never retroactively activates a tab | roving focus and active value remain coherent and do not diverge within one `Tabs` root |
 
 No control in this revision declares a built-in throttle or debounce policy.
@@ -385,6 +403,7 @@ No control in this revision declares a built-in throttle or debounce policy.
 | `TextInput` and `TextArea` | text composition interrupted by focus loss or destruction | discard the composition candidate without committing it and release active text-entry ownership |
 | `Modal` and `Alert` | open or close flow interrupted by a new authoritative `open` value or destruction | resolve to the latest authoritative open state; if destroyed while open, release focus trap ownership and stop further dismissal proposals from that instance |
 | `Notification` | open or close flow interrupted by a new authoritative `open` value, timer expiry race, or destruction | resolve to the latest authoritative open state; if destroyed while open, release timer ownership and stop further dismissal proposals from that instance |
+| `Tooltip` | open or close flow interrupted by a new authoritative `open` value, hover or focus state change, trigger removal, or destruction | resolve to the latest authoritative open state; if the trigger subtree is removed or destroyed while open, close the tooltip and stop further visibility proposals from that instance |
 | `Tabs` | trigger or panel structure changes while focus or activation is in progress | re-resolve the next valid mapped value or focused trigger according to the existing `Tabs` contract and discard obsolete target references |
 
 ### 4E.5 Loading And Async Support
@@ -420,6 +439,7 @@ The contract-stability rules in Section 3F of [UI Foundation Specification](./ui
 | `Modal` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `Alert` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `Notification` | `Stable` | `0.1.0` | no | n/a | n/a |
+| `Tooltip` | `Stable` | `0.1.0` | no | n/a | n/a |
 
 ### 4F.2 Control Public Surface Classification
 
@@ -443,6 +463,7 @@ Unless this section explicitly says otherwise, every documented control surface 
 | `Modal` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `surface`, `content`, and documented close-control regions are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
 | `Alert` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `title`, `message`, `actions`, and documented close-control regions are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
 | `Notification` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `surface`, `content`, and documented close-control region are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
+| `Tooltip` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `trigger`, `content`, and overlay-mounted `surface` structure are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
 
 Additional control-surface rulings:
 
@@ -460,7 +481,7 @@ The failure-semantics rules in Section 3G of [UI Foundation Specification](./ui-
 
 | Category | Typical control conditions | Detectable point | Failure mode | Control-specific rule |
 |----------|----------------------------|------------------|--------------|-----------------------|
-| structural invalidity | `Tabs` trigger/panel mismatches, duplicate trigger values, `RadioGroup` duplicate or missing radio values, `Select` duplicate or missing option values, `Modal`, `Alert`, or `Notification` detached from the overlay layer, prohibited child nodes in `Text`, `TextInput`, or `TextArea` | when the control structure is mounted, registered, or next reconciled | `Hard failure` | no control-specific structural repair is attempted |
+| structural invalidity | `Tabs` trigger/panel mismatches, duplicate trigger values, `RadioGroup` duplicate or missing radio values, `Select` duplicate or missing option values, `Modal`, `Alert`, or `Notification` detached from the overlay layer, `Tooltip` with no required trigger subtree, prohibited child nodes in `Text`, `TextInput`, or `TextArea` | when the control structure is mounted, registered, or next reconciled | `Hard failure` | no control-specific structural repair is attempted |
 | type or value invalidity | negative `dragThreshold`, `maxLength < 0`, invalid `toggleOrder`, unsupported `activationMode`, missing required font or skin asset where no fallback exists | immediately when the value is set if knowable, otherwise on first use | `Hard failure` unless the control section explicitly names a fallback | controls do not coerce invalid values into a nearby valid value unless the contract says so |
 | state contract violation | mutable controlled value without the required change callback, incomplete controlled selection pair, controlled/uncontrolled ownership switch after first commit | when control ownership is reconciled | `Hard failure` | the control preserves the last valid committed state and rejects the invalid ownership transition |
 | lifecycle violation | no stable imperative control method surface exists in this revision | n/a | no separate control-specific surface in this revision | runtime-managed destruction behavior is covered by Behavioral Completeness, not failure semantics |
@@ -503,7 +524,7 @@ In addition to the foundation degradation guarantees:
 
 - one control failing validation must not corrupt sibling controls or unrelated runtime roots
 - a control that enters a documented fallback path must remain renderable and behaviorally coherent within that fallback
-- invalid `Tabs`, `Modal`, or `Alert` operations must not leave split active-value ownership, split focus-trap ownership, or partially committed overlay state across unrelated roots
+- invalid `Tabs`, `Modal`, `Alert`, or `Tooltip` operations must not leave split active-value ownership, split focus-trap ownership, partially committed overlay state, or stale anchored-placement ownership across unrelated roots
 - if a control operation hard-fails and the error is caught by the consumer, the last valid committed control state remains authoritative
 
 ## 5. Design Principles
@@ -1165,6 +1186,8 @@ ERRORS:
 - `max: number`
 - `indeterminate: boolean`
 - `orientation: "horizontal" | "vertical"`
+- `motionPreset`
+- `motion`
 
 Default values:
 
@@ -1174,6 +1197,8 @@ Default values:
 - `orientation = "horizontal"`
 
 When `indeterminate = true`, the determinate fill ratio is ignored for visual progress resolution.
+
+When present, `motionPreset` and `motion` follow the contracts defined in [UI Motion Specification](./ui-motion-spec.md). In this revision, `ProgressBar` may raise motion phases including `value` and `indeterminate`, typically targeting `indicator`.
 
 **State model**
 
@@ -1339,6 +1364,8 @@ ERRORS:
 - `modal: boolean`
 - `disabled: boolean`
 - `disabledValues: table | nil`
+- `motionPreset`
+- `motion`
 
 Default values:
 
@@ -1361,6 +1388,7 @@ Trigger summary rules:
 - when `selectionMode = "multiple"` and one or more options are selected, render `"N selected"`
 
 Trace note: the public `Select` surface is the prop set listed here plus the documented structure. Helper methods for opening, closing, or imperatively selecting options remain internal unless separately documented.
+When present, `motionPreset` and `motion` follow the contracts defined in [UI Motion Specification](./ui-motion-spec.md). In this revision, `Select` may raise motion phases including `open`, `close`, and placement-related popup motion.
 
 **State model**
 
@@ -1661,8 +1689,11 @@ ERRORS:
 - `restoreFocus: boolean`
 - `safeAreaAware: boolean`
 - `backdropDismissBehavior: "close" | "ignore"`
+- `motionPreset`
+- `motion`
 
 Trace note: the public `Modal` surface is the prop set listed here plus the documented structure. Convenience methods such as `open()` or `close()` may exist internally, but they are not stable public API unless this section is amended to name them.
+When present, `motionPreset` and `motion` follow the contracts defined in [UI Motion Specification](./ui-motion-spec.md). In this revision, `Modal` may raise motion phases including `open` and `close`, typically targeting `backdrop` and `surface`.
 
 **State model**
 
@@ -1769,6 +1800,7 @@ ERRORS:
 - `initialFocus: action identifier | nil`
 
 Trace note: `Alert` is specified through these props and required regions, not through one constructor signature or list-building API. Any constructor helpers, title/message coercion helpers, or action-registration helpers remain internal unless separately documented.
+When present through the inherited modal surface, `motionPreset` and `motion` follow the contracts defined in [UI Motion Specification](./ui-motion-spec.md). In this revision, `Alert` uses the same motion phases as `Modal`.
 
 **State model**
 
@@ -1819,17 +1851,17 @@ Trace note: `Alert` is specified through these props and required regions, not t
 - `onOpenChange: function | nil`
 - `closeMethod: "button" | "auto-dismiss"`
 - `duration: number | nil`
-- `easing: "linear" | "ease-in" | "ease-out" | "ease-in-out"`
 - `stackable: boolean`
 - `edge: "top" | "bottom" | "left" | "right"`
 - `align: "start" | "center" | "end"`
 - `safeAreaAware: boolean`
+- `motionPreset`
+- `motion`
 
 Default values:
 
 - `closeMethod = "button"`
 - `duration = 5000`
-- `easing = "ease-out"`
 - `stackable = true`
 - `edge = "top"`
 - `align = "center"`
@@ -1838,6 +1870,7 @@ Default values:
 When `closeMethod = "auto-dismiss"` and `duration` is `nil`, the effective duration is `5000`.
 
 Trace note: the public `Notification` surface is the prop set listed here plus the documented structure. Helper methods such as `show()`, `hide()`, queue-management helpers, or imperative stack APIs may exist internally, but they are not stable public API unless this section is amended to name them.
+`duration` is dismissal timing, not a general visual motion timing surface. When present, `motionPreset` and `motion` follow the contracts defined in [UI Motion Specification](./ui-motion-spec.md). In this revision, `Notification` may raise motion phases including `enter`, `exit`, and `reflow`.
 
 **State model**
 
@@ -1887,7 +1920,6 @@ ERRORS:
   - `closeMethod` outside the documented enum set → invalid configuration and deterministic failure.
   - `edge` outside the documented enum set → invalid configuration and deterministic failure.
   - `align` outside the documented enum set → invalid configuration and deterministic failure.
-  - `easing` outside the documented enum set → invalid configuration and deterministic failure.
   - `duration <= 0` when `closeMethod = "auto-dismiss"` → invalid configuration and deterministic failure.
 
 **Accessibility contract**
@@ -1921,7 +1953,139 @@ Cross-axis alignment uses the documented `align` vocabulary:
 - A `Notification` that closes while stacked with siblings must not leave stale gaps after the next placement pass.
 - A `Notification` must not block pointer interaction outside its own visible hit region.
 
-### 6.16 Tabs
+### 6.16 Tooltip
+
+**Purpose and contract**
+
+`Tooltip` is a non-modal anchored overlay control that presents brief descriptive content associated with one owning trigger subtree. It supports preferred placement with automatic fallback resolution to remain as visible as possible within the effective visible region.
+
+`Tooltip` must:
+
+- support controlled open state
+- request open-state changes through `onOpenChange`
+- support hover-driven, focus-driven, combined hover-focus, and manual visibility modes
+- position its surface relative to one owning trigger region
+- honor a preferred placement while falling back when that placement would place the tooltip offscreen or materially clipped
+- remain non-modal and non-blocking outside the tooltip surface
+- not trap focus
+
+**Anatomy**
+
+- `root`: the tooltip coordination root. Required.
+- `trigger`: the ordinary-scene subtree that owns the tooltip association and anchor geometry. Required.
+- `surface`: the visible tooltip container mounted while open. Required while open.
+- `content`: the consumer-provided tooltip body. Required.
+
+**Props and API surface**
+
+- `open: boolean | nil`
+- `onOpenChange: function | nil`
+- `placement: "top" | "bottom" | "left" | "right"`
+- `align: "start" | "center" | "end"`
+- `offset: number`
+- `triggerMode: "hover" | "focus" | "hover-focus" | "manual"`
+- `safeAreaAware: boolean`
+- `motionPreset`
+- `motion`
+
+Default values:
+
+- `placement = "top"`
+- `align = "center"`
+- `offset = 8`
+- `triggerMode = "hover-focus"`
+- `safeAreaAware = true`
+
+Trace note: the public `Tooltip` surface is the prop set listed here plus the documented `trigger` and `content` regions. Internal geometry observers, hover-delay timers, and overlay-mount helpers remain implementation detail unless a later revision documents them explicitly.
+When present, `motionPreset` and `motion` follow the contracts defined in [UI Motion Specification](./ui-motion-spec.md). In this revision, `Tooltip` may raise motion phases including `open`, `close`, and placement-related motion.
+
+**State model**
+
+STATE closed
+
+  ENTRY:
+    1. The tooltip surface is not mounted in the overlay layer.
+    2. The trigger subtree remains in ordinary scene composition.
+
+  TRANSITIONS:
+    ON open request:
+      1. Resolve the current trigger anchor region.
+      2. Mount the tooltip surface into the active overlay layer.
+      3. Resolve placement from the preferred `placement`, `align`, `offset`, and anchored-overlay fallback rules.
+      → open
+
+    ON a qualifying trigger-entry condition according to `triggerMode`:
+      1. Emit `onOpenChange(true)`.
+      → open
+
+STATE open
+
+  ENTRY:
+    1. The tooltip surface is mounted and visible.
+    2. The surface is positioned relative to the trigger region using the resolved placement.
+    3. Underlying content remains interactive outside the tooltip surface.
+
+  TRANSITIONS:
+    ON all qualifying trigger conditions cease according to `triggerMode`:
+      1. Emit `onOpenChange(false)`.
+      → closing
+
+    ON explicit close request:
+      1. Emit `onOpenChange(false)`.
+      → closing
+
+    ON trigger geometry, safe area, viewport, or clipping-region change while open:
+      1. Re-resolve placement using the anchored-overlay fallback rules.
+      → open
+
+STATE closing
+
+  ENTRY:
+    1. A close has been requested. The consumer has not yet committed the change.
+
+  TRANSITIONS:
+    ON close commit:
+      1. Remove the tooltip surface from the overlay layer.
+      2. Clear transient placement bookkeeping.
+      → closed
+
+ERRORS:
+  - `open` without `onOpenChange` when `open` is intended to be mutable → invalid configuration and deterministic failure.
+  - `placement` outside the documented enum set → invalid configuration and deterministic failure.
+  - `align` outside the documented enum set → invalid configuration and deterministic failure.
+  - `triggerMode` outside the documented enum set → invalid configuration and deterministic failure.
+  - `offset < 0` → invalid configuration and deterministic failure.
+
+**Accessibility contract**
+
+`Tooltip` must be announced as descriptive associated content for its owning trigger, not as a modal or independent dialog surface. Opening a `Tooltip` must not move focus. When `triggerMode` includes focus, the tooltip must remain associated with the currently focused trigger for assistive systems while visible. The tooltip surface must not participate in ordinary focus traversal in this revision.
+
+**Composition rules**
+
+`Tooltip` coordinates one ordinary-scene `trigger` subtree and one overlay-mounted `surface` subtree inside one shared root. The `content` subtree may contain text, drawable content, and layout structure appropriate for compact descriptive presentation. Nested interactive controls inside `content` are unsupported in this revision. The surface must be positioned according to the anchored-overlay placement contract in the foundation specification and may resolve to a fallback placement when the preferred placement would exceed the effective visible region.
+
+Cross-axis alignment uses the documented `align` vocabulary:
+
+- when `placement = "top"` or `placement = "bottom"`, `align` resolves horizontally
+- when `placement = "left"` or `placement = "right"`, `align` resolves vertically
+
+`triggerMode` controls automatic visibility requests:
+
+- `"hover"`: hover opens and closes the tooltip; focus alone does not
+- `"focus"`: focus opens and closes the tooltip; hover alone does not
+- `"hover-focus"`: either hover or focus may open the tooltip, and it remains open while at least one qualifying condition holds
+- `"manual"`: ordinary hover and focus do not change visibility; only controlled `open` changes visibility
+
+**Behavioral edge cases**
+
+- A `Tooltip` in `manual` mode may remain visible without hover or focus.
+- A `Tooltip` must not extend its surface outside the effective visible region when a valid fallback placement exists.
+- When no placement fits fully, a `Tooltip` must use the placement that maximizes visible area and minimizes clipping.
+- A `Tooltip` must not render a backdrop.
+- A `Tooltip` must not trap focus or intercept pointer interaction outside its own visible hit region.
+- A `Tooltip` whose trigger subtree is removed while open must close without failure on the next synchronization pass.
+
+### 6.17 Tabs
 
 **Purpose and contract**
 
@@ -1962,8 +2126,11 @@ Cross-axis alignment uses the documented `align` vocabulary:
 - `listScrollable: boolean`
 - `loopFocus: boolean`
 - `disabledValues: table | nil`
+- `motionPreset`
+- `motion`
 
 Trace note: the public `Tabs` surface is structural and value-driven. Helper registration or mutation methods such as `addTab(...)` or `setTriggerDisabled(...)` may exist internally, but they are not stable public API unless this section is amended to name them.
+When present, `motionPreset` and `motion` follow the contracts defined in [UI Motion Specification](./ui-motion-spec.md). In this revision, `Tabs` may raise value-related motion, typically targeting `indicator` and `panel`.
 
 **State model**
 
@@ -2027,6 +2194,7 @@ Additional shared control rules for this revision:
 - controls that expose associated labels must define whether the label participates in activation
 - controls that own text entry must own native text input lifecycle through the foundation runtime model
 - overlay controls must bind to the overlay layer and focus-trap rules defined in the foundation specification
+- anchored overlay controls must use the anchored-overlay placement contract defined in the foundation specification
 - tab-family, radio-group, and select-popup controls must use roving focus within the owning root and must not activate on focus movement in this revision
 - stateful controls must render from their authoritative committed state and may only propose public state changes through their documented callbacks
 
@@ -2056,6 +2224,7 @@ This document stabilizes these control part names used by skins:
 | `Modal` | `backdrop`, `surface`, `content`, `close controls` |
 | `Alert` | `backdrop`, `surface`, `title`, `message`, `actions`, `close controls` |
 | `Notification` | `surface`, `content`, `close control` |
+| `Tooltip` | `surface`, `content` |
 
 ### 8.2 Control Visual Surfaces
 
@@ -2065,12 +2234,13 @@ This document stabilizes these control part names used by skins:
 | `Button`, `Checkbox`, `Radio`, `Switch` | required part split between press region and indicators such as `surface`, `box`, `indicator`, `track`, `thumb`, and label-bearing regions | part skins, border treatment, typography, indicator art, focus styling, disabled styling | content supplied through open content-bearing regions |
 | `RadioGroup` | required coordination boundary between the group root and registered radio option roles | group-level spacing and orientation treatment, disabled-option styling, selected-option styling through registered radio parts | radio labels and descriptions supplied through registered radios |
 | `Slider` | required separation of `track` and `thumb` roles | track fill, thumb styling, disabled styling, orientation treatment, focused styling | consumer-supplied value and range |
-| `ProgressBar` | required separation of `track` and `indicator` roles | track fill, indicator fill, orientation treatment, indeterminate animation treatment | consumer-supplied value and range |
+| `ProgressBar` | required separation of `track` and `indicator` roles | track fill, indicator fill, orientation treatment, and motion treatment for `value` and `indeterminate` phases | consumer-supplied value and range |
 | `Select` and `Option` | required separation of trigger, popup, summary, placeholder, and option label/description roles | trigger chrome, popup chrome, selected-option styling, disabled-option styling, summary typography, placeholder typography, modal-versus-non-modal popup treatment | option labels and descriptions supplied through registered options |
 | `TextInput`, `TextArea` | field-versus-content separation, caret/selection/placeholder part roles, internal editable region ownership | field chrome, placeholder styling, caret styling, selection styling, read-only and disabled skins | input value text supplied by consumer state |
 | `Tabs` | required separation of `list`, `trigger`, `indicator`, and `panel` roles | trigger chrome, indicator treatment, panel chrome, disabled and active trigger skins | panel content and trigger content |
 | `Modal`, `Alert` | required separation of `backdrop`, `surface`, content regions, and alert title/action roles | backdrop fill, surface chrome, title/message typography, action-region styling, close-control styling | modal body content and alert action content |
-| `Notification` | required separation of `surface`, `content`, and optional close-control roles | surface chrome, content typography, icon treatment within consumer-owned content, close-control styling, enter/exit and reflow easing treatment | notification content supplied through the `content` region |
+| `Notification` | required separation of `surface`, `content`, and optional close-control roles | surface chrome, content typography, icon treatment within consumer-owned content, close-control styling, and motion treatment for `enter`, `exit`, and `reflow` phases | notification content supplied through the `content` region |
+| `Tooltip` | required separation of the ordinary-scene trigger association from the overlay-mounted `surface` and `content` roles | surface chrome, content typography, optional callout treatment, open-state styling, placement-dependent chrome treatment | tooltip content supplied through the `content` region and trigger content supplied through the `trigger` region |
 
 Focus styling in this table is expressed through the documented part surfaces and their stateful variants. This revision does not standardize a separate focus-indicator token family distinct from the documented part/property bindings.
 
@@ -2094,6 +2264,7 @@ These priority orders satisfy Section 8.12 of the foundation specification:
 - `Tabs` panel parts: `active > inactive`
 - `Modal` and `Alert` do not define additional stateful skin priority beyond mounted versus unmounted presence in this revision
 - `Notification` does not define additional stateful skin priority beyond mounted versus unmounted presence in this revision
+- `Tooltip` does not define additional stateful skin priority beyond mounted versus unmounted presence in this revision
 
 ### 8.4 Control Structure Versus Appearance Boundary
 
@@ -2103,6 +2274,7 @@ The following are structural and therefore stable:
 - required role separation such as `backdrop` versus `surface`, `list` versus `panel`, and `field` versus `caret` and `selection`
 - the existence of indicator-bearing regions such as `Checkbox.indicator`, `Radio.indicator`, `Switch.thumb`, and `Tabs.indicator` when those parts are named by the control contract
 - the required separation of `Slider.track` and `Slider.thumb`
+- the required separation of `Tooltip.surface` and `Tooltip.content`
 - the required separation of `ProgressBar.track` and `ProgressBar.indicator`
 - the required separation of `Select.trigger`, `Select.popup`, `Select.summary`, and `Select.placeholder`
 
