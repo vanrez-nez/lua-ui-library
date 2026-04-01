@@ -111,7 +111,7 @@ The following artifacts are not components in this revision:
 | `Scene` | Utility | screen-level subtree lifecycle boundary and active/inactive participation | scene registry ownership, navigation policy, sibling scene orchestration | extensible through documented slots only |
 | `Composer` | Utility | scene registration, transition sequencing, scene activation, runtime routing | business navigation decisions, control-local behavior, application data ownership | fixed |
 
-The concrete control boundaries that depend on this taxonomy are defined in [UI Controls Specification](./ui-controls-spec.md).
+The concrete control boundaries that depend on this taxonomy are defined in [UI Controls Specification](./ui-controls-spec.md). Concrete first-class graphics-object contracts are defined in [UI Graphics Specification](./ui-graphics-spec.md).
 
 ### 3A.4 Identity Contract
 
@@ -1923,14 +1923,18 @@ A render skin may be composed from:
 
 Each render-capable component must expose named presentational parts that can be skinned independently.
 
-### 8.10 Texture And Atlas Contract
+### 8.10 Graphics Asset Interoperability Contract
 
-A texture-backed skin may reference:
+This section defines the foundation-level interoperability contract for texture-backed rendering inputs. It does not own the concrete first-class graphics objects themselves; those are defined in [UI Graphics Specification](./ui-graphics-spec.md).
 
-- a full image
-- an atlas texture plus region metadata
-- a precomputed quad region
-- a nine-slice definition over either a full image or a quad region
+A texture-backed visual surface may reference:
+
+- a full texture-backed image source
+- an atlas-backed region reference
+- a precomputed quad or region reference
+- a nine-slice definition over either a full source or a region-backed source
+
+The foundation contract in this section standardizes how these asset classes participate in rendering, token resolution, and failure semantics. It does not standardize one host-framework object model or one loading pipeline.
 
 ### 8.11 Nine-Slice Contract
 
