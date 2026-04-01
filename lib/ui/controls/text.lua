@@ -108,6 +108,10 @@ function Text.new(opts)
     return Text(opts)
 end
 
+function Text:_resolve_visual_variant()
+    return rawget(self, 'textVariant') or 'base'
+end
+
 function Text:addChild()
     Assert.fail('Text may not contain child nodes', 2)
 end

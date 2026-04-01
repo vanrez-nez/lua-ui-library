@@ -125,6 +125,28 @@ function Checkbox:_get_checked_state()
     return get_effective_checked(self)
 end
 
+function Checkbox:_resolve_visual_variant()
+    if rawget(self, 'disabled') == true then
+        return 'disabled'
+    end
+
+    local state = get_effective_checked(self)
+
+    if state == 'indeterminate' then
+        return 'indeterminate'
+    end
+
+    if state == 'checked' then
+        return 'checked'
+    end
+
+    if rawget(self, '_focused') == true then
+        return 'focused'
+    end
+
+    return 'base'
+end
+
 function Checkbox:update(dt)
     Drawable.update(self, dt)
 

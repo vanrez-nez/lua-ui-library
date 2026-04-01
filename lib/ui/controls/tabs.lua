@@ -308,6 +308,34 @@ function Tabs.new(opts)
     return Tabs(opts)
 end
 
+function Tabs:_resolve_trigger_variant(trigger)
+    if trigger == nil then
+        return 'base'
+    end
+
+    if rawget(trigger, '_tab_disabled') == true then
+        return 'disabled'
+    end
+
+    if rawget(trigger, '_tab_active') == true then
+        return 'active'
+    end
+
+    if rawget(trigger, '_focused') == true then
+        return 'focused'
+    end
+
+    return 'base'
+end
+
+function Tabs:_resolve_panel_variant(panel)
+    if panel ~= nil and rawget(panel, '_tab_active') == true then
+        return 'active'
+    end
+
+    return 'inactive'
+end
+
 function Tabs:_register_tab(value, trigger_node, panel_node)
     Assert.string('value', value, 2)
     Assert.table('trigger_node', trigger_node, 2)

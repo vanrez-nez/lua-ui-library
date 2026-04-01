@@ -66,6 +66,10 @@ function TextArea.new(opts)
     return TextArea(opts)
 end
 
+function TextArea:_resolve_visual_variant()
+    return TextInput._resolve_visual_variant(self)
+end
+
 function TextArea:update(dt)
     TextInput.update(self, dt)
 

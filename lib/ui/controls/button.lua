@@ -127,6 +127,26 @@ function Button:_is_pressed()
     return get_pressed(self)
 end
 
+function Button:_resolve_visual_variant()
+    if rawget(self, 'disabled') == true then
+        return 'disabled'
+    end
+
+    if get_pressed(self) then
+        return 'pressed'
+    end
+
+    if rawget(self, '_hovered') == true then
+        return 'hovered'
+    end
+
+    if rawget(self, '_focused') == true then
+        return 'focused'
+    end
+
+    return 'base'
+end
+
 function Button:update(dt)
     Drawable.update(self, dt)
 

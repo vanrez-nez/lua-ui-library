@@ -129,6 +129,26 @@ function Switch:_get_checked_state()
     return checked_value(self)
 end
 
+function Switch:_resolve_visual_variant()
+    if rawget(self, 'disabled') == true then
+        return 'disabled'
+    end
+
+    if rawget(self, '_dragging') == true then
+        return 'dragging'
+    end
+
+    if checked_value(self) then
+        return 'checked'
+    end
+
+    if rawget(self, '_focused') == true then
+        return 'focused'
+    end
+
+    return 'base'
+end
+
 function Switch:update(dt)
     Drawable.update(self, dt)
 

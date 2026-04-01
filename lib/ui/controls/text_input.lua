@@ -318,6 +318,26 @@ function TextInput:_composition_text_value()
     return rawget(self, '_composition_text') or ''
 end
 
+function TextInput:_resolve_visual_variant()
+    if rawget(self, 'disabled') == true then
+        return 'disabled'
+    end
+
+    if rawget(self, 'readOnly') == true then
+        return 'readOnly'
+    end
+
+    if rawget(self, '_composing') == true then
+        return 'composing'
+    end
+
+    if rawget(self, '_focused') == true then
+        return 'focused'
+    end
+
+    return 'base'
+end
+
 function TextInput:_delete_backward()
     if rawget(self, 'disabled') or rawget(self, 'readOnly') then
         return self
