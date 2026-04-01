@@ -26,6 +26,7 @@ This revision owns the following controls:
 - `Radio`
 - `RadioGroup`
 - `Switch`
+- `ProgressBar`
 - `Select`
 - `Option`
 - `TextInput`
@@ -54,6 +55,7 @@ The component-model rules in Section 3A of [UI Foundation Specification](./ui-fo
 | `Radio` | Composite | activation semantics for one single-selection option coordinated by an owning `RadioGroup`, including disabled, focus, and associated-label behavior | independent selected-state ownership, multi-select behavior, business action side effects | extensible through documented slots only |
 | `RadioGroup` | Composite | one-of-many value coordination, required single selection, roving focus, directional navigation, and descendant radio registration | multi-select behavior, arbitrary option virtualization policy, business state outside the selected value | extensible through documented slots only |
 | `Switch` | Composite | binary state requests with tap, drag, and disabled semantics | indeterminate state, settings persistence, nested interactive content | extensible through documented slots only |
+| `ProgressBar` | Primitive | presentational progress indication for determinate and indeterminate progress values, range normalization, and orientation-specific fill resolution | activation semantics, editable state, buffer progress, built-in text labeling, native platform progress delegation | fixed |
 | `Select` | Composite | trigger and popup coordination, single or multiple selection resolution, open-state requests, option registration, placeholder/summary rendering, and popup dismissal policy | native platform picker delegation, search/typeahead, arbitrary popup queueing policy, business state outside the selected value | extensible through documented slots only |
 | `Option` | Composite | activation semantics for one selectable value coordinated by an owning `Select`, including disabled, focus, and associated-description behavior | independent selected-state ownership, standalone popup behavior, arbitrary rich interactive descendants | extensible through documented slots only |
 | `TextInput` | Composite | single-line text entry, caret, selection, composition, clipboard, and active text-input ownership | multiline editing, rich-text authoring, consumer-managed native text-input lifecycle | fixed |
@@ -70,6 +72,7 @@ Additional control identity rules:
 - `RadioGroup` is not a generic layout container; it is a state-owning compound root with required descendant `Radio` registration.
 - `Option` is not a generic list item; it is a selectable descendant coordinated by one owning `Select`.
 - `Select` is not a native-platform abstraction in this revision; it is the canonical custom select control with a trigger and popup surface.
+- `ProgressBar` is a distinct progress-indication control, not an alias of `Drawable` or a theme-only fill helper.
 - `Alert` is not an alias of `Modal`; it is a separate composite with a stronger content contract and a distinct accessible role.
 - `Notification` is not an alias of `Modal` or `Alert`; it is a separate overlay composite with non-modal status behavior and a single content region.
 - The exact control names in this table are the canonical names for this revision. No aliases are stabilized.
@@ -89,6 +92,7 @@ The composition-grammar rules in Section 3B of [UI Foundation Specification](./u
 | `Radio` | only an owning `RadioGroup` root or its required radio container region when such a region is used internally | optional `label`; optional `description` | placement outside an owning `RadioGroup`; nested interactive controls inside label or description regions | `value` prop on the `Radio` instance | invalid when detached from an owning `RadioGroup` |
 | `RadioGroup` | any component with an open descendant slot or action-bearing slot | one or more registered `Radio` descendants | direct interactive descendants that are not registered radios; zero registered radios; duplicate radio values | at least one `Radio` | valid only when the required radio set is complete |
 | `Switch` | any component with an open descendant slot or action-bearing slot | optional `label`; optional `description` | nested interactive controls inside label or description regions | none | valid |
+| `ProgressBar` | any component with an open descendant slot or presentational content slot | none | all child nodes | none | valid |
 | `Option` | only an owning `Select` popup region | optional `label`; optional `description` | placement outside an owning `Select`; nested interactive controls inside label or description regions | `value` prop on the `Option` instance | invalid when detached from an owning `Select` |
 | `Select` | any component with an open descendant slot or action-bearing slot | one trigger surface and one or more registered `Option` descendants in the popup region | zero registered options; duplicate option values; direct interactive descendants that are not registered options inside the popup option set | at least one `Option` | valid only when the required option set is complete |
 | `TextInput` | any layout or drawable container that permits interactive descendants | none | interactive child nodes; nesting inside another text-entry control | none | valid |
@@ -103,6 +107,7 @@ Validity notes:
 - `Button`, `Checkbox`, and `Switch` are compositionally open only through their documented content-bearing regions.
 - `Radio` is compositionally open only through its documented `label` and `description` regions and must belong to exactly one owning `RadioGroup`.
 - `RadioGroup` validity is re-evaluated whenever registered radios are added, removed, disabled, or change value.
+- `ProgressBar` exposes named presentational parts but no consumer-fillable descendant slots in this revision.
 - `Option` is compositionally open only through its documented `label` and `description` regions and must belong to exactly one owning `Select`.
 - `Select` validity is re-evaluated whenever registered options are added, removed, disabled, or change value.
 - `TextInput` and `TextArea` expose named presentational parts but no consumer-fillable descendant slots in this revision.
@@ -118,6 +123,7 @@ Validity notes:
 | `Radio` | `root`, `indicator` | `label`, `description` | `label` and `description` may contain independent components; `indicator` is meaningful only within `Radio` | structural registration to the owning `RadioGroup` root by `value` and role | closed except for `label` and `description` content |
 | `RadioGroup` | `root`, one or more `Radio` | none | registered radios have no group selection meaning outside one owning `RadioGroup` root | structural registration of each `Radio` to the owning `RadioGroup` root by value and role | closed |
 | `Switch` | `root`, `track`, `thumb` | `label`, `description` | `label` and `description` may contain independent components; `track` and `thumb` are meaningful only within `Switch` | root-owned role resolution of drag region and associated content | closed except for `label` and `description` content |
+| `ProgressBar` | `root`, `track`, `indicator` | none | `track` and `indicator` are meaningful only within `ProgressBar` | root-owned range normalization and fill resolution | closed |
 | `Option` | `root` | `label`, `description` | `label` and `description` may contain independent components, but their option role exists only within one owning `Select` | structural registration to the owning `Select` root by `value` and role | closed except for `label` and `description` content |
 | `Select` | `root`, `trigger`, `popup`, one or more `Option` | `placeholder` | registered options and the popup role have no select meaning outside one owning `Select` root | root-owned trigger/popup coordination plus structural registration of each `Option` by value and role | closed except for documented content regions |
 | `Modal` | `root`, `backdrop`, `surface`, `content` | `close controls` | `content` may contain independent components; the structural roles have no independent overlay meaning outside `Modal` | overlay-layer mounting plus root-owned slot resolution inside `surface` | closed except for the open `content` region |
@@ -172,6 +178,8 @@ That shared interaction state:
 | `Checkbox` | `checked` | application state | negotiated | `checked` with `onCheckedChange` | `unchecked` |
 | `RadioGroup` | `value` | application state | negotiated | `value` with `onValueChange` | first enabled registered radio value |
 | `Switch` | `checked` | application state | negotiated | `checked` with `onCheckedChange` | `false` |
+| `ProgressBar` | `value` | application state | consumer-owned only | `value` prop | none; `ProgressBar` does not own mutable public progress state |
+| `ProgressBar` | `indeterminate` | UI state | consumer-owned only | `indeterminate` prop | `false` |
 | `Select` | `value` | application state | negotiated | `value` with `onValueChange` | `nil` |
 | `Select` | `open` | UI state | negotiated | `open` with `onOpenChange` | `false` |
 | `TextInput` | `value` | application state | negotiated | `value` with `onValueChange` | empty string |
@@ -223,6 +231,7 @@ Composition-state rules for concrete controls:
 | `Radio` | effective selected state, effective disabled state within the group | selected when its `value` matches the owning `RadioGroup` effective value; disabled when the radio is disabled directly or its value is disabled by group policy |
 | `RadioGroup` | effective selected value, focused radio candidate | controlled `value` when present, otherwise the first enabled registered radio value after registration and invalid-value repair |
 | `Switch` | effective checked state | controlled `checked` when present, otherwise the uncontrolled checked value after tap or drag resolution |
+| `ProgressBar` | effective clamped value, effective normalized progress ratio, effective indeterminate mode | clamp `value` into `[min, max]` when determinate; derive normalized ratio from the clamped value and range; ignore determinate ratio when `indeterminate = true` |
 | `Option` | effective selected state, effective disabled state within the select | selected when its `value` is present in the owning `Select` effective selection set; disabled when the option is disabled directly or its value is disabled by select policy |
 | `Select` | effective selected value set, effective open state, focused option candidate | controlled `value` and `open` when present, otherwise uncontrolled selection and popup state; in `single` mode the effective selected set contains zero or one value, in `multiple` mode it contains zero or more unique values in option registration order |
 | `TextInput` | effective value, effective selection | controlled value and selection when present, otherwise uncontrolled committed text and library-managed selection |
@@ -252,6 +261,7 @@ The interaction-model rules in Section 3D of [UI Foundation Specification](./ui-
 | `Radio` | `Activate` | `onValueChange` on the owning `RadioGroup` | propose the radio's value through the owning group when the target radio is enabled and not already selected |
 | `RadioGroup` | `Navigate`, `Activate` through registered radios | `onValueChange` | move roving focus among enabled radios on navigation and propose a new selected value only on activation |
 | `Switch` | `Activate`, `Drag` | `onCheckedChange` | toggle on tap activation or resolve final checked state at drag release |
+| `ProgressBar` | none | none | no interaction default action |
 | `Option` | `Activate` | `onValueChange` on the owning `Select`; `onOpenChange` when selection commits close the popup | propose the option's value through the owning select according to `selectionMode` and close behavior |
 | `Select` | `Activate` on the trigger, `Dismiss`, `Navigate`, `Activate` through registered options | `onValueChange`, `onOpenChange` | toggle or open the popup from the trigger; move focus among enabled options on navigation; propose selection changes through registered option activation; dismiss the popup according to popup policy |
 | `TextInput` | `Activate`, `Navigate`, `TextInput`, `TextCompose`, `Submit`, pointer selection gestures | `onValueChange`, `onSelectionChange`, `onSubmit` | acquire focus, update selection, propose committed text insertion, update composition candidate, or submit according to `submitBehavior` |
@@ -267,6 +277,7 @@ The interaction-model rules in Section 3D of [UI Foundation Specification](./ui-
 |-------------------|------------------------|-------------------------------|-------|
 | `Button`, `Checkbox`, `Switch` | focuses before default action | library-managed through ordinary focus traversal | pointer or touch activation may establish focus on the target control |
 | `RadioGroup` and registered `Radio` controls | focus moves among enabled radios in group order; activation may establish focus on the target radio before value proposal | library-managed roving focus within the owning group | directional focus movement alone must not change the group's selected value |
+| `ProgressBar` | no pointer-focus coupling | no focus movement responsibility in this revision | the control is presentational and non-interactive |
 | `Select` and registered `Option` controls | trigger activation may move focus into the popup when opened; option focus moves among enabled options in popup order | library-managed within the trigger and popup surfaces; `modal = true` may trap focus while open | option focus movement alone must not change the selected value set |
 | `TextInput`, `TextArea` | focuses before text-entry activation | library-managed plus platform text-entry activation cooperation | focus acquisition must establish active text-entry ownership |
 | `Modal`, `Alert` | opening moves focus into the overlay scope; backdrop activation does not move focus into underlying content | library-managed with trapping and restoration | dismissal may restore prior focus when configured |
@@ -305,6 +316,7 @@ The behavioral-completeness rules in Section 3E of [UI Foundation Specification]
 | `Text` | empty string renders nothing and remains valid | none | no |
 | `Button` | empty `content` slot remains valid and interactive | none | no |
 | `Checkbox` and `Switch` | absent `label` or `description` remains valid and interactive | none | no |
+| `ProgressBar` | any finite range and value pair remains valid; indeterminate mode remains valid with no meaningful determinate value | none | yes, when `indeterminate` changes or the clamped ratio changes |
 | `Radio` | absent `label` or `description` remains valid and interactive | none | no |
 | `RadioGroup` | zero registered radios is structurally invalid per the composition contract, not an empty-but-valid interactive state | none | no |
 | `Option` | absent `label` or `description` remains valid and interactive | none | no |
@@ -322,6 +334,7 @@ The behavioral-completeness rules in Section 3E of [UI Foundation Specification]
 | `Text` | wrap when configured, otherwise overflow without clipping unless an ancestor clips | remains valid at zero or tiny width but may render no visible glyphs | re-measure on the next draw preparation |
 | `Button`, `Checkbox`, `Radio`, `Switch` | content may visually overflow, clip through ancestors, or compress according to skin geometry; no implicit scroll region is created | activation region remains valid even when text or indicator art no longer fits fully | recompute part layout from the latest bounds on the next pass |
 | `RadioGroup` | group overflow follows the consumer-owned layout containing its registered radios; no implicit scroll region is created | selection, focus movement, and activation remain valid so long as one enabled radio exists | re-resolve radio ordering, roving focus targets, and selected-value repair on the next pass |
+| `ProgressBar` | track and indicator may visually compress according to current bounds; no implicit scroll region is created | the track and indicator remain renderable at any finite size, though the indicator may become visually minimal | recompute normalized fill geometry and orientation-specific indicator bounds on the next pass |
 | `Select` and `Option` | trigger summary may overflow according to trigger bounds; popup width defaults to content width and popup overflow follows the popup content layout with no implicit search or virtualization region | trigger activation, popup dismissal, and option activation remain valid so long as the trigger and at least one option exist | recompute trigger summary, popup placement, popup width, option ordering, and selected-value presentation on the next pass |
 | `TextInput` | single-line content does not wrap; overflow is handled by selection/caret movement within the field contract rather than by multiline reflow | remains focusable and editable so long as the field region exists | recompute selection geometry and visible insertion region from the new field size |
 | `TextArea` | vertical overflow is handled by the internal scroll region; horizontal overflow is suppressed when `wrap = true` and allowed when wrapping is disabled | remains editable at any finite size, though visible text area may collapse to a minimal viewport | recompute wrapping, content extent, and internal scroll range |
@@ -335,6 +348,7 @@ The behavioral-completeness rules in Section 3E of [UI Foundation Specification]
 |-------------------|--------------------------------|-----------------------|
 | `Button`, `Checkbox`, `Radio`, `Switch` | each activation attempt is processed independently in arrival order; gesture ownership determines which pointer sequence may finish a press or drag | committed state remains coherent after each completed activation or drag release |
 | `RadioGroup` | navigation and activation inputs are processed independently in arrival order; navigation never retroactively changes the selected value | roving focus and selected value remain coherent and do not diverge within one `RadioGroup` root |
+| `ProgressBar` | rapid authoritative value changes are processed in arrival order with no throttled behavioral side effect | visible progress remains coherent with the latest committed clamped value or indeterminate mode |
 | `Select` | trigger activation, popup dismissal, navigation, and option activation are processed in arrival order; once a close has been proposed, additional close requests before commit do not create a second distinct close state | selected values, popup open state, and focused option remain coherent within one `Select` root |
 | `TextInput` and `TextArea` | committed text and composition updates are processed in arrival order while the field owns active text-entry state | committed value and selection reflect a consistent committed pair after each processed logical input |
 | `Modal` and `Alert` | dismissal requests are processed in arrival order; once a close has been proposed, additional close requests before commit do not create a second distinct close state | open-state proposals remain coherent and focus-trap ownership does not split across concurrent dismiss inputs |
@@ -350,6 +364,7 @@ No control in this revision declares a built-in throttle or debounce policy.
 | `Button` | press interaction interrupted by disable, release outside, or destruction | clear press ownership, emit no activation, and leave only the last committed authoritative pressed value |
 | `Checkbox` and `Switch` | activation or drag interrupted by disable, focus loss, or destruction | abandon the in-progress gesture; only a completed uncancelled activation or drag release may propose a new checked value |
 | `Radio` and `RadioGroup` | activation or roving-focus movement interrupted by disable, radio removal, or destruction | abandon the obsolete target reference; preserve the last authoritative selected value or repair to the next enabled radio when the selected radio becomes invalid |
+| `ProgressBar` | determinate-to-indeterminate or range changes during active rendering | resolve to the latest authoritative clamped value and mode on the next draw preparation pass |
 | `Option` and `Select` | trigger activation, popup dismissal, or option focus movement interrupted by disable, option removal, or destruction | abandon the obsolete target reference; preserve the last authoritative selected values and close the popup when the owning select is destroyed |
 | `TextInput` and `TextArea` | text composition interrupted by focus loss or destruction | discard the composition candidate without committing it and release active text-entry ownership |
 | `Modal` and `Alert` | open or close flow interrupted by a new authoritative `open` value or destruction | resolve to the latest authoritative open state; if destroyed while open, release focus trap ownership and stop further dismissal proposals from that instance |
@@ -379,6 +394,7 @@ The contract-stability rules in Section 3F of [UI Foundation Specification](./ui
 | `Radio` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `RadioGroup` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `Switch` | `Stable` | `0.1.0` | no | n/a | n/a |
+| `ProgressBar` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `Select` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `Option` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `TextInput` | `Stable` | `0.1.0` | no | n/a | n/a |
@@ -400,6 +416,7 @@ Unless this section explicitly says otherwise, every documented control surface 
 | `Radio` | `Stable` since `0.1.0` | coordinated through `RadioGroup` `onValueChange`, stable since `0.1.0` | `label` and `description` regions are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
 | `RadioGroup` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | registered `Radio` structure is `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
 | `Switch` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `label` and `description` regions are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
+| `ProgressBar` | `Stable` since `0.1.0` | no public callback surface in this revision | no consumer-fillable descendant slots in this revision | `Stable` since `0.1.0` | `Internal` |
 | `Select` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | `trigger`, `popup`, `placeholder`, and registered `Option` structure are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
 | `Option` | coordinated through `Select` `onValueChange`, stable since `0.1.0` | coordinated through `Select` `onValueChange`, stable since `0.1.0` | `label` and `description` regions are `Stable` since `0.1.0` | `Stable` since `0.1.0` | `Internal` |
 | `TextInput` | `Stable` since `0.1.0` | `Stable` since `0.1.0` | no consumer-fillable descendant slots in this revision | `Stable` since `0.1.0` | `Internal` |
@@ -983,7 +1000,102 @@ ERRORS:
 - A drag gesture that crosses the midpoint but does not exceed `dragThreshold` must resolve according to `snapBehavior`: `"nearest"` snaps to the closer end, `"directional"` commits based on the direction of the final gesture movement.
 - A drag gesture that begins inside the track and ends outside must still resolve according to the release position relative to the track.
 
-### 6.7 Option
+### 6.7 ProgressBar
+
+**Purpose and contract**
+
+`ProgressBar` is a presentational progress-indication control. It owns determinate range normalization, indeterminate-mode presentation, and orientation-specific fill resolution for a single progress value.
+
+`ProgressBar` must:
+
+- support determinate and indeterminate progress presentation
+- support configurable minimum and maximum range bounds
+- clamp determinate values into the declared range
+- support horizontal and vertical orientation
+- remain non-interactive in this revision
+
+`ProgressBar` must not:
+
+- expose activation or editable behavior
+- require built-in text labeling
+- expose buffer or secondary-progress state in this revision
+
+**Anatomy**
+
+- `root`: the progress-bar subtree root. Required.
+- `track`: the background progress track. Required.
+- `indicator`: the filled or animated progress indicator. Required.
+
+**Props and API surface**
+
+- `value: number | nil`
+- `min: number`
+- `max: number`
+- `indeterminate: boolean`
+- `orientation: "horizontal" | "vertical"`
+
+Default values:
+
+- `min = 0`
+- `max = 1`
+- `indeterminate = false`
+- `orientation = "horizontal"`
+
+When `indeterminate = true`, the determinate fill ratio is ignored for visual progress resolution.
+
+**State model**
+
+STATE determinate
+
+  ENTRY:
+    1. `indeterminate = false`.
+    2. The effective value is clamped into `[min, max]`.
+    3. The indicator length resolves from the normalized progress ratio.
+
+  TRANSITIONS:
+    ON value or range change:
+      1. Clamp the effective value into the current range.
+      2. Recompute the normalized ratio.
+      3. Recompute orientation-specific indicator geometry.
+      → determinate
+
+    ON `indeterminate = true`:
+      1. Stop determinate ratio presentation.
+      2. Resolve indeterminate visual presentation.
+      → indeterminate
+
+STATE indeterminate
+
+  ENTRY:
+    1. `indeterminate = true`.
+    2. The indicator presents indeterminate progress with no committed determinate ratio.
+
+  TRANSITIONS:
+    ON `indeterminate = false`:
+      1. Clamp the effective value into the current range.
+      2. Resolve determinate indicator geometry from the normalized ratio.
+      → determinate
+
+ERRORS:
+  - `max <= min` → invalid configuration and deterministic failure.
+  - `orientation` outside the documented enum set → invalid configuration and deterministic failure.
+
+**Accessibility contract**
+
+`ProgressBar` must expose whether it is determinate or indeterminate to assistive systems. In determinate mode, it must expose the current value and range bounds after clamping. In indeterminate mode, it must expose that progress is ongoing without a committed fraction. `ProgressBar` does not participate in focus traversal in this revision.
+
+**Composition rules**
+
+`ProgressBar` is a closed presentational control with no consumer-fillable descendant slots in this revision. It may be placed inside any component that permits presentational descendants.
+
+**Behavioral edge cases**
+
+- A `ProgressBar` with `value` less than `min` must clamp to `min` and must not fail.
+- A `ProgressBar` with `value` greater than `max` must clamp to `max` and must not fail.
+- A `ProgressBar` with `indeterminate = true` must remain valid regardless of `value`.
+- A `ProgressBar` at zero or tiny size must remain valid, though the indicator may render minimally or not visibly.
+
+### 6.8 Option
 
 **Purpose and contract**
 
@@ -1053,7 +1165,7 @@ ERRORS:
 - In `single` mode, activating the already selected `Option` must not emit a second selection proposal.
 - In `multiple` mode, activating a selected `Option` toggles it out of the selected set.
 
-### 6.8 Select
+### 6.9 Select
 
 **Purpose and contract**
 
@@ -1207,7 +1319,7 @@ ERRORS:
 - Outside activation and escape must close the popup when it is open.
 - When the selected `value` references missing or disabled options, the invalid entries are omitted from the effective selected set and the control must not fail.
 
-### 6.9 TextInput
+### 6.10 TextInput
 
 **Purpose and contract**
 
@@ -1330,7 +1442,7 @@ ERRORS:
 - A paste operation that would cause the value to exceed `maxLength` must truncate the pasted content to fit.
 - A `TextInput` that loses focus while a composition candidate is active must discard the candidate without emitting a value change.
 
-### 6.10 TextArea
+### 6.11 TextArea
 
 **Purpose and contract**
 
@@ -1385,7 +1497,7 @@ ERRORS:
 - A newline insertion command in `TextArea` inserts a newline into the value rather than triggering `onSubmit`.
 - When the content height is less than or equal to the visible area, the scroll region behaves as a non-scrolling container.
 
-### 6.11 Modal
+### 6.12 Modal
 
 **Purpose and contract**
 
@@ -1490,7 +1602,7 @@ ERRORS:
 - A `Modal` with `dismissOnBackdrop = false` must not dismiss when the backdrop receives a pointer event.
 - A `Modal` with `open = false` that receives an explicit close request must take no action.
 
-### 6.12 Alert
+### 6.13 Alert
 
 **Purpose and contract**
 
@@ -1546,7 +1658,7 @@ Trace note: `Alert` is specified through these props and required regions, not t
 - An `Alert` where `initialFocus` references a non-existent action must fall back to the first action in the container.
 - An `Alert` with `variant = "destructive"` must present the destructive variant skin without altering behavior.
 
-### 6.13 Notification
+### 6.14 Notification
 
 **Purpose and contract**
 
@@ -1677,7 +1789,7 @@ Cross-axis alignment uses the documented `align` vocabulary:
 - A `Notification` that closes while stacked with siblings must not leave stale gaps after the next placement pass.
 - A `Notification` must not block pointer interaction outside its own visible hit region.
 
-### 6.14 Tabs
+### 6.15 Tabs
 
 **Purpose and contract**
 
@@ -1802,6 +1914,7 @@ This document stabilizes these control part names used by skins:
 | `Radio` | `indicator`, `label`, `description` |
 | `RadioGroup` | `radio` |
 | `Switch` | `track`, `thumb`, `label`, `description` |
+| `ProgressBar` | `track`, `indicator` |
 | `Select` | `trigger`, `placeholder`, `popup`, `summary` |
 | `Option` | `label`, `description` |
 | `TextInput` | `field`, `placeholder`, `selection`, `caret` |
@@ -1818,6 +1931,7 @@ This document stabilizes these control part names used by skins:
 | `Text` | existence of one `content` part and text measurement boundary | font selection, color, alignment treatment, wrapping presentation | supplied text content |
 | `Button`, `Checkbox`, `Radio`, `Switch` | required part split between press region and indicators such as `surface`, `box`, `indicator`, `track`, `thumb`, and label-bearing regions | part skins, border treatment, typography, indicator art, focus styling, disabled styling | content supplied through open content-bearing regions |
 | `RadioGroup` | required coordination boundary between the group root and registered radio option roles | group-level spacing and orientation treatment, disabled-option styling, selected-option styling through registered radio parts | radio labels and descriptions supplied through registered radios |
+| `ProgressBar` | required separation of `track` and `indicator` roles | track fill, indicator fill, orientation treatment, indeterminate animation treatment | consumer-supplied value and range |
 | `Select` and `Option` | required separation of trigger, popup, summary, placeholder, and option label/description roles | trigger chrome, popup chrome, selected-option styling, disabled-option styling, summary typography, placeholder typography, modal-versus-non-modal popup treatment | option labels and descriptions supplied through registered options |
 | `TextInput`, `TextArea` | field-versus-content separation, caret/selection/placeholder part roles, internal editable region ownership | field chrome, placeholder styling, caret styling, selection styling, read-only and disabled skins | input value text supplied by consumer state |
 | `Tabs` | required separation of `list`, `trigger`, `indicator`, and `panel` roles | trigger chrome, indicator treatment, panel chrome, disabled and active trigger skins | panel content and trigger content |
@@ -1836,6 +1950,7 @@ These priority orders satisfy Section 8.12 of the foundation specification:
 - `Checkbox`: `disabled > indeterminate > checked > focused > base`
 - `Radio`: `disabled > selected > focused > base`
 - `Switch`: `disabled > dragging > checked > focused > base`
+- `ProgressBar`: `indeterminate > determinate`
 - `Select` trigger parts: `disabled > open > focused > base`
 - `Select` popup and option parts: `disabled > selected > focused > base`
 - `TextInput`: `disabled > readOnly > composing > focused > base`
@@ -1852,6 +1967,7 @@ The following are structural and therefore stable:
 - the presentational part names in Section 8.1
 - required role separation such as `backdrop` versus `surface`, `list` versus `panel`, and `field` versus `caret` and `selection`
 - the existence of indicator-bearing regions such as `Checkbox.indicator`, `Radio.indicator`, `Switch.thumb`, and `Tabs.indicator` when those parts are named by the control contract
+- the required separation of `ProgressBar.track` and `ProgressBar.indicator`
 - the required separation of `Select.trigger`, `Select.popup`, `Select.summary`, and `Select.placeholder`
 
 The following are appearance and therefore overridable through the documented visual surface:
