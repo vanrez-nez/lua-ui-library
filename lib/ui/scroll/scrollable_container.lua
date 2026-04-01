@@ -34,6 +34,7 @@ local OVERSCROLL_SNAP_SPEED   = 0.15
 local SCROLLBAR_SIZE          = 6
 local SCROLLBAR_MIN_THUMB     = 20
 local SCROLLBAR_MARGIN        = 2
+local DELTA_EPSILON           = 1e-6
 
 local STATE_IDLE     = 'idle'
 local STATE_DRAGGING = 'dragging'
@@ -327,6 +328,10 @@ local function record_velocity(self, dx, dy)
     rawset(self, '_velocity_y', dy)
 end
 
+local function is_effectively_integer(value)
+    return abs(value - math.floor(value + 0.5)) <= DELTA_EPSILON
+end
+
 -- ── Overscroll snap-back ────────────────────────────────────────────────────
 
 local function resolve_overscroll(self)
@@ -531,17 +536,36 @@ function ScrollableContainer:_wire_scroll_events()
         local dx = event.deltaX or 0
         local dy = event.deltaY or 0
         local step = get_public(self_ref, 'scrollStep') or 40
-
-        -- Normalize delta to scrollStep
-        if dx ~= 0 then dx = dx > 0 and step or -step end
-        if dy ~= 0 then dy = dy > 0 and step or -step end
+        local is_wheel_event = event.x ~= nil and event.y ~= nil
 
         -- Check if we can consume this input
         if not has_remaining_range(self_ref, dx, dy) then
             return  -- let it bubble to parent scroll container
         end
 
-        apply_scroll(self_ref, dx, dy, false)
+        local consumed_x, consumed_y = apply_scroll(self_ref, dx, dy, false)
+
+        -- Preserve native high-resolution wheel streams (for example macOS
+        -- trackpad inertia) without adding a second inertial model. For coarse
+        -- wheel deltas, synthesize momentum when enabled.
+        if get_public(self_ref, 'momentum') and is_wheel_event then
+            local abs_dx = abs(dx)
+            local abs_dy = abs(dy)
+            local dominant = max(abs_dx, abs_dy)
+            local high_resolution_wheel =
+                not is_effectively_integer(dx) or
+                not is_effectively_integer(dy) or
+                (dominant > 0 and dominant < (step - DELTA_EPSILON))
+
+            if not high_resolution_wheel then
+                record_velocity(self_ref, consumed_x, consumed_y)
+                if abs(consumed_x) > 0 or abs(consumed_y) > 0 then
+                    rawset(self_ref, '_scroll_state', STATE_INERTIAL)
+                    self_ref:invalidate_stage_update_token()
+                end
+            end
+        end
+
         event:stopPropagation()
     end)
 
