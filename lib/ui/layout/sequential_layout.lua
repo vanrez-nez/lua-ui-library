@@ -646,13 +646,18 @@ function SequentialLayout.apply(self, stage, config)
                 local entry = line.entries[entry_index]
                 local child = entry.child
                 local cross_position = cross_cursor
+                local available_line_cross = line.cross_extent or 0
+
+                if not wrap then
+                    available_line_cross = available_cross
+                end
 
                 if align == 'center' then
                     cross_position = cross_position +
-                        ((line.cross_extent or 0) - (entry.final_cross or 0)) / 2
+                        (available_line_cross - (entry.final_cross or 0)) / 2
                 elseif align == 'end' then
                     cross_position = cross_position +
-                        ((line.cross_extent or 0) - (entry.final_cross or 0))
+                        (available_line_cross - (entry.final_cross or 0))
                 end
 
                 local main_position = main_cursor

@@ -1532,6 +1532,16 @@ local function run_layout_subtree(stage, node)
     end
 end
 
+local function refresh_geometry_subtree(node)
+    node:_refresh_if_dirty()
+
+    local children = rawget(node, '_children') or {}
+
+    for index = 1, #children do
+        refresh_geometry_subtree(children[index])
+    end
+end
+
 function Stage:__index(key)
     local allowed_public_keys = rawget(self, '_allowed_public_keys')
 
@@ -2166,7 +2176,7 @@ local function synchronize_for_read(self)
         end
         prepare_layout_subtree(self, self)
         run_layout_subtree(self, self)
-        self:_refresh_if_dirty()
+        refresh_geometry_subtree(self)
         rawset(self, '_synchronizing', false)
     end
 

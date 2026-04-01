@@ -195,6 +195,72 @@ local function run_column_layout_tests()
     stage:destroy()
 end
 
+local function run_nested_world_offset_read_tests()
+    local stage = UI.Stage.new({
+        width = 1024,
+        height = 768,
+    })
+    local root = UI.Column.new({
+        width = 'fill',
+        height = 'fill',
+        padding = { 24, 24, 24, 24 },
+        align = 'center',
+        justify = 'center',
+    })
+    local content = UI.Column.new({
+        width = 820,
+        height = 360,
+        gap = 12,
+        padding = { 20, 20, 20, 20 },
+        align = 'stretch',
+        justify = 'start',
+    })
+    local title = make_box(200, 30)
+    local row = UI.Row.new({
+        width = 'fill',
+        height = 'content',
+        gap = 24,
+        align = 'start',
+        justify = 'center',
+    })
+    local left = UI.Column.new({
+        width = 360,
+        height = 'content',
+        gap = 8,
+        align = 'center',
+        justify = 'start',
+    })
+    local right = UI.Column.new({
+        width = 360,
+        height = 'content',
+        gap = 8,
+        align = 'center',
+        justify = 'start',
+    })
+    local nested = make_box(320, 42)
+
+    root:addChild(content)
+    content:addChild(title)
+    content:addChild(row)
+    row:addChild(left)
+    row:addChild(right)
+    left:addChild(nested)
+    left:addChild(make_box(320, 42))
+    right:addChild(make_box(320, 42))
+    right:addChild(make_box(320, 42))
+    stage.baseSceneLayer:addChild(root)
+    stage:update()
+
+    local nested_x, nested_y = get_world_origin(nested)
+
+    assert_equal(nested_x, 160,
+        'Nested child world x should include all ancestor layout offsets during read synchronization')
+    assert_equal(nested_y, 266,
+        'Nested child world y should include all ancestor layout offsets during read synchronization')
+
+    stage:destroy()
+end
+
 local function run_circular_dependency_tests()
     local stage = UI.Stage.new({
         width = 200,
@@ -266,6 +332,7 @@ local function run()
     run_wrap_and_stretch_tests()
     run_nested_layout_measurement_tests()
     run_column_layout_tests()
+    run_nested_world_offset_read_tests()
     run_circular_dependency_tests()
 end
 

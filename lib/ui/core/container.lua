@@ -321,15 +321,27 @@ local function refresh_local_transform(self)
 end
 
 local function refresh_world_transform(self)
+    local previous = rawget(self, '_world_transform_cache')
+    local next_world = nil
+
     if self.parent then
-        rawset(self, '_world_transform_cache',
-            rawget(self.parent, '_world_transform_cache') * rawget(self, '_local_transform_cache'))
+        next_world = rawget(self.parent, '_world_transform_cache') * rawget(self, '_local_transform_cache')
     else
-        rawset(self, '_world_transform_cache', rawget(self, '_local_transform_cache'):clone())
+        next_world = rawget(self, '_local_transform_cache'):clone()
     end
 
+    rawset(self, '_world_transform_cache', next_world)
     rawset(self, '_world_transform_dirty', false)
     rawset(self, '_world_inverse_dirty', true)
+
+    if previous == nil or not previous:equals(next_world) then
+        local children = rawget(self, '_children') or {}
+        for index = 1, #children do
+            local child = children[index]
+            child:invalidate_world()
+            child:invalidate_descendant_world()
+        end
+    end
 end
 
 local function refresh_bounds(self)
