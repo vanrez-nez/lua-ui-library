@@ -1,7 +1,8 @@
-local Assert = require('lib.ui.core.assert')
+local Assert = require('lib.ui.utils.assert')
 local Container = require('lib.ui.core.container')
+local Types = require('lib.ui.utils.types')
 
-local Scene = {}
+local Scene = Container:extends('Scene')
 
 local SCENE_PUBLIC_KEYS = {
     params = true,
@@ -18,7 +19,7 @@ local function get_public_value(self, key)
 end
 
 local function assert_not_destroyed(self, level)
-    if self._destroyed then
+    if rawget(self, '_destroyed') then
         Assert.fail('cannot use a destroyed Scene', level or 1)
     end
 end
@@ -47,7 +48,7 @@ local function copy_options(opts)
 end
 
 local function validate_params(value, level)
-    if value ~= nil and type(value) ~= 'table' then
+    if value ~= nil and not Types.is_table(value) then
         Assert.fail('Scene.params must be a table or nil', level or 1)
     end
 
@@ -57,8 +58,14 @@ end
 local function set_initial_params(self, value)
     local normalized = validate_params(value, 3)
 
-    self._public_values.params = normalized
-    self._effective_values.params = normalized
+    local public_values = rawget(self, '_public_values')
+    if public_values then
+        public_values.params = normalized
+    end
+    local effective_values = rawget(self, '_effective_values')
+    if effective_values then
+        effective_values.params = normalized
+    end
 end
 
 local function set_params(self, value, level)
@@ -68,16 +75,22 @@ local function set_params(self, value, level)
         return normalized
     end
 
-    self._public_values.params = normalized
-    self._effective_values.params = normalized
+    local public_values = rawget(self, '_public_values')
+    if public_values then
+        public_values.params = normalized
+    end
+    local effective_values = rawget(self, '_effective_values')
+    if effective_values then
+        effective_values.params = normalized
+    end
     return normalized
 end
 
 local function is_runtime_utility(node)
-    return type(node) == 'table' and (
-        node._ui_stage_instance == true or
-        node._ui_scene_instance == true or
-        node._ui_composer_instance == true
+    return Types.is_table(node) and (
+        rawget(node, '_ui_stage_instance') == true or
+        rawget(node, '_ui_scene_instance') == true or
+        rawget(node, '_ui_composer_instance') == true
     )
 end
 
@@ -88,7 +101,7 @@ local function subtree_contains_runtime_utility(node)
 
     local children = rawget(node, '_children')
 
-    if type(children) ~= 'table' then
+    if not Types.is_table(children) then
         return false
     end
 
@@ -102,13 +115,13 @@ local function subtree_contains_runtime_utility(node)
 end
 
 local function is_base_scene_layer(parent)
-    if type(parent) ~= 'table' or parent._ui_container_instance ~= true then
+    if not Types.is_table(parent) or rawget(parent, '_ui_container_instance') ~= true then
         return false
     end
 
     local stage = rawget(parent, 'parent')
 
-    if type(stage) ~= 'table' or stage._ui_stage_instance ~= true then
+    if not Types.is_table(stage) or rawget(stage, '_ui_stage_instance') ~= true then
         return false
     end
 
@@ -125,16 +138,19 @@ local function assert_runtime_parent(parent, level)
 end
 
 local function can_receive_input(self)
-    return self._scene_active == true and
-        self._scene_runtime_owner ~= nil and
+    return rawget(self, '_scene_active') == true and
+        rawget(self, '_scene_runtime_owner') ~= nil and
         is_base_scene_layer(self.parent)
 end
 
-Scene.__index = function(self, key)
-    local method = rawget(Scene, key)
-
-    if method ~= nil then
-        return method
+function Scene:__index(key)
+    -- Walk the class hierarchy for methods
+    local cls = getmetatable(self)
+    local current = cls
+    while current do
+        local val = rawget(current, key)
+        if val ~= nil then return val end
+        current = rawget(current, "super")
     end
 
     if key == 'params' then
@@ -144,7 +160,7 @@ Scene.__index = function(self, key)
     return Container.__index(self, key)
 end
 
-Scene.__newindex = function(self, key, value)
+function Scene:__newindex(key, value)
     if key == 'parent' then
         if value ~= nil then
             if not rawget(self, '_allow_runtime_parent_assignment') then
@@ -168,7 +184,8 @@ Scene.__newindex = function(self, key, value)
         return
     end
 
-    if rawget(self, '_allowed_public_keys')[key] then
+    local allowed_public_keys = rawget(self, '_allowed_public_keys')
+    if allowed_public_keys and allowed_public_keys[key] then
         Assert.fail(
             'Scene does not support prop "' .. tostring(key) .. '"',
             2
@@ -178,31 +195,37 @@ Scene.__newindex = function(self, key, value)
     rawset(self, key, value)
 end
 
-function Scene.new(opts)
+function Scene:constructor(opts)
     opts = copy_options(opts)
 
-    local self = {}
-
-    Container._initialize(self, {
+    Container.constructor(self, {
         width = 'fill',
         height = 'fill',
     }, SCENE_PUBLIC_KEYS)
 
     set_initial_params(self, opts.params)
-    self._public_values.enabled = false
-    self._effective_values.enabled = false
+    local public_values = rawget(self, '_public_values')
+    if public_values then
+        public_values.enabled = false
+    end
+    local effective_values = rawget(self, '_effective_values')
+    if effective_values then
+        effective_values.enabled = false
+    end
 
     rawset(self, '_ui_scene_instance', true)
     rawset(self, '_scene_created', false)
     rawset(self, '_scene_active', false)
     rawset(self, '_scene_runtime_owner', nil)
     rawset(self, '_allow_runtime_parent_assignment', false)
+end
 
-    return setmetatable(self, Scene)
+function Scene.new(opts)
+    return Scene(opts)
 end
 
 function Scene.is_scene(value)
-    return type(value) == 'table' and value._ui_scene_instance == true
+    return Types.is_instance(value, Scene)
 end
 
 function Scene:onCreate(_)
@@ -279,7 +302,7 @@ function Scene:_create_if_needed(params)
         set_params(self, params, 2)
     end
 
-    if self._scene_created then
+    if rawget(self, '_scene_created') then
         return self
     end
 

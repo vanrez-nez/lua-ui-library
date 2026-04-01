@@ -17,6 +17,8 @@ local METAMETHODS = {
   "__concat", "__len",
   "__eq", "__lt", "__le",
   "__call", "__tostring", "__gc", "__close",
+  "__index", "__newindex",
+  "is", "derivedFrom", "instanceOf",
 }
 
 
@@ -27,13 +29,16 @@ function Object:constructor() end
 -- Creates a named subclass. name is optional but recommended for debugging.
 function Object:extends(name)
   local cls      = {}
-  cls.__index    = cls
   cls.__name     = name or "?"
   cls.super      = self
 
   for _, mm in ipairs(METAMETHODS) do
-    local v = rawget(self, mm)
+    local v = self[mm]
     if v ~= nil then cls[mm] = v end
+  end
+
+  if type(cls.__index) ~= 'function' then
+    cls.__index = cls
   end
 
   setmetatable(cls, self)
@@ -70,6 +75,31 @@ function Object:derivedFrom(T)
   end
   return false
 end
+
+
+-- Returns true if obj is an instance of T (where T is a class or class name).
+-- Handles nil or non-table objects gracefully.
+function Object.is(obj, T)
+  if type(obj) ~= "table" then
+    return false
+  end
+
+  if type(T) == "string" then
+    local mt = getmetatable(obj)
+    while mt do
+      if mt.__name == T then return true end
+      mt = getmetatable(mt)
+    end
+    return false
+  end
+
+  if type(T) == "table" and type(obj.derivedFrom) == "function" then
+    return obj:derivedFrom(T)
+  end
+
+  return false
+end
+
 
 
 -- Returns the class name. Resolves correctly for both instances and classes.

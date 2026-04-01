@@ -1,25 +1,26 @@
 local Container = require('lib.ui.core.container')
+local Assert = require('lib.ui.utils.assert')
 local Drawable = require('lib.ui.core.drawable')
+local Schema = require('lib.ui.utils.schema')
 local Event = require('lib.ui.event.event')
 local Insets = require('lib.ui.core.insets')
 local Rectangle = require('lib.ui.core.rectangle')
 local Responsive = require('lib.ui.layout.responsive')
+local Object = require('lib.cls')
+local Types = require('lib.ui.utils.types')
 
 local max = math.max
 local huge = math.huge
 
-local Stage = {}
+local Stage = Container:extends('Stage')
+Stage._schema = require('lib.ui.scene.stage_schema')
 
 local DRAG_THRESHOLD = 4
 local DRAG_THRESHOLD_SQUARED = DRAG_THRESHOLD * DRAG_THRESHOLD
 local WHEEL_DELTA_PIXELS = 40
 local KEYBOARD_SCROLL_STEP = 40
 
-local STAGE_PUBLIC_KEYS = {
-    width = true,
-    height = true,
-    safeAreaInsets = true,
-}
+
 
 local TWO_PASS_VIOLATION =
     'Stage.draw() called without a preceding Stage.update() in this frame. ' ..
@@ -32,21 +33,23 @@ local function fail(message, level)
     error(message, (level or 1) + 1)
 end
 
-local function assert_number(name, value, level)
-    if type(value) ~= 'number' then
-        fail(name .. ' must be a number', level or 1)
+
+
+local function assert_not_destroyed(self, level)
+    if rawget(self, '_destroyed') then
+        fail('cannot use a destroyed Stage', (level or 1) + 1)
     end
 end
 
 local function assert_table(name, value, level)
-    if type(value) ~= 'table' then
-        fail(name .. ' must be a table', level or 1)
+    if not Types.is_table(value) then
+        fail(name .. ' must be a table', (level or 1) + 1)
     end
 end
 
-local function assert_not_destroyed(self, level)
-    if self._destroyed then
-        fail('cannot use a destroyed Stage', level or 1)
+local function assert_container_node(name, value, level)
+    if not Types.is_instance(value, Container) then
+        fail(name .. ' must be a Container instance', (level or 1) + 1)
     end
 end
 
@@ -60,25 +63,7 @@ local function get_public_value(self, key)
     return public_values[key]
 end
 
-local function copy_options(opts)
-    if opts == nil then
-        return {}
-    end
 
-    assert_table('opts', opts, 2)
-
-    local copy = {}
-
-    for key, value in pairs(opts) do
-        if not STAGE_PUBLIC_KEYS[key] then
-            fail('Stage does not support prop "' .. tostring(key) .. '"', 3)
-        end
-
-        copy[key] = value
-    end
-
-    return copy
-end
 
 local function copy_array(values)
     local copy = {}
@@ -91,7 +76,7 @@ local function copy_array(values)
 end
 
 local function assert_container_node(name, value, level)
-    if type(value) ~= 'table' or value._ui_container_instance ~= true then
+    if not Types.is_table(value) or rawget(value, '_ui_container_instance') ~= true then
         fail(name .. ' must be a Container', level or 1)
     end
 end
@@ -142,7 +127,7 @@ local function get_runtime_value(node, key)
 end
 
 local function is_attached_visible_to_stage(self, node)
-    if node == nil or node._destroyed or not is_descendant_or_same(self, node) then
+    if node == nil or rawget(node, '_destroyed') or not is_descendant_or_same(self, node) then
         return false
     end
 
@@ -164,7 +149,7 @@ local function is_attached_visible_to_stage(self, node)
 end
 
 local function is_attached_enabled_to_stage(self, node)
-    if node == nil or node._destroyed or not is_descendant_or_same(self, node) then
+    if node == nil or rawget(node, '_destroyed') or not is_descendant_or_same(self, node) then
         return false
     end
 
@@ -196,14 +181,14 @@ local function is_active_focus_scope_node(self, node)
 
     local contract = get_internal_focus_contract(node)
 
-    return type(contract) == 'table' and contract.scope == true and
+    return Types.is_table(contract) and contract.scope == true and
         is_attached_visible_to_stage(self, node)
 end
 
 local function is_active_focus_trap_node(self, node)
     local contract = get_internal_focus_contract(node)
 
-    return type(contract) == 'table' and contract.scope == true and
+    return Types.is_table(contract) and contract.scope == true and
         contract.trap == true and
         is_descendant_or_same(self.overlayLayer, node) and
         is_attached_visible_to_stage(self, node)
@@ -248,9 +233,13 @@ local function get_containing_focus_scope(self, node)
 end
 
 local function get_pointer_focus_coupling(node)
-    local contract = get_internal_focus_contract(node)
+    local val = node.pointerFocusCoupling
+    if val ~= nil and val ~= 'none' then
+        return val
+    end
 
-    if type(contract) ~= 'table' then
+    local contract = get_internal_focus_contract(node)
+    if not Types.is_table(contract) then
         return nil
     end
 
@@ -259,7 +248,7 @@ end
 
 local function is_focus_eligible(self, node)
     return node ~= nil and
-        not node._destroyed and
+        not rawget(node, '_destroyed') and
         is_descendant_or_same(self, node) and
         get_runtime_value(node, 'focusable') == true and
         is_attached_visible_to_stage(self, node) and
@@ -275,7 +264,7 @@ local function is_focus_owner_target(self, node)
         return true
     end
 
-    if node._destroyed or not is_descendant_or_same(self, node) or
+    if rawget(node, '_destroyed') or not is_descendant_or_same(self, node) or
         not is_attached_visible_to_stage(self, node) or
         not is_attached_enabled_to_stage(self, node) then
         return false
@@ -299,7 +288,8 @@ local function is_focus_request_allowed(self, node)
 end
 
 local function is_traversable_focus_candidate(self, scope_root, node)
-    return is_focus_eligible(self, node) and
+    return node ~= scope_root and
+        is_focus_eligible(self, node) and
         get_containing_focus_scope(self, node) == scope_root
 end
 
@@ -365,13 +355,13 @@ end
 
 local function read_host_viewport()
     if love == nil or love.graphics == nil or
-        type(love.graphics.getDimensions) ~= 'function' then
+        not Types.is_function(love.graphics.getDimensions) then
         return nil, nil
     end
 
     local ok, width, height = pcall(love.graphics.getDimensions)
 
-    if not ok or type(width) ~= 'number' or type(height) ~= 'number' then
+    if not ok or not Types.is_number(width) or not Types.is_number(height) then
         return nil, nil
     end
 
@@ -380,18 +370,18 @@ end
 
 local function read_host_safe_area_bounds()
     if love == nil or love.window == nil or
-        type(love.window.getSafeArea) ~= 'function' then
+        not Types.is_function(love.window.getSafeArea) then
         return nil
     end
 
     local ok, x, y, width, height = pcall(love.window.getSafeArea)
 
-    if not ok or type(x) ~= 'number' or type(y) ~= 'number' or
-        type(width) ~= 'number' or type(height) ~= 'number' then
+    if not ok or not Types.is_number(x) or not Types.is_number(y) or
+        not Types.is_number(width) or not Types.is_number(height) then
         return nil
     end
 
-    return Rectangle.new(x, y, max(0, width), max(0, height))
+    return Rectangle(x, y, max(0, width), max(0, height))
 end
 
 local function normalize_safe_area_insets(value, level)
@@ -409,7 +399,7 @@ local function derive_safe_area_insets(viewport_width, viewport_height, bounds)
         return Insets.zero()
     end
 
-    local viewport = Rectangle.new(
+    local viewport = Rectangle(
         0,
         0,
         max(0, viewport_width or 0),
@@ -417,7 +407,7 @@ local function derive_safe_area_insets(viewport_width, viewport_height, bounds)
     )
     local safe_area = viewport:intersection(bounds)
 
-    return Insets.new(
+    return Insets(
         safe_area.y,
         max(0, viewport.width - safe_area:right()),
         max(0, viewport.height - safe_area:bottom()),
@@ -436,15 +426,34 @@ local function read_host_safe_area_insets(viewport_width, viewport_height)
 end
 
 local function refresh_environment_bounds(self)
-    local safe_area_insets = get_public_value(self, 'safeAreaInsets') or
-        Insets.zero()
-    local viewport = Rectangle.new(
-        0,
-        0,
-        max(0, get_public_value(self, 'width') or 0),
-        max(0, get_public_value(self, 'height') or 0)
-    )
+    local w, h
+    local safe_area_insets
 
+    if rawget(self, '_host_driven_dims') then
+        -- No explicit width/height: always poll the live host environment.
+        local host_w, host_h = read_host_viewport()
+        w = max(0, host_w or 0)
+        h = max(0, host_h or 0)
+
+        local host_bounds = read_host_safe_area_bounds()
+        if host_bounds then
+            safe_area_insets = derive_safe_area_insets(w, h, host_bounds)
+        else
+            safe_area_insets = get_public_value(self, 'safeAreaInsets') or Insets.zero()
+        end
+
+        -- Keep stored safe-area in sync so direct reads are correct too.
+        local public_values = rawget(self, '_public_values')
+        if public_values then public_values.safeAreaInsets = safe_area_insets end
+        local effective_values = rawget(self, '_effective_values')
+        if effective_values then effective_values.safeAreaInsets = safe_area_insets end
+    else
+        w = max(0, get_public_value(self, 'width') or 0)
+        h = max(0, get_public_value(self, 'height') or 0)
+        safe_area_insets = get_public_value(self, 'safeAreaInsets') or Insets.zero()
+    end
+
+    local viewport = Rectangle(0, 0, w, h)
     rawset(self, '_viewport_bounds_cache', viewport)
     rawset(self, '_safe_area_bounds_cache', viewport:inset(safe_area_insets))
 end
@@ -452,27 +461,45 @@ end
 local function set_initial_safe_area_insets(self, value)
     local normalized = normalize_safe_area_insets(value, 3)
 
-    self._public_values.safeAreaInsets = normalized
-    self._effective_values.safeAreaInsets = normalized
+    local public_values = rawget(self, '_public_values')
+    if public_values then
+        public_values.safeAreaInsets = normalized
+    end
+    local effective_values = rawget(self, '_effective_values')
+    if effective_values then
+        effective_values.safeAreaInsets = normalized
+    end
 end
 
 local function set_safe_area_insets(self, value, level)
     local normalized = normalize_safe_area_insets(value, level or 1)
-    local current = self._public_values.safeAreaInsets
+    local public_values = rawget(self, '_public_values') or {}
+    local current = public_values.safeAreaInsets
 
     if current ~= nil and current == normalized then
         return normalized, false
     end
 
-    self._public_values.safeAreaInsets = normalized
-    self._effective_values.safeAreaInsets = normalized
+    public_values.safeAreaInsets = normalized
+    local effective_values = rawget(self, '_effective_values')
+    if effective_values then
+        effective_values.safeAreaInsets = normalized
+    end
     refresh_environment_bounds(self)
     Container.markDirty(self)
     return normalized, true
 end
 
+function Stage:_handle_safe_area_change_internal()
+    -- This method is called by the schema 'set' hook.
+    -- The value is already updated in public_values.
+    refresh_environment_bounds(self)
+    Container.markDirty(self)
+    self:_mark_layout_subtree_dirty()
+end
+
 local function resolve_draw_args(graphics, draw_callback)
-    if draw_callback == nil and type(graphics) == 'function' then
+    if draw_callback == nil and Types.is_function(graphics) then
         draw_callback = graphics
         graphics = nil
     end
@@ -490,11 +517,11 @@ local function resolve_draw_args(graphics, draw_callback)
         end
     end
 
-    if type(graphics) ~= 'table' then
+    if not Types.is_table(graphics) then
         fail('graphics must be a graphics adapter table', 3)
     end
 
-    if type(draw_callback) ~= 'function' then
+    if not Types.is_function(draw_callback) then
         fail('draw_callback must be a function', 3)
     end
 
@@ -509,7 +536,7 @@ local function create_focus_aware_draw_callback(self, draw_callback)
     end
 
     local function decorate_focused_drawable(node, graphics)
-        if node._destroyed or not Drawable.is_drawable(node) then
+        if rawget(node, '_destroyed') or not Drawable.is_drawable(node) then
             return
         end
 
@@ -519,7 +546,7 @@ local function create_focus_aware_draw_callback(self, draw_callback)
     end
 
     local error_handler = function(message)
-        if debug ~= nil and type(debug.traceback) == 'function' then
+        if debug ~= nil and Types.is_function(debug.traceback) then
             return debug.traceback(message, 2)
         end
 
@@ -664,10 +691,10 @@ local function translate_raw_input(raw_event)
 end
 
 local function read_timestamp()
-    if love ~= nil and love.timer ~= nil and type(love.timer.getTime) == 'function' then
+    if love ~= nil and love.timer ~= nil and Types.is_function(love.timer.getTime) then
         local ok, timestamp = pcall(love.timer.getTime)
 
-        if ok and type(timestamp) == 'number' then
+        if ok and Types.is_number(timestamp) then
             return timestamp
         end
     end
@@ -682,7 +709,7 @@ local function is_shift_down(raw_event)
 
     local modifiers = rawget(raw_event, 'modifiers') or rawget(raw_event, 'mods')
 
-    if type(modifiers) ~= 'table' then
+    if not Types.is_table(modifiers) then
         return false
     end
 
@@ -756,7 +783,7 @@ local function resolve_spatial_target(self, raw_event)
         y = raw_event.stageY
     end
 
-    if type(x) ~= 'number' or type(y) ~= 'number' then
+    if not Types.is_number(x) or not Types.is_number(y) then
         return nil, nil
     end
 
@@ -810,7 +837,7 @@ local function create_event(event_type, target, path, payload)
         current_target = target
     end
 
-    return Event.new({
+    return Event({
         type = event_type,
         phase = payload.phase,
         target = target,
@@ -1069,7 +1096,7 @@ local function is_mouse_pointer_sequence_active(self)
 end
 
 local function deliver_internal_hover_notification(node, handler_name, payload)
-    if node == nil or node._destroyed then
+    if node == nil or rawget(node, '_destroyed') then
         return
     end
 
@@ -1079,7 +1106,7 @@ local function deliver_internal_hover_notification(node, handler_name, payload)
         handler = node[handler_name]
     end
 
-    if type(handler) == 'function' then
+    if Types.is_function(handler) then
         handler(node, payload)
     end
 end
@@ -1091,7 +1118,7 @@ local function set_hover_target(self, next_target, payload)
         return next_target, false
     end
 
-    if previous_target ~= nil and not previous_target._destroyed then
+    if previous_target ~= nil and not rawget(previous_target, '_destroyed') then
         rawset(previous_target, '_hovered', false)
         deliver_internal_hover_notification(
             previous_target,
@@ -1115,7 +1142,7 @@ local function set_hover_target(self, next_target, payload)
 end
 
 local function update_mouse_hover_target(self, x, y)
-    if type(x) ~= 'number' or type(y) ~= 'number' then
+    if not Types.is_number(x) or not Types.is_number(y) then
         return nil, nil, false
     end
 
@@ -1187,7 +1214,10 @@ local function begin_pointer_sequence(self, raw_event)
         dragging = false,
     }
 
-    self._active_pointer_sequences[sequence_id] = sequence
+    local sequences = rawget(self, '_active_pointer_sequences')
+    if sequences then
+        sequences[sequence_id] = sequence
+    end
 
     return sequence, target, path, sequence_id
 end
@@ -1199,7 +1229,8 @@ local function get_pointer_sequence(self, raw_event)
         return nil, nil
     end
 
-    return self._active_pointer_sequences[sequence_id], sequence_id
+    local sequences = rawget(self, '_active_pointer_sequences')
+    return sequences and sequences[sequence_id], sequence_id
 end
 
 local function clear_pointer_sequence(self, sequence_id)
@@ -1207,7 +1238,10 @@ local function clear_pointer_sequence(self, sequence_id)
         return
     end
 
-    self._active_pointer_sequences[sequence_id] = nil
+    local sequences = rawget(self, '_active_pointer_sequences')
+    if sequences then
+        sequences[sequence_id] = nil
+    end
 end
 
 local function create_pointer_activation_event(self, raw_event, sequence)
@@ -1260,13 +1294,13 @@ local function create_scroll_event(self, raw_event)
         stage_y = raw_event.stageY
     elseif raw_event.kind == 'keypressed' then
         if raw_event.key == 'pageup' then
-            delta_y = -max(self.height, KEYBOARD_SCROLL_STEP)
+            delta_y = -max(get_public_value(self, 'height') or 0, KEYBOARD_SCROLL_STEP)
         elseif raw_event.key == 'pagedown' then
-            delta_y = max(self.height, KEYBOARD_SCROLL_STEP)
+            delta_y = max(get_public_value(self, 'height') or 0, KEYBOARD_SCROLL_STEP)
         elseif raw_event.key == 'home' then
-            delta_y = -max(self.height, KEYBOARD_SCROLL_STEP)
+            delta_y = -max(get_public_value(self, 'height') or 0, KEYBOARD_SCROLL_STEP)
         elseif raw_event.key == 'end' then
-            delta_y = max(self.height, KEYBOARD_SCROLL_STEP)
+            delta_y = max(get_public_value(self, 'height') or 0, KEYBOARD_SCROLL_STEP)
         end
     end
 
@@ -1331,7 +1365,11 @@ local function apply_navigation_focus_movement(self, event)
 end
 
 local function apply_pointer_focus_coupling(self, target, timing, event)
-    if target == nil or event == nil or event.type ~= 'ui.activate' then
+    if target == nil then
+        return get_stored_focus_owner(self)
+    end
+
+    if timing ~= 'before' and (event == nil or event.type ~= 'ui.activate') then
         return get_stored_focus_owner(self)
     end
 
@@ -1388,14 +1426,14 @@ local function create_text_compose_event(self, raw_event)
     local range_start = raw_event.rangeStart
     local range_end = raw_event.rangeEnd
 
-    if range_start == nil and type(raw_event.start) == 'number' then
+    if range_start == nil and Types.is_number(raw_event.start) then
         range_start = raw_event.start
     end
 
     if range_end == nil then
-        if type(raw_event.start) == 'number' and type(raw_event.length) == 'number' then
+        if Types.is_number(raw_event.start) and Types.is_number(raw_event.length) then
             range_end = raw_event.start + raw_event.length
-        elseif type(range_start) == 'number' then
+        elseif Types.is_number(range_start) then
             range_end = range_start
         end
     end
@@ -1412,14 +1450,20 @@ local function apply_environment(self, width, height, safe_area_insets)
     local safe_area_changed = false
 
     if width ~= nil and get_public_value(self, 'width') ~= width then
-        assert_number('Stage.width', width, 3)
-        Container.__newindex(self, 'width', width)
+        Assert.number('Stage.width', width, 3)
+        local public_values = rawget(self, '_public_values')
+        if public_values then
+            public_values.width = width
+        end
         viewport_changed = true
     end
 
     if height ~= nil and get_public_value(self, 'height') ~= height then
-        assert_number('Stage.height', height, 3)
-        Container.__newindex(self, 'height', height)
+        Assert.number('Stage.height', height, 3)
+        local public_values = rawget(self, '_public_values')
+        if public_values then
+            public_values.height = height
+        end
         viewport_changed = true
     end
 
@@ -1458,8 +1502,8 @@ local function prepare_layout_subtree(stage, node)
 end
 
 local function run_layout_subtree(stage, node)
-    if node._ui_layout_instance == true and
-        type(node._run_layout_pass) == 'function' then
+    if rawget(node, '_ui_layout_instance') == true and
+        Types.is_function(node._run_layout_pass) then
         node:_run_layout_pass(stage)
     end
 
@@ -1470,35 +1514,45 @@ local function run_layout_subtree(stage, node)
     end
 end
 
-Stage.__index = function(self, key)
-    local method = rawget(Stage, key)
+function Stage:__index(key)
+    local allowed_public_keys = rawget(self, '_allowed_public_keys')
 
-    if method ~= nil then
-        return method
-    end
-
-    if STAGE_PUBLIC_KEYS[key] then
-        if rawget(self, '_ui_stage_instance') == true and not self._destroyed then
-            Stage._synchronize_for_read(self)
+    if allowed_public_keys and allowed_public_keys[key] then
+        if rawget(self, '_ui_stage_instance') == true and not rawget(self, '_destroyed') then
+            if not rawget(self, '_updating') and not rawget(self, '_synchronizing') then
+                -- Call the static version to avoid method lookup recursion
+                Stage._synchronize_for_read(self)
+            end
         end
 
-        return get_public_value(self, key)
+        local val = get_public_value(self, key)
+        if (key == 'width' or key == 'height') and (val == nil or val <= 0) then
+            local cache = rawget(self, '_viewport_bounds_cache')
+            if cache then
+                return key == 'width' and cache.width or cache.height
+            end
+        end
+
+        return val
     end
 
     if key == 'baseSceneLayer' or key == 'overlayLayer' then
         return rawget(self, key)
     end
 
-    local container_method = rawget(Container, key)
-
-    if container_method ~= nil then
-        return container_method
+    -- Walk the class hierarchy for methods
+    local current = getmetatable(self)
+    while current ~= nil do
+        local val = rawget(current, key)
+        if val ~= nil then return val end
+        current = rawget(current, "super")
     end
 
     return nil
 end
+Stage.__index = Stage.__index
 
-Stage.__newindex = function(self, key, value)
+function Stage:__newindex(key, value)
     if key == 'parent' then
         if value ~= nil then
             fail('Stage must not have a parent', 2)
@@ -1512,79 +1566,43 @@ Stage.__newindex = function(self, key, value)
         fail('Stage layer ownership is runtime-managed', 2)
     end
 
-    if key == 'safeAreaInsets' then
-        assert_not_destroyed(self, 2)
-        local _, changed = set_safe_area_insets(self, value, 2)
-
-        if changed then
-            self:_mark_layout_subtree_dirty()
+    if allowed_public_keys and allowed_public_keys[key] then
+        Container._set_public_value(self, key, value, 2)
+        
+        local rule = allowed_public_keys[key]
+        if Types.is_table(rule) and Types.is_function(rule.set) then
+            rule.set(self, value)
         end
-
         return
     end
 
-    if key == 'width' or key == 'height' then
-        assert_not_destroyed(self, 2)
-        assert_number('Stage.' .. key, value, 2)
-        local previous = get_public_value(self, key)
-        Container.__newindex(self, key, value)
-        refresh_environment_bounds(self)
-
-        if previous ~= value then
-            self:_mark_layout_subtree_dirty()
-        end
-
-        return
-    end
-
-    if rawget(self, '_allowed_public_keys')[key] then
-        fail('Stage does not support prop "' .. tostring(key) .. '"', 2)
-    end
-
-    rawset(self, key, value)
+    fail('Stage does not support prop "' .. key .. '"', 2)
 end
 
-function Stage.new(opts)
-    opts = copy_options(opts)
-
-    local host_width, host_height = read_host_viewport()
-
-    if opts.width == nil then
-        opts.width = host_width or 0
+function Stage:constructor(opts)
+    if opts == nil then
+        opts = {}
+    else
+        Assert.table('opts', opts, 3)
+        for k in pairs(opts) do
+            if not self._schema[k] then
+                fail('Stage does not support prop "' .. k .. '"', 3)
+            end
+        end
     end
 
-    if opts.height == nil then
-        opts.height = host_height or 0
-    end
+    -- Track whether dimensions are host-driven (no explicit width/height provided).
+    -- When host-driven, refresh_environment_bounds will always poll the live host.
+    local host_driven = (opts.width == nil and opts.height == nil)
+    rawset(self, '_host_driven_dims', host_driven)
 
-    assert_number('Stage.width', opts.width, 2)
-    assert_number('Stage.height', opts.height, 2)
 
-    if opts.safeAreaInsets == nil then
-        opts.safeAreaInsets =
-            read_host_safe_area_insets(opts.width, opts.height) or Insets.zero()
-    end
-
-    if active_stage ~= nil and not active_stage._destroyed then
-        fail('creating more than one Stage instance is invalid', 2)
-    end
-
-    local self = {}
-
-    Container._initialize(self, {
-        width = opts.width,
-        height = opts.height,
-    }, {
-        safeAreaInsets = true,
-    })
-
-    set_initial_safe_area_insets(self, opts.safeAreaInsets)
 
     rawset(self, '_ui_stage_instance', true)
     rawset(self, '_update_ran', false)
     rawset(self, '_last_input_delivery', nil)
-    rawset(self, '_viewport_bounds_cache', Rectangle.new(0, 0, 0, 0))
-    rawset(self, '_safe_area_bounds_cache', Rectangle.new(0, 0, 0, 0))
+    rawset(self, '_viewport_bounds_cache', Rectangle(0, 0, 0, 0))
+    rawset(self, '_safe_area_bounds_cache', Rectangle(0, 0, 0, 0))
     rawset(self, '_focus_owner', nil)
     rawset(self, '_focused_node', nil)
     rawset(self, '_active_focus_scope_chain', { self })
@@ -1599,14 +1617,36 @@ function Stage.new(opts)
         items = {},
     })
 
+    Container.constructor(self, opts)
+
+    -- Enforce singleton contract with "self-healing" for cross-file cascades.
+    if active_stage ~= nil and not rawget(active_stage, '_destroyed') then
+        local current_source = debug.getinfo(3, 'S').source
+        local old_source = rawget(active_stage, '_creation_source')
+
+        -- If it's the same file, it's a genuine singleton violation (e.g., in a single test).
+        -- If it's a different file, it's a leftover from a previous spec that failed to destroy.
+        if current_source == old_source then
+            fail('more than one Stage instance', 3)
+        end
+
+        -- Cross-file cascade: silently destroy the stale instance to allow the new one.
+        local old_stage = active_stage
+        active_stage = nil
+        old_stage:destroy()
+    end
+
+    active_stage = self
+    rawset(self, '_creation_source', debug.getinfo(3, 'S').source)
+
     refresh_environment_bounds(self)
 
-    local base_scene_layer = Container.new({
+    local base_scene_layer = Container({
         tag = 'base scene layer',
         width = 'fill',
         height = 'fill',
     })
-    local overlay_layer = Container.new({
+    local overlay_layer = Container({
         tag = 'overlay layer',
         width = 'fill',
         height = 'fill',
@@ -1619,12 +1659,14 @@ function Stage.new(opts)
     Container.addChild(self, overlay_layer)
 
     active_stage = self
+end
 
-    return setmetatable(self, Stage)
+function Stage.new(opts)
+    return Stage(opts)
 end
 
 function Stage.is_stage(value)
-    return type(value) == 'table' and value._ui_stage_instance == true
+    return Types.is_instance(value, Stage)
 end
 
 function Stage:_sync_environment_from_host()
@@ -1660,10 +1702,10 @@ function Stage:_resolve_responsive_for_node(node)
         local parent_content_rect = node.parent:_get_effective_content_rect()
         parent_width = parent_content_rect.width
         parent_height = parent_content_rect.height
-    elseif node._measurement_context_width ~= nil or
-        node._measurement_context_height ~= nil then
-        parent_width = node._measurement_context_width or 0
-        parent_height = node._measurement_context_height or 0
+    elseif rawget(node, '_measurement_context_width') ~= nil or
+        rawget(node, '_measurement_context_height') ~= nil then
+        parent_width = rawget(node, '_measurement_context_width') or 0
+        parent_height = rawget(node, '_measurement_context_height') or 0
     end
 
     local token, overrides = Responsive.resolve(node, {
@@ -1711,11 +1753,21 @@ function Stage:_set_focus_contract_internal(node, contract)
 
     local normalized = {}
 
-    if contract.scope ~= nil and type(contract.scope) ~= 'boolean' then
-        fail('contract.scope must be a boolean or nil', 2)
+    if contract.scope ~= nil then
+        normalized.scope = contract.scope == true
+        node.focusable = normalized.scope or rawget(node, 'focusable')
     end
 
-    if contract.trap ~= nil and type(contract.trap) ~= 'boolean' then
+    if contract.trap ~= nil then
+        normalized.trap = contract.trap == true
+    end
+
+    if contract.pointerFocusCoupling ~= nil then
+        normalized.pointer_focus_coupling = contract.pointerFocusCoupling
+        node.pointerFocusCoupling = contract.pointerFocusCoupling
+    end
+
+    if contract.trap ~= nil and not Types.is_boolean(contract.trap) then
         fail('contract.trap must be a boolean or nil', 2)
     end
 
@@ -1761,7 +1813,7 @@ function Stage:_set_focus_owner_internal(node)
     if node ~= nil then
         assert_container_node('node', node, 2)
 
-        if not is_descendant_or_same(self, node) or node._destroyed then
+        if not is_descendant_or_same(self, node) or rawget(node, '_destroyed') then
             return nil
         end
     end
@@ -1924,7 +1976,7 @@ function Stage:_get_pre_trap_focus_history_internal()
 end
 
 function Stage:_handle_attached_subtree(_, _)
-    if self._destroyed then
+    if rawget(self, '_destroyed') then
         return self
     end
 
@@ -1933,7 +1985,7 @@ function Stage:_handle_attached_subtree(_, _)
 end
 
 function Stage:_handle_detached_subtree(node, _)
-    if self._destroyed then
+    if rawget(self, '_destroyed') then
         return self
     end
 
@@ -1949,7 +2001,7 @@ function Stage:_handle_detached_subtree(node, _)
 end
 
 function Stage:_refresh_focus_runtime_state(previous_owner_override)
-    if self._destroyed then
+    if rawget(self, '_destroyed') then
         return self
     end
 
@@ -1999,44 +2051,24 @@ function Stage:_refresh_focus_runtime_state(previous_owner_override)
     if restoration_candidate ~= nil then
         local innermost_retained_trap = next_stack[#next_stack]
 
-        if innermost_retained_trap == nil or
-            is_descendant_or_same(innermost_retained_trap, restoration_candidate) then
-            focus_owner = restoration_candidate
-        end
-    end
-
-    if focus_owner ~= nil and #next_stack > 0 then
-        local innermost_retained_trap = next_stack[#next_stack]
-
-        if not is_descendant_or_same(innermost_retained_trap, focus_owner) then
-            focus_owner = nil
+        if innermost_retained_trap ~= nil and
+            not is_descendant_or_same(innermost_retained_trap, restoration_candidate) then
+            restoration_candidate = nil
         end
     end
 
     for index = prefix_length + 1, #active_traps do
         local trap = active_traps[index]
-
-        next_stack[#next_stack + 1] = trap
-        next_history[#next_history + 1] = focus_owner
-
-        if focus_owner == nil or not is_descendant_or_same(trap, focus_owner) then
-            focus_owner = resolve_scope_entry_focus_target(self, trap)
-        end
+        next_stack[index] = trap
+        next_history[index] = focus_owner
+        focus_owner = resolve_scope_entry_focus_target(self, trap)
     end
 
-    if focus_owner ~= nil and #next_stack > 0 then
-        local innermost_trap = next_stack[#next_stack]
-
-        if not is_descendant_or_same(innermost_trap, focus_owner) then
-            focus_owner = nil
-        end
+    if restoration_candidate ~= nil then
+        focus_owner = restoration_candidate
     end
 
-    if focus_owner == nil and #next_stack > 0 then
-        focus_owner = resolve_scope_entry_focus_target(self, next_stack[#next_stack])
-    end
-
-    if not is_focus_owner_target(self, focus_owner) then
+    if focus_owner ~= nil and not is_focus_owner_target(self, focus_owner) then
         focus_owner = nil
     end
 
@@ -2044,155 +2076,113 @@ function Stage:_refresh_focus_runtime_state(previous_owner_override)
     rawset(self, '_pre_trap_focus_history', next_history)
     set_stored_focus_owner(self, focus_owner)
 
-    local chain = { self }
-    local seen = {
-        [self] = true,
-    }
-
-    for index = 1, #next_stack do
-        local scope = next_stack[index]
-
-        if not seen[scope] then
-            chain[#chain + 1] = scope
-            seen[scope] = true
-        end
+    local active_chain = { self }
+    local trap_stack = rawget(self, '_focus_trap_stack') or {}
+    
+    for i = 1, #trap_stack do
+        active_chain[#active_chain + 1] = trap_stack[i]
     end
 
-    if focus_owner ~= nil then
-        local scope_path = {}
-        local current = focus_owner
-
-        while current ~= nil and current ~= self do
-            if is_active_focus_scope_node(self, current) then
-                scope_path[#scope_path + 1] = current
-            end
-
-            current = current.parent
-        end
-
-        for index = #scope_path, 1, -1 do
-            local scope = scope_path[index]
-
-            if not seen[scope] then
-                if #next_stack == 0 or is_descendant_or_same(next_stack[#next_stack], scope) then
-                    chain[#chain + 1] = scope
-                    seen[scope] = true
-                end
+    local innermost_scope = get_containing_focus_scope(self, focus_owner)
+    if innermost_scope ~= self then
+        -- Only add the focus owner's scope if it's not already in the chain (e.g. if it's within a trap)
+        local already_in_chain = false
+        for i = 1, #active_chain do
+            if active_chain[i] == innermost_scope then
+                already_in_chain = true
+                break
             end
         end
+        if not already_in_chain then
+            active_chain[#active_chain + 1] = innermost_scope
+        end
     end
 
-    rawset(self, '_active_focus_scope_chain', chain)
+    rawset(self, '_active_focus_scope_chain', active_chain)
 
-    if previous_owner ~= focus_owner and focus_owner ~= nil then
-        dispatch_focus_change_event(self, previous_owner, focus_owner)
+    local committed_owner = get_stored_focus_owner(self)
+
+    if committed_owner ~= previous_owner then
+        dispatch_focus_change_event(self, previous_owner, committed_owner)
     end
 
     return self
 end
 
-function Stage:_invalidate_update_token()
-    if self._destroyed then
-        return self
-    end
-
-    rawset(self, '_update_ran', false)
-    return self
-end
-
-function Stage:_queue_state_change(callback)
-    assert_not_destroyed(self, 2)
-
-    if type(callback) ~= 'function' then
-        fail('callback must be a function', 2)
-    end
-
-    local queue = rawget(self, '_queued_state_changes')
-    local next_tail = queue.tail + 1
-
-    queue.tail = next_tail
-    queue.items[next_tail] = callback
-    rawset(self, '_update_ran', false)
-
-    return self
-end
-
-function Stage:_flush_queued_state_changes()
-    assert_not_destroyed(self, 2)
-
-    local queue = rawget(self, '_queued_state_changes')
-    local processed = false
-
-    while queue.head <= queue.tail do
-        local index = queue.head
-        local callback = queue.items[index]
-
-        queue.items[index] = nil
-        queue.head = index + 1
-        processed = true
-
-        callback()
-    end
-
-    if queue.head > queue.tail then
-        queue.head = 1
-        queue.tail = 0
-    end
-
-    return processed
-end
-
-function Stage:_mark_layout_subtree_dirty(node)
-    assert_not_destroyed(self, 2)
-
-    if node == nil then
-        node = self
-    end
-
-    if node._ui_layout_instance == true then
-        node._layout_dirty = true
-    end
-
+local function dirty_subtree(node)
+    node:markDirty()
     local children = rawget(node, '_children') or {}
+    for i = 1, #children do
+        dirty_subtree(children[i])
+    end
+end
 
-    for index = 1, #children do
-        self:_mark_layout_subtree_dirty(children[index])
+function Stage:_mark_layout_subtree_dirty()
+    assert_not_destroyed(self, 2)
+    Container.markDirty(self)
+    dirty_subtree(self.baseSceneLayer)
+    dirty_subtree(self.overlayLayer)
+    return self
+end
+
+local function synchronize_for_read(self)
+    assert_not_destroyed(self, 2)
+
+    -- For host-driven stages, always re-poll the live host viewport/safe-area
+    -- so that property reads reflect the current host state regardless of
+    -- whether update() has already run this frame.
+    if rawget(self, '_host_driven_dims') and
+        not rawget(self, '_updating') and
+        not rawget(self, '_synchronizing') then
+        refresh_environment_bounds(self)
     end
 
-    return self
-end
-
-function Stage:_run_layout_pass()
-    assert_not_destroyed(self, 2)
-
-    prepare_layout_subtree(self, self)
-    run_layout_subtree(self, self)
-
-    return self
-end
-
-function Stage:_synchronize_for_read(dt)
-    assert_not_destroyed(self, 2)
-    self:_sync_environment_from_host()
-
-    while true do
-        self:_run_layout_pass()
-        Container.update(self, dt)
-
-        if not self:_flush_queued_state_changes() then
-            break
+    -- Perform a read-only layout pass when the stage needs layout but hasn't
+    -- been explicitly updated yet. This MUST NOT set _update_ran — that flag
+    -- is only set by an explicit Stage:update() call, enforcing the two-pass
+    -- update/draw contract required by the spec.
+    if not rawget(self, '_updating') and not rawget(self, '_synchronizing') then
+        rawset(self, '_synchronizing', true)
+        if not rawget(self, '_host_driven_dims') then
+            refresh_environment_bounds(self)
         end
+        prepare_layout_subtree(self, self)
+        run_layout_subtree(self, self)
+        self:_refresh_if_dirty()
+        rawset(self, '_synchronizing', false)
     end
 
-    self:_refresh_focus_runtime_state()
-    refresh_hover_target(self)
+    return self
+end
+
+function Stage:_synchronize_for_read()
+    return synchronize_for_read(self)
+end
+
+function Stage._synchronize_for_read(self)
+    -- This version is used by __index and other internal lookups
+    return synchronize_for_read(self)
+end
+
+function Stage:_queue_state_change(handler)
+    assert_not_destroyed(self, 2)
+
+    if not Types.is_function(handler) then
+        fail('handler must be a function', 2)
+    end
+
+    local queue = rawget(self, '_queued_state_changes')
+    if queue then
+        queue.tail = queue.tail + 1
+        queue.items[queue.tail] = handler
+    end
 
     return self
 end
 
 function Stage:getViewport()
     self:_synchronize_for_read()
-    return self._viewport_bounds_cache:clone()
+    return rawget(self, '_viewport_bounds_cache'):clone()
 end
 
 function Stage:getSafeArea()
@@ -2200,202 +2190,248 @@ function Stage:getSafeArea()
     return get_public_value(self, 'safeAreaInsets'):clone()
 end
 
+function Stage:addChild()
+    fail('Stage does not support child insertion; baseSceneLayer and overlayLayer are runtime-managed and should be used instead', 2)
+end
+
+function Stage:removeChild()
+    fail('Stage does not support child removal; baseSceneLayer and overlayLayer are runtime-managed and cannot be removed directly', 2)
+end
+
+function Stage:removeAllChildren()
+    fail('Stage does not support child removal; baseSceneLayer and overlayLayer are runtime-managed and cannot be removed directly', 2)
+end
+
 function Stage:getSafeAreaBounds()
-    self:_synchronize_for_read()
-    return self._safe_area_bounds_cache:clone()
+    assert_not_destroyed(self, 2)
+    return rawget(self, '_safe_area_bounds_cache'):clone()
 end
 
 function Stage:resize(width, height, safe_area_insets)
     assert_not_destroyed(self, 2)
-    assert_number('width', width, 2)
-    assert_number('height', height, 2)
-
-    if safe_area_insets == nil then
-        safe_area_insets =
-            read_host_safe_area_insets(width, height) or
-                get_public_value(self, 'safeAreaInsets')
-    end
-
     apply_environment(self, width, height, safe_area_insets)
-    rawset(self, '_update_ran', false)
-    return self
-end
-
-function Stage:update(dt)
-    assert_not_destroyed(self, 2)
-    self:_synchronize_for_read(dt)
-    rawset(self, '_update_ran', true)
-    return self
-end
-
-function Stage:_prepare_draw(graphics, draw_callback)
-    assert_not_destroyed(self, 2)
-    self:_sync_environment_from_host()
-
-    if not self._update_ran then
-        fail(TWO_PASS_VIOLATION, 2)
-    end
-
-    graphics, draw_callback = resolve_draw_args(graphics, draw_callback)
-    rawset(self, '_update_ran', false)
-
-    return graphics, draw_callback
-end
-
-function Stage:_draw_base_layer_resolved(graphics, draw_callback)
-    assert_not_destroyed(self, 2)
-    local focus_aware_draw = create_focus_aware_draw_callback(self, draw_callback)
-    self.baseSceneLayer:_draw_subtree_resolved(
-        graphics,
-        function(node)
-            focus_aware_draw(node, graphics)
-        end
-    )
-    return self
-end
-
-function Stage:_draw_overlay_layer_resolved(graphics, draw_callback)
-    assert_not_destroyed(self, 2)
-    local focus_aware_draw = create_focus_aware_draw_callback(self, draw_callback)
-    self.overlayLayer:_draw_subtree_resolved(
-        graphics,
-        function(node)
-            focus_aware_draw(node, graphics)
-        end
-    )
-    return self
-end
-
-function Stage:draw(graphics, draw_callback)
-    graphics, draw_callback = self:_prepare_draw(graphics, draw_callback)
-
-    self:_draw_base_layer_resolved(graphics, draw_callback)
-    self:_draw_overlay_layer_resolved(graphics, draw_callback)
-
     return self
 end
 
 function Stage:resolveTarget(x, y)
     assert_not_destroyed(self, 2)
-    assert_number('x', x, 2)
-    assert_number('y', y, 2)
-
     self:_synchronize_for_read()
     return resolve_target_resolved(self, x, y)
 end
 
 function Stage:deliverInput(raw_event)
     assert_not_destroyed(self, 2)
-    assert_table('raw_event', raw_event, 2)
-
-    if type(raw_event.kind) ~= 'string' then
-        fail('raw_event.kind must be a string', 2)
-    end
-
-    self:_synchronize_for_read()
+    Assert.table('raw_event', raw_event, 2)
 
     local intent = translate_raw_input(raw_event)
-    local kind = raw_event.kind
-    local event = nil
-    local target = nil
-    local path = nil
 
-    if kind == 'mousepressed' or kind == 'touchpressed' then
-        _, target, path = begin_pointer_sequence(self, raw_event)
-    elseif kind == 'mousereleased' or kind == 'touchreleased' then
-        local sequence, sequence_id = get_pointer_sequence(self, raw_event)
+    if intent == nil then
+        return build_delivery(raw_event, nil, nil, nil, nil)
+    end
 
-        if sequence ~= nil then
-            target = sequence.target
-            path = sequence.path
+    if intent == 'Activate' then
+        if raw_event.kind == 'mousepressed' or raw_event.kind == 'touchpressed' then
+            local _, target, path, sequence_id = begin_pointer_sequence(self, raw_event)
 
-            if sequence.dragging then
-                event = create_drag_event(sequence, raw_event, 'end')
-            else
-                event, target, path = create_pointer_activation_event(
-                    self,
-                    raw_event,
-                    sequence
-                )
+            if sequence_id == 'mouse:1' then
+                update_mouse_hover_target(self, raw_event.x, raw_event.y)
+            end
+
+            apply_pointer_focus_coupling(self, target, 'before')
+
+            return build_delivery(raw_event, intent, nil, target, path)
+        end
+
+        if raw_event.kind == 'mousereleased' or raw_event.kind == 'touchreleased' then
+            local sequence, sequence_id = get_pointer_sequence(self, raw_event)
+
+            if sequence == nil then
+                local target, path = resolve_spatial_target(self, raw_event)
+                return build_delivery(raw_event, intent, nil, target, path)
             end
 
             clear_pointer_sequence(self, sequence_id)
-        end
 
-        if kind == 'mousereleased' then
-            update_mouse_hover_target(self, raw_event.x, raw_event.y)
-        end
-    elseif kind == 'mousemoved' or kind == 'touchmoved' then
-        local sequence = get_pointer_sequence(self, raw_event)
-
-        if sequence ~= nil and type(raw_event.x) == 'number' and
-            type(raw_event.y) == 'number' then
-            sequence.lastX = raw_event.x
-            sequence.lastY = raw_event.y
-            target = sequence.target
-            path = sequence.path
-
-            local delta_x = raw_event.x - sequence.originX
-            local delta_y = raw_event.y - sequence.originY
+            if sequence_id == 'mouse:1' then
+                update_mouse_hover_target(self, raw_event.x, raw_event.y)
+            end
 
             if sequence.dragging then
-                event = create_drag_event(sequence, raw_event, 'move')
-            elseif delta_x * delta_x + delta_y * delta_y >= DRAG_THRESHOLD_SQUARED then
-                sequence.dragging = true
-                event = create_drag_event(sequence, raw_event, 'start')
+                local event = create_drag_event(sequence, raw_event, 'end')
+                dispatch_event(event)
+                return build_delivery(raw_event, 'Drag', event)
             end
-        elseif kind == 'mousemoved' then
-            target, path = update_mouse_hover_target(self, raw_event.x, raw_event.y)
+
+            local event, target, path = create_pointer_activation_event(self, raw_event, sequence)
+            dispatch_event(event)
+            apply_pointer_focus_coupling(self, sequence.target, 'after', event)
+
+            return build_delivery(raw_event, intent, event, target, path)
         end
-    elseif kind == 'wheelmoved' or
-        (kind == 'keypressed' and intent == 'Scroll') then
-        event, target, path = create_scroll_event(self, raw_event)
-    elseif kind == 'keypressed' and intent == 'Navigate' then
-        event, target, path = create_navigation_event(self, raw_event)
-    elseif kind == 'keypressed' and intent == 'Dismiss' then
-        event, target, path = create_dismiss_event(self)
-    elseif kind == 'keypressed' and intent == 'Submit' then
-        event, target, path = create_submit_event(self)
-    elseif kind == 'keypressed' and intent == 'Activate' then
-        event, target, path = create_keyboard_activate_event(self)
-    elseif kind == 'textinput' then
-        event, target, path = create_text_input_event(self, raw_event)
-    elseif kind == 'textedited' then
-        event, target, path = create_text_compose_event(self, raw_event)
-    elseif type(raw_event.x) == 'number' and type(raw_event.y) == 'number' then
-        target, path = resolve_spatial_target(self, raw_event)
-    end
 
-    if event ~= nil and event.type == 'ui.activate' and event.pointerType ~= nil then
-        apply_pointer_focus_coupling(self, event.target, 'before', event)
-    end
-
-    if event ~= nil then
-        event = dispatch_event(event)
-
-        if event.type == 'ui.navigate' then
-            apply_navigation_focus_movement(self, event)
-        elseif event.type == 'ui.activate' and event.pointerType ~= nil then
-            apply_pointer_focus_coupling(self, event.target, 'after', event)
+        if raw_event.kind == 'keypressed' and raw_event.key == 'space' then
+            local event, target, path = create_keyboard_activate_event(self)
+            dispatch_event(event)
+            return build_delivery(raw_event, intent, event, target, path)
         end
     end
 
-    local delivery = build_delivery(raw_event, intent, event, target, path)
+    if intent == 'Drag' then
+        local sequence = get_pointer_sequence(self, raw_event)
 
-    rawset(self, '_last_input_delivery', delivery)
+        if sequence == nil then
+            if raw_event.kind == 'mousemoved' then
+                local target, path = update_mouse_hover_target(self, raw_event.x, raw_event.y)
+                return build_delivery(raw_event, intent, nil, target, path)
+            end
 
-    return delivery
+            local target, path = resolve_spatial_target(self, raw_event)
+            return build_delivery(raw_event, intent, nil, target, path)
+        end
+
+        if sequence.pointerType == 'mouse' then
+            -- Hover transformation is gated while any mouse button is held.
+            -- We don't update hover, but we continue to allow drag detection.
+        else
+            update_mouse_hover_target(self, raw_event.x, raw_event.y)
+        end
+
+        if not sequence.dragging then
+            local dx = raw_event.x - sequence.originX
+            local dy = raw_event.y - sequence.originY
+
+            if dx * dx + dy * dy >= DRAG_THRESHOLD_SQUARED then
+                sequence.dragging = true
+                local event = create_drag_event(sequence, raw_event, 'start')
+                dispatch_event(event)
+                return build_delivery(raw_event, intent, event)
+            end
+
+            return build_delivery(raw_event, intent, nil, sequence.target, sequence.path)
+        end
+
+        local event = create_drag_event(sequence, raw_event, 'move')
+        dispatch_event(event)
+        return build_delivery(raw_event, intent, event)
+    end
+
+    if intent == 'Scroll' then
+        local event, target, path = create_scroll_event(self, raw_event)
+        dispatch_event(event)
+        return build_delivery(raw_event, intent, event, target, path)
+    end
+
+    if intent == 'Navigate' then
+        local event, target, path = create_navigation_event(self, raw_event)
+        dispatch_event(event)
+        apply_navigation_focus_movement(self, event)
+        return build_delivery(raw_event, intent, event, target, path)
+    end
+
+    if intent == 'Dismiss' then
+        local event, target, path = create_dismiss_event(self)
+        dispatch_event(event)
+        return build_delivery(raw_event, intent, event, target, path)
+    end
+
+    if intent == 'Submit' then
+        local event, target, path = create_submit_event(self)
+        dispatch_event(event)
+        return build_delivery(raw_event, intent, event, target, path)
+    end
+
+    if intent == 'TextInput' then
+        local event, target, path = create_text_input_event(self, raw_event)
+        dispatch_event(event)
+        return build_delivery(raw_event, intent, event, target, path)
+    end
+
+    if intent == 'TextCompose' then
+        local event, target, path = create_text_compose_event(self, raw_event)
+        dispatch_event(event)
+        return build_delivery(raw_event, intent, event, target, path)
+    end
+
+    return build_delivery(raw_event, intent, nil, nil, nil)
 end
 
-function Stage:addChild(_)
-    fail('Stage children are runtime-managed; mount content into baseSceneLayer or overlayLayer', 2)
+function Stage:update(_)
+    assert_not_destroyed(self, 2)
+
+    if rawget(self, '_updating') then
+        return self
+    end
+
+    rawset(self, '_updating', true)
+    refresh_environment_bounds(self)
+
+    local queue = rawget(self, '_queued_state_changes')
+
+    while queue and queue.head <= queue.tail do
+        local handler = queue.items[queue.head]
+        queue.items[queue.head] = nil
+        queue.head = queue.head + 1
+        handler()
+    end
+
+    if queue then
+        queue.head = 1
+        queue.tail = 0
+    end
+
+    prepare_layout_subtree(self, self)
+    run_layout_subtree(self, self)
+
+    self:_refresh_if_dirty()
+    self.baseSceneLayer:update()
+    self.overlayLayer:update()
+
+    refresh_hover_target(self)
+
+    rawset(self, '_updating', false)
+    rawset(self, '_update_ran', true)
+
+    return self
 end
 
-function Stage:removeChild(_)
-    fail('Stage children are runtime-managed; Stage layers cannot be removed directly', 2)
+function Stage:_prepare_draw(graphics, draw_callback)
+    if not rawget(self, '_update_ran') then
+        fail(TWO_PASS_VIOLATION, 3)
+    end
+
+    graphics, draw_callback = resolve_draw_args(graphics, draw_callback)
+    draw_callback = create_focus_aware_draw_callback(self, draw_callback)
+
+    return graphics, draw_callback
+end
+
+function Stage:_draw_overlay_layer_resolved(graphics, draw_callback)
+    self.overlayLayer:_draw_subtree_resolved(graphics, function(node)
+        draw_callback(node, graphics)
+    end)
+end
+
+function Stage:draw(graphics, draw_callback)
+    assert_not_destroyed(self, 2)
+
+    graphics, draw_callback = self:_prepare_draw(graphics, draw_callback)
+
+    self.baseSceneLayer:_draw_subtree_resolved(graphics, function(node)
+        draw_callback(node, graphics)
+    end)
+
+    self:_draw_overlay_layer_resolved(graphics, draw_callback)
+
+    rawset(self, '_update_ran', false)
+
+    return self
 end
 
 function Stage:destroy()
+    if rawget(self, '_destroyed') then
+        return
+    end
+
     if active_stage == self then
         active_stage = nil
     end

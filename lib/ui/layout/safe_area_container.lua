@@ -1,4 +1,4 @@
-local Assert = require('lib.ui.core.assert')
+local Assert = require('lib.ui.utils.assert')
 local Container = require('lib.ui.core.container')
 local LayoutNode = require('lib.ui.layout.layout_node')
 local Rectangle = require('lib.ui.core.rectangle')
@@ -6,7 +6,8 @@ local Rectangle = require('lib.ui.core.rectangle')
 local max = math.max
 local min = math.min
 
-local SafeAreaContainer = {}
+local SafeAreaContainer = LayoutNode:extends('SafeAreaContainer')
+SafeAreaContainer._schema = require('lib.ui.layout.safe_area_container_schema')
 
 local EXTRA_PUBLIC_KEYS = {
     applyTop = true,
@@ -22,11 +23,14 @@ end
 local function set_apply_flag(self, key, value, level)
     validate_apply_flag('SafeAreaContainer.' .. key, value, level)
 
-    if self._public_values[key] == value then
+    local public_values = rawget(self, '_public_values')
+    if public_values and public_values[key] == value then
         return value
     end
 
-    self._public_values[key] = value
+    if public_values then
+        public_values[key] = value
+    end
     self:markDirty()
     return value
 end
@@ -42,9 +46,9 @@ local function child_is_visible(child)
 end
 
 local function get_child_parent_local_bounds(child)
-    local matrix = child._local_transform_cache
-    local width = child._resolved_width or 0
-    local height = child._resolved_height or 0
+    local matrix = rawget(child, '_local_transform_cache')
+    local width = rawget(child, '_resolved_width') or 0
+    local height = rawget(child, '_resolved_height') or 0
     local x1, y1 = matrix:transform_point(0, 0)
     local x2, y2 = matrix:transform_point(width, 0)
     local x3, y3 = matrix:transform_point(width, height)
@@ -100,8 +104,8 @@ local function measure_content_extent(children, content_rect)
 end
 
 local function resolve_stage(node, stage)
-    if stage ~= nil and stage._ui_stage_instance == true and
-        not stage._destroyed then
+    if stage ~= nil and rawget(stage, '_ui_stage_instance') == true and
+        not rawget(stage, '_destroyed') then
         return stage
     end
 
@@ -111,8 +115,8 @@ local function resolve_stage(node, stage)
         current = current.parent
     end
 
-    if current ~= nil and current._ui_stage_instance == true and
-        not current._destroyed then
+    if current ~= nil and rawget(current, '_ui_stage_instance') == true and
+        not rawget(current, '_destroyed') then
         return current
     end
 
@@ -121,12 +125,12 @@ end
 
 local function resolve_layout_world_rect(node)
     local values = rawget(node, '_effective_values') or {}
-    local width = node._resolved_width or 0
-    local height = node._resolved_height or 0
+    local width = rawget(node, '_resolved_width') or 0
+    local height = rawget(node, '_resolved_height') or 0
     local parent_width = 0
     local parent_height = 0
-    local world_x = node._layout_offset_x or 0
-    local world_y = node._layout_offset_y or 0
+    local world_x = rawget(node, '_layout_offset_x') or 0
+    local world_y = rawget(node, '_layout_offset_y') or 0
 
     if node.parent ~= nil then
         local parent_world_rect = resolve_layout_world_rect(node.parent)
@@ -141,7 +145,7 @@ local function resolve_layout_world_rect(node)
     world_x = world_x + ((values.anchorX or 0) * parent_width) + (values.x or 0)
     world_y = world_y + ((values.anchorY or 0) * parent_height) + (values.y or 0)
 
-    return Rectangle.new(world_x, world_y, width, height)
+    return Rectangle(world_x, world_y, width, height)
 end
 
 local function resolve_safe_area_insets(self, stage)
@@ -214,8 +218,8 @@ end
 
 local function apply_content_measurement(self, content_width, content_height, stage)
     local effective_values = rawget(self, '_effective_values') or {}
-    local resolved_width = self._resolved_width or 0
-    local resolved_height = self._resolved_height or 0
+    local resolved_width = rawget(self, '_resolved_width') or 0
+    local resolved_height = rawget(self, '_resolved_height') or 0
     local left_inset, top_inset, right_inset, bottom_inset =
         resolve_content_edge_insets(self, stage)
 
@@ -253,18 +257,18 @@ local function apply_content_measurement(self, content_width, content_height, st
         end
     end
 
-    if self._resolved_width == resolved_width and
-        self._resolved_height == resolved_height then
+    if rawget(self, '_resolved_width') == resolved_width and
+        rawget(self, '_resolved_height') == resolved_height then
         return false
     end
 
-    self._resolved_width = resolved_width
-    self._resolved_height = resolved_height
-    self._local_bounds_cache = Rectangle.new(0, 0, resolved_width, resolved_height)
-    self._local_transform_dirty = true
-    self._world_transform_dirty = true
-    self._bounds_dirty = true
-    self._world_inverse_dirty = true
+    rawset(self, '_resolved_width', resolved_width)
+    rawset(self, '_resolved_height', resolved_height)
+    rawset(self, '_local_bounds_cache', Rectangle(0, 0, resolved_width, resolved_height))
+    rawset(self, '_local_transform_dirty', true)
+    rawset(self, '_world_transform_dirty', true)
+    rawset(self, '_bounds_dirty', true)
+    rawset(self, '_world_inverse_dirty', true)
     self:_refresh_layout_content_rect(stage)
 
     local children = rawget(self, '_children') or {}
@@ -281,92 +285,45 @@ local function mark_children_parent_region_dirty(self)
 
     for index = 1, #children do
         local child = children[index]
-        child._responsive_dirty = true
+        rawset(child, '_responsive_dirty', true)
         child:_mark_parent_layout_dependency_dirty()
     end
 end
 
-SafeAreaContainer.__index = function(self, key)
-    local method = rawget(SafeAreaContainer, key)
 
-    if method ~= nil then
-        return method
-    end
 
-    return LayoutNode.__index(self, key)
-end
-
-SafeAreaContainer.__newindex = function(self, key, value)
-    if EXTRA_PUBLIC_KEYS[key] then
-        set_apply_flag(self, key, value, 2)
-        return
-    end
-
-    LayoutNode.__newindex(self, key, value)
+function SafeAreaContainer:constructor(opts)
+    LayoutNode.constructor(self, opts, nil, {
+        allow_content_width = true,
+        allow_content_height = true,
+    })
+    self._ui_layout_kind = 'SafeAreaContainer'
 end
 
 function SafeAreaContainer.new(opts)
-    opts = opts or {}
-
-    if opts.applyTop == nil then
-        opts.applyTop = true
-    end
-
-    if opts.applyBottom == nil then
-        opts.applyBottom = true
-    end
-
-    if opts.applyLeft == nil then
-        opts.applyLeft = true
-    end
-
-    if opts.applyRight == nil then
-        opts.applyRight = true
-    end
-
-    local self = {}
-    LayoutNode._initialize(self, opts, EXTRA_PUBLIC_KEYS)
-
-    validate_apply_flag('SafeAreaContainer.applyTop', opts.applyTop, 3)
-    validate_apply_flag('SafeAreaContainer.applyBottom', opts.applyBottom, 3)
-    validate_apply_flag('SafeAreaContainer.applyLeft', opts.applyLeft, 3)
-    validate_apply_flag('SafeAreaContainer.applyRight', opts.applyRight, 3)
-
-    self._public_values.applyTop = opts.applyTop
-    self._public_values.applyBottom = opts.applyBottom
-    self._public_values.applyLeft = opts.applyLeft
-    self._public_values.applyRight = opts.applyRight
-
-    self._effective_values.applyTop = opts.applyTop
-    self._effective_values.applyBottom = opts.applyBottom
-    self._effective_values.applyLeft = opts.applyLeft
-    self._effective_values.applyRight = opts.applyRight
-
-    self._ui_layout_kind = 'SafeAreaContainer'
-
-    return setmetatable(self, SafeAreaContainer)
+    return SafeAreaContainer(opts)
 end
 
 function SafeAreaContainer:_refresh_layout_content_rect(stage)
-    local width = self._resolved_width or 0
-    local height = self._resolved_height or 0
+    local width = rawget(self, '_resolved_width') or 0
+    local height = rawget(self, '_resolved_height') or 0
     local left_inset, top_inset, right_inset, bottom_inset =
         resolve_content_edge_insets(self, stage)
     local previous_rect = rawget(self, '_layout_content_rect_cache')
-    local next_rect = Rectangle.new(
+    local next_rect = Rectangle(
         left_inset,
         top_inset,
         max(0, width - left_inset - right_inset),
         max(0, height - top_inset - bottom_inset)
     )
 
-    self._layout_content_rect_cache = next_rect
+    rawset(self, '_layout_content_rect_cache', next_rect)
 
     if previous_rect ~= nil and not previous_rect:equals(next_rect, 1e-9) then
         mark_children_parent_region_dirty(self)
     end
 
-    return self._layout_content_rect_cache
+    return next_rect
 end
 
 function SafeAreaContainer:_prepare_for_layout_pass(stage)
@@ -378,9 +335,9 @@ end
 function SafeAreaContainer:_run_layout_pass(stage)
     self:_refresh_layout_content_rect(stage)
 
-    if self._layout_dirty then
+    if rawget(self, '_layout_dirty') then
         self:_apply_layout(stage)
-        self._layout_dirty = false
+        rawset(self, '_layout_dirty', false)
     end
 
     return self
@@ -389,8 +346,9 @@ end
 function SafeAreaContainer:_apply_layout(stage)
     local content_rect = self:_refresh_layout_content_rect(stage)
     local children = place_children(self, content_rect)
-    local width_mode = self._effective_values.width
-    local height_mode = self._effective_values.height
+    local effective_values = rawget(self, '_effective_values') or {}
+    local width_mode = effective_values.width
+    local height_mode = effective_values.height
 
     if width_mode ~= 'content' and height_mode ~= 'content' then
         return self

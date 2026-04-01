@@ -1,48 +1,60 @@
-local Assert = require('lib.ui.core.assert')
+local Assert = require('lib.ui.utils.assert')
 local Container = require('lib.ui.core.container')
+local Types = require('lib.ui.utils.types')
 local Insets = require('lib.ui.core.insets')
 local Rectangle = require('lib.ui.core.rectangle')
+local Schema = require('lib.ui.utils.schema')
 
 local max = math.max
 
-local Drawable = {}
+local Drawable = Container:extends('Drawable')
+
+function Drawable.__index(self, key)
+    local val = Container._walk_hierarchy(getmetatable(self), key)
+    if val ~= nil then return val end
+    
+    val = Container._walk_hierarchy(Drawable, key)
+    if val ~= nil then return val end
+
+    local allowed_public_keys = rawget(self, '_allowed_public_keys')
+    if allowed_public_keys and allowed_public_keys[key] then
+        local public_values = rawget(self, '_public_values')
+        return public_values and public_values[key]
+    end
+
+    return nil
+end
+
+function Drawable.__newindex(self, key, value)
+    local allowed_public_keys = rawget(self, '_allowed_public_keys')
+    if allowed_public_keys and allowed_public_keys[key] then
+        Container._set_public_value(self, key, value, 2)
+        
+        local rule = allowed_public_keys[key]
+        if Types.is_table(rule) and Types.is_function(rule.set) then
+            rule.set(self, value)
+        end
+        return
+    end
+
+    rawset(self, key, value)
+end
+
+Drawable._schema = Schema.merge(Container._schema, require('lib.ui.core.drawable_schema'))
+
 local DEFAULT_FOCUS_RING_OFFSET = 2
 local DEFAULT_FOCUS_RING_WIDTH = 2
 
-local EXTRA_PUBLIC_KEYS = {
-    padding = true,
-    margin = true,
-    alignX = true,
-    alignY = true,
-    skin = true,
-    shader = true,
-    opacity = true,
-    blendMode = true,
-    mask = true,
-}
 
-local ALIGNMENT_VALUES = {
-    start = true,
-    center = true,
-    ['end'] = true,
-    stretch = true,
-}
 
-local function assert_alignment(name, value, level)
-    if type(value) ~= 'string' or not ALIGNMENT_VALUES[value] then
-        Assert.fail(
-            name .. ' must be "start", "center", "end", or "stretch"',
-            level or 1
-        )
-    end
-end
+
 
 local function copy_options(opts)
     if opts == nil then
         return {}
     end
 
-    if type(opts) ~= 'table' then
+    if not Types.is_table(opts) then
         Assert.fail('opts must be a table', 2)
     end
 
@@ -55,50 +67,11 @@ local function copy_options(opts)
     return copy
 end
 
-local function validate_extra_public_value(key, value, level)
-    if key == 'padding' or key == 'margin' then
-        return Insets.normalize(value)
-    end
 
-    if key == 'alignX' then
-        assert_alignment('Drawable.alignX', value, level)
-        return value
-    end
-
-    if key == 'alignY' then
-        assert_alignment('Drawable.alignY', value, level)
-        return value
-    end
-
-    if key == 'opacity' then
-        Assert.number('Drawable.opacity', value, level)
-        return value
-    end
-
-    return value
-end
-
-local function set_extra_public_value(self, key, value, level)
-    value = validate_extra_public_value(key, value, level or 1)
-
-    if self._public_values[key] == value then
-        return value
-    end
-
-    self._public_values[key] = value
-    self._responsive_dirty = true
-    return value
-end
-
-local function set_initial_extra_public_value(self, key, value)
-    local resolved = validate_extra_public_value(key, value, 3)
-
-    self._public_values[key] = resolved
-    self._effective_values[key] = resolved
-end
 
 local function get_effective_insets(self, key)
-    return self._effective_values[key] or Insets.zero()
+    local effective_values = rawget(self, '_effective_values')
+    return (effective_values and effective_values[key]) or Insets.zero()
 end
 
 local function resolve_alignment_axis(origin, available_size, content_size, align)
@@ -127,74 +100,64 @@ local function resolve_alignment_axis(origin, available_size, content_size, alig
     return origin, content_size
 end
 
-Drawable.__index = function(self, key)
-    local method = rawget(Drawable, key)
 
-    if method ~= nil then
-        return method
+
+function Drawable.__index(self, key)
+    local val = Container._walk_hierarchy(getmetatable(self), key)
+    if val ~= nil then return val end
+    
+    val = Container._walk_hierarchy(Drawable, key)
+    if val ~= nil then return val end
+
+    local allowed_public_keys = rawget(self, '_allowed_public_keys')
+    if allowed_public_keys and allowed_public_keys[key] then
+        local public_values = rawget(self, '_public_values')
+        return public_values and public_values[key]
     end
 
-    return Container.__index(self, key)
+    return nil
 end
 
-Drawable.__newindex = function(self, key, value)
-    if EXTRA_PUBLIC_KEYS[key] then
-        set_extra_public_value(self, key, value, 2)
+function Drawable.__newindex(self, key, value)
+    local allowed_public_keys = rawget(self, '_allowed_public_keys')
+    if allowed_public_keys and allowed_public_keys[key] then
+        Container._set_public_value(self, key, value, 2)
+        
+        local rule = allowed_public_keys[key]
+        if Types.is_table(rule) and Types.is_function(rule.set) then
+            rule.set(self, value)
+        end
         return
     end
 
-    Container.__newindex(self, key, value)
+    rawset(self, key, value)
+end
+
+function Drawable:constructor(opts)
+    self:_initialize(opts)
+end
+
+function Drawable:_initialize(opts)
+    Container._initialize(self, opts, Drawable._schema)
+    self._ui_drawable_instance = true
 end
 
 function Drawable.new(opts)
-    opts = copy_options(opts)
-
-    if opts.padding == nil then
-        opts.padding = 0
-    end
-
-    if opts.margin == nil then
-        opts.margin = 0
-    end
-
-    if opts.alignX == nil then
-        opts.alignX = 'start'
-    end
-
-    if opts.alignY == nil then
-        opts.alignY = 'start'
-    end
-
-    if opts.opacity == nil then
-        opts.opacity = 1
-    end
-
-    local self = {}
-
-    Container._initialize(self, opts, EXTRA_PUBLIC_KEYS)
-
-    set_initial_extra_public_value(self, 'padding', opts.padding)
-    set_initial_extra_public_value(self, 'margin', opts.margin)
-    set_initial_extra_public_value(self, 'alignX', opts.alignX)
-    set_initial_extra_public_value(self, 'alignY', opts.alignY)
-    set_initial_extra_public_value(self, 'skin', opts.skin)
-    set_initial_extra_public_value(self, 'shader', opts.shader)
-    set_initial_extra_public_value(self, 'opacity', opts.opacity)
-    set_initial_extra_public_value(self, 'blendMode', opts.blendMode)
-    set_initial_extra_public_value(self, 'mask', opts.mask)
-
-    self._ui_drawable_instance = true
-
-    return setmetatable(self, Drawable)
+    return Drawable(opts)
 end
 
 function Drawable.is_drawable(value)
-    return type(value) == 'table' and value._ui_drawable_instance == true
+    return Types.is_instance(value, Drawable)
 end
 
 function Drawable:getContentRect()
     local bounds = self:getLocalBounds()
     return bounds:inset(get_effective_insets(self, 'padding'))
+end
+
+local function get_effective_value(self, key)
+    local effective_values = rawget(self, '_effective_values')
+    return effective_values and effective_values[key]
 end
 
 function Drawable:resolveContentRect(content_width, content_height)
@@ -206,20 +169,20 @@ function Drawable:resolveContentRect(content_width, content_height)
         content_box.x,
         content_box.width,
         content_width,
-        self._effective_values.alignX or 'start'
+        (get_effective_value(self, 'alignX') or 'start')
     )
     local y, height = resolve_alignment_axis(
         content_box.y,
         content_box.height,
         content_height,
-        self._effective_values.alignY or 'start'
+        (get_effective_value(self, 'alignY') or 'start')
     )
 
-    return Rectangle.new(x, y, width, height)
+    return Rectangle(x, y, width, height)
 end
 
 function Drawable:_draw_default_focus_indicator(graphics)
-    if type(graphics) ~= 'table' or type(graphics.rectangle) ~= 'function' then
+    if not Types.is_table(graphics) or not Types.is_function(graphics.rectangle) then
         return self
     end
 
@@ -230,19 +193,19 @@ function Drawable:_draw_default_focus_indicator(graphics)
     local restore_alpha = nil
     local restore_line_width = nil
 
-    if type(graphics.getColor) == 'function' then
+    if Types.is_function(graphics.getColor) then
         restore_red, restore_green, restore_blue, restore_alpha = graphics.getColor()
     end
 
-    if type(graphics.getLineWidth) == 'function' then
+    if Types.is_function(graphics.getLineWidth) then
         restore_line_width = graphics.getLineWidth()
     end
 
-    if type(graphics.setColor) == 'function' then
+    if Types.is_function(graphics.setColor) then
         graphics.setColor(1, 1, 1, 1)
     end
 
-    if type(graphics.setLineWidth) == 'function' then
+    if Types.is_function(graphics.setLineWidth) then
         graphics.setLineWidth(DEFAULT_FOCUS_RING_WIDTH)
     end
 
@@ -254,11 +217,11 @@ function Drawable:_draw_default_focus_indicator(graphics)
         bounds.height + (DEFAULT_FOCUS_RING_OFFSET * 2)
     )
 
-    if restore_line_width ~= nil and type(graphics.setLineWidth) == 'function' then
+    if restore_line_width ~= nil and Types.is_function(graphics.setLineWidth) then
         graphics.setLineWidth(restore_line_width)
     end
 
-    if restore_red ~= nil and type(graphics.setColor) == 'function' then
+    if restore_red ~= nil and Types.is_function(graphics.setColor) then
         graphics.setColor(
             restore_red,
             restore_green,

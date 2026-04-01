@@ -1,6 +1,7 @@
-local Assert = require('lib.ui.core.assert')
+local Assert = require('lib.ui.utils.assert')
 local LayoutNode = require('lib.ui.layout.layout_node')
-local MathUtils = require('lib.ui.core.math_utils')
+local Types = require('lib.ui.utils.types')
+local MathUtils = require('lib.ui.utils.math')
 local Rectangle = require('lib.ui.core.rectangle')
 
 local max = math.max
@@ -8,7 +9,7 @@ local clamp_number = MathUtils.clamp_number
 local resolve_axis_size = MathUtils.resolve_axis_size
 local is_percentage_string = MathUtils.is_percentage_string
 
-local Flow = {}
+local Flow = LayoutNode:extends('Flow')
 
 local JUSTIFY_VALUES = {
     start = true,
@@ -68,14 +69,14 @@ local function apply_resolved_size(node, width, height)
     node._resolved_width = resolved_width
     node._resolved_height = resolved_height
     node._measurement_dirty = false
-    node._local_bounds_cache = Rectangle.new(0, 0, resolved_width, resolved_height)
+    node._local_bounds_cache = Rectangle(0, 0, resolved_width, resolved_height)
     node._local_transform_dirty = true
     node._world_transform_dirty = true
     node._bounds_dirty = true
     node._world_inverse_dirty = true
 
     if node._ui_layout_instance == true and
-        type(node._refresh_layout_content_rect) == 'function' then
+        Types.is_function(node._refresh_layout_content_rect) then
         node:_refresh_layout_content_rect()
     end
 
@@ -110,14 +111,14 @@ local function validate_effective_props(self)
     Assert.number('Flow.gap', gap, 3)
     Assert.boolean('Flow.wrap', wrap, 3)
 
-    if type(justify) ~= 'string' or not JUSTIFY_VALUES[justify] then
+    if not Types.is_string(justify) or not JUSTIFY_VALUES[justify] then
         Assert.fail(
-            'Flow.justify must be "start", "center", "end", "space-between", or "space-around"',
+            'Flow.justify must be "start", "center", "end", or "space-between", or "space-around"',
             3
         )
     end
 
-    if type(align) ~= 'string' or not ALIGN_VALUES[align] then
+    if not Types.is_string(align) or not ALIGN_VALUES[align] then
         Assert.fail(
             'Flow.align must be "start", "center", "end", or "stretch"',
             3
@@ -336,7 +337,7 @@ local function apply_self_content_measurement(self, content_width, content_heigh
 
     self._resolved_width = resolved_width
     self._resolved_height = resolved_height
-    self._local_bounds_cache = Rectangle.new(0, 0, resolved_width, resolved_height)
+    self._local_bounds_cache = Rectangle(0, 0, resolved_width, resolved_height)
     self._local_transform_dirty = true
     self._world_transform_dirty = true
     self._bounds_dirty = true
@@ -360,23 +361,13 @@ local function place_invisible_children(self, invisible_children, content_rect)
     end
 end
 
-Flow.__index = function(self, key)
-    local method = rawget(Flow, key)
-
-    if method ~= nil then
-        return method
-    end
-
-    return LayoutNode.__index(self, key)
+function Flow:constructor(opts)
+    LayoutNode.constructor(self, opts)
+    self._ui_layout_kind = 'Flow'
 end
 
-Flow.__newindex = LayoutNode.__newindex
-
 function Flow.new(opts)
-    local self = {}
-    LayoutNode._initialize(self, opts)
-    self._ui_layout_kind = 'Flow'
-    return setmetatable(self, Flow)
+    return Flow(opts)
 end
 
 function Flow:_apply_layout(stage)

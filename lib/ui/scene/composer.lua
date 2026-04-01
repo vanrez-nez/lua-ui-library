@@ -1,26 +1,21 @@
-local Assert = require('lib.ui.core.assert')
+local Assert = require('lib.ui.utils.assert')
 local Scene = require('lib.ui.scene.scene')
 local Stage = require('lib.ui.scene.stage')
 local Transitions = require('lib.ui.scene.transitions')
+local Object = require('lib.cls')
+local Types = require('lib.ui.utils.types')
+local Schema = require('lib.ui.utils.schema')
 
-local Composer = {}
+local Composer = Object:extends('Composer')
+Composer._schema = require('lib.ui.scene.composer_schema')
 
-local COMPOSER_PUBLIC_KEYS = {
-    defaultTransition = true,
-    defaultTransitionDuration = true,
-}
 
-local NAVIGATION_OPTION_KEYS = {
-    transition = true,
-    duration = true,
-    params = true,
-}
 
 local max = math.max
 local min = math.min
 
 local function unwrap_canvas(canvas)
-    if type(canvas) == 'table' and rawget(canvas, 'handle') ~= nil then
+    if Types.is_table(canvas) and rawget(canvas, 'handle') ~= nil then
         return rawget(canvas, 'handle')
     end
 
@@ -28,7 +23,7 @@ local function unwrap_canvas(canvas)
 end
 
 local function get_current_canvas(graphics)
-    if type(graphics.getCanvas) ~= 'function' then
+    if not Types.is_function(graphics.getCanvas) then
         return nil
     end
 
@@ -42,7 +37,7 @@ local function get_current_canvas(graphics)
 end
 
 local function set_current_canvas(graphics, canvas)
-    if type(graphics.setCanvas) ~= 'function' then
+    if not Types.is_function(graphics.setCanvas) then
         Assert.fail(
             'graphics adapter must support setCanvas during active scene transitions',
             2
@@ -53,7 +48,7 @@ local function set_current_canvas(graphics, canvas)
 end
 
 local function create_transition_canvas(graphics, width, height)
-    if type(graphics.newCanvas) ~= 'function' then
+    if not Types.is_function(graphics.newCanvas) then
         Assert.fail(
             'graphics adapter must support newCanvas during active scene transitions',
             2
@@ -76,7 +71,7 @@ local function ensure_transition_canvas(graphics, canvas, width, height)
 end
 
 local function clear_transition_canvas(graphics)
-    if type(graphics.clear) == 'function' then
+    if Types.is_function(graphics.clear) then
         graphics.clear(0, 0, 0, 0)
     end
 end
@@ -111,28 +106,18 @@ local function validate_duration(name, value, level)
     if value < 0 then
         Assert.fail(name .. ' must be greater than or equal to 0', level or 1)
     end
-
-    return value
 end
 
 local function copy_options(opts)
     if opts == nil then
-        return {}
+        opts = {}
     end
 
-    Assert.table('opts', opts, 2)
+    Schema.validate_all(Composer._schema.composer, opts, 'Composer', 2)
 
-    local copy = {}
-
-    for key, value in pairs(opts) do
-        if not COMPOSER_PUBLIC_KEYS[key] then
-            Assert.fail(
-                'Composer does not support prop "' .. tostring(key) .. '"',
-                3
-            )
-        end
-
-        copy[key] = value
+    local copy = Schema.extract_defaults(Composer._schema.composer)
+    for k, v in pairs(opts) do
+        copy[k] = v
     end
 
     return copy
@@ -145,25 +130,11 @@ local function copy_navigation_options(options)
 
     Assert.table('options', options, 2)
 
+    Schema.validate_all(Composer._schema.navigation, options, 'gotoScene', 3)
+
     local copy = {}
-
     for key, value in pairs(options) do
-        if not NAVIGATION_OPTION_KEYS[key] then
-            Assert.fail(
-                'gotoScene does not support option "' .. tostring(key) .. '"',
-                3
-            )
-        end
-
         copy[key] = value
-    end
-
-    if copy.duration ~= nil then
-        validate_duration('options.duration', copy.duration, 2)
-    end
-
-    if copy.params ~= nil and type(copy.params) ~= 'table' then
-        Assert.fail('options.params must be a table or nil', 2)
     end
 
     return copy
@@ -206,14 +177,17 @@ local function run_protected(callback)
     end
 end
 
-function Composer.__index(self, key)
-    local method = rawget(Composer, key)
-
-    if method ~= nil then
-        return method
+function Composer:__index(key)
+    -- Walk the class hierarchy for methods
+    local cls = getmetatable(self)
+    local current = cls
+    while current do
+        local val = rawget(current, key)
+        if val ~= nil then return val end
+        current = rawget(current, "super")
     end
 
-    if COMPOSER_PUBLIC_KEYS[key] then
+    if Composer._schema.composer[key] then
         return get_public_value(self, key)
     end
 
@@ -225,10 +199,10 @@ function Composer.__index(self, key)
         return rawget(self, '_transition_state')
     end
 
-    return rawget(self, key)
+    return nil
 end
 
-function Composer.__newindex(self, key, value)
+function Composer:__newindex(key, value)
     if key == 'parent' then
         if value ~= nil then
             Assert.fail('Composer must not have a parent', 2)
@@ -242,57 +216,41 @@ function Composer.__newindex(self, key, value)
         Assert.fail('Composer runtime ownership is internal', 2)
     end
 
-    if key == 'defaultTransitionDuration' then
+    if Composer._schema.composer[key] then
         assert_not_destroyed(self, 2)
-        get_public_value(self, key)
-        rawget(self, '_public_values')[key] =
-            validate_duration('Composer.defaultTransitionDuration', value, 2)
-        return
-    end
-
-    if key == 'defaultTransition' then
-        assert_not_destroyed(self, 2)
-        rawget(self, '_public_values')[key] = value
+        Schema.validate(Composer._schema.composer, key, value, 'Composer', 2)
+        local public_values = rawget(self, '_public_values')
+        if public_values then
+            public_values[key] = value
+        end
         return
     end
 
     rawset(self, key, value)
 end
 
-function Composer.new(opts)
+function Composer:constructor(opts)
     opts = copy_options(opts)
 
-    local self = {
-        _public_values = {
-            defaultTransition = opts.defaultTransition,
-            defaultTransitionDuration = 0,
-        },
-        _scene_registry = {},
-        _current_scene = nil,
-        _current_scene_name = nil,
-        _transition_state = nil,
-        _suppressed_leave_scene = nil,
-        _running_lifecycle_hook = false,
-        _destroyed = false,
-    }
-
-    if opts.defaultTransitionDuration ~= nil then
-        self._public_values.defaultTransitionDuration =
-            validate_duration(
-                'Composer.defaultTransitionDuration',
-                opts.defaultTransitionDuration,
-                2
-            )
-    end
+    rawset(self, '_public_values', opts)
+    rawset(self, '_scene_registry', {})
+    rawset(self, '_current_scene', nil)
+    rawset(self, '_current_scene_name', nil)
+    rawset(self, '_transition_state', nil)
+    rawset(self, '_suppressed_leave_scene', nil)
+    rawset(self, '_running_lifecycle_hook', false)
+    rawset(self, '_destroyed', false)
 
     rawset(self, '_ui_composer_instance', true)
     rawset(self, '_stage', Stage.new())
+end
 
-    return setmetatable(self, Composer)
+function Composer.new(opts)
+    return Composer(opts)
 end
 
 function Composer.is_composer(value)
-    return type(value) == 'table' and value._ui_composer_instance == true
+    return Types.is_instance(value, Composer)
 end
 
 function Composer:_run_lifecycle(callback)
@@ -318,7 +276,8 @@ end
 function Composer:_resolve_registered_entry(name)
     assert_scene_name(name, 2)
 
-    local entry = rawget(self, '_scene_registry')[name]
+    local registry = rawget(self, '_scene_registry') or {}
+    local entry = registry[name]
 
     if entry == nil then
         Assert.fail('unknown scene name "' .. name .. '"', 2)
@@ -331,7 +290,7 @@ function Composer:_instantiate_scene(entry)
     local definition = entry.definition
     local scene
 
-    if type(definition) == 'function' then
+    if Types.is_function(definition) then
         scene = definition()
     else
         scene = definition.new()
@@ -341,7 +300,7 @@ function Composer:_instantiate_scene(entry)
         Assert.fail('registered scene factory must return a Scene instance', 2)
     end
 
-    if scene._destroyed then
+    if rawget(scene, '_destroyed') then
         Assert.fail('registered scene factory must not return a destroyed Scene', 2)
     end
 
@@ -362,7 +321,7 @@ function Composer:_resolve_scene_instance(name)
     local entry = self:_resolve_registered_entry(name)
     local scene = entry.instance
 
-    if scene ~= nil and scene._destroyed then
+    if scene ~= nil and rawget(scene, '_destroyed') then
         entry.instance = nil
         scene = nil
     end
@@ -594,11 +553,11 @@ function Composer:_render_scene_to_canvas(scene, graphics, draw_callback, canvas
 
     local previous_canvas = get_current_canvas(graphics)
 
-    if type(graphics.push) == 'function' then
+    if Types.is_function(graphics.push) then
         graphics.push('all')
     end
 
-    if type(graphics.origin) == 'function' then
+    if Types.is_function(graphics.origin) then
         graphics.origin()
     end
 
@@ -607,7 +566,7 @@ function Composer:_render_scene_to_canvas(scene, graphics, draw_callback, canvas
     scene:_draw_subtree_resolved(graphics, draw_callback)
     set_current_canvas(graphics, previous_canvas)
 
-    if type(graphics.pop) == 'function' then
+    if Types.is_function(graphics.pop) then
         graphics.pop()
     end
 
@@ -716,10 +675,8 @@ function Composer:register(name, definition)
     assert_not_destroyed(self, 2)
     assert_scene_name(name, 2)
 
-    local definition_type = type(definition)
-
-    if definition_type ~= 'function' and not (
-        definition_type == 'table' and type(definition.new) == 'function'
+    if not Types.is_function(definition) and not (
+        Types.is_table(definition) and Types.is_function(definition.new)
     ) then
         Assert.fail(
             'definition must be a factory function or a table with .new()',
@@ -727,7 +684,7 @@ function Composer:register(name, definition)
         )
     end
 
-    local registry = rawget(self, '_scene_registry')
+    local registry = rawget(self, '_scene_registry') or {}
 
     if registry[name] ~= nil then
         Assert.fail('scene "' .. name .. '" is already registered', 2)
@@ -814,11 +771,12 @@ function Composer:destroy()
     assert_not_destroyed(self, 2)
 
     local destroyed = {}
+    local registry = rawget(self, '_scene_registry') or {}
 
-    for _, entry in pairs(rawget(self, '_scene_registry')) do
+    for _, entry in pairs(registry) do
         local scene = entry.instance
 
-        if scene ~= nil and not destroyed[scene] and not scene._destroyed then
+        if scene ~= nil and not destroyed[scene] and not rawget(scene, '_destroyed') then
             destroyed[scene] = true
 
             run_protected(function()
@@ -829,7 +787,7 @@ function Composer:destroy()
         entry.instance = nil
     end
 
-    if not self.stage._destroyed then
+    if not rawget(self.stage, '_destroyed') then
         self.stage:destroy()
     end
 

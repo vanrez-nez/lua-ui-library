@@ -1,23 +1,14 @@
-local Assert = require('lib.ui.core.assert')
+local Assert = require('lib.ui.utils.assert')
+local Types = require('lib.ui.utils.types')
+local Object = require('lib.cls')
 
 local abs = math.abs
 local cos = math.cos
 local sin = math.sin
 
-local Matrix = {}
-Matrix.__index = Matrix
+local Matrix = Object:extends('Matrix')
 
-local function is_matrix(value)
-    return getmetatable(value) == Matrix
-end
-
-local function assert_matrix(name, value)
-    if not is_matrix(value) then
-        Assert.fail(name .. ' must be a Matrix', 2)
-    end
-end
-
-local function new(a, b, c, d, tx, ty)
+function Matrix:constructor(a, b, c, d, tx, ty)
     a = a == nil and 1 or a
     b = b or 0
     c = c or 0
@@ -25,29 +16,27 @@ local function new(a, b, c, d, tx, ty)
     tx = tx or 0
     ty = ty or 0
 
-    Assert.number('a', a, 2)
-    Assert.number('b', b, 2)
-    Assert.number('c', c, 2)
-    Assert.number('d', d, 2)
-    Assert.number('tx', tx, 2)
-    Assert.number('ty', ty, 2)
+    Assert.number('a', a, 3)
+    Assert.number('b', b, 3)
+    Assert.number('c', c, 3)
+    Assert.number('d', d, 3)
+    Assert.number('tx', tx, 3)
+    Assert.number('ty', ty, 3)
 
-    return setmetatable({
-        a = a,
-        b = b,
-        c = c,
-        d = d,
-        tx = tx,
-        ty = ty,
-    }, Matrix)
+    self.a = a
+    self.b = b
+    self.c = c
+    self.d = d
+    self.tx = tx
+    self.ty = ty
 end
 
 function Matrix.new(a, b, c, d, tx, ty)
-    return new(a, b, c, d, tx, ty)
+    return Matrix(a, b, c, d, tx, ty)
 end
 
 function Matrix.identity()
-    return new(1, 0, 0, 1, 0, 0)
+    return Matrix(1, 0, 0, 1, 0, 0)
 end
 
 function Matrix.from_transform(
@@ -88,15 +77,15 @@ function Matrix.from_transform(
     local tx = x - (pivot_x * a + pivot_y * c)
     local ty = y - (pivot_x * b + pivot_y * d)
 
-    return new(a, b, c, d, tx, ty)
+    return Matrix(a, b, c, d, tx, ty)
 end
 
 function Matrix.is_matrix(value)
-    return is_matrix(value)
+    return Types.is_instance(value, Matrix)
 end
 
 function Matrix:clone()
-    return new(self.a, self.b, self.c, self.d, self.tx, self.ty)
+    return Matrix(self.a, self.b, self.c, self.d, self.tx, self.ty)
 end
 
 function Matrix:is_identity(epsilon)
@@ -122,9 +111,11 @@ function Matrix:is_invertible(epsilon)
 end
 
 function Matrix:multiply(other)
-    assert_matrix('other', other)
+    if not Matrix.is_matrix(other) then
+        Assert.fail('other must be a Matrix', 2)
+    end
 
-    return new(
+    return Matrix(
         self.a * other.a + self.c * other.b,
         self.b * other.a + self.d * other.b,
         self.a * other.c + self.c * other.d,
@@ -144,7 +135,7 @@ function Matrix:inverse(epsilon)
         return nil, 'matrix is not invertible'
     end
 
-    return new(
+    return Matrix(
         self.d / determinant,
         -self.b / determinant,
         -self.c / determinant,
@@ -163,7 +154,7 @@ function Matrix:transform_point(x, y)
 end
 
 function Matrix:equals(other, epsilon)
-    if not is_matrix(other) then
+    if not Matrix.is_matrix(other) then
         return false
     end
 
@@ -182,16 +173,16 @@ function Matrix:unpack()
     return self.a, self.b, self.c, self.d, self.tx, self.ty
 end
 
-function Matrix.__mul(left, right)
-    if is_matrix(left) and is_matrix(right) then
-        return left:multiply(right)
+function Matrix:__mul(other)
+    if Matrix.is_matrix(self) and Matrix.is_matrix(other) then
+        return self:multiply(other)
     end
 
     Assert.fail('Matrix multiplication expects two Matrix values', 2)
 end
 
-function Matrix.__eq(left, right)
-    return is_matrix(left) and left:equals(right)
+function Matrix:__eq(other)
+    return self:equals(other)
 end
 
 function Matrix:__tostring()
@@ -205,11 +196,5 @@ function Matrix:__tostring()
         self.ty
     )
 end
-
-setmetatable(Matrix, {
-    __call = function(_, a, b, c, d, tx, ty)
-        return new(a, b, c, d, tx, ty)
-    end,
-})
 
 return Matrix

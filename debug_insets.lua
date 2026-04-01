@@ -1,0 +1,7 @@
+local Insets = require('lib.ui.core.insets')
+local i1 = Insets(1, 1, 1, 1)
+local i2 = Insets(1, 1, 1, 1)
+print("Insets name: " .. tostring(Insets.__name))
+print("Instance metatable: " .. tostring(getmetatable(i1).__name))
+print("Instance equals method: " .. tostring(i1.equals))
+print("Equality result: " .. tostring(i1 == i2))

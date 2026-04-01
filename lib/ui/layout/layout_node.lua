@@ -1,35 +1,48 @@
-local Assert = require('lib.ui.core.assert')
+local Assert = require('lib.ui.utils.assert')
 local Container = require('lib.ui.core.container')
+local Types = require('lib.ui.utils.types')
 local Insets = require('lib.ui.core.insets')
 local Rectangle = require('lib.ui.core.rectangle')
+local Schema = require('lib.ui.utils.schema')
 
 local max = math.max
 
-local LayoutNode = {}
+local LayoutNode = Container:extends('LayoutNode')
+LayoutNode._schema = Schema.merge(Container._schema, require('lib.ui.layout.layout_node_schema'))
 
-local COMMON_PUBLIC_KEYS = {
-    gap = true,
-    padding = true,
-    wrap = true,
-    justify = true,
-    align = true,
-    responsive = true,
-}
+local function resolve_method(self, key, base_cls)
+    local val = Container._walk_hierarchy(getmetatable(self), key)
+    if val ~= nil then return val end
+    return Container._walk_hierarchy(base_cls, key)
+end
 
-local JUSTIFY_VALUES = {
-    start = true,
-    center = true,
-    ['end'] = true,
-    ['space-between'] = true,
-    ['space-around'] = true,
-}
+function LayoutNode.__index(self, key)
+    local val = resolve_method(self, key, LayoutNode)
+    if val ~= nil then return val end
 
-local ALIGN_VALUES = {
-    start = true,
-    center = true,
-    ['end'] = true,
-    stretch = true,
-}
+    local allowed_public_keys = rawget(self, '_allowed_public_keys')
+    if allowed_public_keys and allowed_public_keys[key] then
+        local public_values = rawget(self, '_public_values')
+        return public_values and public_values[key]
+    end
+
+    return nil
+end
+
+function LayoutNode.__newindex(self, key, value)
+    local allowed_public_keys = rawget(self, '_allowed_public_keys')
+    if allowed_public_keys and allowed_public_keys[key] then
+        Container._set_public_value(self, key, value, 2)
+        
+        local rule = allowed_public_keys[key]
+        if Types.is_table(rule) and Types.is_function(rule.set) then
+            rule.set(self, value)
+        end
+        return
+    end
+
+    rawset(self, key, value)
+end
 
 local function copy_options(opts)
     if opts == nil then
@@ -47,57 +60,22 @@ local function copy_options(opts)
     return copy
 end
 
-local function merge_extra_public_keys(extra_public_keys)
-    local merged = {}
 
-    for key in pairs(COMMON_PUBLIC_KEYS) do
-        merged[key] = true
-    end
-
-    if extra_public_keys ~= nil then
-        Assert.table('extra_public_keys', extra_public_keys, 3)
-
-        for key in pairs(extra_public_keys) do
-            merged[key] = true
-        end
-    end
-
-    return merged
-end
-
-local function validate_justify(value, level)
-    if type(value) ~= 'string' or not JUSTIFY_VALUES[value] then
-        Assert.fail(
-            'Layout.justify must be "start", "center", "end", "space-between", or "space-around"',
-            level or 1
-        )
-    end
-end
-
-local function validate_align(value, level)
-    if type(value) ~= 'string' or not ALIGN_VALUES[value] then
-        Assert.fail(
-            'Layout.align must be "start", "center", "end", or "stretch"',
-            level or 1
-        )
-    end
-end
 
 local function validate_responsive_value(self, value, level)
     if value == nil then
         return nil
     end
 
-    if self._public_values ~= nil and self._public_values.breakpoints ~= nil then
+    local public_values = rawget(self, '_public_values')
+    if public_values ~= nil and public_values.breakpoints ~= nil then
         Assert.fail(
             'responsive and breakpoints cannot both be supplied on the same node',
             level or 1
         )
     end
 
-    local value_type = type(value)
-
-    if value_type ~= 'table' and value_type ~= 'function' then
+    if not Types.is_table(value) and not Types.is_function(value) then
         Assert.fail(
             'Layout.responsive must be a table or function',
             level or 1
@@ -108,28 +86,8 @@ local function validate_responsive_value(self, value, level)
 end
 
 local function validate_extra_public_value(self, key, value, level)
-    if key == 'gap' then
-        Assert.number('Layout.gap', value, level)
-        return value
-    end
-
     if key == 'padding' then
         return Insets.normalize(value)
-    end
-
-    if key == 'wrap' then
-        Assert.boolean('Layout.wrap', value, level)
-        return value
-    end
-
-    if key == 'justify' then
-        validate_justify(value, level)
-        return value
-    end
-
-    if key == 'align' then
-        validate_align(value, level)
-        return value
     end
 
     if key == 'responsive' then
@@ -142,11 +100,14 @@ end
 local function set_extra_public_value(self, key, value, level)
     value = validate_extra_public_value(self, key, value, level or 1)
 
-    if self._public_values[key] == value then
+    local public_values = rawget(self, '_public_values')
+    if public_values and public_values[key] == value then
         return value
     end
 
-    self._public_values[key] = value
+    if public_values then
+        public_values[key] = value
+    end
     self:markDirty()
     return value
 end
@@ -154,75 +115,62 @@ end
 local function set_initial_extra_public_value(self, key, value)
     local resolved = validate_extra_public_value(self, key, value, 3)
 
-    self._public_values[key] = resolved
-    self._effective_values[key] = resolved
+    local public_values = rawget(self, '_public_values')
+    if public_values then
+        public_values[key] = resolved
+    end
+    local effective_values = rawget(self, '_effective_values')
+    if effective_values then
+        effective_values[key] = resolved
+    end
 end
 
-LayoutNode.__index = function(self, key)
-    local method = rawget(LayoutNode, key)
 
-    if method ~= nil then
-        return method
+
+local function resolve_method(self, key, base_cls)
+    local val = Container._walk_hierarchy(getmetatable(self), key)
+    if val ~= nil then return val end
+    -- Fallback to the explicit base class hierarchy for mocks
+    return Container._walk_hierarchy(base_cls, key)
+end
+
+function LayoutNode.__index(self, key)
+    local val = resolve_method(self, key, LayoutNode)
+    if val ~= nil then return val end
+
+    local allowed_public_keys = rawget(self, '_allowed_public_keys')
+    if allowed_public_keys and allowed_public_keys[key] then
+        local public_values = rawget(self, '_public_values')
+        return public_values and public_values[key]
     end
 
-    return Container.__index(self, key)
+    return nil
 end
 
-LayoutNode.__newindex = function(self, key, value)
-    if COMMON_PUBLIC_KEYS[key] then
-        set_extra_public_value(self, key, value, 2)
+function LayoutNode.__newindex(self, key, value)
+    local allowed_public_keys = rawget(self, '_allowed_public_keys')
+    if allowed_public_keys and allowed_public_keys[key] then
+        Container._set_public_value(self, key, value, 2)
         return
     end
 
-    Container.__newindex(self, key, value)
+    rawset(self, key, value)
 end
 
-function LayoutNode._initialize(self, opts, extra_public_keys)
-    opts = copy_options(opts)
+function LayoutNode:_initialize(opts, extra_schema, extra_public_keys, config)
+    Container._initialize(self, opts, Schema.merge(extra_schema or LayoutNode._schema, extra_public_keys), config)
+    rawset(self, '_ui_layout_kind', 'LayoutNode')
+    rawset(self, '_ui_layout_instance', true)
+    rawset(self, '_layout_dirty', true)
+    rawset(self, '_layout_content_rect_cache', Rectangle(0, 0, 0, 0))
+end
 
-    if opts.gap == nil then
-        opts.gap = 0
-    end
-
-    if opts.padding == nil then
-        opts.padding = 0
-    end
-
-    if opts.wrap == nil then
-        opts.wrap = false
-    end
-
-    if opts.justify == nil then
-        opts.justify = 'start'
-    end
-
-    if opts.align == nil then
-        opts.align = 'start'
-    end
-
-    local allowed_public_keys = merge_extra_public_keys(extra_public_keys)
-
-    Container._initialize(self, opts, allowed_public_keys, {
-        allow_content_width = true,
-        allow_content_height = true,
-    })
-
-    set_initial_extra_public_value(self, 'gap', opts.gap)
-    set_initial_extra_public_value(self, 'padding', opts.padding)
-    set_initial_extra_public_value(self, 'wrap', opts.wrap)
-    set_initial_extra_public_value(self, 'justify', opts.justify)
-    set_initial_extra_public_value(self, 'align', opts.align)
-    set_initial_extra_public_value(self, 'responsive', opts.responsive)
-
-    self._ui_layout_instance = true
-    self._layout_dirty = true
-    self._layout_content_rect_cache = Rectangle.new(0, 0, 0, 0)
-
-    return self
+function LayoutNode:constructor(opts, extra_public_keys, config)
+    self:_initialize(opts, LayoutNode._schema, extra_public_keys, config)
 end
 
 function LayoutNode.is_layout_node(value)
-    return type(value) == 'table' and value._ui_layout_instance == true
+    return Types.is_table(value) and rawget(value, '_ui_layout_instance') == true
 end
 
 function LayoutNode:markDirty()
@@ -252,11 +200,12 @@ function LayoutNode:_get_effective_content_rect()
 end
 
 function LayoutNode:_refresh_layout_content_rect()
-    local padding = self._effective_values.padding or Insets.zero()
+    local effective_values = rawget(self, '_effective_values') or {}
+    local padding = effective_values.padding or Insets.zero()
     local width = self._resolved_width or 0
     local height = self._resolved_height or 0
 
-    self._layout_content_rect_cache = Rectangle.new(
+    self._layout_content_rect_cache = Rectangle(
         padding.left,
         padding.top,
         max(0, width - padding.left - padding.right),

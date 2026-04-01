@@ -1,12 +1,13 @@
-local Assert = require('lib.ui.core.assert')
+local Assert = require('lib.ui.utils.assert')
 local Easing = require('lib.ui.core.easing')
+local Types = require('lib.ui.utils.types')
 
 local Transitions = {}
 
 local BUILTIN_TRANSITIONS = {}
 
 local function clamp_01(value)
-    if type(value) ~= 'number' then
+    if not Types.is_number(value) then
         return 0
     end
 
@@ -22,7 +23,7 @@ local function clamp_01(value)
 end
 
 local function unwrap_canvas(canvas)
-    if type(canvas) == 'table' and rawget(canvas, 'handle') ~= nil then
+    if Types.is_table(canvas) and rawget(canvas, 'handle') ~= nil then
         return rawget(canvas, 'handle')
     end
 
@@ -32,18 +33,18 @@ end
 local function draw_canvas(graphics, canvas, x, y, alpha)
     local handle = unwrap_canvas(canvas)
 
-    if handle == nil or type(graphics.draw) ~= 'function' then
+    if handle == nil or not Types.is_function(graphics.draw) then
         return
     end
 
     local restore_color = nil
 
-    if type(graphics.getColor) == 'function' then
+    if Types.is_function(graphics.getColor) then
         local r, g, b, a = graphics.getColor()
         restore_color = { r, g, b, a }
     end
 
-    if type(graphics.setColor) == 'function' then
+    if Types.is_function(graphics.setColor) then
         local red = 1
         local green = 1
         local blue = 1
@@ -61,7 +62,7 @@ local function draw_canvas(graphics, canvas, x, y, alpha)
 
     graphics.draw(handle, x or 0, y or 0)
 
-    if restore_color ~= nil and type(graphics.setColor) == 'function' then
+    if restore_color ~= nil and Types.is_function(graphics.setColor) then
         graphics.setColor(
             restore_color[1],
             restore_color[2],
@@ -76,11 +77,11 @@ local function resolve_easing(easing, level)
         return Easing.smoothstep
     end
 
-    if type(easing) == 'function' then
+    if Types.is_function(easing) then
         return easing
     end
 
-    if type(easing) == 'string' and type(Easing[easing]) == 'function' then
+    if Types.is_string(easing) and Types.is_function(Easing[easing]) then
         return Easing[easing]
     end
 
@@ -144,7 +145,7 @@ function Transitions.resolve(definition)
         return nil
     end
 
-    if type(definition) == 'string' then
+    if Types.is_string(definition) then
         local factory = BUILTIN_TRANSITIONS[definition]
 
         if factory == nil then
@@ -154,13 +155,13 @@ function Transitions.resolve(definition)
         return factory({})
     end
 
-    if type(definition) == 'function' then
+    if Types.is_function(definition) then
         return {
             compose = definition,
         }
     end
 
-    if type(definition) ~= 'table' then
+    if not Types.is_table(definition) then
         Assert.fail(
             'transition must be nil, false, a built-in transition name, a compose function, or a transition table',
             2
@@ -169,7 +170,7 @@ function Transitions.resolve(definition)
 
     local compose = definition.compose or definition.update
 
-    if type(compose) ~= 'function' then
+    if not Types.is_function(compose) then
         Assert.fail(
             'transition tables must define compose(...) or update(...)',
             2

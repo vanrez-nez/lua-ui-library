@@ -1,31 +1,30 @@
-local Assert = require('lib.ui.core.assert')
+local Assert = require('lib.ui.utils.assert')
+local Types = require('lib.ui.utils.types')
+local Object = require('lib.cls')
 
 local abs = math.abs
 
-local Insets = {}
-Insets.__index = Insets
+local Insets = Object:extends('Insets')
 
-local function is_insets(value)
-    return getmetatable(value) == Insets
-end
-
-local function new(top, right, bottom, left)
+function Insets:constructor(top, right, bottom, left)
     top = top or 0
     right = right or 0
     bottom = bottom or 0
     left = left or 0
 
-    Assert.number('top', top, 2)
-    Assert.number('right', right, 2)
-    Assert.number('bottom', bottom, 2)
-    Assert.number('left', left, 2)
+    Assert.number('top', top, 3)
+    Assert.number('right', right, 3)
+    Assert.number('bottom', bottom, 3)
+    Assert.number('left', left, 3)
 
-    return setmetatable({
-        top = top,
-        right = right,
-        bottom = bottom,
-        left = left,
-    }, Insets)
+    self.top = top
+    self.right = right
+    self.bottom = bottom
+    self.left = left
+end
+
+local function is_insets(value)
+    return Types.is_instance(value, Insets)
 end
 
 local function normalize_table(value)
@@ -35,7 +34,7 @@ local function normalize_table(value)
 
     if value.top ~= nil or value.right ~= nil or
         value.bottom ~= nil or value.left ~= nil then
-        return new(
+        return Insets(
             value.top or 0,
             value.right or 0,
             value.bottom or 0,
@@ -44,11 +43,11 @@ local function normalize_table(value)
     end
 
     if #value == 2 then
-        return new(value[1], value[2], value[1], value[2])
+        return Insets(value[1], value[2], value[1], value[2])
     end
 
     if #value == 4 then
-        return new(value[1], value[2], value[3], value[4])
+        return Insets(value[1], value[2], value[3], value[4])
     end
 
     Assert.fail(
@@ -58,11 +57,11 @@ local function normalize_table(value)
 end
 
 function Insets.new(top, right, bottom, left)
-    return new(top, right, bottom, left)
+    return Insets(top, right, bottom, left)
 end
 
 function Insets.zero()
-    return new(0, 0, 0, 0)
+    return Insets(0, 0, 0, 0)
 end
 
 function Insets.normalize(value)
@@ -70,11 +69,11 @@ function Insets.normalize(value)
         return Insets.zero()
     end
 
-    if type(value) == 'number' then
-        return new(value, value, value, value)
+    if Types.is_number(value) then
+        return Insets(value, value, value, value)
     end
 
-    if type(value) == 'table' then
+    if Types.is_table(value) then
         return normalize_table(value)
     end
 
@@ -86,7 +85,7 @@ function Insets.is_insets(value)
 end
 
 function Insets:clone()
-    return new(self.top, self.right, self.bottom, self.left)
+    return Insets(self.top, self.right, self.bottom, self.left)
 end
 
 function Insets:horizontal()
@@ -115,8 +114,9 @@ function Insets:unpack()
     return self.top, self.right, self.bottom, self.left
 end
 
-function Insets.__eq(left, right)
-    return is_insets(left) and left:equals(right)
+function Insets:__eq(other)
+    if not is_insets(other) then return false end
+    return self:equals(other)
 end
 
 function Insets:__tostring()
@@ -128,11 +128,5 @@ function Insets:__tostring()
         self.left
     )
 end
-
-setmetatable(Insets, {
-    __call = function(_, top, right, bottom, left)
-        return new(top, right, bottom, left)
-    end,
-})
 
 return Insets

@@ -1,4 +1,5 @@
-local Assert = require('lib.ui.core.assert')
+local Assert = require('lib.ui.utils.assert')
+local Types = require('lib.ui.utils.types')
 
 local Responsive = {}
 
@@ -33,7 +34,7 @@ local function shallow_equals(left, right)
         return true
     end
 
-    if type(left) ~= 'table' or type(right) ~= 'table' then
+    if not Types.is_table(left) or not Types.is_table(right) then
         return false
     end
 
@@ -161,7 +162,7 @@ local function matches_inset_constraints(insets, constraints)
 end
 
 local function normalize_matcher(rule, level)
-    if type(rule.when) == 'function' then
+    if Types.is_function(rule.when) then
         return {
             kind = 'function',
             callback = rule.when,
@@ -180,7 +181,7 @@ local function normalize_matcher(rule, level)
         end
     end
 
-    if type(constraints) ~= 'table' then
+    if not Types.is_table(constraints) then
         Assert.fail('responsive rule "when" must be a table or function', level or 1)
     end
 
@@ -266,7 +267,7 @@ local function normalize_source(node, source_kind, source)
 
     local normalized
 
-    if type(source) == 'function' then
+    if Types.is_function(source) then
         normalized = {
             kind = 'function',
             callback = source,

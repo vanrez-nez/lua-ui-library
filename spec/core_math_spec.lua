@@ -1,8 +1,8 @@
 local Insets = require('lib.ui.core.insets')
-local MathUtils = require('lib.ui.core.math_utils')
-local Matrix = require('lib.ui.core.matrix')
+local MathUtils = require('lib.ui.utils.math')
+local Matrix = require('lib.ui.utils.matrix')
 local Rectangle = require('lib.ui.core.rectangle')
-local Vec2 = require('lib.ui.core.vec2')
+local Vec2 = require('lib.ui.utils.vec2')
 
 local function assert_equal(actual, expected, message)
     if actual ~= expected then

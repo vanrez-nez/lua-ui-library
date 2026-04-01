@@ -1,10 +1,11 @@
+local Types = require('lib.ui.utils.types')
 local max = math.max
 local tonumber = tonumber
 
 local MathUtils = {}
 
 function MathUtils.is_percentage_string(value)
-    if type(value) ~= 'string' then
+    if not Types.is_string(value) then
         return false
     end
 
@@ -40,9 +41,7 @@ function MathUtils.parse_percentage(value)
 end
 
 function MathUtils.resolve_axis_size(configured, parent_size)
-    local configured_type = type(configured)
-
-    if configured_type == 'number' then
+    if Types.is_number(configured) then
         return configured
     end
 

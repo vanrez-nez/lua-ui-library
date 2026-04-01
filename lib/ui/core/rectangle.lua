@@ -1,44 +1,33 @@
 local max = math.max
 local min = math.min
 
-local Assert = require('lib.ui.core.assert')
+local Assert = require('lib.ui.utils.assert')
+local Types = require('lib.ui.utils.types')
 local Insets = require('lib.ui.core.insets')
-local Vec2 = require('lib.ui.core.vec2')
+local Vec2 = require('lib.ui.utils.vec2')
+local Object = require('lib.cls')
 
-local Rectangle = {}
-Rectangle.__index = Rectangle
+local Rectangle = Object:extends('Rectangle')
 
-local function is_rectangle(value)
-    return getmetatable(value) == Rectangle
-end
-
-local function assert_rectangle(name, value)
-    if not is_rectangle(value) then
-        Assert.fail(name .. ' must be a Rectangle', 2)
-    end
-end
-
-local function new(x, y, width, height)
+function Rectangle:constructor(x, y, width, height)
     x = x or 0
     y = y or 0
     width = width or 0
     height = height or 0
 
-    Assert.number('x', x, 2)
-    Assert.number('y', y, 2)
-    Assert.number('width', width, 2)
-    Assert.number('height', height, 2)
+    Assert.number('x', x, 3)
+    Assert.number('y', y, 3)
+    Assert.number('width', width, 3)
+    Assert.number('height', height, 3)
 
-    return setmetatable({
-        x = x,
-        y = y,
-        width = width,
-        height = height,
-    }, Rectangle)
+    self.x = x
+    self.y = y
+    self.width = width
+    self.height = height
 end
 
 function Rectangle.new(x, y, width, height)
-    return new(x, y, width, height)
+    return Rectangle(x, y, width, height)
 end
 
 function Rectangle.from_edges(left, top, right, bottom)
@@ -47,18 +36,18 @@ function Rectangle.from_edges(left, top, right, bottom)
     Assert.number('right', right, 2)
     Assert.number('bottom', bottom, 2)
 
-    return new(left, top, right - left, bottom - top)
+    return Rectangle(left, top, right - left, bottom - top)
 end
 
 function Rectangle.bounding_box(points)
-    if type(points) ~= 'table' or #points == 0 then
+    if not Types.is_table(points) or #points == 0 then
         Assert.fail('points must be a non-empty array of { x, y } values', 2)
     end
 
     local first = points[1]
 
-    if type(first) ~= 'table' or type(first.x) ~= 'number' or
-        type(first.y) ~= 'number' then
+    if not Types.is_table(first) or not Types.is_number(first.x) or
+        not Types.is_number(first.y) then
         Assert.fail('points must contain { x, y } values', 2)
     end
 
@@ -70,8 +59,8 @@ function Rectangle.bounding_box(points)
     for index = 2, #points do
         local point = points[index]
 
-        if type(point) ~= 'table' or type(point.x) ~= 'number' or
-            type(point.y) ~= 'number' then
+        if not Types.is_table(point) or not Types.is_number(point.x) or
+            not Types.is_number(point.y) then
             Assert.fail('points must contain { x, y } values', 2)
         end
 
@@ -81,15 +70,15 @@ function Rectangle.bounding_box(points)
         max_y = max(max_y, point.y)
     end
 
-    return new(min_x, min_y, max_x - min_x, max_y - min_y)
+    return Rectangle(min_x, min_y, max_x - min_x, max_y - min_y)
 end
 
 function Rectangle.is_rectangle(value)
-    return is_rectangle(value)
+    return Types.is_instance(value, Rectangle)
 end
 
 function Rectangle:clone()
-    return new(self.x, self.y, self.width, self.height)
+    return Rectangle(self.x, self.y, self.width, self.height)
 end
 
 function Rectangle:left()
@@ -125,7 +114,9 @@ function Rectangle:contains_point(x, y)
 end
 
 function Rectangle:contains_rectangle(other)
-    assert_rectangle('other', other)
+    if not Rectangle.is_rectangle(other) then
+        Assert.fail('other must be a Rectangle', 2)
+    end
 
     if self:is_empty() or other:is_empty() then
         return false
@@ -138,7 +129,9 @@ function Rectangle:contains_rectangle(other)
 end
 
 function Rectangle:intersects(other)
-    assert_rectangle('other', other)
+    if not Rectangle.is_rectangle(other) then
+        Assert.fail('other must be a Rectangle', 2)
+    end
 
     if self:is_empty() or other:is_empty() then
         return false
@@ -151,18 +144,22 @@ function Rectangle:intersects(other)
 end
 
 function Rectangle:intersection(other)
-    assert_rectangle('other', other)
+    if not Rectangle.is_rectangle(other) then
+        Assert.fail('other must be a Rectangle', 2)
+    end
 
     local left = max(self:left(), other:left())
     local top = max(self:top(), other:top())
     local right = min(self:right(), other:right())
     local bottom = min(self:bottom(), other:bottom())
 
-    return new(left, top, max(0, right - left), max(0, bottom - top))
+    return Rectangle(left, top, max(0, right - left), max(0, bottom - top))
 end
 
 function Rectangle:union(other)
-    assert_rectangle('other', other)
+    if not Rectangle.is_rectangle(other) then
+        Assert.fail('other must be a Rectangle', 2)
+    end
 
     if self:is_empty() then
         return other:clone()
@@ -177,7 +174,7 @@ function Rectangle:union(other)
     local right = max(self:right(), other:right())
     local bottom = max(self:bottom(), other:bottom())
 
-    return new(left, top, right - left, bottom - top)
+    return Rectangle(left, top, right - left, bottom - top)
 end
 
 function Rectangle:translate(dx, dy)
@@ -187,13 +184,13 @@ function Rectangle:translate(dx, dy)
     Assert.number('dx', dx, 2)
     Assert.number('dy', dy, 2)
 
-    return new(self.x + dx, self.y + dy, self.width, self.height)
+    return Rectangle(self.x + dx, self.y + dy, self.width, self.height)
 end
 
 function Rectangle:inset(value)
     local insets = Insets.normalize(value)
 
-    return new(
+    return Rectangle(
         self.x + insets.left,
         self.y + insets.top,
         max(0, self.width - insets:horizontal()),
@@ -204,7 +201,7 @@ end
 function Rectangle:expand(value)
     local insets = Insets.normalize(value)
 
-    return new(
+    return Rectangle(
         self.x - insets.left,
         self.y - insets.top,
         max(0, self.width + insets:horizontal()),
@@ -214,10 +211,10 @@ end
 
 function Rectangle:corners()
     return
-        Vec2.new(self.x, self.y),
-        Vec2.new(self:right(), self.y),
-        Vec2.new(self:right(), self:bottom()),
-        Vec2.new(self.x, self:bottom())
+        Vec2(self.x, self.y),
+        Vec2(self:right(), self.y),
+        Vec2(self:right(), self:bottom()),
+        Vec2(self.x, self:bottom())
 end
 
 function Rectangle:unpack()
@@ -225,7 +222,7 @@ function Rectangle:unpack()
 end
 
 function Rectangle:equals(other, epsilon)
-    if not is_rectangle(other) then
+    if not Rectangle.is_rectangle(other) then
         return false
     end
 
@@ -238,8 +235,8 @@ function Rectangle:equals(other, epsilon)
         math.abs(self.height - other.height) <= epsilon
 end
 
-function Rectangle.__eq(left, right)
-    return is_rectangle(left) and left:equals(right)
+function Rectangle:__eq(other)
+    return self:equals(other)
 end
 
 function Rectangle:__tostring()
@@ -251,11 +248,5 @@ function Rectangle:__tostring()
         self.height
     )
 end
-
-setmetatable(Rectangle, {
-    __call = function(_, x, y, width, height)
-        return new(x, y, width, height)
-    end,
-})
 
 return Rectangle

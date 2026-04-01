@@ -1,7 +1,8 @@
+local Types = require('lib.ui.utils.types')
 local Easing = {}
 
 local function clamp_01(value)
-    if type(value) ~= 'number' then
+    if not Types.is_number(value) then
         return 0
     end
 

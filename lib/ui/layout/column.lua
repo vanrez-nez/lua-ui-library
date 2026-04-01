@@ -1,25 +1,19 @@
 local LayoutNode = require('lib.ui.layout.layout_node')
 local SequentialLayout = require('lib.ui.layout.sequential_layout')
 
-local Column = {}
+local Column = LayoutNode:extends('Column')
+Column._schema = require('lib.ui.layout.column_schema')
 
-Column.__index = function(self, key)
-    local method = rawget(Column, key)
-
-    if method ~= nil then
-        return method
-    end
-
-    return LayoutNode.__index(self, key)
+function Column:constructor(opts)
+    LayoutNode.constructor(self, opts, nil, {
+        allow_content_width = true,
+        allow_content_height = true,
+    })
+    self._ui_layout_kind = 'Column'
 end
 
-Column.__newindex = LayoutNode.__newindex
-
 function Column.new(opts)
-    local self = {}
-    LayoutNode._initialize(self, opts)
-    self._ui_layout_kind = 'Column'
-    return setmetatable(self, Column)
+    return Column(opts)
 end
 
 function Column:_apply_layout(stage)

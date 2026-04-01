@@ -1,113 +1,36 @@
-local Assert = require('lib.ui.core.assert')
-local MathUtils = require('lib.ui.core.math_utils')
-local Matrix = require('lib.ui.core.matrix')
+local Assert = require('lib.ui.utils.assert')
+local Types = require('lib.ui.utils.types')
+local MathUtils = require('lib.ui.utils.math')
+local Matrix = require('lib.ui.utils.matrix')
 local Rectangle = require('lib.ui.core.rectangle')
+local Object = require('lib.cls')
+
+local Schema = require('lib.ui.utils.schema')
+local Utils = require('lib.ui.utils.common')
 
 local abs = math.abs
 
 local CLIP_EPSILON = 1e-9
-local mark_parent_order_dirty
 
-local Container = {}
-local VALID_EVENT_LISTENER_PHASES = {
-    capture = true,
-    bubble = true,
-}
+local EventDispatcher = require('lib.ui.event.event_dispatcher')
 
-local BASE_PUBLIC_KEYS = {
-    tag = true,
-    visible = true,
-    interactive = true,
-    enabled = true,
-    focusable = true,
-    clipChildren = true,
-    zIndex = true,
-    anchorX = true,
-    anchorY = true,
-    pivotX = true,
-    pivotY = true,
-    x = true,
-    y = true,
-    width = true,
-    height = true,
-    minWidth = true,
-    minHeight = true,
-    maxWidth = true,
-    maxHeight = true,
-    scaleX = true,
-    scaleY = true,
-    rotation = true,
-    skewX = true,
-    skewY = true,
-    breakpoints = true,
-}
+local Container = EventDispatcher:extends('Container')
 
-local DEFAULT_PUBLIC_VALUES = {
-    visible = true,
-    interactive = false,
-    enabled = true,
-    focusable = false,
-    clipChildren = false,
-    zIndex = 0,
-    anchorX = 0,
-    anchorY = 0,
-    pivotX = 0,
-    pivotY = 0,
-    x = 0,
-    y = 0,
-    width = 0,
-    height = 0,
-    scaleX = 1,
-    scaleY = 1,
-    rotation = 0,
-    skewX = 0,
-    skewY = 0,
+Container._schema = require('lib.ui.core.container_schema')
+
+local LOCAL_TRANSFORM_KEYS = {
+    anchorX = true, anchorY = true, pivotX = true, pivotY = true,
+    x = true, y = true, scaleX = true, scaleY = true,
+    rotation = true, skewX = true, skewY = true
 }
 
 local MEASUREMENT_KEYS = {
-    width = true,
-    height = true,
-    minWidth = true,
-    minHeight = true,
-    maxWidth = true,
-    maxHeight = true,
+    width = true, height = true, minWidth = true, minHeight = true, maxWidth = true, maxHeight = true
 }
 
-local LOCAL_TRANSFORM_KEYS = {
-    anchorX = true,
-    anchorY = true,
-    pivotX = true,
-    pivotY = true,
-    x = true,
-    y = true,
-    scaleX = true,
-    scaleY = true,
-    rotation = true,
-    skewX = true,
-    skewY = true,
-}
-
-local function copy_array(values)
-    local copy = {}
-
-    for index = 1, #values do
-        copy[index] = values[index]
-    end
-
-    return copy
-end
-
-local function validate_listener_phase(phase, level)
-    if not VALID_EVENT_LISTENER_PHASES[phase] then
-        Assert.fail('listener phase must be "capture" or "bubble"', level or 1)
-    end
-
-    return phase
-end
 
 local function is_layout_node(node)
-    return type(node) == 'table' and node._ui_layout_instance == true and
-        not node._destroyed
+    return (Object.is(node, "LayoutNode") or rawget(node, '_ui_layout_instance') == true) and not rawget(node, '_destroyed')
 end
 
 local default = MathUtils.default
@@ -115,43 +38,12 @@ local clamp_number = MathUtils.clamp_number
 local resolve_axis_size = MathUtils.resolve_axis_size
 local is_percentage_string = MathUtils.is_percentage_string
 
-local function validate_size_value(prop_name, value, allow_content, level)
-    local value_type = type(value)
-
-    if value_type == 'number' then
-        return value
-    end
-
-    if value == 'fill' then
-        return value
-    end
-
-    if value == 'content' then
-        if allow_content then
-            return value
-        end
-
-        Assert.fail(
-            'Container.' .. prop_name ..
-                ' = "content" is invalid without an intrinsic measurement rule',
-            level or 1
-        )
-    end
-
-    if is_percentage_string(value) then
-        return value
-    end
-
-    Assert.fail(
-        'Container.' .. prop_name ..
-            ' must be a number, "content", "fill", or a percentage string',
-        level or 1
-    )
-end
+-- Removed validate_size_value, using Schema.validate_size directly
 
 local function find_child_index(parent, child)
-    for index = 1, #parent._children do
-        if parent._children[index] == child then
+    local children = rawget(parent, '_children') or {}
+    for index = 1, #children do
+        if children[index] == child then
             return index
         end
     end
@@ -159,78 +51,49 @@ local function find_child_index(parent, child)
     return nil
 end
 
-local function merge_public_keys(extra_public_keys)
-    if extra_public_keys == nil then
-        return BASE_PUBLIC_KEYS
-    end
+-- Removed manual key checks; Schemas handles extension directly.
 
-    Assert.table('extra_public_keys', extra_public_keys, 3)
-
-    local merged = {}
-
-    for key in pairs(BASE_PUBLIC_KEYS) do
-        merged[key] = true
-    end
-
-    for key in pairs(extra_public_keys) do
-        merged[key] = true
-    end
-
-    return merged
+function Container:invalidate_world()
+    rawset(self, '_world_transform_dirty', true)
+    rawset(self, '_bounds_dirty', true)
+    rawset(self, '_world_inverse_dirty', true)
 end
 
-local function validate_public_keys(opts, allowed_public_keys)
-    for key in pairs(opts) do
-        if not allowed_public_keys[key] then
-            Assert.fail(
-                'Container does not support prop "' .. tostring(key) .. '"',
-                4
-            )
-        end
+function Container:invalidate_descendant_world()
+    local children = rawget(self, '_children') or {}
+    for index = 1, #children do
+        local child = children[index]
+        child:invalidate_world()
+        child:invalidate_descendant_world()
     end
 end
 
-local function is_base_public_key(key)
-    return BASE_PUBLIC_KEYS[key] == true
-end
-
-local function mark_world_dirty(node)
-    node._world_transform_dirty = true
-    node._bounds_dirty = true
-    node._world_inverse_dirty = true
-end
-
-local function mark_descendant_world_dirty(node)
-    for index = 1, #node._children do
-        local child = node._children[index]
-        mark_world_dirty(child)
-        mark_descendant_world_dirty(child)
-    end
-end
-
-local function mark_descendant_geometry_dirty(node)
-    for index = 1, #node._children do
-        local child = node._children[index]
-        child._responsive_dirty = true
-        child._measurement_dirty = true
-        child._local_transform_dirty = true
-        mark_world_dirty(child)
-        mark_descendant_geometry_dirty(child)
+function Container:invalidate_descendant_geometry()
+    local children = rawget(self, '_children') or {}
+    for index = 1, #children do
+        local child = children[index]
+        rawset(child, '_responsive_dirty', true)
+        rawset(child, '_measurement_dirty', true)
+        rawset(child, '_local_transform_dirty', true)
+        child:invalidate_world()
+        child:invalidate_descendant_geometry()
     end
 end
 
 local function assert_live_container(node, name, level)
-    if type(node) ~= 'table' or node._ui_container_instance ~= true then
+    local is_container = Object.is(node, "Container") or (type(node) == 'table' and rawget(node, '_ui_container_instance'))
+    if not is_container then
         Assert.fail(name .. ' must be a Container', level or 1)
     end
 
-    if node._destroyed then
+    if rawget(node, '_destroyed') then
         Assert.fail(name .. ' must not be destroyed', level or 1)
     end
 end
 
+
 local function assert_not_destroyed(self, level)
-    if self._destroyed then
+    if rawget(self, '_destroyed') then
         Assert.fail('cannot use a destroyed Container', level or 1)
     end
 end
@@ -246,22 +109,22 @@ local function assert_no_cycle(parent, child, level)
             )
         end
 
-        current = current.parent
+        current = rawget(current, 'parent')
     end
 end
 
 local function get_root(node)
     local current = node
-
-    while current.parent do
-        current = current.parent
+    local parent = rawget(current, 'parent')
+    while parent ~= nil do
+        current = parent
+        parent = rawget(current, 'parent')
     end
-
     return current
 end
 
-local function notify_stage_subtree_change(stage, handler_name, child, parent)
-    if stage == nil or stage._ui_stage_instance ~= true or stage._destroyed then
+function Container:notify_stage_subtree_change(stage, handler_name, child, parent)
+    if not Object.is(stage, "Stage") or rawget(stage, '_destroyed') then
         return
     end
 
@@ -271,243 +134,110 @@ local function notify_stage_subtree_change(stage, handler_name, child, parent)
         handler = stage[handler_name]
     end
 
-    if type(handler) == 'function' then
+    if Types.is_function(handler) then
         handler(stage, child, parent)
     end
 end
 
-local function invalidate_stage_update_token(node)
-    local root = get_root(node)
+function Container:invalidate_stage_update_token()
+    local root = get_root(self)
 
-    if root ~= nil and root._ui_stage_instance == true and
-        not root._destroyed then
+    if Object.is(root, "Stage") and not rawget(root, '_destroyed') then
         rawset(root, '_update_ran', false)
     end
 end
 
-local function mark_layout_node_dirty(node)
-    if not is_layout_node(node) then
+function Container:mark_layout_node_dirty()
+    if not is_layout_node(self) then
         return false
     end
 
-    if node._layout_dirty then
+    if rawget(self, '_layout_dirty') then
         return false
     end
 
-    node._layout_dirty = true
-    invalidate_stage_update_token(node)
+    rawset(self, '_layout_dirty', true)
+    self:invalidate_stage_update_token()
 
     return true
 end
 
-local function mark_ancestor_layouts_dirty(node)
-    local current = node
+function Container:invalidate_ancestor_layouts()
+    local current = self
 
     while current ~= nil do
-        mark_layout_node_dirty(current)
+        current:mark_layout_node_dirty()
         current = current.parent
     end
 end
 
+local function walk_hierarchy(cls, key)
+    local current = cls
+    while current do
+        local val = rawget(current, key)
+        if val ~= nil then return val end
+        current = rawget(current, "super")
+    end
+end
+
+Container._walk_hierarchy = walk_hierarchy
+
 local function ensure_current(node)
     local root = get_root(node)
-    local synchronize_for_read = root._synchronize_for_read
+    
+    -- Fast path for Stage instances (which are usually the root)
+    if rawget(root, '_ui_stage_instance') then
+        local method = root._synchronize_for_read
+        if Types.is_function(method) then
+            method(root)
+            return
+        end
+    end
 
-    if type(synchronize_for_read) == 'function' then
-        synchronize_for_read(root)
+    local method = walk_hierarchy(getmetatable(root), "_synchronize_for_read")
+
+    if Types.is_function(method) then
+        method(root)
         return
     end
 
-    root:update()
+    if Types.is_function(root.update) then
+        root:update()
+    end
 end
 
 local function validate_public_value(self, key, value, level)
-    if key == 'tag' then
-        if value ~= nil then
-            Assert.string('Container.tag', value, level)
-        end
-
-        return value
-    end
-
-    if key == 'visible' then
-        Assert.boolean('Container.visible', value, level)
-        return value
-    end
-
-    if key == 'interactive' then
-        Assert.boolean('Container.interactive', value, level)
-        return value
-    end
-
-    if key == 'enabled' then
-        Assert.boolean('Container.enabled', value, level)
-        return value
-    end
-
-    if key == 'focusable' then
-        Assert.boolean('Container.focusable', value, level)
-        return value
-    end
-
-    if key == 'clipChildren' then
-        Assert.boolean('Container.clipChildren', value, level)
-        return value
-    end
-
-    if key == 'zIndex' then
-        Assert.number('Container.zIndex', value, level)
-        return value
-    end
-
-    if key == 'anchorX' then
-        Assert.number('Container.anchorX', value, level)
-        return value
-    end
-
-    if key == 'anchorY' then
-        Assert.number('Container.anchorY', value, level)
-        return value
-    end
-
-    if key == 'pivotX' then
-        Assert.number('Container.pivotX', value, level)
-        return value
-    end
-
-    if key == 'pivotY' then
-        Assert.number('Container.pivotY', value, level)
-        return value
-    end
-
-    if key == 'x' then
-        Assert.number('Container.x', value, level)
-        return value
-    end
-
-    if key == 'y' then
-        Assert.number('Container.y', value, level)
-        return value
-    end
-
-    if key == 'width' then
-        return validate_size_value(
-            'width',
-            value,
-            self._config.allow_content_width == true,
-            level
-        )
-    end
-
-    if key == 'height' then
-        return validate_size_value(
-            'height',
-            value,
-            self._config.allow_content_height == true,
-            level
-        )
-    end
-
-    if key == 'minWidth' then
-        if value ~= nil then
-            Assert.number('Container.minWidth', value, level)
-        end
-
-        return value
-    end
-
-    if key == 'minHeight' then
-        if value ~= nil then
-            Assert.number('Container.minHeight', value, level)
-        end
-
-        return value
-    end
-
-    if key == 'maxWidth' then
-        if value ~= nil then
-            Assert.number('Container.maxWidth', value, level)
-        end
-
-        return value
-    end
-
-    if key == 'maxHeight' then
-        if value ~= nil then
-            Assert.number('Container.maxHeight', value, level)
-        end
-
-        return value
-    end
-
-    if key == 'scaleX' then
-        Assert.number('Container.scaleX', value, level)
-        return value
-    end
-
-    if key == 'scaleY' then
-        Assert.number('Container.scaleY', value, level)
-        return value
-    end
-
-    if key == 'rotation' then
-        Assert.number('Container.rotation', value, level)
-        return value
-    end
-
-    if key == 'skewX' then
-        Assert.number('Container.skewX', value, level)
-        return value
-    end
-
-    if key == 'skewY' then
-        Assert.number('Container.skewY', value, level)
-        return value
-    end
-
-    if key == 'breakpoints' then
-        if value ~= nil then
-            Assert.table('Container.breakpoints', value, level)
-
-            if self._allowed_public_keys ~= nil and
-                self._allowed_public_keys.responsive == true and
-                self._public_values ~= nil and
-                self._public_values.responsive ~= nil then
-                Assert.fail(
-                    'responsive and breakpoints cannot both be supplied on the same node',
-                    level
-                )
-            end
-        end
-
-        return value
-    end
-
-    return value
+    return Schema.validate(self._allowed_public_keys or self._schema, key, value, self, level)
 end
 
 local function get_effective_value(self, key)
-    return self._effective_values[key]
+    local effective_values = rawget(self, '_effective_values')
+    return effective_values and effective_values[key]
 end
 
 local function set_initial_public_value(self, key, value)
-    self._public_values[key] = validate_public_value(self, key, value, 3)
+    local public_values = rawget(self, '_public_values')
+    if public_values then
+        public_values[key] = validate_public_value(self, key, value, 3)
+    end
 end
 
 local function refresh_effective_values(self)
     local previous_effective_z_index = nil
+    local current_effective = rawget(self, '_effective_values')
 
-    if self._effective_values ~= nil then
-        previous_effective_z_index = self._effective_values.zIndex
+    if current_effective ~= nil then
+        previous_effective_z_index = current_effective.zIndex
     end
 
     local effective = {}
+    local public_values = rawget(self, '_public_values') or {}
 
-    for key, value in pairs(self._public_values) do
+    for key, value in pairs(public_values) do
         effective[key] = value
     end
 
-    local overrides = self._responsive_overrides
+    local overrides = rawget(self, '_responsive_overrides')
 
     if overrides ~= nil then
         for key, value in pairs(overrides) do
@@ -515,11 +245,11 @@ local function refresh_effective_values(self)
         end
     end
 
-    self._effective_values = effective
-    self._responsive_dirty = false
+    rawset(self, '_effective_values', effective)
+    rawset(self, '_responsive_dirty', false)
 
-    if previous_effective_z_index ~= effective.zIndex then
-        mark_parent_order_dirty(self)
+    if previous_effective_z_index ~= (effective and effective.zIndex) then
+        self:mark_parent_order_dirty()
     end
 end
 
@@ -532,8 +262,8 @@ local function refresh_measurement(self)
         parent_width = parent_content_rect.width
         parent_height = parent_content_rect.height
     else
-        parent_width = self._measurement_context_width
-        parent_height = self._measurement_context_height
+        parent_width = rawget(self, '_measurement_context_width')
+        parent_height = rawget(self, '_measurement_context_height')
     end
 
     local width = clamp_number(
@@ -547,10 +277,10 @@ local function refresh_measurement(self)
         get_effective_value(self, 'maxHeight')
     )
 
-    self._resolved_width = width
-    self._resolved_height = height
-    self._local_bounds_cache = Rectangle.new(0, 0, width, height)
-    self._measurement_dirty = false
+    rawset(self, '_resolved_width', width)
+    rawset(self, '_resolved_height', height)
+    rawset(self, '_local_bounds_cache', Rectangle(0, 0, width, height))
+    rawset(self, '_measurement_dirty', false)
 end
 
 local function refresh_local_transform(self)
@@ -561,82 +291,83 @@ local function refresh_local_transform(self)
         local parent_content_rect = self.parent:_get_effective_content_rect()
         parent_width = parent_content_rect.width
         parent_height = parent_content_rect.height
-    elseif self._measurement_context_width ~= nil or
-        self._measurement_context_height ~= nil then
-        parent_width = self._measurement_context_width or 0
-        parent_height = self._measurement_context_height or 0
+    elseif rawget(self, '_measurement_context_width') ~= nil or
+        rawget(self, '_measurement_context_height') ~= nil then
+        parent_width = rawget(self, '_measurement_context_width') or 0
+        parent_height = rawget(self, '_measurement_context_height') or 0
     end
 
-    local width = self._resolved_width or 0
-    local height = self._resolved_height or 0
-    local pivot_x = get_effective_value(self, 'pivotX') * width
-    local pivot_y = get_effective_value(self, 'pivotY') * height
-    local anchor_x = get_effective_value(self, 'anchorX') * parent_width
-    local anchor_y = get_effective_value(self, 'anchorY') * parent_height
-    local layout_offset_x = self._layout_offset_x or 0
-    local layout_offset_y = self._layout_offset_y or 0
+    local width = rawget(self, '_resolved_width') or 0
+    local height = rawget(self, '_resolved_height') or 0
+    local pivot_x = (get_effective_value(self, 'pivotX') or 0) * width
+    local pivot_y = (get_effective_value(self, 'pivotY') or 0) * height
+    local anchor_x = (get_effective_value(self, 'anchorX') or 0) * parent_width
+    local anchor_y = (get_effective_value(self, 'anchorY') or 0) * parent_height
+    local layout_offset_x = rawget(self, '_layout_offset_x') or 0
+    local layout_offset_y = rawget(self, '_layout_offset_y') or 0
 
-    self._local_transform_cache = Matrix.from_transform(
-        layout_offset_x + anchor_x + get_effective_value(self, 'x'),
-        layout_offset_y + anchor_y + get_effective_value(self, 'y'),
+    rawset(self, '_local_transform_cache', Matrix.from_transform(
+        layout_offset_x + anchor_x + (get_effective_value(self, 'x') or 0),
+        layout_offset_y + anchor_y + (get_effective_value(self, 'y') or 0),
         pivot_x,
         pivot_y,
-        get_effective_value(self, 'scaleX'),
-        get_effective_value(self, 'scaleY'),
-        get_effective_value(self, 'rotation'),
-        get_effective_value(self, 'skewX'),
-        get_effective_value(self, 'skewY')
-    )
-    self._local_transform_dirty = false
+        (get_effective_value(self, 'scaleX') or 1),
+        (get_effective_value(self, 'scaleY') or 1),
+        (get_effective_value(self, 'rotation') or 0),
+        (get_effective_value(self, 'skewX') or 0),
+        (get_effective_value(self, 'skewY') or 0)
+    ))
+    rawset(self, '_local_transform_dirty', false)
 end
 
 local function refresh_world_transform(self)
     if self.parent then
-        self._world_transform_cache =
-            self.parent._world_transform_cache * self._local_transform_cache
+        rawset(self, '_world_transform_cache',
+            rawget(self.parent, '_world_transform_cache') * rawget(self, '_local_transform_cache'))
     else
-        self._world_transform_cache = self._local_transform_cache:clone()
+        rawset(self, '_world_transform_cache', rawget(self, '_local_transform_cache'):clone())
     end
 
-    self._world_transform_dirty = false
-    self._world_inverse_dirty = true
+    rawset(self, '_world_transform_dirty', false)
+    rawset(self, '_world_inverse_dirty', true)
 end
 
 local function refresh_bounds(self)
-    local width = self._resolved_width or 0
-    local height = self._resolved_height or 0
-    local matrix = self._world_transform_cache
+    local width = rawget(self, '_resolved_width') or 0
+    local height = rawget(self, '_resolved_height') or 0
+    local matrix = rawget(self, '_world_transform_cache')
     local x1, y1 = matrix:transform_point(0, 0)
     local x2, y2 = matrix:transform_point(width, 0)
     local x3, y3 = matrix:transform_point(width, height)
     local x4, y4 = matrix:transform_point(0, height)
 
-    self._world_bounds_cache = Rectangle.bounding_box({
+    rawset(self, '_world_bounds_cache', Rectangle.bounding_box({
         { x = x1, y = y1 },
         { x = x2, y = y2 },
         { x = x3, y = y3 },
         { x = x4, y = y4 },
-    })
-    self._bounds_dirty = false
+    }))
+    rawset(self, '_bounds_dirty', false)
 end
 
 local function refresh_child_order_cache(self)
-    if not self._child_order_dirty and self._ordered_children ~= nil then
+    if not rawget(self, '_child_order_dirty') and rawget(self, '_ordered_children') ~= nil then
         return
     end
 
+    local children = rawget(self, '_children') or {}
     local decorated = {}
 
-    for index = 1, #self._children do
+    for index = 1, #children do
         decorated[index] = {
-            child = self._children[index],
+            child = children[index],
             index = index,
         }
     end
 
     table.sort(decorated, function(left, right)
-        local left_z_index = get_effective_value(left.child, 'zIndex')
-        local right_z_index = get_effective_value(right.child, 'zIndex')
+        local left_z_index = get_effective_value(left.child, 'zIndex') or 0
+        local right_z_index = get_effective_value(right.child, 'zIndex') or 0
 
         if left_z_index == right_z_index then
             return left.index < right.index
@@ -651,28 +382,31 @@ local function refresh_child_order_cache(self)
         ordered[index] = decorated[index].child
     end
 
-    self._ordered_children = ordered
-    self._child_order_dirty = false
+    rawset(self, '_ordered_children', ordered)
+    rawset(self, '_child_order_dirty', false)
 end
 
-mark_parent_order_dirty = function(self)
+function Container:mark_parent_order_dirty()
     if self.parent then
-        self.parent._child_order_dirty = true
+        rawset(self.parent, '_child_order_dirty', true)
     end
 end
 
 local function resolve_world_inverse(self)
-    if self._world_inverse_dirty then
-        self._world_inverse_cache, self._world_inverse_error =
-            self._world_transform_cache:inverse()
-        self._world_inverse_dirty = false
+    if rawget(self, '_world_inverse_dirty') then
+        local matrix = rawget(self, '_world_transform_cache')
+        local inv, err = matrix:inverse()
+        rawset(self, '_world_inverse_cache', inv)
+        rawset(self, '_world_inverse_error', err)
+        rawset(self, '_world_inverse_dirty', false)
     end
 
-    return self._world_inverse_cache, self._world_inverse_error
+    return rawget(self, '_world_inverse_cache'), rawget(self, '_world_inverse_error')
 end
 
 local function contains_world_point(self, x, y)
-    if self._local_bounds_cache:is_empty() then
+    local local_bounds = rawget(self, '_local_bounds_cache')
+    if local_bounds:is_empty() then
         return false
     end
 
@@ -684,7 +418,7 @@ local function contains_world_point(self, x, y)
 
     local local_x, local_y = inverse:transform_point(x, y)
 
-    return self._local_bounds_cache:contains_point(local_x, local_y)
+    return local_bounds:contains_point(local_x, local_y)
 end
 
 local function point_within_active_clips(active_clips, x, y)
@@ -698,9 +432,9 @@ local function point_within_active_clips(active_clips, x, y)
 end
 
 local function get_world_clip_points(self)
-    local width = self._resolved_width or 0
-    local height = self._resolved_height or 0
-    local matrix = self._world_transform_cache
+    local width = rawget(self, '_resolved_width') or 0
+    local height = rawget(self, '_resolved_height') or 0
+    local matrix = rawget(self, '_world_transform_cache')
     local x1, y1 = matrix:transform_point(0, 0)
     local x2, y2 = matrix:transform_point(width, 0)
     local x3, y3 = matrix:transform_point(width, height)
@@ -729,19 +463,21 @@ local function is_axis_aligned_clip(self)
 end
 
 local function get_world_clip_rect(self)
-    return self._world_bounds_cache:clone()
+    return rawget(self, '_world_bounds_cache'):clone()
 end
 
 local function has_degenerate_clip(self)
-    if self._local_bounds_cache:is_empty() then
+    local local_bounds = rawget(self, '_local_bounds_cache')
+    if local_bounds:is_empty() then
         return true
     end
 
-    return not self._world_transform_cache:is_invertible()
+    local matrix = rawget(self, '_world_transform_cache')
+    return not matrix:is_invertible()
 end
 
 local function get_scissor_rect(graphics)
-    if type(graphics.getScissor) ~= 'function' then
+    if not Types.is_function(graphics.getScissor) then
         return nil
     end
 
@@ -751,11 +487,11 @@ local function get_scissor_rect(graphics)
         return nil
     end
 
-    return Rectangle.new(x, y, width, height)
+    return Rectangle(x, y, width, height)
 end
 
 local function set_scissor_rect(graphics, rect)
-    if type(graphics.setScissor) ~= 'function' then
+    if not Types.is_function(graphics.setScissor) then
         return
     end
 
@@ -768,7 +504,7 @@ local function set_scissor_rect(graphics, rect)
 end
 
 local function get_stencil_test(graphics)
-    if type(graphics.getStencilTest) ~= 'function' then
+    if not Types.is_function(graphics.getStencilTest) then
         return nil, nil
     end
 
@@ -776,7 +512,7 @@ local function get_stencil_test(graphics)
 end
 
 local function set_stencil_test(graphics, compare, value)
-    if type(graphics.setStencilTest) ~= 'function' then
+    if not Types.is_function(graphics.setStencilTest) then
         return
     end
 
@@ -798,7 +534,7 @@ local function draw_clip_polygon(graphics, self)
         flattened[#flattened + 1] = point.y
     end
 
-    if type(graphics.polygon) == 'function' then
+    if Types.is_function(graphics.polygon) then
         graphics.polygon('fill', flattened)
     end
 end
@@ -815,7 +551,7 @@ local function draw_subtree(self, graphics, draw_callback, clip_state)
             local previous_scissor = clip_state.scissor
 
             clip_state.active_clips[#active_clips + 1] = self
-            clip_state.scissor = Rectangle.new(0, 0, 0, 0)
+            clip_state.scissor = Rectangle(0, 0, 0, 0)
             set_scissor_rect(graphics, clip_state.scissor)
             clip_state.active_clips[#clip_state.active_clips] = nil
             clip_state.scissor = previous_scissor
@@ -841,7 +577,7 @@ local function draw_subtree(self, graphics, draw_callback, clip_state)
 
             draw_callback(self)
 
-            local ordered_children = self._ordered_children
+            local ordered_children = rawget(self, '_ordered_children') or {}
 
             for index = 1, #ordered_children do
                 draw_subtree(ordered_children[index], graphics, draw_callback, clip_state)
@@ -857,7 +593,7 @@ local function draw_subtree(self, graphics, draw_callback, clip_state)
 
         set_stencil_test(graphics, previous_stencil_compare, previous_stencil_value)
 
-        if type(graphics.stencil) == 'function' then
+        if Types.is_function(graphics.stencil) then
             graphics.stencil(function()
                 draw_clip_polygon(graphics, self)
             end, 'increment', 1, true)
@@ -869,7 +605,7 @@ local function draw_subtree(self, graphics, draw_callback, clip_state)
 
         draw_callback(self)
 
-        local ordered_children = self._ordered_children
+        local ordered_children = rawget(self, '_ordered_children') or {}
 
         for index = 1, #ordered_children do
             draw_subtree(ordered_children[index], graphics, draw_callback, clip_state)
@@ -877,7 +613,7 @@ local function draw_subtree(self, graphics, draw_callback, clip_state)
 
         set_stencil_test(graphics, 'equal', next_stencil_value)
 
-        if type(graphics.stencil) == 'function' then
+        if Types.is_function(graphics.stencil) then
             graphics.stencil(function()
                 draw_clip_polygon(graphics, self)
             end, 'decrement', 1, true)
@@ -894,7 +630,7 @@ local function draw_subtree(self, graphics, draw_callback, clip_state)
 
     draw_callback(self)
 
-    local ordered_children = self._ordered_children
+    local ordered_children = rawget(self, '_ordered_children') or {}
 
     for index = 1, #ordered_children do
         draw_subtree(ordered_children[index], graphics, draw_callback, clip_state)
@@ -934,7 +670,7 @@ local function find_hit_target(self, x, y, state)
         added_clip = true
     end
 
-    local ordered_children = self._ordered_children
+    local ordered_children = rawget(self, '_ordered_children') or {}
 
     for index = #ordered_children, 1, -1 do
         local child = ordered_children[index]
@@ -975,50 +711,54 @@ end
 local function set_public_value(self, key, value, level)
     value = validate_public_value(self, key, value, level or 1)
 
-    if self._public_values[key] == value then
+    local public_values = rawget(self, '_public_values')
+    if public_values and public_values[key] == value then
         return value
     end
 
-    self._public_values[key] = value
-    self._responsive_dirty = true
-    invalidate_stage_update_token(self)
+    if public_values then
+        public_values[key] = value
+    end
+    rawset(self, '_responsive_dirty', true)
+    self:invalidate_stage_update_token()
 
     if key == 'breakpoints' then
-        mark_ancestor_layouts_dirty(self)
-        self._measurement_dirty = true
-        self._local_transform_dirty = true
-        mark_world_dirty(self)
-        mark_descendant_geometry_dirty(self)
+        self:invalidate_ancestor_layouts()
+        rawset(self, '_measurement_dirty', true)
+        rawset(self, '_local_transform_dirty', true)
+        self:invalidate_world()
+        self:invalidate_descendant_geometry()
         return value
     end
 
     if MEASUREMENT_KEYS[key] then
-        mark_ancestor_layouts_dirty(self)
-        self._measurement_dirty = true
-        self._local_transform_dirty = true
-        mark_world_dirty(self)
-        mark_descendant_geometry_dirty(self)
+        self:invalidate_ancestor_layouts()
+        rawset(self, '_measurement_dirty', true)
+        rawset(self, '_local_transform_dirty', true)
+        self:invalidate_world()
+        self:invalidate_descendant_geometry()
         return value
     end
 
     if key == 'visible' then
-        mark_ancestor_layouts_dirty(self)
+        self:invalidate_ancestor_layouts()
         return value
     end
 
     if LOCAL_TRANSFORM_KEYS[key] then
-        self._local_transform_dirty = true
-        mark_world_dirty(self)
-        mark_descendant_world_dirty(self)
+        rawset(self, '_local_transform_dirty', true)
+        self:invalidate_world()
+        self:invalidate_descendant_world()
         return value
     end
 
     if key == 'zIndex' then
-        mark_parent_order_dirty(self)
+        self:mark_parent_order_dirty()
     end
 
     return value
 end
+Container._set_public_value = set_public_value
 
 local function detach_child(parent, child)
     local index = find_child_index(parent, child)
@@ -1029,24 +769,25 @@ local function detach_child(parent, child)
 
     local stage = get_root(parent)
 
-    table.remove(parent._children, index)
-    parent._child_order_dirty = true
-    invalidate_stage_update_token(parent)
-    mark_ancestor_layouts_dirty(parent)
+    local children = rawget(parent, '_children')
+    table.remove(children, index)
+    rawset(parent, '_child_order_dirty', true)
+    parent:invalidate_stage_update_token()
+    parent:invalidate_ancestor_layouts()
     child.parent = nil
-    child._layout_offset_x = 0
-    child._layout_offset_y = 0
-    child._responsive_dirty = true
-    child._measurement_dirty = true
-    child._local_transform_dirty = true
-    mark_world_dirty(child)
-    mark_descendant_geometry_dirty(child)
-    notify_stage_subtree_change(stage, '_handle_detached_subtree', child, parent)
+    rawset(child, '_layout_offset_x', 0)
+    rawset(child, '_layout_offset_y', 0)
+    rawset(child, '_responsive_dirty', true)
+    rawset(child, '_measurement_dirty', true)
+    rawset(child, '_local_transform_dirty', true)
+    child:invalidate_world()
+    child:invalidate_descendant_geometry()
+    parent:notify_stage_subtree_change(stage, '_handle_detached_subtree', child, parent)
     return child
 end
 
 local function destroy_subtree(node)
-    if node._destroyed then
+    if rawget(node, '_destroyed') then
         return
     end
 
@@ -1054,176 +795,131 @@ local function destroy_subtree(node)
         detach_child(node.parent, node)
     end
 
-    for index = #node._children, 1, -1 do
-        local child = node._children[index]
-        node._children[index] = nil
+    local children = rawget(node, '_children') or {}
+    for index = #children, 1, -1 do
+        local child = children[index]
+        children[index] = nil
         child.parent = nil
         destroy_subtree(child)
     end
 
-    node._ordered_children = nil
-    node._destroyed = true
+    rawset(node, '_ordered_children', nil)
+    rawset(node, '_destroyed', true)
 end
 
-Container.__index = function(self, key)
-    local method = rawget(Container, key)
-
-    if method ~= nil then
-        return method
-    end
+function Container:__index(key)
+    -- Walk the class hierarchy for methods
+    local val = walk_hierarchy(getmetatable(self), key)
+    if val ~= nil then return val end
 
     local allowed_public_keys = rawget(self, '_allowed_public_keys')
 
     if allowed_public_keys and allowed_public_keys[key] then
-        return rawget(self, '_public_values')[key]
+        local public_values = rawget(self, '_public_values')
+        return public_values and public_values[key]
     end
 
     return nil
 end
+Container.__index = Container.__index
 
-Container.__newindex = function(self, key, value)
+function Container:__newindex(key, value)
     local allowed_public_keys = rawget(self, '_allowed_public_keys')
 
     if allowed_public_keys and allowed_public_keys[key] then
         set_public_value(self, key, value, 2)
+        
+        local rule = allowed_public_keys[key]
+        if Types.is_table(rule) and Types.is_function(rule.set) then
+            rule.set(self, value)
+        end
         return
     end
 
     rawset(self, key, value)
 end
+Container.__newindex = Container.__newindex
 
-function Container._initialize(self, opts, extra_public_keys, config)
-    if opts == nil then
-        opts = {}
-    else
-        Assert.table('opts', opts, 2)
-    end
-
+function Container:_initialize(opts, extra_public_keys, config)
+    opts = opts or {}
     config = config or {}
 
-    local allowed_public_keys = merge_public_keys(extra_public_keys)
-    validate_public_keys(opts, allowed_public_keys)
+    rawset(self, '_config', config)
+    local allowed_public_keys = Schema.merge(self._schema, extra_public_keys)
+    local validated_opts = Schema.validate_all(allowed_public_keys, opts, self, 3, tostring(self))
 
-    setmetatable(self, Container)
-
-    self._ui_container_instance = true
-    self._allowed_public_keys = allowed_public_keys
-    self._config = config
-    self._public_values = {}
-    self._effective_values = {}
-    self._children = {}
-    self._ordered_children = {}
-    self._event_listeners = {
-        capture = {},
-        bubble = {},
-    }
-    self._event_default_actions = {}
-    self.parent = nil
-    self._destroyed = false
-
-    self._responsive_overrides = nil
-    self._responsive_token = nil
-    self._responsive_dirty = true
-    self._measurement_dirty = true
-    self._local_transform_dirty = true
-    self._world_transform_dirty = true
-    self._bounds_dirty = true
-    self._world_inverse_dirty = true
-    self._child_order_dirty = true
-
-    self._measurement_context_width = nil
-    self._measurement_context_height = nil
-    self._layout_offset_x = 0
-    self._layout_offset_y = 0
-
-    self._resolved_width = 0
-    self._resolved_height = 0
-    self._local_transform_cache = Matrix.identity()
-    self._world_transform_cache = Matrix.identity()
-    self._world_inverse_cache = nil
-    self._world_inverse_error = 'world transform is not invertible'
-    self._local_bounds_cache = Rectangle.new(0, 0, 0, 0)
-    self._world_bounds_cache = Rectangle.new(0, 0, 0, 0)
-
-    set_initial_public_value(self, 'tag', opts.tag)
-    set_initial_public_value(self, 'visible', default(opts.visible,
-        DEFAULT_PUBLIC_VALUES.visible))
-    set_initial_public_value(self, 'interactive', default(opts.interactive,
-        DEFAULT_PUBLIC_VALUES.interactive))
-    set_initial_public_value(self, 'enabled', default(opts.enabled,
-        DEFAULT_PUBLIC_VALUES.enabled))
-    set_initial_public_value(self, 'focusable', default(opts.focusable,
-        DEFAULT_PUBLIC_VALUES.focusable))
-    set_initial_public_value(self, 'clipChildren', default(opts.clipChildren,
-        DEFAULT_PUBLIC_VALUES.clipChildren))
-    set_initial_public_value(self, 'zIndex', default(opts.zIndex,
-        DEFAULT_PUBLIC_VALUES.zIndex))
-    set_initial_public_value(self, 'anchorX', default(opts.anchorX,
-        DEFAULT_PUBLIC_VALUES.anchorX))
-    set_initial_public_value(self, 'anchorY', default(opts.anchorY,
-        DEFAULT_PUBLIC_VALUES.anchorY))
-    set_initial_public_value(self, 'pivotX', default(opts.pivotX,
-        DEFAULT_PUBLIC_VALUES.pivotX))
-    set_initial_public_value(self, 'pivotY', default(opts.pivotY,
-        DEFAULT_PUBLIC_VALUES.pivotY))
-    set_initial_public_value(self, 'x', default(opts.x, DEFAULT_PUBLIC_VALUES.x))
-    set_initial_public_value(self, 'y', default(opts.y, DEFAULT_PUBLIC_VALUES.y))
-    set_initial_public_value(self, 'width', default(opts.width,
-        DEFAULT_PUBLIC_VALUES.width))
-    set_initial_public_value(self, 'height', default(opts.height,
-        DEFAULT_PUBLIC_VALUES.height))
-    set_initial_public_value(self, 'minWidth', opts.minWidth)
-    set_initial_public_value(self, 'minHeight', opts.minHeight)
-    set_initial_public_value(self, 'maxWidth', opts.maxWidth)
-    set_initial_public_value(self, 'maxHeight', opts.maxHeight)
-    set_initial_public_value(self, 'scaleX', default(opts.scaleX,
-        DEFAULT_PUBLIC_VALUES.scaleX))
-    set_initial_public_value(self, 'scaleY', default(opts.scaleY,
-        DEFAULT_PUBLIC_VALUES.scaleY))
-    set_initial_public_value(self, 'rotation', default(opts.rotation,
-        DEFAULT_PUBLIC_VALUES.rotation))
-    set_initial_public_value(self, 'skewX', default(opts.skewX,
-        DEFAULT_PUBLIC_VALUES.skewX))
-    set_initial_public_value(self, 'skewY', default(opts.skewY,
-        DEFAULT_PUBLIC_VALUES.skewY))
-    set_initial_public_value(self, 'breakpoints', opts.breakpoints)
-
-    for key, value in pairs(opts) do
-        if allowed_public_keys[key] and not is_base_public_key(key) then
-            set_initial_public_value(self, key, value)
-        end
+    rawset(self, '_allowed_public_keys', allowed_public_keys)
+    
+    local initial_values = Schema.extract_defaults(allowed_public_keys, self, tostring(self))
+    for key, value in pairs(validated_opts) do
+        initial_values[key] = value
     end
 
-    refresh_effective_values(self)
+    rawset(self, '_public_values', initial_values)
+    rawset(self, '_effective_values', Utils.copy_table(initial_values))
 
-    return self
+    if initial_values.responsive ~= nil and initial_values.breakpoints ~= nil then
+        Assert.fail('Supplying responsive and breakpoints together at construction should fail')
+    end
+
+    -- Core state required for all Container-based objects
+    rawset(self, '_children', {})
+    rawset(self, '_ordered_children', {})
+    EventDispatcher.constructor(self)
+    
+    rawset(self, '_measurement_context_width', nil)
+    rawset(self, '_measurement_context_height', nil)
+    rawset(self, '_layout_offset_x', 0)
+    rawset(self, '_layout_offset_y', 0)
+
+    rawset(self, '_resolved_width', 0)
+    rawset(self, '_resolved_height', 0)
+    rawset(self, '_local_transform_cache', Matrix.identity())
+    rawset(self, '_world_transform_cache', Matrix.identity())
+    rawset(self, '_world_inverse_cache', nil)
+    rawset(self, '_world_inverse_error', 'world transform is not invertible')
+    rawset(self, '_local_bounds_cache', Rectangle(0, 0, 0, 0))
+    rawset(self, '_world_bounds_cache', Rectangle(0, 0, 0, 0))
+    rawset(self, '_ui_container_instance', true)
+
+    rawset(self, '_destroyed', false)
+    rawset(self, '_responsive_dirty', true)
+    rawset(self, '_measurement_dirty', true)
+    rawset(self, '_local_transform_dirty', true)
+    rawset(self, '_world_transform_dirty', true)
+    rawset(self, '_bounds_dirty', true)
+    rawset(self, '_world_inverse_dirty', true)
+    rawset(self, '_child_order_dirty', true)
+end
+
+function Container:constructor(opts, extra_public_keys, config)
+    self:_initialize(opts, extra_public_keys, config)
 end
 
 function Container.new(opts)
-    local self = {}
-    return Container._initialize(self, opts)
+    return Container(opts)
 end
 
 function Container:_refresh_if_dirty()
     assert_not_destroyed(self, 2)
 
-    if self._responsive_dirty then
+    if rawget(self, '_responsive_dirty') then
         refresh_effective_values(self)
     end
 
-    if self._measurement_dirty then
+    if rawget(self, '_measurement_dirty') then
         refresh_measurement(self)
     end
 
-    if self._local_transform_dirty then
+    if rawget(self, '_local_transform_dirty') then
         refresh_local_transform(self)
     end
 
-    if self._world_transform_dirty then
+    if rawget(self, '_world_transform_dirty') then
         refresh_world_transform(self)
     end
 
-    if self._bounds_dirty then
+    if rawget(self, '_bounds_dirty') then
         refresh_bounds(self)
     end
 
@@ -1233,11 +929,11 @@ end
 function Container:_prepare_for_layout_pass()
     assert_not_destroyed(self, 2)
 
-    if self._responsive_dirty then
+    if rawget(self, '_responsive_dirty') then
         refresh_effective_values(self)
     end
 
-    if self._measurement_dirty then
+    if rawget(self, '_measurement_dirty') then
         refresh_measurement(self)
     end
 
@@ -1250,19 +946,20 @@ function Container:update(_)
     assert_not_destroyed(self, 2)
 
     local root = get_root(self)
-    local resolve_responsive_for_node = root._resolve_responsive_for_node
+    local resolve_responsive_for_node = rawget(root, '_resolve_responsive_for_node')
 
-    if type(resolve_responsive_for_node) == 'function' then
+    if Types.is_function(resolve_responsive_for_node) then
         resolve_responsive_for_node(root, self)
     end
 
     self:_refresh_if_dirty()
 
-    for index = 1, #self._children do
-        self._children[index]:update()
+    local children = rawget(self, '_children') or {}
+    for index = 1, #children do
+        children[index]:update()
     end
 
-    if self._child_order_dirty then
+    if rawget(self, '_child_order_dirty') then
         refresh_child_order_cache(self)
     end
 
@@ -1283,17 +980,19 @@ function Container:addChild(child)
     end
 
     child.parent = self
-    self._children[#self._children + 1] = child
-    self._child_order_dirty = true
-    invalidate_stage_update_token(self)
-    mark_ancestor_layouts_dirty(self)
+    local children = rawget(self, '_children')
+    children[#children + 1] = child
+    rawset(self, '_child_order_dirty', true)
+    self:invalidate_stage_update_token()
+    self:invalidate_ancestor_layouts()
 
-    child._responsive_dirty = true
-    child._measurement_dirty = true
-    child._local_transform_dirty = true
-    mark_world_dirty(child)
-    mark_descendant_geometry_dirty(child)
-    notify_stage_subtree_change(
+    rawset(child, '_responsive_dirty', true)
+    rawset(child, '_measurement_dirty', true)
+    rawset(child, '_bounds_dirty', true)
+    rawset(child, '_local_transform_dirty', true)
+    child:invalidate_world()
+    child:invalidate_descendant_geometry()
+    self:notify_stage_subtree_change(
         get_root(self),
         '_handle_attached_subtree',
         child,
@@ -1311,119 +1010,27 @@ function Container:removeChild(child)
 end
 
 function Container:getChildren()
-    return copy_array(self._children)
-end
-
-function Container:_add_event_listener(event_type, listener, phase)
-    assert_not_destroyed(self, 2)
-    Assert.string('event_type', event_type, 2)
-
-    if type(listener) ~= 'function' then
-        Assert.fail('listener must be a function', 2)
-    end
-
-    phase = validate_listener_phase(phase or 'bubble', 2)
-
-    local listeners_by_type = self._event_listeners[phase]
-    local listeners = listeners_by_type[event_type]
-
-    if listeners == nil then
-        listeners = {}
-        listeners_by_type[event_type] = listeners
-    end
-
-    listeners[#listeners + 1] = listener
-
-    return listener
-end
-
-function Container:_remove_event_listener(event_type, listener, phase)
-    assert_not_destroyed(self, 2)
-    Assert.string('event_type', event_type, 2)
-
-    if type(listener) ~= 'function' then
-        Assert.fail('listener must be a function', 2)
-    end
-
-    local phases = nil
-
-    if phase == nil then
-        phases = { 'capture', 'bubble' }
-    else
-        validate_listener_phase(phase, 2)
-        phases = { phase }
-    end
-
-    for index = 1, #phases do
-        local listeners = self._event_listeners[phases[index]][event_type]
-
-        if listeners ~= nil then
-            for listener_index = #listeners, 1, -1 do
-                if listeners[listener_index] == listener then
-                    table.remove(listeners, listener_index)
-                end
-            end
-
-            if #listeners == 0 then
-                self._event_listeners[phases[index]][event_type] = nil
-            end
-        end
-    end
-
-    return self
-end
-
-function Container:_get_event_listener_snapshot(event_type, phase)
-    assert_not_destroyed(self, 2)
-    Assert.string('event_type', event_type, 2)
-    phase = validate_listener_phase(phase, 2)
-
-    local listeners = self._event_listeners[phase][event_type]
-
-    if listeners == nil then
-        return {}
-    end
-
-    return copy_array(listeners)
-end
-
-function Container:_set_event_default_action(event_type, handler)
-    assert_not_destroyed(self, 2)
-    Assert.string('event_type', event_type, 2)
-
-    if handler ~= nil and type(handler) ~= 'function' then
-        Assert.fail('handler must be a function or nil', 2)
-    end
-
-    self._event_default_actions[event_type] = handler
-
-    return self
-end
-
-function Container:_get_event_default_action(event_type)
-    assert_not_destroyed(self, 2)
-    Assert.string('event_type', event_type, 2)
-    return self._event_default_actions[event_type]
+    return Utils.copy_array(rawget(self, '_children') or {})
 end
 
 function Container:_get_ordered_children()
     ensure_current(self)
-    return copy_array(self._ordered_children)
+    return Utils.copy_array(rawget(self, '_ordered_children') or {})
 end
 
 function Container:getWorldTransform()
     ensure_current(self)
-    return self._world_transform_cache:clone()
+    return rawget(self, '_world_transform_cache'):clone()
 end
 
 function Container:getLocalBounds()
     ensure_current(self)
-    return self._local_bounds_cache:clone()
+    return rawget(self, '_local_bounds_cache'):clone()
 end
 
 function Container:getWorldBounds()
     ensure_current(self)
-    return self._world_bounds_cache:clone()
+    return rawget(self, '_world_bounds_cache'):clone()
 end
 
 function Container:getBounds()
@@ -1432,7 +1039,8 @@ end
 
 function Container:localToWorld(x, y)
     ensure_current(self)
-    return self._world_transform_cache:transform_point(x, y)
+    local matrix = rawget(self, '_world_transform_cache')
+    return matrix:transform_point(x, y)
 end
 
 function Container:worldToLocal(x, y)
@@ -1512,7 +1120,7 @@ end
 function Container:_draw_subtree(graphics, draw_callback)
     assert_not_destroyed(self, 2)
 
-    if draw_callback == nil and type(graphics) == 'function' then
+    if draw_callback == nil and Types.is_function(graphics) then
         draw_callback = graphics
         graphics = nil
     end
@@ -1528,11 +1136,11 @@ function Container:_draw_subtree(graphics, draw_callback)
         end
     end
 
-    if type(graphics) ~= 'table' then
+    if not Types.is_table(graphics) then
         Assert.fail('graphics must be a graphics adapter table', 2)
     end
 
-    if type(draw_callback) ~= 'function' then
+    if not Types.is_function(draw_callback) then
         Assert.fail('draw_callback must be a function', 2)
     end
 
@@ -1544,11 +1152,11 @@ end
 function Container:_draw_subtree_resolved(graphics, draw_callback)
     assert_not_destroyed(self, 2)
 
-    if type(graphics) ~= 'table' then
+    if not Types.is_table(graphics) then
         Assert.fail('graphics must be a graphics adapter table', 2)
     end
 
-    if type(draw_callback) ~= 'function' then
+    if not Types.is_function(draw_callback) then
         Assert.fail('draw_callback must be a function', 2)
     end
 
@@ -1566,12 +1174,12 @@ end
 
 function Container:markDirty()
     assert_not_destroyed(self, 2)
-    invalidate_stage_update_token(self)
-    self._responsive_dirty = true
-    self._measurement_dirty = true
-    self._local_transform_dirty = true
-    mark_world_dirty(self)
-    mark_descendant_geometry_dirty(self)
+    self:invalidate_stage_update_token()
+    rawset(self, '_responsive_dirty', true)
+    rawset(self, '_measurement_dirty', true)
+    rawset(self, '_local_transform_dirty', true)
+    self:invalidate_world()
+    self:invalidate_descendant_geometry()
     return self
 end
 
@@ -1580,34 +1188,34 @@ function Container:_set_layout_offset(x, y)
     Assert.number('x', x, 2)
     Assert.number('y', y, 2)
 
-    if self._layout_offset_x == x and self._layout_offset_y == y then
+    if rawget(self, '_layout_offset_x') == x and rawget(self, '_layout_offset_y') == y then
         return self
     end
 
-    self._layout_offset_x = x
-    self._layout_offset_y = y
-    self._local_transform_dirty = true
-    mark_world_dirty(self)
-    mark_descendant_world_dirty(self)
+    rawset(self, '_layout_offset_x', x)
+    rawset(self, '_layout_offset_y', y)
+    rawset(self, '_local_transform_dirty', true)
+    self:invalidate_world()
+    self:invalidate_descendant_world()
     return self
 end
 
 function Container:_mark_parent_layout_dependency_dirty()
     assert_not_destroyed(self, 2)
-    self._measurement_dirty = true
-    self._local_transform_dirty = true
-    mark_world_dirty(self)
-    mark_descendant_geometry_dirty(self)
+    rawset(self, '_measurement_dirty', true)
+    rawset(self, '_local_transform_dirty', true)
+    self:invalidate_world()
+    self:invalidate_descendant_geometry()
     return self
 end
 
 function Container:_get_effective_content_rect()
     assert_not_destroyed(self, 2)
-    return Rectangle.new(
+    return Rectangle(
         0,
         0,
-        self._resolved_width or 0,
-        self._resolved_height or 0
+        rawget(self, '_resolved_width') or 0,
+        rawget(self, '_resolved_height') or 0
     )
 end
 
@@ -1622,19 +1230,19 @@ function Container:_set_measurement_context(width, height)
         Assert.number('height', height, 2)
     end
 
-    if self._measurement_context_width == width and
-        self._measurement_context_height == height then
+    if rawget(self, '_measurement_context_width') == width and
+        rawget(self, '_measurement_context_height') == height then
         return self
     end
 
-    invalidate_stage_update_token(self)
-    self._measurement_context_width = width
-    self._measurement_context_height = height
-    mark_ancestor_layouts_dirty(self)
-    self._measurement_dirty = true
-    self._local_transform_dirty = true
-    mark_world_dirty(self)
-    mark_descendant_geometry_dirty(self)
+    self:invalidate_stage_update_token()
+    rawset(self, '_measurement_context_width', width)
+    rawset(self, '_measurement_context_height', height)
+    self:invalidate_ancestor_layouts()
+    rawset(self, '_measurement_dirty', true)
+    rawset(self, '_local_transform_dirty', true)
+    self:invalidate_world()
+    self:invalidate_descendant_geometry()
     return self
 end
 
@@ -1644,8 +1252,9 @@ function Container:_set_resolved_responsive_overrides(token, overrides)
     if overrides ~= nil then
         Assert.table('overrides', overrides, 2)
 
+        local allowed_public_keys = rawget(self, '_allowed_public_keys')
         for key in pairs(overrides) do
-            if not self._allowed_public_keys[key] then
+            if not allowed_public_keys[key] then
                 Assert.fail(
                     'responsive override "' .. tostring(key) ..
                         '" is not supported',
@@ -1655,19 +1264,19 @@ function Container:_set_resolved_responsive_overrides(token, overrides)
         end
     end
 
-    if self._responsive_token == token and self._responsive_overrides == overrides then
+    if rawget(self, '_responsive_token') == token and rawget(self, '_responsive_overrides') == overrides then
         return self
     end
 
-    invalidate_stage_update_token(self)
-    self._responsive_token = token
-    self._responsive_overrides = overrides
-    mark_ancestor_layouts_dirty(self)
-    self._responsive_dirty = true
-    self._measurement_dirty = true
-    self._local_transform_dirty = true
-    mark_world_dirty(self)
-    mark_descendant_geometry_dirty(self)
+    self:invalidate_stage_update_token()
+    rawset(self, '_responsive_token', token)
+    rawset(self, '_responsive_overrides', overrides)
+    self:invalidate_ancestor_layouts()
+    rawset(self, '_responsive_dirty', true)
+    rawset(self, '_measurement_dirty', true)
+    rawset(self, '_local_transform_dirty', true)
+    self:invalidate_world()
+    self:invalidate_descendant_geometry()
     return self
 end
 

@@ -1,12 +1,13 @@
 local LayoutNode = require('lib.ui.layout.layout_node')
-local MathUtils = require('lib.ui.core.math_utils')
+local MathUtils = require('lib.ui.utils.math')
 local Rectangle = require('lib.ui.core.rectangle')
 
 local max = math.max
 local min = math.min
 local clamp_number = MathUtils.clamp_number
 
-local Stack = {}
+local Stack = LayoutNode:extends('Stack')
+Stack._schema = require('lib.ui.layout.stack_schema')
 
 local function child_is_visible(child)
     local effective_values = rawget(child, '_effective_values')
@@ -110,7 +111,7 @@ local function apply_content_measurement(self, content_width, content_height)
 
     self._resolved_width = resolved_width
     self._resolved_height = resolved_height
-    self._local_bounds_cache = Rectangle.new(0, 0, resolved_width, resolved_height)
+    self._local_bounds_cache = Rectangle(0, 0, resolved_width, resolved_height)
     self._local_transform_dirty = true
     self._world_transform_dirty = true
     self._bounds_dirty = true
@@ -126,23 +127,16 @@ local function apply_content_measurement(self, content_width, content_height)
     return true
 end
 
-Stack.__index = function(self, key)
-    local method = rawget(Stack, key)
-
-    if method ~= nil then
-        return method
-    end
-
-    return LayoutNode.__index(self, key)
+function Stack:constructor(opts)
+    LayoutNode.constructor(self, opts, nil, {
+        allow_content_width = true,
+        allow_content_height = true,
+    })
+    self._ui_layout_kind = 'Stack'
 end
 
-Stack.__newindex = LayoutNode.__newindex
-
 function Stack.new(opts)
-    local self = {}
-    LayoutNode._initialize(self, opts)
-    self._ui_layout_kind = 'Stack'
-    return setmetatable(self, Stack)
+    return Stack(opts)
 end
 
 function Stack:_apply_layout(_)

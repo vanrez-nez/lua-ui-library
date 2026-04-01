@@ -1,6 +1,7 @@
-local Assert = require('lib.ui.core.assert')
+local Assert = require('lib.ui.utils.assert')
 local LayoutNode = require('lib.ui.layout.layout_node')
-local MathUtils = require('lib.ui.core.math_utils')
+local Types = require('lib.ui.utils.types')
+local MathUtils = require('lib.ui.utils.math')
 local Rectangle = require('lib.ui.core.rectangle')
 
 local max = math.max
@@ -75,7 +76,7 @@ local function validate_effective_props(self, config)
     Assert.number(config.kind .. '.gap', gap, 3)
     Assert.boolean(config.kind .. '.wrap', wrap, 3)
 
-    if type(justify) ~= 'string' or not JUSTIFY_VALUES[justify] then
+    if not Types.is_string(justify) or not JUSTIFY_VALUES[justify] then
         Assert.fail(
             config.kind ..
                 '.justify must be "start", "center", "end", "space-between", or "space-around"',
@@ -83,7 +84,7 @@ local function validate_effective_props(self, config)
         )
     end
 
-    if type(align) ~= 'string' or not ALIGN_VALUES[align] then
+    if not Types.is_string(align) or not ALIGN_VALUES[align] then
         Assert.fail(
             config.kind ..
                 '.align must be "start", "center", "end", or "stretch"',
@@ -130,7 +131,7 @@ local function apply_resolved_size(node, width, height)
     node._world_inverse_dirty = true
 
     if node._ui_layout_instance == true and
-        type(node._refresh_layout_content_rect) == 'function' then
+        Types.is_function(node._refresh_layout_content_rect) then
         node:_refresh_layout_content_rect()
     end
 
