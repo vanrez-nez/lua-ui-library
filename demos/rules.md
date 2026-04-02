@@ -55,6 +55,7 @@ Use:
 - `demos.common.bootstrap`
 - `demos.common.demo_base`
 - `demos.common.colors`
+- `demos.common.screen_scope`
 
 Do not duplicate:
 
@@ -92,17 +93,28 @@ Screen cleanup is owned by `DemoBase`.
 
 Every reset must rebuild the screen from scratch.
 
+## Screen File Rules
+
+If a demo has multiple screens, each screen factory must live in its own demo-local file.
+
+Preferred structure:
+
+- `main.lua` for bootstrap, screen registration, and Love callbacks only
+- one shared demo-local helper module for reusable scenario wiring
+- one `screens/` directory with one file per screen
+- shared lifecycle helpers such as `ScreenScope` stay under `demos/common/`
+
+Do not keep all screen builders inline in one large `main.lua` once a demo grows beyond a trivial case.
+
 ## Sidebar Rules
 
-Use the shared left info sidebar for live inspection values.
+Sidebar is only for not visible state that cannot be inspected with the mouse.
 
 The sidebar is for:
 
-- resolved measurements
-- bounds
-- state values
-- object relationships
-- other concrete runtime facts
+- non-visible state
+- hidden-node facts
+- other state that cannot be inspected with the mouse
 
 The sidebar is not for:
 
@@ -110,6 +122,8 @@ The sidebar is not for:
 - behavior explanations
 - duplicate navigation markers
 - general instructions already visible in the header or footer
+- values already available through the shared hover hint overlay
+- visible-object inspection data
 
 Behavior explanations belong in the header description below the title.
 
@@ -119,6 +133,38 @@ Sidebar lines should be:
 - factual
 - current
 - easy to compare across frames
+
+## Hover Hint Rules
+
+All visible objects get a hint for inspecting their relevant properties.
+
+Visible inspectable nodes must use a shared hover hint overlay from the demo-local screen helper rather than pushing those same values into the sidebar.
+
+The hover hint should:
+
+- appear next to the mouse
+- use a solid overlay panel
+- show node name and inspectable runtime facts
+- use reusable labeled badge formatting
+- render visible nodes at reduced opacity until hovered
+- resolve selected properties automatically from the node's configured opts
+
+ONLY RELEVANT PROPERTIES BELONG IN THE HINT.
+
+`props`, `local`, `world`, `visible`, and `clamp` rows must only appear when those properties are being evaluated by that screen.
+
+Do not dump generic hint rows that are unrelated to the behavior under test.
+
+Example:
+
+- a clipping screen parent may show `props: width height clipChildren`
+- that same parent should not also show `world`, `visible`, or `clamp` unless those are part of the screen's actual claim
+- a visibility screen node may show `visible`
+- that same node should not dump `props`, `local`, or `world` if the screen is only testing visibility timing or visibility inheritance
+
+Visible rect labels should contain only the node name.
+
+Do not concatenate prop values into visible node labels or hover titles when those values are already shown in the hint body.
 
 ## Title And Description Rules
 

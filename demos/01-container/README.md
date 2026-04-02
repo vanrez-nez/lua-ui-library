@@ -84,7 +84,7 @@ Should display:
 Should test:
 
 - fixed width and height
-- fill width and height where valid for the parent
+- fill sizing only where the parent contract explicitly supports it
 - content sizing where valid for the current node family
 - mixed sizing combinations
 
