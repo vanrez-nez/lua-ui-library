@@ -4,6 +4,7 @@ local Types = require('lib.ui.utils.types')
 local Insets = require('lib.ui.core.insets')
 local Rectangle = require('lib.ui.core.rectangle')
 local Schema = require('lib.ui.utils.schema')
+local Motion = require('lib.ui.motion')
 
 local max = math.max
 
@@ -140,6 +141,8 @@ end
 function Drawable:_initialize(opts)
     Container._initialize(self, opts, Drawable._schema)
     self._ui_drawable_instance = true
+    rawset(self, '_motion_visual_state', {})
+    rawset(self, '_motion_last_request', nil)
 end
 
 function Drawable.new(opts)
@@ -231,6 +234,49 @@ function Drawable:_draw_default_focus_indicator(graphics)
     end
 
     return self
+end
+
+function Drawable:_get_motion_surface(target_name)
+    if target_name == nil or target_name == 'root' then
+        return self
+    end
+
+    local value = rawget(self, target_name)
+    if Types.is_table(value) then
+        return value
+    end
+
+    return nil
+end
+
+function Drawable:_apply_motion_value(target_name, property_name, value)
+    local surface = self:_get_motion_surface(target_name)
+    if surface == nil then
+        Assert.fail('unknown motion surface "' .. tostring(target_name) .. '"', 2)
+    end
+
+    local state = rawget(surface, '_motion_visual_state')
+    if state == nil then
+        state = {}
+        rawset(surface, '_motion_visual_state', state)
+    end
+
+    state[property_name] = value
+    return surface
+end
+
+function Drawable:_get_motion_value(target_name, property_name)
+    local surface = self:_get_motion_surface(target_name)
+    if surface == nil then
+        return nil
+    end
+
+    local state = rawget(surface, '_motion_visual_state') or {}
+    return state[property_name]
+end
+
+function Drawable:_raise_motion(phase, payload)
+    return Motion.request(self, phase, payload or {})
 end
 
 return Drawable

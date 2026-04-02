@@ -65,6 +65,10 @@ function Button:constructor(opts)
         self:_set_content_internal(opts.content)
     end
 
+    rawset(self, 'surface', self)
+    rawset(self, 'border', self)
+    rawset(self, '_last_visual_variant', self:_resolve_visual_variant())
+
     self:_add_event_listener('ui.activate', function(event)
         if rawget(self, '_destroyed') then return end
         if effective_disabled(self) then return end
@@ -179,6 +183,17 @@ function Button:update(dt)
     else
         rawset(self, '_hovered', false)
     end
+
+    local variant = self:_resolve_visual_variant()
+    local previous = rawget(self, '_last_visual_variant')
+    if previous ~= nil and previous ~= variant then
+        self:_raise_motion('state-change', {
+            defaultTarget = 'surface',
+            previousValue = previous,
+            nextValue = variant,
+        })
+    end
+    rawset(self, '_last_visual_variant', variant)
 
     return self
 end

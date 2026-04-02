@@ -1,6 +1,7 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Insets = require('lib.ui.core.insets')
+local Motion = require('lib.ui.motion')
 
 local ALIGNMENT_VALUES = {
     start = true,
@@ -29,6 +30,8 @@ local DRAWABLE_SCHEMA = {
     opacity = { type = 'number', default = 1 },
     blendMode = { type = 'string' },
     mask = { type = 'table' },
+    motionPreset = { validate = Motion.validate_motion_preset },
+    motion = { validate = Motion.validate_motion },
 }
 
 return DRAWABLE_SCHEMA

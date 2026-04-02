@@ -124,6 +124,7 @@ local function detach_overlay_root(self)
 
     rawset(self, '_mounted_stage', nil)
     rawset(self, '_opened_once_for_mount', false)
+    rawset(self, '_last_open_state', get_effective_open(self))
 end
 
 local function attach_overlay_root(self, stage)
@@ -372,8 +373,16 @@ function Modal:_sync_overlay_mount()
 end
 
 function Modal:update(dt)
+    local was_open = rawget(self, '_last_open_state')
     self:_sync_overlay_mount()
     Container.update(self, dt)
+    local is_open = get_effective_open(self)
+    if was_open ~= is_open then
+        self:_raise_motion(is_open and 'open' or 'close', {
+            defaultTarget = 'surface',
+        })
+    end
+    rawset(self, '_last_open_state', is_open)
     return self
 end
 

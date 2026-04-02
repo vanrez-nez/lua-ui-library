@@ -223,6 +223,7 @@ function Tabs:constructor(opts)
     rawset(self, '_trigger_nodes', {})
     rawset(self, '_panel_nodes', {})
     rawset(self, '_trigger_order', {})
+    rawset(self, '_last_motion_value', opts.value)
 
     local list_root
     local list_region = build_list_layout(self.orientation)
@@ -247,13 +248,15 @@ function Tabs:constructor(opts)
             list_root.height = 44
         end
         Container.addChild(self, list_root)
-        rawset(self, '_list_root', list_root)
-        rawset(self, '_list_region', list_region)
+    rawset(self, '_list_root', list_root)
+    rawset(self, '_list_region', list_region)
     end
 
     local panels = Container({ tag = 'tabs_panels', width = 'fill', height = 'fill', y = 52, interactive = false })
     Container.addChild(self, panels)
     rawset(self, '_panels_region', panels)
+    rawset(self, 'indicator', rawget(self, '_list_region'))
+    rawset(self, 'panel', panels)
 
     self:_add_event_listener('ui.activate', function(event)
         if rawget(self, '_destroyed') then return end
@@ -396,6 +399,16 @@ function Tabs:update(dt)
     end
 
     sync_visual_state(self)
+
+    local previous = rawget(self, '_last_motion_value')
+    if previous ~= value then
+        self:_raise_motion('value', {
+            defaultTarget = 'indicator',
+            previousValue = previous,
+            nextValue = value,
+        })
+    end
+    rawset(self, '_last_motion_value', value)
     return self
 end
 

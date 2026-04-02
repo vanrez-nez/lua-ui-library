@@ -34,6 +34,13 @@ local BASE_KEYS = {
     alignX = true,
     alignY = true,
     responsive = true,
+    skin = true,
+    shader = true,
+    opacity = true,
+    blendMode = true,
+    mask = true,
+    motionPreset = true,
+    motion = true,
 }
 
 function Utils.base_opts(opts, defaults)

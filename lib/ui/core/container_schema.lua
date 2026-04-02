@@ -1,5 +1,6 @@
 local Assert = require('lib.ui.utils.assert')
 local Schema = require('lib.ui.utils.schema')
+local Motion = require('lib.ui.motion')
 
 local function validate_container_size(key, value, ctx, level)
     local prop_name = key:match("%.([^%.]+)$") or key
@@ -47,7 +48,9 @@ local CONTAINER_SCHEMA = {
             end
             return value
         end
-    }
+    },
+    motionPreset = { validate = Motion.validate_motion_preset },
+    motion = { validate = Motion.validate_motion },
 }
 
 return CONTAINER_SCHEMA
