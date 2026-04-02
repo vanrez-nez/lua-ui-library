@@ -512,6 +512,20 @@ function ScreenHelpers.screen_wrapper(owner, description, build)
         owner:set_description(header_description)
 
         return {
+            keypressed = function(_, key)
+                if type(state.keypressed) == 'function' then
+                    return state.keypressed(_, key) == true
+                end
+
+                return false
+            end,
+            mousepressed = function(_, x, y, button)
+                if type(state.mousepressed) == 'function' then
+                    return state.mousepressed(_, x, y, button) == true
+                end
+
+                return false
+            end,
             update = function(_, dt)
                 if type(state.update) == 'function' then
                     state.update(dt)

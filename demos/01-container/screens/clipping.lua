@@ -81,9 +81,33 @@ return function(owner, helpers)
                 world = { 'x', 'y', 'w', 'h' },
             })
 
+            local clickable_nodes = {
+                overflow_parent,
+                overflow_child,
+                overflow_grandchild,
+                clipped_parent,
+                clipped_child,
+                clipped_grandchild,
+            }
+
             return {
                 title = 'Overflow / Clipping',
-                description = 'Compares default overflow against clipChildren = true using the same overflowing child subtree in both parents.',
+                description = 'Click any visible box to toggle its clipChildren value. Compare the same overflowing subtree with clipping enabled or disabled at parent, child, and grandchild levels.',
+                mousepressed = function(_, x, y, button)
+                    if button ~= 1 then
+                        return false
+                    end
+
+                    for index = #clickable_nodes, 1, -1 do
+                        local node = clickable_nodes[index]
+                        if helpers.is_visible(node) and node:containsPoint(x, y) then
+                            node.clipChildren = not node.clipChildren
+                            return true
+                        end
+                    end
+
+                    return false
+                end,
             }
         end
     )
