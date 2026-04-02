@@ -21,11 +21,11 @@ That opens the default scene showcase with three library-focused scenes:
 The original focused demos were copied over so component work can stay isolated:
 
 ```bash
-love test/phase1
-love test/ui
-love test/button
-love test/text
-love test/scene
+love _test/phase1
+love _test/ui
+love _test/button
+love _test/text
+love _test/scene
 ```
 
 ## Unit Tests
@@ -40,6 +40,7 @@ lua scripts/run_unit_tests.lua
 
 - `lib/ui`: extracted library code
 - `scenes`: default showcase scenes for day-to-day iteration
-- `test`: manual LÖVE demos copied from the source project
+- `_test`: manual LÖVE demos copied from the source project
+- `test`: intentionally empty staging area for rebuilt demos
 - `spec`: headless unit tests for core math and layout behavior
 - `assets`: demo font and image dependencies

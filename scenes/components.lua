@@ -121,7 +121,7 @@ function Components.new()
         self:addChild(backButton)
 
         local caption = Text.new({
-            text = "For isolated visual checks, run the manual demos in test/button and test/text.",
+            text = "For isolated visual checks, run the manual demos in _test/button and _test/text.",
             fontSize = 14,
             pos = Vec2(0, 210),
             anchor = Vec2(0.5, 0.45),

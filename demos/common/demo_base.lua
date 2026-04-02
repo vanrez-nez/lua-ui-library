@@ -1,0 +1,250 @@
+local ScreenScope = require('demos.common.screen_scope')
+local MemoryMonitor = require('demos.common.memory_monitor')
+
+local DemoBase = {}
+DemoBase.__index = DemoBase
+
+local DEFAULT_THEME = {
+    background = { 0.07, 0.08, 0.1, 1 },
+    panel = { 0.12, 0.13, 0.17, 0.75 },
+    text = { 0.95, 0.96, 0.99, 1 },
+    subtext = { 0.67, 0.7, 0.77, 1 },
+}
+
+local function merge_theme(theme)
+    local merged = {}
+    for key, value in pairs(DEFAULT_THEME) do
+        merged[key] = value
+    end
+
+    if theme ~= nil then
+        for key, value in pairs(theme) do
+            merged[key] = value
+        end
+    end
+
+    return merged
+end
+
+function DemoBase.new(opts)
+    opts = opts or {}
+
+    local self = setmetatable({}, DemoBase)
+    self.title = opts.title or 'Untitled Demo'
+    self.description = opts.description or ''
+    self.theme = merge_theme(opts.theme)
+    self.padding = opts.padding or 24
+    self.header_height = opts.header_height or 104
+    self.footer_height = opts.footer_height or 44
+    self.visible = opts.visible ~= false
+    self.screens = {}
+    self.active_index = 0
+    self.active_scope = nil
+    self.active_screen = nil
+    self.memory_monitor = MemoryMonitor.new()
+
+    self.title_font = love.graphics.newFont(15)
+    self.description_font = love.graphics.newFont(13)
+    self.footer_font = love.graphics.newFont(12)
+
+    return self
+end
+
+function DemoBase:show()
+    self.visible = true
+end
+
+function DemoBase:hide()
+    self.visible = false
+end
+
+function DemoBase:toggle()
+    self.visible = not self.visible
+end
+
+function DemoBase:set_title(value)
+    self.title = value or self.title
+end
+
+function DemoBase:set_description(value)
+    self.description = value or ''
+end
+
+function DemoBase:get_screen_count()
+    return #self.screens
+end
+
+function DemoBase:_reset_global_state()
+    if love.audio ~= nil and love.audio.stop ~= nil then
+        love.audio.stop()
+    end
+
+    if love.keyboard ~= nil and love.keyboard.setTextInput ~= nil then
+        love.keyboard.setTextInput(false)
+    end
+
+    local g = love.graphics
+    if g ~= nil then
+        g.origin()
+        g.setColor(1, 1, 1, 1)
+        g.setCanvas()
+        g.setShader()
+        g.setScissor()
+    end
+end
+
+function DemoBase:_cleanup_active_screen()
+    if self.active_scope ~= nil then
+        self.active_scope:cleanup()
+    end
+
+    self.active_scope = nil
+    self.active_screen = nil
+    self:_reset_global_state()
+end
+
+function DemoBase:_activate_screen(index)
+    local total = #self.screens
+
+    if total == 0 then
+        self:_cleanup_active_screen()
+        self.active_index = 0
+        return
+    end
+
+    if index < 1 then
+        index = total
+    elseif index > total then
+        index = 1
+    end
+
+    self:_cleanup_active_screen()
+
+    local scope = ScreenScope.new()
+    local screen = self.screens[index](index, scope, self) or {}
+
+    self.active_index = index
+    self.active_scope = scope
+    self.active_screen = screen
+end
+
+function DemoBase:push_screen(factory)
+    assert(type(factory) == 'function', 'screen factory must be a function')
+    self.screens[#self.screens + 1] = factory
+
+    if self.active_index == 0 then
+        self:_activate_screen(1)
+    end
+end
+
+function DemoBase:handle_keypressed(key)
+    if key == 'escape' then
+        love.event.quit()
+        return true
+    end
+
+    if key == 'h' then
+        self:toggle()
+        return true
+    end
+
+    if key == 'm' then
+        self.memory_monitor:toggle()
+        return true
+    end
+
+    if key == 'right' and #self.screens > 0 then
+        self:_activate_screen(self.active_index + 1)
+        return true
+    end
+
+    if key == 'left' and #self.screens > 0 then
+        self:_activate_screen(self.active_index - 1)
+        return true
+    end
+
+    local screen = self.active_screen
+    if screen ~= nil and type(screen.keypressed) == 'function' then
+        return screen:keypressed(key) == true
+    end
+
+    return false
+end
+
+function DemoBase:get_content_rect()
+    local width, height = love.graphics.getDimensions()
+
+    return {
+        x = 0,
+        y = 0,
+        width = width,
+        height = height,
+    }
+end
+
+function DemoBase:begin_frame()
+    love.graphics.clear(self.theme.background)
+end
+
+function DemoBase:update(dt)
+    local screen = self.active_screen
+    if screen ~= nil and type(screen.update) == 'function' then
+        screen:update(dt)
+    end
+end
+
+function DemoBase:draw()
+    local screen = self.active_screen
+    if screen ~= nil and type(screen.draw) == 'function' then
+        screen:draw(self:get_content_rect())
+    end
+
+    if not self.visible then
+        return
+    end
+
+    local g = love.graphics
+    local width, height = g.getDimensions()
+    local footer_y = height - self.footer_height
+    local total = #self.screens
+    local active = self.active_index > 0 and self.active_index or 1
+
+    g.setColor(self.theme.panel)
+    g.rectangle('fill', 0, 0, width, self.header_height)
+    g.rectangle('fill', 0, footer_y, width, self.footer_height)
+
+    g.setColor(self.theme.text)
+    g.setFont(self.title_font)
+    g.printf(self.title, self.padding, 18, width - (self.padding * 2), 'center')
+
+    g.setColor(self.theme.subtext)
+    g.setFont(self.description_font)
+    g.printf(self.description, self.padding, 42, width - (self.padding * 2), 'center')
+
+    g.setFont(self.footer_font)
+    g.setColor(self.theme.text)
+    g.print('[Left/Right] switch screen  [H] toggle navigation  [M] memory  [Esc] quit', self.padding, footer_y + 15)
+
+    local metrics = string.format(
+        'Screen %d/%d   %dx%d   %d fps',
+        active,
+        total,
+        width,
+        height,
+        love.timer.getFPS()
+    )
+
+    local metrics_width = self.footer_font:getWidth(metrics)
+    g.print(metrics, width - self.padding - metrics_width, footer_y + 15)
+
+    local tracked_objects = 0
+    if self.active_scope ~= nil and self.active_scope.resources ~= nil then
+        tracked_objects = #self.active_scope.resources
+    end
+
+    self.memory_monitor:draw({
+        tracked_objects = tracked_objects,
+    })
+end
+
+return DemoBase

@@ -44,7 +44,7 @@ local function drawOverlay()
     love.graphics.print("Scene: " .. name, 24, 24)
     love.graphics.print("Objects: " .. count, 24, 44)
     love.graphics.print("[1/2/3] scene  [left/right] slide  [esc] quit", 24, 64)
-    love.graphics.print("Manual demos: love test/ui | test/button | test/text | test/scene", 24, 84)
+    love.graphics.print("Manual demos: love _test/ui | _test/button | _test/text | _test/scene", 24, 84)
 end
 
 function love.load()
