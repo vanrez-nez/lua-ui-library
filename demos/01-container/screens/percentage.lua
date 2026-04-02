@@ -6,6 +6,7 @@ return function(owner, helpers)
         'Nested percentage sizing under resize.',
         function(scope, stage)
             local root = stage.baseSceneLayer
+            local elapsed = 0
 
             local parent = helpers.make_node(scope, root, {
                 x = 0,
@@ -54,11 +55,11 @@ return function(owner, helpers)
                 title = 'Nested Percentage Sizing',
                 description = 'Shows percentage sizing recalculating from the effective parent region while the root node moves in a circular path.',
                 update = function(dt)
+                    elapsed = elapsed + dt
                     pulse_parent_size(dt)
 
-                    local time = love.timer.getTime()
-                    local orbit_x = math.sin(time * 0.9) * 72
-                    local orbit_y = math.cos(time * 0.9) * 54
+                    local orbit_x = math.sin(elapsed * 0.9) * 72
+                    local orbit_y = math.cos(elapsed * 0.9) * 54
 
                     parent.x = helpers.round(((love.graphics.getWidth() - parent.width) * 0.5) + orbit_x)
                     parent.y = helpers.round(((love.graphics.getHeight() - parent.height) * 0.5) + orbit_y)

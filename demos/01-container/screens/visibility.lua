@@ -6,6 +6,7 @@ return function(owner, helpers)
         'Visibility behavior without mixing in later control systems.',
         function(scope, stage)
             local root = stage.baseSceneLayer
+            local elapsed = 0
             local parent_width = 260
             local parent_height = 200
             local origin = {
@@ -49,12 +50,12 @@ return function(owner, helpers)
                 title = 'Visibility',
                 description = 'Three nested descendants blink at different timings so visibility changes stay easy to compare across parent-child levels.',
                 sidebar_title = 'Blink State',
-                update = function(_)
-                    local time = love.timer.getTime()
+                update = function(dt)
+                    elapsed = elapsed + dt
 
-                    child.visible = math.sin(time * 1.15) > -0.15
-                    grandchild.visible = math.sin(time * 1.85) > 0.1
-                    great_grandchild.visible = math.sin(time * 2.65) > 0.35
+                    child.visible = math.sin(elapsed * 1.15) > -0.15
+                    grandchild.visible = math.sin(elapsed * 1.85) > 0.1
+                    great_grandchild.visible = math.sin(elapsed * 2.65) > 0.35
                 end,
                 sidebar = function()
                     return {

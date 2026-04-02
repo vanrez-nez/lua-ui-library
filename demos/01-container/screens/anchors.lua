@@ -69,6 +69,7 @@ return function(owner, helpers)
         'Shows anchor placement at direct and nested levels while parents resize.',
         function(scope, stage)
             local root = stage.baseSceneLayer
+            local elapsed = 0
 
             local single_parent = helpers.make_node(scope, root, {
                 x = 0,
@@ -169,16 +170,16 @@ return function(owner, helpers)
             return {
                 title = 'Anchor Placement',
                 description = 'Parents resize while anchorX and anchorY keep direct and nested children attached to parent-relative positions.',
-                update = function()
-                    local time = love.timer.getTime()
+                update = function(dt)
+                    elapsed = elapsed + dt
                     local screen_width = love.graphics.getWidth()
                     local screen_height = love.graphics.getHeight()
                     local gap = 72
 
-                    single_parent.width = helpers.round(260 + (math.sin(time * 1.1) * 54))
-                    single_parent.height = helpers.round(240 + (math.cos(time * 0.9) * 44))
-                    nested_parent.width = helpers.round(292 + (math.cos(time * 0.95) * 58))
-                    nested_parent.height = helpers.round(264 + (math.sin(time * 1.05) * 46))
+                    single_parent.width = helpers.round(260 + (math.sin(elapsed * 1.1) * 54))
+                    single_parent.height = helpers.round(240 + (math.cos(elapsed * 0.9) * 44))
+                    nested_parent.width = helpers.round(292 + (math.cos(elapsed * 0.95) * 58))
+                    nested_parent.height = helpers.round(264 + (math.sin(elapsed * 1.05) * 46))
 
                     local total_width = single_parent.width + gap + nested_parent.width
                     local base_x = helpers.round((screen_width - total_width) * 0.5)
@@ -189,8 +190,8 @@ return function(owner, helpers)
                     single_parent.y = helpers.round((screen_height - single_parent.height) * 0.5)
                     nested_parent.y = helpers.round((screen_height - nested_parent.height) * 0.5)
 
-                    single_child.rotation = math.sin(time * 1.4) * 0.3
-                    nested_grandchild.rotation = math.cos(time * 1.7) * 0.42
+                    single_child.rotation = math.sin(elapsed * 1.4) * 0.3
+                    nested_grandchild.rotation = math.cos(elapsed * 1.7) * 0.42
                 end,
             }
         end

@@ -69,6 +69,7 @@ return function(owner, helpers)
         'Shows pivot-driven rotation on direct and nested nodes.',
         function(scope, stage)
             local root = stage.baseSceneLayer
+            local elapsed = 0
 
             local single_parent = helpers.make_node(scope, root, {
                 x = 0,
@@ -161,8 +162,8 @@ return function(owner, helpers)
             return {
                 title = 'Pivot Rotation',
                 description = 'Rotation stays tied to pivotX and pivotY, first on a single node and then through a nested transform chain.',
-                update = function()
-                    local time = love.timer.getTime()
+                update = function(dt)
+                    elapsed = elapsed + dt
                     local screen_width = love.graphics.getWidth()
                     local screen_height = love.graphics.getHeight()
                     local gap = 80
@@ -174,9 +175,9 @@ return function(owner, helpers)
                     single_parent.y = helpers.round((screen_height - single_parent.height) * 0.5)
                     nested_parent.y = helpers.round((screen_height - nested_parent.height) * 0.5)
 
-                    single_child.rotation = math.sin(time * 1.5) * 1.1
-                    nested_child.rotation = math.cos(time * 1.1) * 0.82
-                    nested_grandchild.rotation = -math.sin(time * 2.1) * 1.35
+                    single_child.rotation = math.sin(elapsed * 1.5) * 1.1
+                    nested_child.rotation = math.cos(elapsed * 1.1) * 0.82
+                    nested_grandchild.rotation = -math.sin(elapsed * 2.1) * 1.35
                 end,
             }
         end

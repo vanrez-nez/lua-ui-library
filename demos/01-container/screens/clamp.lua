@@ -7,6 +7,7 @@ return function(owner, helpers)
         function(scope, stage)
             local root = stage.baseSceneLayer
             local parent_gap = 56
+            local elapsed = 0
 
             local width_parent = helpers.make_node(scope, root, {
                 x = 0,
@@ -79,13 +80,13 @@ return function(owner, helpers)
             return {
                 title = 'Min / Max Clamps',
                 description = 'Each parent resizes while its child uses percentage sizing plus clamps, so the child visibly hits min and max limits in response to parent changes.',
-                update = function(_)
-                    local time = love.timer.getTime()
+                update = function(dt)
+                    elapsed = elapsed + dt
 
-                    width_parent.width = helpers.round(190 + (math.sin(time * 1.35) * 70))
-                    height_parent.height = helpers.round(120 + (math.cos(time * 1.1) * 44))
-                    both_parent.width = helpers.round(250 + (math.sin(time * 1.2) * 72))
-                    both_parent.height = helpers.round(128 + (math.cos(time * 1.45) * 34))
+                    width_parent.width = helpers.round(190 + (math.sin(elapsed * 1.35) * 70))
+                    height_parent.height = helpers.round(120 + (math.cos(elapsed * 1.1) * 44))
+                    both_parent.width = helpers.round(250 + (math.sin(elapsed * 1.2) * 72))
+                    both_parent.height = helpers.round(128 + (math.cos(elapsed * 1.45) * 34))
 
                     local screen_width = love.graphics.getWidth()
                     local screen_height = love.graphics.getHeight()

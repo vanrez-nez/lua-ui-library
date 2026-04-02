@@ -286,14 +286,7 @@ function DemoBase:draw()
         self.info_sidebar:draw()
     end
 
-    local tracked_objects = 0
-    if self.active_scope ~= nil and self.active_scope.resources ~= nil then
-        tracked_objects = #self.active_scope.resources
-    end
-
-    self.memory_monitor:draw({
-        tracked_objects = tracked_objects,
-    })
+    self.memory_monitor:draw()
 end
 
 return DemoBase

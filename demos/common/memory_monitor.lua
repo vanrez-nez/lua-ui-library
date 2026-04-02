@@ -39,13 +39,9 @@ function MemoryMonitor:draw(stats_context)
 
     local g = love.graphics
     local stats = g.getStats()
-    local tracked_objects = 0
-    if stats_context ~= nil and type(stats_context.tracked_objects) == 'number' then
-        tracked_objects = stats_context.tracked_objects
-    end
     local width, height = g.getDimensions()
     local box_width = 420
-    local box_height = 250
+    local box_height = 230
     local x = math.floor((width - box_width) * 0.5 + 0.5)
     local y = math.floor((height - box_height) * 0.5 + 0.5)
     local gc_kb = collectgarbage('count')
@@ -54,7 +50,6 @@ function MemoryMonitor:draw(stats_context)
         string.format('Running time: %s', format_duration(love.timer.getTime())),
         string.format('Lua GC memory: %.2f MB', gc_kb / 1024),
         string.format('Texture memory: %.2f MB', to_mb(stats.texturememory or 0)),
-        string.format('Tracked objects: %d', tracked_objects),
         string.format('Draw calls: %d', stats.drawcalls or 0),
         string.format('Canvas switches: %d', stats.canvasswitches or 0),
         string.format('Images: %d', stats.images or 0),

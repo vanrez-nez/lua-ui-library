@@ -69,6 +69,7 @@ return function(owner, helpers)
         'Shows scaleX and scaleY at direct and nested levels.',
         function(scope, stage)
             local root = stage.baseSceneLayer
+            local elapsed = 0
 
             local single_parent = helpers.make_node(scope, root, {
                 x = 0,
@@ -154,8 +155,8 @@ return function(owner, helpers)
             return {
                 title = 'Scaling',
                 description = 'scaleX and scaleY stretch direct and nested nodes while the cases translate to keep the transforms easy to read.',
-                update = function()
-                    local time = love.timer.getTime()
+                update = function(dt)
+                    elapsed = elapsed + dt
                     local screen_width = love.graphics.getWidth()
                     local screen_height = love.graphics.getHeight()
                     local gap = 84
@@ -164,19 +165,19 @@ return function(owner, helpers)
                     local center_y = helpers.round((screen_height - math.max(single_parent.height, nested_parent.height)) * 0.5)
 
                     single_parent.x = base_x
-                    single_parent.y = center_y + helpers.round(math.sin(time * 0.9) * 18)
+                    single_parent.y = center_y + helpers.round(math.sin(elapsed * 0.9) * 18)
 
                     nested_parent.x = base_x + single_parent.width + gap
-                    nested_parent.y = center_y + helpers.round(math.cos(time * 1.05) * 18)
+                    nested_parent.y = center_y + helpers.round(math.cos(elapsed * 1.05) * 18)
 
-                    single_child.scaleX = 0.72 + ((math.sin(time * 1.55) + 1) * 0.38)
-                    single_child.scaleY = 0.62 + ((math.cos(time * 1.2) + 1) * 0.34)
+                    single_child.scaleX = 0.72 + ((math.sin(elapsed * 1.55) + 1) * 0.38)
+                    single_child.scaleY = 0.62 + ((math.cos(elapsed * 1.2) + 1) * 0.34)
 
-                    nested_child.scaleX = 1.08 + (math.sin(time * 1.05) * 0.26)
-                    nested_child.scaleY = 0.82 + (math.cos(time * 1.25) * 0.22)
+                    nested_child.scaleX = 1.08 + (math.sin(elapsed * 1.05) * 0.26)
+                    nested_child.scaleY = 0.82 + (math.cos(elapsed * 1.25) * 0.22)
 
-                    nested_grandchild.scaleX = 0.72 + (math.cos(time * 1.8) * 0.18)
-                    nested_grandchild.scaleY = 1.18 + (math.sin(time * 1.45) * 0.32)
+                    nested_grandchild.scaleX = 0.72 + (math.cos(elapsed * 1.8) * 0.18)
+                    nested_grandchild.scaleY = 1.18 + (math.sin(elapsed * 1.45) * 0.32)
 
                     local single_parent_bounds = single_parent:getLocalBounds()
                     local nested_parent_bounds = nested_parent:getLocalBounds()
