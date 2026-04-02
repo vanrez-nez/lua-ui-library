@@ -65,7 +65,7 @@ local ROLES = {
 
     surface = NAMES.slate_900,
     surface_alt = NAMES.slate_850,
-    surface_alt_soft = rgba(NAMES.slate_850, 0.5),
+    surface_alt_soft = NAMES.slate_850,
     surface_emphasis = NAMES.slate_800,
     surface_interactive = NAMES.slate_750,
 
@@ -73,17 +73,17 @@ local ROLES = {
     text_muted = NAMES.slate_500,
     text_subtle = NAMES.slate_400,
 
-    accent_blue_fill = rgba(NAMES.blue_300, 0.24),
+    accent_blue_fill = NAMES.blue_300,
     accent_blue_line = NAMES.blue_300,
-    accent_green_fill = rgba(NAMES.green_300, 0.22),
+    accent_green_fill = NAMES.green_300,
     accent_green_line = NAMES.green_300,
-    accent_amber_fill = rgba(NAMES.amber_400, 0.24),
+    accent_amber_fill = NAMES.amber_400,
     accent_amber_line = NAMES.amber_400,
-    accent_red_fill = rgba(NAMES.red_300, 0.22),
+    accent_red_fill = NAMES.red_300,
     accent_red_line = NAMES.red_300,
-    accent_violet_fill = rgba(NAMES.violet_300, 0.22),
+    accent_violet_fill = NAMES.violet_300,
     accent_violet_line = NAMES.violet_300,
-    accent_cyan_fill = rgba(NAMES.cyan_300, 0.22),
+    accent_cyan_fill = NAMES.cyan_300,
     accent_cyan_line = NAMES.cyan_300,
     accent_highlight = NAMES.gold_400,
 }

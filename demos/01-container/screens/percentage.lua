@@ -14,7 +14,7 @@ return function(owner, helpers)
                 height = '58%',
                 minWidth = 360,
                 minHeight = 240,
-            }, 'parent', DemoColors.roles.accent_cyan_fill, DemoColors.roles.accent_cyan_line)
+            }, 'parent', DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.22), DemoColors.roles.accent_cyan_line)
             helpers.set_hint_fields(parent, {
                 props = { 'width', 'height' },
                 ['local'] = { 'w', 'h' },
@@ -26,7 +26,7 @@ return function(owner, helpers)
                 y = 24,
                 width = '50%',
                 height = '50%',
-            }, 'child', DemoColors.roles.accent_green_fill, DemoColors.roles.accent_green_line)
+            }, 'child', DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.22), DemoColors.roles.accent_green_line)
             helpers.set_hint_fields(child, { props = { 'width', 'height' }, ['local'] = { 'w', 'h' } })
 
             local nested = helpers.make_node(scope, child, {
@@ -34,7 +34,7 @@ return function(owner, helpers)
                 y = 12,
                 width = '50%',
                 height = '50%',
-            }, 'nested', DemoColors.roles.accent_amber_fill, DemoColors.roles.accent_amber_line)
+            }, 'nested', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
             helpers.set_hint_fields(nested, { props = { 'width', 'height' }, ['local'] = { 'w', 'h' } })
 
             local pulse_parent_size = helpers.make_size_pulse(

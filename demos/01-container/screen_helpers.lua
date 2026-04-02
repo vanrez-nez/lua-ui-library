@@ -352,7 +352,7 @@ function ScreenHelpers.draw_demo_node(graphics, node)
     local draw_context = ScreenHelpers._draw_context
     local bounds = node:getWorldBounds()
     local label = rawget(node, '_demo_label') or (node.tag or 'container')
-    local fill_color = rawget(node, '_demo_fill_color') or DemoColors.roles.accent_blue_fill
+    local fill_color = rawget(node, '_demo_fill_color') or DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.24)
     local line_color = rawget(node, '_demo_line_color') or DemoColors.roles.accent_blue_line
     local is_hovered = false
 

@@ -218,7 +218,7 @@ function InfoSidebar:draw_panels(x, y, width, bar_height, line_height)
         local button_y = y + 3
 
         -- Full panel body that contains the handle and the optional text lines.
-        g.setColor(DemoColors.roles.surface_alt_soft)
+        g.setColor(DemoColors.rgba(DemoColors.roles.surface_alt_soft, 0.5))
         g.rectangle('fill', x, y, width, total_height)
 
         -- Panel handle bar. Clicking its +/- control collapses or expands only

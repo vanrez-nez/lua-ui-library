@@ -21,7 +21,7 @@ return function(owner, helpers)
                 width = parent_width,
                 height = parent_height,
                 clipChildren = false,
-            }, 'overflow parent', DemoColors.roles.accent_blue_fill, DemoColors.roles.accent_blue_line)
+            }, 'overflow parent', DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.24), DemoColors.roles.accent_blue_line)
             helpers.set_hint_fields(overflow_parent, {
                 props = { 'width', 'height', 'clipChildren' },
             })
@@ -31,7 +31,7 @@ return function(owner, helpers)
                 y = 42,
                 width = 160,
                 height = 92,
-            }, 'overflow child', DemoColors.roles.accent_green_fill, DemoColors.roles.accent_green_line)
+            }, 'overflow child', DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.22), DemoColors.roles.accent_green_line)
             helpers.set_hint_fields(overflow_child, {
                 props = { 'x', 'y', 'width', 'height', 'clipChildren' },
                 world = { 'x', 'y', 'w', 'h' },
@@ -42,7 +42,7 @@ return function(owner, helpers)
                 y = 18,
                 width = 120,
                 height = 44,
-            }, 'overflow grandchild', DemoColors.roles.accent_amber_fill, DemoColors.roles.accent_amber_line)
+            }, 'overflow grandchild', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
             helpers.set_hint_fields(overflow_grandchild, {
                 props = { 'x', 'y', 'width', 'height', 'clipChildren' },
                 world = { 'x', 'y', 'w', 'h' },
@@ -54,7 +54,7 @@ return function(owner, helpers)
                 width = parent_width,
                 height = parent_height,
                 clipChildren = true,
-            }, 'clipped parent', DemoColors.roles.accent_red_fill, DemoColors.roles.accent_red_line)
+            }, 'clipped parent', DemoColors.rgba(DemoColors.roles.accent_red_fill, 0.22), DemoColors.roles.accent_red_line)
             helpers.set_hint_fields(clipped_parent, {
                 props = { 'width', 'height', 'clipChildren' },
             })
@@ -64,7 +64,7 @@ return function(owner, helpers)
                 y = 42,
                 width = 160,
                 height = 192,
-            }, 'clipped child', DemoColors.roles.accent_cyan_fill, DemoColors.roles.accent_cyan_line)
+            }, 'clipped child', DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.22), DemoColors.roles.accent_cyan_line)
             helpers.set_hint_fields(clipped_child, {
                 props = { 'x', 'y', 'width', 'height', 'clipChildren' },
                 world = { 'x', 'y', 'w', 'h' },
@@ -75,7 +75,7 @@ return function(owner, helpers)
                 y = 18,
                 width = 140,
                 height = 44,
-            }, 'clipped grandchild', DemoColors.roles.accent_amber_fill, DemoColors.roles.accent_amber_line)
+            }, 'clipped grandchild', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
             helpers.set_hint_fields(clipped_grandchild, {
                 props = { 'x', 'y', 'width', 'height', 'clipChildren' },
                 world = { 'x', 'y', 'w', 'h' },

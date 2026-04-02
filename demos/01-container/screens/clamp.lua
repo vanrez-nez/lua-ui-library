@@ -13,7 +13,7 @@ return function(owner, helpers)
                 y = 0,
                 width = 180,
                 height = 140,
-            }, 'width parent', DemoColors.roles.accent_violet_fill, DemoColors.roles.accent_violet_line)
+            }, 'width parent', DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.22), DemoColors.roles.accent_violet_line)
             helpers.set_hint_fields(width_parent, { props = { 'width' }, ['local'] = { 'w' } })
 
             local width_case = helpers.make_node(scope, width_parent, {
@@ -23,7 +23,7 @@ return function(owner, helpers)
                 height = 88,
                 minWidth = 120,
                 maxWidth = 180,
-            }, 'width clamp', DemoColors.roles.accent_blue_fill, DemoColors.roles.accent_blue_line)
+            }, 'width clamp', DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.24), DemoColors.roles.accent_blue_line)
             helpers.set_hint_fields(width_case, {
                 props = { 'width' },
                 ['local'] = { 'w' },
@@ -35,7 +35,7 @@ return function(owner, helpers)
                 y = 0,
                 width = 180,
                 height = 140,
-            }, 'height parent', DemoColors.roles.accent_violet_fill, DemoColors.roles.accent_violet_line)
+            }, 'height parent', DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.22), DemoColors.roles.accent_violet_line)
             helpers.set_hint_fields(height_parent, { props = { 'height' }, ['local'] = { 'h' } })
 
             local height_case = helpers.make_node(scope, height_parent, {
@@ -45,7 +45,7 @@ return function(owner, helpers)
                 height = '82%',
                 minHeight = 72,
                 maxHeight = 120,
-            }, 'height clamp', DemoColors.roles.accent_green_fill, DemoColors.roles.accent_green_line)
+            }, 'height clamp', DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.22), DemoColors.roles.accent_green_line)
             helpers.set_hint_fields(height_case, {
                 props = { 'height' },
                 ['local'] = { 'h' },
@@ -57,7 +57,7 @@ return function(owner, helpers)
                 y = 0,
                 width = 180,
                 height = 140,
-            }, 'both parent', DemoColors.roles.accent_violet_fill, DemoColors.roles.accent_violet_line)
+            }, 'both parent', DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.22), DemoColors.roles.accent_violet_line)
             helpers.set_hint_fields(both_parent, { props = { 'width', 'height' }, ['local'] = { 'w', 'h' } })
 
             local both_case = helpers.make_node(scope, both_parent, {
@@ -69,7 +69,7 @@ return function(owner, helpers)
                 maxWidth = 260,
                 minHeight = 84,
                 maxHeight = 100,
-            }, 'both clamp', DemoColors.roles.accent_amber_fill, DemoColors.roles.accent_amber_line)
+            }, 'both clamp', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
             helpers.set_hint_fields(both_case, {
                 props = { 'width', 'height' },
                 ['local'] = { 'w', 'h' },

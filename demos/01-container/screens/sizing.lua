@@ -12,7 +12,7 @@ return function(owner, helpers)
                 y = 0,
                 width = 'fill',
                 height = 'fill',
-            }, 'viewport', DemoColors.roles.accent_blue_fill, DemoColors.roles.accent_blue_line)
+            }, 'viewport', DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.24), DemoColors.roles.accent_blue_line)
             helpers.set_hint_fields(viewport, {
                 props = { 'width', 'height' },
                 ['local'] = { 'w', 'h' },
@@ -23,7 +23,7 @@ return function(owner, helpers)
                 y = 0,
                 width = 420,
                 height = 260,
-            }, 'Root', DemoColors.roles.accent_green_fill, DemoColors.roles.accent_green_line)
+            }, 'Root', DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.22), DemoColors.roles.accent_green_line)
             helpers.set_hint_fields(parent, {
                 props = { 'width', 'height' },
                 ['local'] = { 'w', 'h' },
@@ -34,7 +34,7 @@ return function(owner, helpers)
                 y = 22,
                 width = '62%',
                 height = '58%',
-            }, 'Root->A', DemoColors.roles.accent_amber_fill, DemoColors.roles.accent_amber_line)
+            }, 'Root->A', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
             helpers.set_hint_fields(child, {
                 props = { 'width', 'height' },
                 ['local'] = { 'w', 'h' },
@@ -45,7 +45,7 @@ return function(owner, helpers)
                 y = 18,
                 width = '54%',
                 height = '60%',
-            }, 'A->B', DemoColors.roles.accent_red_fill, DemoColors.roles.accent_red_line)
+            }, 'A->B', DemoColors.rgba(DemoColors.roles.accent_red_fill, 0.22), DemoColors.roles.accent_red_line)
             helpers.set_hint_fields(grandchild, {
                 props = { 'width', 'height' },
                 ['local'] = { 'w', 'h' },
@@ -56,7 +56,7 @@ return function(owner, helpers)
                 y = 0,
                 width = 56,
                 height = '50%',
-            }, 'B->C', DemoColors.roles.accent_cyan_fill, DemoColors.roles.accent_cyan_line)
+            }, 'B->C', DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.22), DemoColors.roles.accent_cyan_line)
             helpers.set_hint_fields(great_grandchild, {
                 props = { 'width', 'height' },
                 ['local'] = { 'w', 'h' },

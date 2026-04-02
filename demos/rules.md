@@ -194,6 +194,7 @@ Not allowed:
 - demo-local color aliases like `BACKGROUND`, `PANEL_TEXT`, `COLORS`, or `PALETTES`
 - hardcoded RGBA literals in demo code when a shared color already fits
 - per-demo color derivation layers
+- `rgba(...)` inside shared color definitions
 
 If a new color is genuinely needed:
 
@@ -201,7 +202,9 @@ If a new color is genuinely needed:
 2. give it a generic name or role
 3. do not create per-component aliases unless the shared module truly needs them
 
-Alpha-adjusted colors should also be defined in `demos/common/colors.lua`, not inside demos.
+Use `DemoColors.rgba(...)` at the point of use when alpha is needed.
+
+Do not bake alpha into `demos/common/colors.lua` role definitions.
 
 ## Bootstrap Rules
 

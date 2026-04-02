@@ -13,7 +13,7 @@ return function(owner, helpers)
                 y = origin.y,
                 width = 520,
                 height = 260,
-            }, 'parent', DemoColors.roles.accent_blue_fill, DemoColors.roles.accent_blue_line)
+            }, 'parent', DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.24), DemoColors.roles.accent_blue_line)
             helpers.set_hint_fields(parent, {
                 props = { 'x', 'y', 'width', 'height' },
                 ['local'] = { 'x', 'y', 'w', 'h' },
@@ -25,7 +25,7 @@ return function(owner, helpers)
                 y = 28,
                 width = 156,
                 height = 94,
-            }, 'child A', DemoColors.roles.accent_green_fill, DemoColors.roles.accent_green_line)
+            }, 'child A', DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.22), DemoColors.roles.accent_green_line)
             helpers.set_hint_fields(child_a, {
                 props = { 'x', 'y', 'width', 'height' },
                 ['local'] = { 'x', 'y', 'w', 'h' },
@@ -37,7 +37,7 @@ return function(owner, helpers)
                 y = 44,
                 width = 182,
                 height = 118,
-            }, 'child B', DemoColors.roles.accent_cyan_fill, DemoColors.roles.accent_cyan_line)
+            }, 'child B', DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.22), DemoColors.roles.accent_cyan_line)
             helpers.set_hint_fields(child_b, {
                 props = { 'x', 'y', 'width', 'height' },
                 ['local'] = { 'x', 'y', 'w', 'h' },
@@ -49,7 +49,7 @@ return function(owner, helpers)
                 y = 30,
                 width = 96,
                 height = 52,
-            }, 'grandchild', DemoColors.roles.accent_amber_fill, DemoColors.roles.accent_amber_line)
+            }, 'grandchild', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
             helpers.set_hint_fields(grandchild, {
                 props = { 'x', 'y', 'width', 'height' },
                 ['local'] = { 'x', 'y', 'w', 'h' },
@@ -61,7 +61,7 @@ return function(owner, helpers)
                 y = 72,
                 width = 76,
                 height = 34,
-            }, 'offset child', DemoColors.roles.accent_red_fill, DemoColors.roles.accent_red_line)
+            }, 'offset child', DemoColors.rgba(DemoColors.roles.accent_red_fill, 0.22), DemoColors.roles.accent_red_line)
             helpers.set_hint_fields(offset_child, {
                 props = { 'x', 'y', 'width', 'height' },
                 ['local'] = { 'x', 'y', 'w', 'h' },

@@ -18,7 +18,7 @@ return function(owner, helpers)
                 y = origin.y,
                 width = parent_width,
                 height = parent_height,
-            }, 'parent', DemoColors.roles.accent_blue_fill, DemoColors.roles.accent_blue_line)
+            }, 'parent', DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.24), DemoColors.roles.accent_blue_line)
             helpers.set_hint_fields(parent, { visible = true })
 
             local child = helpers.make_node(scope, parent, {
@@ -26,7 +26,7 @@ return function(owner, helpers)
                 y = 24,
                 width = 180,
                 height = 132,
-            }, 'child', DemoColors.roles.accent_green_fill, DemoColors.roles.accent_green_line)
+            }, 'child', DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.22), DemoColors.roles.accent_green_line)
             helpers.set_hint_fields(child, { visible = true })
 
             local grandchild = helpers.make_node(scope, child, {
@@ -34,7 +34,7 @@ return function(owner, helpers)
                 y = 18,
                 width = 116,
                 height = 86,
-            }, 'grandchild', DemoColors.roles.accent_amber_fill, DemoColors.roles.accent_amber_line)
+            }, 'grandchild', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
             helpers.set_hint_fields(grandchild, { visible = true })
 
             local great_grandchild = helpers.make_node(scope, grandchild, {
@@ -42,7 +42,7 @@ return function(owner, helpers)
                 y = 14,
                 width = 68,
                 height = 44,
-            }, 'great grandchild', DemoColors.roles.accent_red_fill, DemoColors.roles.accent_red_line)
+            }, 'great grandchild', DemoColors.rgba(DemoColors.roles.accent_red_fill, 0.22), DemoColors.roles.accent_red_line)
             helpers.set_hint_fields(great_grandchild, { visible = true })
 
             return {
