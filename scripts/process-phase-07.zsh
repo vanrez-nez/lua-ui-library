@@ -1,6 +1,0 @@
-#!/usr/bin/env zsh
-
-set -euo pipefail
-
-script_dir="$(cd "$(dirname "$0")" && pwd)"
-exec "$script_dir/process-phase.zsh" phase-07
