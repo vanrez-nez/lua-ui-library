@@ -88,15 +88,29 @@ Primary components:
 
 Should test:
 
-- content box resolution
-- alignment inside assigned bounds
-- clipping interaction where relevant to the drawable surface
-- visual sizing independent from child semantics
+- `alignX` and `alignY`
+- padding and margin
+- opacity
+- skin
+- blend mode
+- mask
+- motion
 
 Should expose:
 
-- assigned box versus content box
-- alignment result
+- assigned bounds versus content box
+- aligned content result for active alignment cases
+- stored visual-surface props that are stable on `Drawable` even when later render systems are still deferred
+- motion requests and resolved visual-state writes for harness-driven motion inspection
+
+Should not retest:
+
+- retained-tree parenting already covered by `01-container`
+- local versus world bounds already covered by `01-container`
+- base width and height sizing already covered by `01-container`
+- percentage sizing already covered by `01-container`
+- clamp behavior already covered by `01-container`
+- visibility behavior already covered by `01-container`
 
 ### 03-stage
 

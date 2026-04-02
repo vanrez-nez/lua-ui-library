@@ -28,6 +28,18 @@ love _test/text
 love _test/scene
 ```
 
+## Focused Component Demos
+
+The rebuilt demos under `demos/` are component-centered and follow the shared demo shell in `demos/common/`:
+
+```bash
+love demos/01-container
+love demos/02-drawable
+```
+
+`01-container` covers retained tree, bounds, sizing, clamp, and visibility behavior.
+`02-drawable` only covers the `Drawable` surface not already proven by `01-container`: alignments, padding, margin, opacity, skin, blend mode, mask, and motion inspection. Shader application is still deferred in the current runtime.
+
 ## Unit Tests
 
 The non-graphics core has a lightweight Lua test suite:
