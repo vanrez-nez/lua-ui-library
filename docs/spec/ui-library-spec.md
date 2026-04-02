@@ -2,12 +2,14 @@
 
 ## 1. Overview
 
-This specification is split into two authoritative documents.
+This specification is split into a small set of authoritative documents.
 
 ## 2. Authoritative Documents
 
 - [UI Foundation Specification](./ui-foundation-spec.md)
 - [UI Controls Specification](./ui-controls-spec.md)
+- [UI Graphics Specification](./ui-graphics-spec.md)
+- [UI Motion Specification](./ui-motion-spec.md)
 - [UI Evolution Specification](./ui-evolution-spec.md)
 
 ## 3. Document Responsibilities
@@ -16,7 +18,11 @@ The foundation document defines the shared component model, composition grammar,
 
 The controls document applies that component model, composition grammar, state model, interaction model, behavioral completeness, contract stability, failure semantics, and visual contract to the concrete control families and defines each control's responsibility boundary, compound structure, public state ownership, interaction callbacks, edge-case behavior, stability tier assignment, failure behavior, and stable visual surfaces on top of the foundation contracts.
 
-The evolution document defines how the library manages change over time: breaking change definition, versioning semantics, deprecation and experimental protocols, and the full stability scope declaration for both the foundation and controls.
+The graphics document defines the first-class graphics-object contracts and retained image presentation surfaces layered on top of the foundation contracts.
+
+The motion document defines the public motion integration contract, including motion phases, motion surfaces, motion properties, motion descriptors, presets, and adapter boundaries layered on top of the foundation and component contracts.
+
+The evolution document defines how the library manages change over time: breaking change definition, versioning semantics, deprecation and experimental protocols, and the full stability scope declaration for the specification set.
 
 ## 4. Stable Entry Point
 

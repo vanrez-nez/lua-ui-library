@@ -53,6 +53,7 @@ local demo = {
     log_lines = {},
 }
 local screen_defs
+local screen_names
 
 local function push_log(message)
     local log = demo.log_lines
@@ -62,14 +63,34 @@ local function push_log(message)
     end
 end
 
-local function label(text, size, color)
+local function label(text, size, color, opts)
+    opts = opts or {}
     return Text.new({
         text = text,
         fontSize = size or 16,
+        lineHeight = opts.lineHeight or 1,
         color = color or FG,
-        width = 'fill',
-        wrap = true,
+        width = opts.width or 'fill',
+        maxWidth = opts.maxWidth,
+        textAlign = opts.textAlign or 'start',
+        wrap = opts.wrap ~= false,
     })
+end
+
+local function screen_root(title, subtitle)
+    local node = Column.new({
+        width = 'fill',
+        height = 'fill',
+        gap = 16,
+        padding = { 28, 28, 28, 28 },
+        align = 'stretch',
+        justify = 'start',
+    })
+
+    node:addChild(label(title, 30, FG, { lineHeight = 1.05, textAlign = 'center', maxWidth = 1200 }))
+    node:addChild(label(subtitle, 15, SUB, { lineHeight = 1.25, textAlign = 'center', maxWidth = 1200 }))
+
+    return node
 end
 
 local function panel(width, height)
@@ -117,19 +138,39 @@ local function build_graphics_screen()
         },
     })
     local left_sprite = Sprite.new({ atlas = atlas, region = 'left' })
-    local clipped_sprite = Sprite.new({
-        texture = texture,
-        region = { x = 20, y = 0, width = 20, height = 32 },
-    })
+    local right_sprite = Sprite.new({ atlas = atlas, region = 'right' })
 
     local row = Row.new({
         width = 'fill',
-        height = 220,
-        gap = 24,
+        height = 320,
+        gap = 18,
+        align = 'stretch',
+        justify = 'start',
     })
-    row:addChild(Image.new({ width = 180, height = 180, source = texture, fit = 'contain' }))
-    row:addChild(Image.new({ width = 180, height = 180, source = left_sprite, fit = 'stretch', sampling = 'nearest' }))
-    row:addChild(Image.new({ width = 180, height = 180, source = clipped_sprite, fit = 'cover' }))
+
+    local function image_card(title_text, subtitle_text, image)
+        local card = panel(250, 'fill')
+        card:addChild(label(title_text, 18, FG, { lineHeight = 1.1, textAlign = 'center' }))
+        card:addChild(label(subtitle_text, 13, SUB, { lineHeight = 1.25, textAlign = 'center' }))
+        card:addChild(image)
+        return card
+    end
+
+    row:addChild(image_card(
+        'Texture -> Image',
+        'Full texture with contain fit.',
+        Image.new({ width = 210, height = 210, source = texture, fit = 'contain' })
+    ))
+    row:addChild(image_card(
+        'Atlas -> Sprite -> Image',
+        'Left region stretched with nearest sampling.',
+        Image.new({ width = 210, height = 210, source = left_sprite, fit = 'stretch', sampling = 'nearest' })
+    ))
+    row:addChild(image_card(
+        'Sprite Cover',
+        'Right region rendered with cover fit.',
+        Image.new({ width = 210, height = 210, source = right_sprite, fit = 'cover' })
+    ))
 
     local info = panel('fill', 'content')
     info:addChild(label('Graphics: Texture, Atlas, Sprite, and Image'))
@@ -353,11 +394,48 @@ screen_defs = {
         build = build_motion_screen,
     },
 }
+screen_names = {
+    'Graphics Objects',
+    'Radio Group',
+    'Select And Option',
+    'Notification And Tooltip',
+    'Motion And Retrofits',
+}
 
 local function sync_log_view()
     if refs.log_text ~= nil then
         refs.log_text:setText((#demo.log_lines > 0) and table.concat(demo.log_lines, '\n') or 'No events yet.')
     end
+end
+
+local function sync_graphics_inspector()
+    if refs.graphics_info_text == nil then
+        return
+    end
+
+    local texture = refs.graphics_texture
+    local sprite = refs.graphics_sprite
+
+    if texture == nil or sprite == nil then
+        refs.graphics_info_text:setText('Graphics objects not available.')
+        return
+    end
+
+    local region = sprite:getRegion()
+    refs.graphics_info_text:setText(table.concat({
+        'Full source: Texture',
+        string.format('Texture intrinsic size: %dx%d', texture:getWidth(), texture:getHeight()),
+        'Region source: Atlas -> Sprite',
+        string.format(
+            'Sprite region: x=%d y=%d w=%d h=%d',
+            region.x,
+            region.y,
+            region.width,
+            region.height
+        ),
+        string.format('Sprite intrinsic size: %dx%d', sprite:getWidth(), sprite:getHeight()),
+        'Preview surfaces: contain / nearest-stretch / cover',
+    }, '\n'))
 end
 
 local function sync_demo_state()
@@ -393,6 +471,7 @@ local function sync_demo_state()
         refs.tabs.value = demo.tabs_value
     end
     sync_log_view()
+    sync_graphics_inspector()
 end
 
 local function rebuild()
@@ -403,43 +482,45 @@ local function rebuild()
     stage = Stage.new({ width = love.graphics.getWidth(), height = love.graphics.getHeight() })
     refs = {}
 
-    root = Column.new({
-        width = 'fill',
-        height = 'fill',
-        padding = { 20, 20, 20, 20 },
-        gap = 16,
-    })
-
     local screen = screen_defs[demo.screen] or screen_defs[1]
+    root = screen_root(
+        'Phase 10 Harness',
+        'Isolated feature screens for graphics, selection, overlays, and motion retrofits.'
+    )
 
-    root:addChild(label('Phase 10 Harness', 28, FG))
-    root:addChild(label('Press 1-5 to switch feature screens for isolated debugging.', 14, SUB))
-    root:addChild(label(
-        string.format('Screen %d: %s', demo.screen, screen.title),
-        16,
-        ACCENT
-    ))
-
-    local content = Column.new({
+    local body = Row.new({
         width = 'fill',
         height = 'fill',
-        gap = 16,
+        gap = 18,
         align = 'stretch',
         justify = 'start',
     })
-    local wrapper = panel('fill', 'fill')
-    wrapper:addChild(label(screen.title, 22, FG))
-    wrapper:addChild(label(screen.subtitle, 14, SUB))
-    wrapper:addChild(screen.build())
-    content:addChild(wrapper)
-    root:addChild(content)
 
-    local log = panel('fill', 160)
-    log:addChild(label('Log', 16, FG))
-    local log_text = label((#demo.log_lines > 0) and table.concat(demo.log_lines, '\n') or 'No events yet.', 13, SUB)
-    log:addChild(log_text)
-    refs.log_text = log_text
-    root:addChild(log)
+    local wrapper = panel('fill', 'fill')
+    wrapper:addChild(label(screen.title, 22, FG, { lineHeight = 1.08, textAlign = 'center' }))
+    wrapper:addChild(label(screen.subtitle, 14, SUB, { lineHeight = 1.25, textAlign = 'center' }))
+    wrapper:addChild(screen.build())
+    body:addChild(wrapper)
+
+    if demo.screen == 1 then
+        local inspect = panel(360, 'fill')
+        inspect:addChild(label('Inspection', 16, FG, { lineHeight = 1.1, textAlign = 'center' }))
+        local info_text = label('Waiting for graphics objects...', 13, SUB, { lineHeight = 1.3 })
+        inspect:addChild(info_text)
+        refs.graphics_info_text = info_text
+        body:addChild(inspect)
+    else
+        local log = panel(360, 'fill')
+        log:addChild(label('Log', 16, FG, { lineHeight = 1.1, textAlign = 'center' }))
+        local log_text = label((#demo.log_lines > 0) and table.concat(demo.log_lines, '\n') or 'No events yet.', 13, SUB, {
+            lineHeight = 1.3,
+        })
+        log:addChild(log_text)
+        refs.log_text = log_text
+        body:addChild(log)
+    end
+
+    root:addChild(body)
 
     stage.baseSceneLayer:addChild(root)
     sync_demo_state()
@@ -543,10 +624,40 @@ function love.draw()
         stage:draw(love.graphics, function(node)
             draw_node(node)
         end)
+
+        local width, height = love.graphics.getDimensions()
+        love.graphics.setColor(FG)
+        love.graphics.printf(
+            '[' .. tostring(demo.screen) .. '/' .. tostring(#screen_names) .. '] ' .. screen_names[demo.screen],
+            0,
+            8,
+            width,
+            'center'
+        )
+        love.graphics.setColor(SUB)
+        love.graphics.printf(
+            'Left/Right switch screens. Number keys 1-5 jump directly.',
+            0,
+            height - 24,
+            width,
+            'center'
+        )
     end
 end
 
 function love.keypressed(key)
+    if key == 'right' then
+        demo.screen = (demo.screen % #screen_names) + 1
+        rebuild()
+        return
+    end
+
+    if key == 'left' then
+        demo.screen = ((demo.screen - 2) % #screen_names) + 1
+        rebuild()
+        return
+    end
+
     if key == '1' or key == '2' or key == '3' or key == '4' or key == '5' then
         demo.screen = tonumber(key)
         rebuild()

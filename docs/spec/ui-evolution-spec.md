@@ -20,13 +20,14 @@ Changelog:
 
 | Field | Value |
 |-------|-------|
-| Version | `0.1.0` |
+| Version | `0.1.1` |
 | Revision type | `additive` |
-| Finalized | `2026-03-27` |
+| Finalized | `2026-04-01` |
 
 Changelog:
 
 1. Initial publication of the concrete controls standard for the UI library.
+2. Added `Text.lineHeight` as a stable optional prop and clarified that line-height changes participate in `Text` measurement and rendering.
 
 ### Graphics
 

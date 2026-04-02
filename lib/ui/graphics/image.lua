@@ -128,8 +128,8 @@ function Image:getIntrinsicSize()
     return texture:getWidth(), texture:getHeight(), region
 end
 
-function Image:resolveImageRect()
-    local content = self:getContentRect()
+function Image:resolveImageRect(content)
+    content = content or self:getContentRect()
     local _, _, region = self:getIntrinsicSize()
     local source_width = region.width
     local source_height = region.height
@@ -170,10 +170,12 @@ function Image:_draw_control(graphics)
         return
     end
 
-    local rect = self:resolveImageRect()
-    local draw_rect = rect
-    local _, resolved_region = self:resolveImageRect()
+    local effective_values = rawget(self, '_effective_values') or {}
+    local world_content = self:getWorldBounds():inset(effective_values.padding or 0)
+    local draw_rect, resolved_region = self:resolveImageRect(world_content)
     local quad = nil
+    local previous_scissor = nil
+    local apply_cover_clip = self.fit == 'cover' and Types.is_function(graphics.setScissor)
 
     if love ~= nil and love.graphics ~= nil and Types.is_function(love.graphics.newQuad) then
         quad = love.graphics.newQuad(
@@ -193,10 +195,25 @@ function Image:_draw_control(graphics)
     local scale_x = resolved_region.width == 0 and 1 or (draw_rect.width / resolved_region.width)
     local scale_y = resolved_region.height == 0 and 1 or (draw_rect.height / resolved_region.height)
 
+    if apply_cover_clip then
+        if Types.is_function(graphics.getScissor) then
+            previous_scissor = { graphics.getScissor() }
+        end
+        graphics.setScissor(world_content.x, world_content.y, world_content.width, world_content.height)
+    end
+
     if quad ~= nil then
         graphics.draw(drawable, quad, draw_rect.x, draw_rect.y, 0, scale_x, scale_y)
     else
         graphics.draw(drawable, draw_rect.x, draw_rect.y, 0, scale_x, scale_y)
+    end
+
+    if apply_cover_clip then
+        if previous_scissor ~= nil and previous_scissor[1] ~= nil then
+            graphics.setScissor(previous_scissor[1], previous_scissor[2], previous_scissor[3], previous_scissor[4])
+        else
+            graphics.setScissor()
+        end
     end
 end
 

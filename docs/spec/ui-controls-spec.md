@@ -1,6 +1,6 @@
 # UI Controls Specification
 
-> Version `0.1.0` — initial publication. Release history and change management policy: [UI Evolution Specification](./ui-evolution-spec.md).
+> Version `0.1.1` — additive revision. Release history and change management policy: [UI Evolution Specification](./ui-evolution-spec.md).
 
 ## 3. Glossary
 
@@ -548,6 +548,7 @@ In addition to the foundation degradation guarantees:
 - support intrinsic measurement
 - support wrapping
 - support horizontal alignment
+- support consumer-configurable line spacing
 - support token and skin-derived text styling
 
 **Anatomy**
@@ -560,11 +561,14 @@ In addition to the foundation degradation guarantees:
 - `text: string | rich text payload`
 - `font`
 - `fontSize`
+- `lineHeight: number`
 - `maxWidth`
 - `textAlign: "start" | "center" | "end"`
 - `textVariant`
 - `color`
 - `wrap: boolean`
+
+`lineHeight` defines a positive multiplier applied to the font's intrinsic line box for both wrapped and unwrapped text measurement and rendering. When omitted, the default line-height multiplier is `1`.
 
 `textVariant` selects among visual variants for the single stable `Text.content` part. This revision does not standardize a library-wide text-role taxonomy such as `heading`, `body`, or `caption`; any such aliases remain internal unless separately documented.
 
@@ -572,9 +576,11 @@ Trace note: the public text-style surface is the set listed here. Font caches, a
 
 Trace note: clarified `textVariant` so Phase 8 theming can vary text presentation without turning undocumented semantic text-role names into stable public API.
 
+Trace note: `lineHeight` is part of the stable public `Text` style surface because it changes observable measurement and glyph-line placement, not merely an internal draw heuristic.
+
 **State model**
 
-`Text` is stateless unless the consumer changes content or style. Any content or style change marks the node render-dirty and triggers re-measurement on the next draw preparation.
+`Text` is stateless unless the consumer changes content or style. Any content or style change, including `lineHeight`, marks the node render-dirty and triggers re-measurement on the next draw preparation.
 
 **Accessibility contract**
 
@@ -589,6 +595,7 @@ Trace note: clarified `textVariant` so Phase 8 theming can vary text presentatio
 - A `Text` with an empty string must render nothing and must not fail.
 - A `Text` with `wrap = true` and no `maxWidth` must wrap at the node's own measured width.
 - A `Text` node whose content exceeds its bounds when wrapping is disabled must overflow without clipping unless `clipChildren = true` is set on the parent.
+- A `Text` with `lineHeight <= 0` must fail deterministically.
 - A `Text` referencing a missing or invalid font must fail deterministically.
 
 ### 6.2 Button
