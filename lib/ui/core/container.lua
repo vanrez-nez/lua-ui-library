@@ -254,6 +254,62 @@ local function refresh_effective_values(self)
     end
 end
 
+local function axis_fill_supported_by_parent(self, axis_key)
+    local parent = rawget(self, 'parent')
+
+    if parent ~= nil and rawget(parent, '_ui_stage_instance') == true then
+        return true
+    end
+
+    if parent ~= nil and rawget(parent, '_ui_layout_instance') == true then
+        return true
+    end
+
+    local parent_contract = parent and rawget(parent, '_child_fill_contract')
+    if parent_contract ~= nil and parent_contract[axis_key] == true then
+        return true
+    end
+
+    local node_contract = rawget(self, '_fill_parent_contract')
+    if node_contract ~= nil and node_contract[axis_key] == true then
+        return true
+    end
+
+    return false
+end
+
+local function resolve_fill_axis_size(self, axis_key, parent_size)
+    if axis_fill_supported_by_parent(self, axis_key) then
+        return parent_size or 0
+    end
+
+    local parent = rawget(self, 'parent')
+    local parent_name = nil
+
+    if parent ~= nil then
+        parent_name = rawget(getmetatable(parent), '__name') or tostring(parent)
+    elseif rawget(self, '_measurement_context_width') ~= nil or
+        rawget(self, '_measurement_context_height') ~= nil then
+        parent_name = 'measurement context'
+    else
+        parent_name = 'no parent'
+    end
+
+    Assert.fail(
+        'fill on ' .. axis_key .. ' is invalid for this parent-child pairing (' ..
+            tostring(parent_name) .. ' does not define fill resolution for ' .. axis_key .. ')',
+        3
+    )
+end
+
+local function resolve_measurement_axis_size(self, axis_key, configured, parent_size)
+    if configured == 'fill' then
+        return resolve_fill_axis_size(self, axis_key, parent_size)
+    end
+
+    return resolve_axis_size(configured, parent_size)
+end
+
 local function refresh_measurement(self)
     local parent_width
     local parent_height
@@ -268,12 +324,12 @@ local function refresh_measurement(self)
     end
 
     local width = clamp_number(
-        resolve_axis_size(get_effective_value(self, 'width'), parent_width),
+        resolve_measurement_axis_size(self, 'width', get_effective_value(self, 'width'), parent_width),
         get_effective_value(self, 'minWidth'),
         get_effective_value(self, 'maxWidth')
     )
     local height = clamp_number(
-        resolve_axis_size(get_effective_value(self, 'height'), parent_height),
+        resolve_measurement_axis_size(self, 'height', get_effective_value(self, 'height'), parent_height),
         get_effective_value(self, 'minHeight'),
         get_effective_value(self, 'maxHeight')
     )
@@ -913,6 +969,30 @@ end
 
 function Container.new(opts)
     return Container(opts)
+end
+
+function Container._allow_fill_from_parent(node, axes)
+    assert_live_container(node, 'node', 2)
+    Assert.table('axes', axes, 2)
+
+    rawset(node, '_fill_parent_contract', {
+        width = axes.width == true,
+        height = axes.height == true,
+    })
+
+    return node
+end
+
+function Container._allow_child_fill(node, axes)
+    assert_live_container(node, 'node', 2)
+    Assert.table('axes', axes, 2)
+
+    rawset(node, '_child_fill_contract', {
+        width = axes.width == true,
+        height = axes.height == true,
+    })
+
+    return node
 end
 
 function Container:_refresh_if_dirty()

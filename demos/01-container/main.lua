@@ -59,6 +59,28 @@ local function make_width_pulse(node, base_width, amplitude, speed)
     end
 end
 
+local function make_size_pulse(node, base_width, base_height, width_amplitude, height_amplitude, speed)
+    local phase = love.math.random() * (math.pi * 2)
+    local pulse_speed = speed or 1.2
+    local pulse_width = width_amplitude or 24
+    local pulse_height = height_amplitude or 18
+
+    return function(dt)
+        local resolved_width = base_width
+        local resolved_height = base_height
+        if type(base_width) == 'function' then
+            resolved_width = base_width()
+        end
+        if type(base_height) == 'function' then
+            resolved_height = base_height()
+        end
+
+        phase = phase + (dt * pulse_speed)
+        node.width = round(resolved_width + (math.sin(phase) * pulse_width))
+        node.height = round(resolved_height + (math.cos(phase) * pulse_height))
+    end
+end
+
 local function is_visible(node)
     local ev = rawget(node, '_effective_values')
     return not (ev ~= nil and ev.visible == false)
@@ -181,7 +203,7 @@ local function build_bounds_screen(scope, stage)
     return {
         title = 'Parent / Child Bounds',
         description = 'Verifies parent offset influence on child world coordinates while child local coordinates remain stable.',
-        update = make_width_pulse(parent, 340, 42, 1.1),
+        update = make_size_pulse(parent, 340, 220, 42, 30, 1.1),
         inspect = function(index, total)
             return {
                 string.format('root offset  x:%d y:%d', round(origin.x), round(origin.y)),
@@ -214,23 +236,23 @@ local function build_sizing_screen(scope, stage)
     }, 'fixed 120x70', DemoColors.roles.accent_blue_fill, DemoColors.roles.accent_blue_line)
 
     local fill = make_node(scope, frame, {
-        x = 160,
-        y = 20,
+        x = 0,
+        y = 110,
         width = 'fill',
         height = 64,
-    }, 'fill width', DemoColors.roles.accent_green_fill, DemoColors.roles.accent_green_line)
+    }, 'fill = parent width', DemoColors.roles.accent_green_fill, DemoColors.roles.accent_green_line)
 
     local percent = make_node(scope, frame, {
         x = 20,
-        y = 116,
+        y = 200,
         width = '50%',
         height = '40%',
     }, '50% / 40%', DemoColors.roles.accent_amber_fill, DemoColors.roles.accent_amber_line)
 
     return {
         title = 'Fixed / Fill / Percent Sizing',
-        description = 'Compares fixed, fill, and percentage width resolution inside one shared parent container.',
-        update = make_width_pulse(frame, 500, 54, 1),
+        description = 'Compares fixed sizing, parent-relative fill sizing, and percentage sizing on plain Container nodes.',
+        update = make_size_pulse(frame, 500, 300, 54, 34, 1),
         inspect = function(index, total)
             return {
                 string.format('root offset x:%d y:%d', round(origin.x), round(origin.y)),
@@ -238,6 +260,7 @@ local function build_sizing_screen(scope, stage)
                 'fixed       ' .. format_rect(fixed:getLocalBounds()),
                 'fill width  ' .. format_rect(fill:getLocalBounds()),
                 'percent     ' .. format_rect(percent:getLocalBounds()),
+                'fill on Container resolves against parent width, not sibling remainder',
             }
         end,
     }
@@ -270,14 +293,23 @@ local function build_percentage_screen(scope, stage)
         height = '50%',
     }, '50% nested', DemoColors.roles.accent_amber_fill, DemoColors.roles.accent_amber_line)
 
-    local pulse_parent_width = make_width_pulse(parent, function()
-        return love.graphics.getWidth() * 0.55
-    end, 64, 0.9)
+    local pulse_parent_size = make_size_pulse(
+        parent,
+        function()
+            return love.graphics.getWidth() * 0.55
+        end,
+        function()
+            return love.graphics.getHeight() * 0.58
+        end,
+        64,
+        38,
+        0.9
+    )
 
     return {
         title = 'Nested Percentage Sizing',
         description = 'Shows percentage sizing recalculating from the effective parent region, including under resize.',
-        update = pulse_parent_width,
+        update = pulse_parent_size,
         inspect = function(index, total)
             return {
                 string.format('root offset x:%d y:%d', round(origin.x), round(origin.y)),
@@ -334,7 +366,7 @@ local function build_clamp_screen(scope, stage)
     return {
         title = 'Min / Max Clamps',
         description = 'Shows min and max constraints clamping otherwise valid fixed, fill, and percentage sizes.',
-        update = make_width_pulse(frame, 620, 84, 1.05),
+        update = make_size_pulse(frame, 620, 310, 84, 44, 1.05),
         inspect = function(index, total)
             return {
                 string.format('root offset x:%d y:%d', round(origin.x), round(origin.y)),
@@ -380,14 +412,15 @@ local function build_visibility_screen(scope, stage)
         height = 64,
     }, 'child of hidden', DemoColors.roles.accent_amber_fill, DemoColors.roles.accent_amber_line)
 
-    local pulse_visible_width = make_width_pulse(visible_parent, 220, 28, 1.15)
+    local pulse_visible_size = make_size_pulse(visible_parent, 220, 160, 28, 22, 1.15)
 
     return {
         title = 'Visibility',
         description = 'Demonstrates retained tree membership separately from effective drawing visibility.',
         update = function(dt)
-            pulse_visible_width(dt)
+            pulse_visible_size(dt)
             hidden_parent.width = visible_parent.width
+            hidden_parent.height = visible_parent.height
         end,
         inspect = function(index, total)
             return {

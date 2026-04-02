@@ -1,5 +1,6 @@
 local Modal = require('lib.ui.controls.modal')
 local Text = require('lib.ui.controls.text')
+local Container = require('lib.ui.core.container')
 local Column = require('lib.ui.layout.column')
 local Row = require('lib.ui.layout.row')
 local ControlUtils = require('lib.ui.controls.control_utils')
@@ -87,7 +88,7 @@ local function coerce_text_node(value, tag)
         if not can_construct_text() then
             local placeholder = Column.new({
                 tag = tag,
-                width = 'fill',
+                width = 0,
                 height = 0,
                 interactive = false,
                 focusable = false,
@@ -101,7 +102,7 @@ local function coerce_text_node(value, tag)
         return Text.new({
             tag = tag,
             text = value,
-            width = 'fill',
+            width = 0,
             wrap = true,
         })
     end
@@ -120,7 +121,7 @@ local function build_actions_container(actions)
 
     local container = Row.new({
         tag = 'alert.actions',
-        width = 'fill',
+        width = 0,
         height = 64,
         gap = 12,
         align = 'center',
@@ -232,6 +233,7 @@ function Alert:constructor(opts)
         align = 'stretch',
         justify = 'start',
     })
+    Container._allow_fill_from_parent(layout, { width = true, height = true })
 
     layout:addChild(title_node)
 

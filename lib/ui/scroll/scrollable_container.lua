@@ -498,11 +498,16 @@ function ScrollableContainer:constructor(opts)
         clipChildren = true,
         interactive = true,
     })
+    Container._allow_fill_from_parent(viewport, { width = true, height = true })
 
     -- Content: user-facing child container
     local content = Container({
         tag = 'scroll_content',
+        width = 'fill',
+        height = 'fill',
     })
+    Container._allow_fill_from_parent(content, { width = true, height = true })
+    Container._allow_child_fill(content, { width = true, height = true })
 
     Container.addChild(viewport, content)
     Container.addChild(self, viewport)
@@ -521,6 +526,7 @@ function ScrollableContainer:constructor(opts)
         focusable = false,
         visible = false,
     })
+    Container._allow_fill_from_parent(v_track, { height = true })
     local v_thumb = Drawable({
         tag = 'scrollbar_v_thumb',
         width = SCROLLBAR_SIZE,
@@ -542,6 +548,7 @@ function ScrollableContainer:constructor(opts)
         focusable = false,
         visible = false,
     })
+    Container._allow_fill_from_parent(h_track, { width = true })
     local h_thumb = Drawable({
         tag = 'scrollbar_h_thumb',
         height = SCROLLBAR_SIZE,

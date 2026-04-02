@@ -58,6 +58,8 @@ function Button:constructor(opts)
         height = 'fill',
         interactive = false,
     })
+    Container._allow_fill_from_parent(content, { width = true, height = true })
+    Container._allow_child_fill(content, { width = true, height = true })
     Container.addChild(self, content)
     rawset(self, '_content_slot', content)
 

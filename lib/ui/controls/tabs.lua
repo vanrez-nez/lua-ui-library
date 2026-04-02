@@ -169,7 +169,7 @@ end
 
 local function build_list_layout(orientation)
     if orientation == 'vertical' then
-        return Column.new({
+        local list = Column.new({
             tag = 'tabs_list',
             width = 'fill',
             height = 'content',
@@ -177,9 +177,11 @@ local function build_list_layout(orientation)
             align = 'stretch',
             justify = 'start',
         })
+        Container._allow_fill_from_parent(list, { width = true })
+        return list
     end
 
-    return Row.new({
+    local list = Row.new({
         tag = 'tabs_list',
         width = 'content',
         height = 'fill',
@@ -187,6 +189,8 @@ local function build_list_layout(orientation)
         align = 'stretch',
         justify = 'start',
     })
+    Container._allow_fill_from_parent(list, { height = true })
+    return list
 end
 
 function Tabs:constructor(opts)
@@ -236,6 +240,7 @@ function Tabs:constructor(opts)
             showScrollbars = false,
             momentum = false,
         })
+        Container._allow_fill_from_parent(list_root, { width = true })
         Container.addChild(self, list_root)
         rawset(self, '_list_root', list_root)
         list_root.content:addChild(list_region)
@@ -253,6 +258,7 @@ function Tabs:constructor(opts)
     end
 
     local panels = Container({ tag = 'tabs_panels', width = 'fill', height = 'fill', y = 52, interactive = false })
+    Container._allow_fill_from_parent(panels, { width = true, height = true })
     Container.addChild(self, panels)
     rawset(self, '_panels_region', panels)
     rawset(self, 'indicator', rawget(self, '_list_region'))
@@ -369,6 +375,7 @@ function Tabs:_register_tab(value, trigger_node, panel_node)
         interactive = true,
         focusable = false,
     })
+    Container._allow_fill_from_parent(panel, { width = true, height = true })
     rawset(panel, '_tab_panel_value', value)
     panel:addChild(panel_node)
 

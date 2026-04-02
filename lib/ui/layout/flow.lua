@@ -94,6 +94,10 @@ local function resolve_axis(value, available, min_value, max_value)
         return nil
     end
 
+    if value == 'fill' then
+        Assert.fail('Flow does not define fill resolution for child axes', 3)
+    end
+
     return clamp_number(
         resolve_axis_size(value, available),
         min_value,

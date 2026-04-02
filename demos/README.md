@@ -27,6 +27,7 @@ Reference inputs:
 
 - `docs/implementation/tasks/*/demo-and-acceptance.md`
 - `_test/` historical harnesses
+- `demos/rules.md`
 
 ## Rules
 

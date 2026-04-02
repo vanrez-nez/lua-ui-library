@@ -41,6 +41,7 @@ function Option:constructor(opts)
         interactive = false,
         focusable = false,
     })
+    Container._allow_fill_from_parent(label_slot, { width = true })
     local description_slot = Container.new({
         tag = (self.tag and (self.tag .. '.description')) or 'option.description',
         width = 'fill',
@@ -48,6 +49,7 @@ function Option:constructor(opts)
         interactive = false,
         focusable = false,
     })
+    Container._allow_fill_from_parent(description_slot, { width = true })
 
     Container.addChild(self, label_slot)
     Container.addChild(self, description_slot)

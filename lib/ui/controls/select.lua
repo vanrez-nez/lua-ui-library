@@ -291,6 +291,7 @@ function Select:constructor(opts)
         interactive = true,
         focusable = true,
     })
+    Container._allow_fill_from_parent(trigger, { width = true })
     rawset(trigger, 'pointerFocusCoupling', 'before')
 
     local summary = Text.new({
@@ -299,6 +300,7 @@ function Select:constructor(opts)
         width = 'fill',
         fontSize = 16,
     })
+    Container._allow_fill_from_parent(summary, { width = true })
     trigger:addChild(summary)
     Container.addChild(self, trigger)
 
@@ -323,6 +325,8 @@ function Select:constructor(opts)
         interactive = false,
         focusable = false,
     })
+    Container._allow_fill_from_parent(popup_slot, { width = true, height = true })
+    Container._allow_child_fill(popup_slot, { width = true, height = true })
     rawset(popup_slot, '_ui_select_popup_slot', true)
     rawset(popup_slot, '_ui_select_owner', self)
 

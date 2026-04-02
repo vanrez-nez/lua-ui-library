@@ -188,6 +188,7 @@ function Notification:constructor(opts)
         interactive = false,
         focusable = false,
     })
+    Container._allow_fill_from_parent(overlay_root, { width = true, height = true })
     rawset(overlay_root, '_ui_notification_owner', self)
     local surface = Container.new({
         tag = (self.tag and (self.tag .. '.surface')) or 'notification.surface',
@@ -203,6 +204,8 @@ function Notification:constructor(opts)
         interactive = false,
         focusable = false,
     })
+    Container._allow_fill_from_parent(content, { width = true, height = true })
+    Container._allow_child_fill(content, { width = true, height = true })
     overlay_root:addChild(surface)
     surface:addChild(content)
 

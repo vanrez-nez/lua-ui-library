@@ -199,10 +199,36 @@ local function run_cycle_and_destroy_tests()
     'Destroyed nodes must not re-enter the retained tree')
 end
 
+local function run_fill_contract_tests()
+    local stage = UI.Stage.new({
+        width = 320,
+        height = 180,
+    })
+    local parent = Container.new({
+        width = 200,
+        height = 120,
+    })
+    local invalid = Container.new({
+        width = 'fill',
+        height = 40,
+    })
+
+    stage.baseSceneLayer:addChild(parent)
+    parent:addChild(invalid)
+
+    assert_error(function()
+        stage:update()
+    end, 'does not define fill resolution for width',
+        'Plain Container children should fail deterministically when using unsupported fill')
+
+    stage:destroy()
+end
+
 local function run()
     run_public_surface_tests()
     run_tree_management_tests()
     run_cycle_and_destroy_tests()
+    run_fill_contract_tests()
 end
 
 return {

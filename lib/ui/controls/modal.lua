@@ -211,12 +211,14 @@ function Modal:constructor(opts)
         height = 'fill',
         interactive = false,
     })
+    Container._allow_fill_from_parent(overlay_root, { width = true, height = true })
     local backdrop = Container.new({
         tag = (self.tag and (self.tag .. '.backdrop')) or 'modal.backdrop',
         width = 'fill',
         height = 'fill',
         interactive = true,
     })
+    Container._allow_fill_from_parent(backdrop, { width = true, height = true })
     local overlay_frame = Container.new({
         tag = (self.tag and (self.tag .. '.frame')) or 'modal.frame',
         width = 0,
@@ -244,9 +246,11 @@ function Modal:constructor(opts)
     local content_slot = Container.new({
         tag = (self.tag and (self.tag .. '.content')) or 'modal.content',
         width = 'fill',
-        height = 'fill',
+        height = 0,
         interactive = false,
     })
+    Container._allow_fill_from_parent(content_slot, { width = true, height = true })
+    Container._allow_child_fill(content_slot, { width = true, height = true })
 
     overlay_root:addChild(backdrop)
     overlay_root:addChild(overlay_frame)

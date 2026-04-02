@@ -202,6 +202,7 @@ function Scene:constructor(opts)
         width = 'fill',
         height = 'fill',
     }, SCENE_PUBLIC_KEYS)
+    Container._allow_fill_from_parent(self, { width = true, height = true })
 
     set_initial_params(self, opts.params)
     local public_values = rawget(self, '_public_values')

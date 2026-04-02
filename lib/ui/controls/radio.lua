@@ -48,6 +48,7 @@ function Radio:constructor(opts)
         interactive = false,
         focusable = false,
     })
+    Container._allow_fill_from_parent(label_slot, { width = true })
     local description_slot = Container.new({
         tag = (self.tag and (self.tag .. '.description')) or 'radio.description',
         width = 'fill',
@@ -55,6 +56,7 @@ function Radio:constructor(opts)
         interactive = false,
         focusable = false,
     })
+    Container._allow_fill_from_parent(description_slot, { width = true })
 
     Container.addChild(self, indicator)
     Container.addChild(self, label_slot)

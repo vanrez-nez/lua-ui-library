@@ -174,8 +174,8 @@ local function run_math_utils_tests()
         'MathUtils clamp should enforce max bounds')
     assert_equal(MathUtils.resolve_axis_size('25%', 200), 50,
         'MathUtils should resolve percentage axis sizes')
-    assert_equal(MathUtils.resolve_axis_size('fill', 120), 120,
-        'MathUtils should resolve fill axis sizes')
+    assert_equal(MathUtils.resolve_axis_size('fill', 120), 0,
+        'MathUtils should not resolve fill axis sizes generically')
 end
 
 local function run()

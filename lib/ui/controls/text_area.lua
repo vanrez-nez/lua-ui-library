@@ -32,6 +32,7 @@ function TextArea:constructor(opts)
         width = 'fill',
         height = 'fill',
     })
+    Container._allow_fill_from_parent(region, { width = true, height = true })
     Container.addChild(self, region)
     rawset(self, '_scroll_region', region)
 

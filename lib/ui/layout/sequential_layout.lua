@@ -144,9 +144,21 @@ local function apply_resolved_size(node, width, height)
     return true
 end
 
-local function resolve_axis(value, available, min_value, max_value)
+local function resolve_axis(value, available, min_value, max_value, config, axis_key)
     if value == 'content' or value == nil then
         return nil
+    end
+
+    if value == 'fill' then
+        if axis_key == config.main_size_key then
+            return nil
+        end
+
+        return clamp_number(
+            available or 0,
+            min_value,
+            max_value
+        )
     end
 
     return clamp_number(
@@ -195,7 +207,9 @@ local function measure_entry(entry, stage, config, available_main, available_cro
             values[main_size_key],
             available_main,
             values[main_min_key],
-            values[main_max_key]
+            values[main_max_key],
+            config,
+            main_size_key
         )
     end
 
@@ -204,7 +218,9 @@ local function measure_entry(entry, stage, config, available_main, available_cro
             values[cross_size_key],
             available_cross,
             values[cross_min_key],
-            values[cross_max_key]
+            values[cross_max_key],
+            config,
+            cross_size_key
         )
     end
 

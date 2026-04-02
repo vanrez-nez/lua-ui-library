@@ -476,6 +476,34 @@ local function run_nested_layout_scroll_regression_tests()
     stage:destroy()
 end
 
+local function run_content_fill_contract_tests()
+    local stage = Stage.new({ width = 400, height = 300 })
+    local scrollable = ScrollableContainer.new({
+        width = 220,
+        height = 160,
+        scrollYEnabled = true,
+        momentum = false,
+        showScrollbars = false,
+    })
+    local content_root = Column.new({
+        width = 'fill',
+        height = 'content',
+        gap = 8,
+    })
+
+    content_root:addChild(Drawable({ width = 120, height = 40 }))
+    content_root:addChild(Drawable({ width = 120, height = 40 }))
+    scrollable.content:addChild(content_root)
+    stage.baseSceneLayer:addChild(scrollable)
+
+    stage:update()
+
+    assert_equal(content_root:getLocalBounds().width, 220,
+        'ScrollableContainer content should define delegated fill resolution for direct child width')
+
+    stage:destroy()
+end
+
 -- ── Run all ─────────────────────────────────────────────────────────────────
 
 return {
@@ -492,5 +520,6 @@ return {
         run_schema_validation_tests()
         run_textarea_boundary_tests()
         run_nested_layout_scroll_regression_tests()
+        run_content_fill_contract_tests()
     end,
 }

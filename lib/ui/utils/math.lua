@@ -45,10 +45,6 @@ function MathUtils.resolve_axis_size(configured, parent_size)
         return configured
     end
 
-    if configured == 'fill' then
-        return parent_size or 0
-    end
-
     local percentage = MathUtils.parse_percentage(configured)
 
     if percentage ~= nil then

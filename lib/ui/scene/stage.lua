@@ -1674,11 +1674,15 @@ function Stage:constructor(opts)
         width = 'fill',
         height = 'fill',
     })
+    Container._allow_fill_from_parent(base_scene_layer, { width = true, height = true })
+    Container._allow_child_fill(base_scene_layer, { width = true, height = true })
     local overlay_layer = Container({
         tag = 'overlay layer',
         width = 'fill',
         height = 'fill',
     })
+    Container._allow_fill_from_parent(overlay_layer, { width = true, height = true })
+    Container._allow_child_fill(overlay_layer, { width = true, height = true })
 
     rawset(self, 'baseSceneLayer', base_scene_layer)
     rawset(self, 'overlayLayer', overlay_layer)
