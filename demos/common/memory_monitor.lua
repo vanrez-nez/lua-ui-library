@@ -1,9 +1,7 @@
+local DemoColors = require('demos.common.colors')
+
 local MemoryMonitor = {}
 MemoryMonitor.__index = MemoryMonitor
-
-local PANEL = { 0.08, 0.09, 0.12, 0.95 }
-local TEXT = { 1, 1, 1, 1 }
-local SUBTEXT = { 0.72, 0.75, 0.81, 1 }
 local LINE_HEIGHT = 1.3
 
 local function to_mb(bytes)
@@ -65,15 +63,15 @@ function MemoryMonitor:draw(stats_context)
         string.format('Shaders: %d', stats.shaders or 0),
     }
 
-    g.setColor(PANEL)
+    g.setColor(DemoColors.roles.background_alt)
     g.rectangle('fill', x, y, box_width, box_height, 0, 0)
 
     g.setFont(self.title_font)
-    g.setColor(TEXT)
+    g.setColor(DemoColors.roles.text)
     g.printf('Memory Monitor', x + 20, y + 18, box_width - 40, 'center')
 
     g.setFont(self.body_font)
-    g.setColor(SUBTEXT)
+    g.setColor(DemoColors.roles.text_subtle)
     if self.body_font.setLineHeight ~= nil then
         self.body_font:setLineHeight(LINE_HEIGHT)
     end

@@ -1,30 +1,10 @@
 local ScreenScope = require('demos.common.screen_scope')
 local MemoryMonitor = require('demos.common.memory_monitor')
+local InfoSidebar = require('demos.common.info_sidebar')
+local DemoColors = require('demos.common.colors')
 
 local DemoBase = {}
 DemoBase.__index = DemoBase
-
-local DEFAULT_THEME = {
-    background = { 0.07, 0.08, 0.1, 1 },
-    panel = { 0.12, 0.13, 0.17, 0.75 },
-    text = { 0.95, 0.96, 0.99, 1 },
-    subtext = { 0.67, 0.7, 0.77, 1 },
-}
-
-local function merge_theme(theme)
-    local merged = {}
-    for key, value in pairs(DEFAULT_THEME) do
-        merged[key] = value
-    end
-
-    if theme ~= nil then
-        for key, value in pairs(theme) do
-            merged[key] = value
-        end
-    end
-
-    return merged
-end
 
 function DemoBase.new(opts)
     opts = opts or {}
@@ -32,7 +12,6 @@ function DemoBase.new(opts)
     local self = setmetatable({}, DemoBase)
     self.title = opts.title or 'Untitled Demo'
     self.description = opts.description or ''
-    self.theme = merge_theme(opts.theme)
     self.padding = opts.padding or 24
     self.header_height = opts.header_height or 104
     self.footer_height = opts.footer_height or 44
@@ -46,6 +25,13 @@ function DemoBase.new(opts)
     self.title_font = love.graphics.newFont(15)
     self.description_font = love.graphics.newFont(13)
     self.footer_font = love.graphics.newFont(12)
+    self.sidebar_title_font = love.graphics.newFont(12)
+    self.sidebar_body_font = love.graphics.newFont(12)
+    self.info_sidebar = InfoSidebar.new({
+        header_height = self.header_height,
+        title_font = self.sidebar_title_font,
+        body_font = self.sidebar_body_font,
+    })
 
     return self
 end
@@ -74,6 +60,34 @@ function DemoBase:get_screen_count()
     return #self.screens
 end
 
+function DemoBase:clear_info_items()
+    self.info_sidebar:clear_items()
+end
+
+function DemoBase:add_info_item(title, lines)
+    return self.info_sidebar:add_item(title, lines)
+end
+
+function DemoBase:set_info_title(index, title)
+    self.info_sidebar:set_item_title(index, title)
+end
+
+function DemoBase:set_info_lines(index, lines)
+    self.info_sidebar:set_item_lines(index, lines)
+end
+
+function DemoBase:set_info_collapsed(index, collapsed)
+    self.info_sidebar:set_item_collapsed(index, collapsed)
+end
+
+function DemoBase:toggle_info_item(index)
+    self.info_sidebar:toggle_item(index)
+end
+
+function DemoBase:toggle_info_sidebar()
+    self.info_sidebar:toggle()
+end
+
 function DemoBase:_reset_global_state()
     if love.audio ~= nil and love.audio.stop ~= nil then
         love.audio.stop()
@@ -100,6 +114,7 @@ function DemoBase:_cleanup_active_screen()
 
     self.active_scope = nil
     self.active_screen = nil
+    self:clear_info_items()
     self:_reset_global_state()
 end
 
@@ -128,6 +143,14 @@ function DemoBase:_activate_screen(index)
     self.active_screen = screen
 end
 
+function DemoBase:reset_screen()
+    if #self.screens == 0 or self.active_index == 0 then
+        return
+    end
+
+    self:_activate_screen(self.active_index)
+end
+
 function DemoBase:push_screen(factory)
     assert(type(factory) == 'function', 'screen factory must be a function')
     self.screens[#self.screens + 1] = factory
@@ -145,6 +168,11 @@ function DemoBase:handle_keypressed(key)
 
     if key == 'h' then
         self:toggle()
+        return true
+    end
+
+    if key == 'r' then
+        self:reset_screen()
         return true
     end
 
@@ -171,6 +199,23 @@ function DemoBase:handle_keypressed(key)
     return false
 end
 
+function DemoBase:handle_mousepressed(x, y, button)
+    if button ~= 1 or not self.visible then
+        return false
+    end
+
+    if self.info_sidebar:handle_mousepressed(x, y, button) then
+        return true
+    end
+
+    local screen = self.active_screen
+    if screen ~= nil and type(screen.mousepressed) == 'function' then
+        return screen:mousepressed(x, y, button) == true
+    end
+
+    return false
+end
+
 function DemoBase:get_content_rect()
     local width, height = love.graphics.getDimensions()
 
@@ -183,7 +228,7 @@ function DemoBase:get_content_rect()
 end
 
 function DemoBase:begin_frame()
-    love.graphics.clear(self.theme.background)
+    love.graphics.clear(DemoColors.roles.background)
 end
 
 function DemoBase:update(dt)
@@ -209,21 +254,21 @@ function DemoBase:draw()
     local total = #self.screens
     local active = self.active_index > 0 and self.active_index or 1
 
-    g.setColor(self.theme.panel)
+    g.setColor(DemoColors.roles.surface)
     g.rectangle('fill', 0, 0, width, self.header_height)
     g.rectangle('fill', 0, footer_y, width, self.footer_height)
 
-    g.setColor(self.theme.text)
+    g.setColor(DemoColors.roles.text)
     g.setFont(self.title_font)
     g.printf(self.title, self.padding, 18, width - (self.padding * 2), 'center')
 
-    g.setColor(self.theme.subtext)
+    g.setColor(DemoColors.roles.text_muted)
     g.setFont(self.description_font)
     g.printf(self.description, self.padding, 42, width - (self.padding * 2), 'center')
 
     g.setFont(self.footer_font)
-    g.setColor(self.theme.text)
-    g.print('[Left/Right] switch screen  [H] toggle navigation  [M] memory  [Esc] quit', self.padding, footer_y + 15)
+    g.setColor(DemoColors.roles.text)
+    g.print('[Left/Right] switch screen  [R] reset screen  [H] toggle navigation  [M] memory  [Esc] quit', self.padding, footer_y + 15)
 
     local metrics = string.format(
         'Screen %d/%d   %dx%d   %d fps',
@@ -236,6 +281,8 @@ function DemoBase:draw()
 
     local metrics_width = self.footer_font:getWidth(metrics)
     g.print(metrics, width - self.padding - metrics_width, footer_y + 15)
+
+    self.info_sidebar:draw()
 
     local tracked_objects = 0
     if self.active_scope ~= nil and self.active_scope.resources ~= nil then

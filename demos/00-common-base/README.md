@@ -12,9 +12,11 @@ It exists to provide consistent demo infrastructure without making demos depend 
 - full-screen background clear
 - top header overlay
 - bottom footer overlay
+- collapsible left info sidebar
 - shared navigation text
 - screen counting and active screen index
 - left/right screen switching
+- active screen reset
 - chrome visibility toggle
 - memory monitor toggle
 - active-screen lifecycle
@@ -88,9 +90,50 @@ This is the isolation boundary.
 These bindings are owned by `DemoBase`:
 
 - `[Left/Right]` switch screen
+- `[R]` reset screen
 - `[H]` toggle header/footer navigation
 - `[M]` toggle memory monitor
 - `[Esc]` quit
+
+When navigation is hidden with `[H]`, the info sidebar also hides.
+
+## Shared Colors
+
+Use [colors.lua](/Users/vanrez/Documents/game-dev/lua-ui-library/demos/common/colors.lua) for demo palette values.
+
+It exports:
+
+- `names`: raw reusable named colors
+- `roles`: semantic usage colors like `background`, `surface`, `surface_alt`, `surface_emphasis`, `text`, `text_muted`, `border`, and accent fill/line pairs
+
+Demo rule:
+
+- do not introduce new hardcoded RGBA literals in demos when an existing `DemoColors.roles` entry already fits the usage
+
+## Info Sidebar
+
+`DemoBase` provides a collapsible left sidebar for screen-specific inspection data.
+
+Capabilities:
+
+- up to 10 items
+- each item has a title and a list of lines
+- each item can be collapsed or expanded from its title bar
+- the whole sidebar collapses to a shared triangle toggle
+- item panels use `+/-` controls
+- bars and panels use plain rectangles without rounded corners
+
+Public sidebar helpers:
+
+- `add_info_item(title, lines) -> index`
+- `set_info_title(index, title)`
+- `set_info_lines(index, lines)`
+- `set_info_collapsed(index, collapsed)`
+- `toggle_info_item(index)`
+- `clear_info_items()`
+
+Sidebar state is screen-scoped.
+`DemoBase` clears info items automatically on screen switch and screen reset.
 
 ## What Demos Should Do
 
@@ -103,11 +146,12 @@ These bindings are owned by `DemoBase`:
 ## What Demos Must Not Do
 
 - do not override left/right screen switching
-- do not override `[H]`, `[M]`, or `[Esc]`
+- do not override `[R]`, `[H]`, `[M]`, or `[Esc]`
 - do not manage their own screen index counters outside `DemoBase`
 - do not rely on manual screen destruction
 - do not bypass `scope` for temporary demo-owned Love resources unless there is a strong reason
 - do not move the header/footer shell logic into the demo itself
+- do not build a second custom inspector panel when the shared sidebar is sufficient
 
 The most important rule:
 
@@ -127,5 +171,9 @@ end
 
 function love.keypressed(key)
     demo_base:handle_keypressed(key)
+end
+
+function love.mousepressed(x, y, button)
+    demo_base:handle_mousepressed(x, y, button)
 end
 ```
