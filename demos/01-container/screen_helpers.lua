@@ -92,6 +92,21 @@ local function set_color_with_alpha(graphics, color, alpha)
     graphics.setColor(color[1], color[2], color[3], (color[4] or 1) * alpha)
 end
 
+local function get_world_quad(node)
+    local bounds = node:getLocalBounds()
+    local x1, y1 = node:localToWorld(0, 0)
+    local x2, y2 = node:localToWorld(bounds.width, 0)
+    local x3, y3 = node:localToWorld(bounds.width, bounds.height)
+    local x4, y4 = node:localToWorld(0, bounds.height)
+
+    return {
+        x1, y1,
+        x2, y2,
+        x3, y3,
+        x4, y4,
+    }
+end
+
 local function make_badge(key, value)
     return {
         key = key,
@@ -138,6 +153,11 @@ end
 
 function ScreenHelpers.set_hint_fields(node, fields)
     rawset(node, '_demo_hint_fields', fields)
+    return node
+end
+
+function ScreenHelpers.set_markers(node, markers)
+    rawset(node, '_demo_markers', markers)
     return node
 end
 
@@ -351,12 +371,14 @@ function ScreenHelpers.draw_demo_node(graphics, node)
 
     local draw_context = ScreenHelpers._draw_context
     local bounds = node:getWorldBounds()
+    local local_bounds = node:getLocalBounds()
+    local quad = get_world_quad(node)
     local label = rawget(node, '_demo_label') or (node.tag or 'container')
     local fill_color = rawget(node, '_demo_fill_color') or DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.24)
     local line_color = rawget(node, '_demo_line_color') or DemoColors.roles.accent_blue_line
     local is_hovered = false
 
-    if draw_context ~= nil and point_in_rect(draw_context.mouse_x, draw_context.mouse_y, bounds) then
+    if draw_context ~= nil and node:containsPoint(draw_context.mouse_x, draw_context.mouse_y) then
         is_hovered = true
 
         local area = math.max(1, bounds.width * bounds.height)
@@ -367,11 +389,68 @@ function ScreenHelpers.draw_demo_node(graphics, node)
     end
 
     set_color_with_alpha(graphics, fill_color, is_hovered and 1 or 0.75)
-    graphics.rectangle('fill', bounds.x, bounds.y, bounds.width, bounds.height)
+    graphics.polygon('fill', quad)
     set_color_with_alpha(graphics, line_color, is_hovered and 1 or 0.75)
-    graphics.rectangle('line', bounds.x, bounds.y, bounds.width, bounds.height)
+    graphics.polygon('line', quad)
     graphics.setColor(DemoColors.roles.body)
-    graphics.print(label, bounds.x + 8, bounds.y + 8)
+    local label_x, label_y = node:localToWorld(
+        math.min(8, math.max(0, local_bounds.width - 8)),
+        math.min(8, math.max(0, local_bounds.height - 8))
+    )
+    graphics.print(label, label_x, label_y)
+end
+
+local function draw_point_marker(graphics, x, y, color)
+    local cross_radius = 4
+    local circle_radius = 6
+
+    graphics.setColor(color)
+    graphics.circle('line', x, y, circle_radius)
+    graphics.line(x - cross_radius, y, x + cross_radius, y)
+    graphics.line(x, y - cross_radius, x, y + cross_radius)
+end
+
+local function draw_anchor_marker(graphics, node, color)
+    if node.parent == nil then
+        return
+    end
+
+    local parent_bounds = node.parent:getLocalBounds()
+    local anchor_x = (node.anchorX or 0) * parent_bounds.width
+    local anchor_y = (node.anchorY or 0) * parent_bounds.height
+    local world_x, world_y = node.parent:localToWorld(anchor_x, anchor_y)
+    draw_point_marker(graphics, world_x, world_y, color)
+end
+
+local function draw_pivot_marker(graphics, node, color)
+    local bounds = node:getLocalBounds()
+    local pivot_x = (node.pivotX or 0) * bounds.width
+    local pivot_y = (node.pivotY or 0) * bounds.height
+    local world_x, world_y = node:localToWorld(pivot_x, pivot_y)
+    draw_point_marker(graphics, world_x, world_y, color)
+end
+
+function ScreenHelpers.draw_demo_markers(graphics, node)
+    if not rawget(node, '_demo_box') or not ScreenHelpers.is_visible(node) then
+        return
+    end
+
+    local markers = rawget(node, '_demo_markers')
+    if markers == nil then
+        return
+    end
+
+    for index = 1, #markers do
+        local marker = markers[index]
+        local marker_type = marker.type
+        local color = marker.color or DemoColors.roles.accent_highlight
+
+        if marker_type == 'anchor' then
+            draw_anchor_marker(graphics, node, color)
+        elseif marker_type == 'pivot' then
+            draw_pivot_marker(graphics, node, color)
+        end
+    end
 end
 
 function ScreenHelpers.make_stage(scope)
@@ -462,6 +541,7 @@ function ScreenHelpers.screen_wrapper(owner, description, build)
 
                 stage:draw(love.graphics, function(node)
                     ScreenHelpers.draw_demo_node(love.graphics, node)
+                    ScreenHelpers.draw_demo_markers(love.graphics, node)
                 end)
                 ScreenHelpers.draw_hover_overlay(love.graphics)
                 ScreenHelpers._draw_context = nil

@@ -74,6 +74,10 @@ function InfoSidebar:clear_items()
     self.layout = {}
 end
 
+function InfoSidebar:has_items()
+    return #self.items > 0
+end
+
 function InfoSidebar:add_item(title, lines)
     assert(#self.items < 10, 'DemoBase supports at most 10 info items')
 
@@ -119,6 +123,10 @@ function InfoSidebar:toggle()
 end
 
 function InfoSidebar:handle_mousepressed(x, y, button)
+    if not self:has_items() then
+        return false
+    end
+
     if button ~= 1 then
         return false
     end
@@ -269,6 +277,14 @@ function InfoSidebar:draw_panels(x, y, width, bar_height, line_height)
 end
 
 function InfoSidebar:draw()
+    if not self:has_items() then
+        self.layout = {}
+        self.tab_rect = nil
+        self.header_rect = nil
+        self.header_button_rect = nil
+        return
+    end
+
     local x = 0
     local y = self.header_height
     local width = 360

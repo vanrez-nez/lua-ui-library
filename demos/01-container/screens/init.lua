@@ -5,4 +5,7 @@ return {
     require('demos.01-container.screens.clamp'),
     require('demos.01-container.screens.visibility'),
     require('demos.01-container.screens.clipping'),
+    require('demos.01-container.screens.anchors'),
+    require('demos.01-container.screens.pivot'),
+    require('demos.01-container.screens.scale'),
 }

@@ -282,7 +282,9 @@ function DemoBase:draw()
     local metrics_width = self.footer_font:getWidth(metrics)
     g.print(metrics, width - self.padding - metrics_width, footer_y + 15)
 
-    self.info_sidebar:draw()
+    if self.info_sidebar:has_items() then
+        self.info_sidebar:draw()
+    end
 
     local tracked_objects = 0
     if self.active_scope ~= nil and self.active_scope.resources ~= nil then
