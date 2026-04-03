@@ -20,8 +20,7 @@ function Drawable.__index(self, key)
 
     local allowed_public_keys = rawget(self, '_allowed_public_keys')
     if allowed_public_keys and allowed_public_keys[key] then
-        local public_values = rawget(self, '_public_values')
-        return public_values and public_values[key]
+        return Container._get_public_read_value(self, key)
     end
 
     return nil
@@ -113,8 +112,7 @@ function Drawable.__index(self, key)
 
     local allowed_public_keys = rawget(self, '_allowed_public_keys')
     if allowed_public_keys and allowed_public_keys[key] then
-        local public_values = rawget(self, '_public_values')
-        return public_values and public_values[key]
+        return Container._get_public_read_value(self, key)
     end
 
     return nil

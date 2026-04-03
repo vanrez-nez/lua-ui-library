@@ -1,6 +1,7 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Object = require('lib.cls')
+local SideQuad = require('lib.ui.core.side_quad')
 
 local abs = math.abs
 
@@ -27,35 +28,6 @@ local function is_insets(value)
     return Types.is_instance(value, Insets)
 end
 
-local function normalize_table(value)
-    if is_insets(value) then
-        return value:clone()
-    end
-
-    if value.top ~= nil or value.right ~= nil or
-        value.bottom ~= nil or value.left ~= nil then
-        return Insets(
-            value.top or 0,
-            value.right or 0,
-            value.bottom or 0,
-            value.left or 0
-        )
-    end
-
-    if #value == 2 then
-        return Insets(value[1], value[2], value[1], value[2])
-    end
-
-    if #value == 4 then
-        return Insets(value[1], value[2], value[3], value[4])
-    end
-
-    Assert.fail(
-        'insets tables must use top/right/bottom/left or contain 2 or 4 values',
-        2
-    )
-end
-
 function Insets.new(top, right, bottom, left)
     return Insets(top, right, bottom, left)
 end
@@ -65,19 +37,16 @@ function Insets.zero()
 end
 
 function Insets.normalize(value)
-    if value == nil then
-        return Insets.zero()
+    if is_insets(value) then
+        return value:clone()
     end
 
-    if Types.is_number(value) then
-        return Insets(value, value, value, value)
-    end
-
-    if Types.is_table(value) then
-        return normalize_table(value)
-    end
-
-    Assert.fail('insets must be nil, a number, or a table', 2)
+    return SideQuad.normalize(value, {
+        label = 'insets',
+        factory = function(top, right, bottom, left)
+            return Insets(top, right, bottom, left)
+        end,
+    }, 2)
 end
 
 function Insets.is_insets(value)

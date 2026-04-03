@@ -4,6 +4,9 @@ local MathUtils = require('lib.ui.utils.math')
 local Matrix = require('lib.ui.utils.matrix')
 local Rectangle = require('lib.ui.core.rectangle')
 local Object = require('lib.cls')
+local Insets = require('lib.ui.core.insets')
+local SideQuad = require('lib.ui.core.side_quad')
+local CornerQuad = require('lib.ui.core.corner_quad')
 
 local Schema = require('lib.ui.utils.schema')
 local Utils = require('lib.ui.utils.common')
@@ -28,6 +31,19 @@ local LOCAL_TRANSFORM_KEYS = {
 
 local MEASUREMENT_KEYS = {
     width = true, height = true, minWidth = true, minHeight = true, maxWidth = true, maxHeight = true
+}
+
+local EFFECTIVE_QUAD_KEYS = {
+    padding = true,
+    paddingTop = true, paddingRight = true, paddingBottom = true, paddingLeft = true,
+    margin = true,
+    marginTop = true, marginRight = true, marginBottom = true, marginLeft = true,
+    safeAreaInsets = true,
+    borderWidth = true,
+    borderWidthTop = true, borderWidthRight = true, borderWidthBottom = true, borderWidthLeft = true,
+    cornerRadius = true,
+    cornerRadiusTopLeft = true, cornerRadiusTopRight = true,
+    cornerRadiusBottomRight = true, cornerRadiusBottomLeft = true,
 }
 
 local canvas_pools = setmetatable({}, { __mode = 'k' })
@@ -527,6 +543,95 @@ local function refresh_effective_values(self)
         end
     end
 
+    local function apply_side_family(aggregate_key, top_key, right_key, bottom_key, left_key, factory)
+        local resolved = SideQuad.resolve_layers({
+            {
+                aggregate = overrides and overrides[aggregate_key] or nil,
+                top = overrides and overrides[top_key] or nil,
+                right = overrides and overrides[right_key] or nil,
+                bottom = overrides and overrides[bottom_key] or nil,
+                left = overrides and overrides[left_key] or nil,
+            },
+            {
+                aggregate = public_values[aggregate_key],
+                top = public_values[top_key],
+                right = public_values[right_key],
+                bottom = public_values[bottom_key],
+                left = public_values[left_key],
+            },
+        }, {
+            label = aggregate_key,
+            factory = factory,
+        }, 3)
+
+        if resolved ~= nil then
+            effective[aggregate_key] = resolved
+            effective[top_key] = resolved.top
+            effective[right_key] = resolved.right
+            effective[bottom_key] = resolved.bottom
+            effective[left_key] = resolved.left
+        end
+    end
+
+    local function apply_corner_family(aggregate_key, top_left_key, top_right_key, bottom_right_key, bottom_left_key)
+        local resolved = CornerQuad.resolve_layers({
+            {
+                aggregate = overrides and overrides[aggregate_key] or nil,
+                topLeft = overrides and overrides[top_left_key] or nil,
+                topRight = overrides and overrides[top_right_key] or nil,
+                bottomRight = overrides and overrides[bottom_right_key] or nil,
+                bottomLeft = overrides and overrides[bottom_left_key] or nil,
+            },
+            {
+                aggregate = public_values[aggregate_key],
+                topLeft = public_values[top_left_key],
+                topRight = public_values[top_right_key],
+                bottomRight = public_values[bottom_right_key],
+                bottomLeft = public_values[bottom_left_key],
+            },
+        }, {
+            label = aggregate_key,
+        }, 3)
+
+        if resolved ~= nil then
+            effective[aggregate_key] = resolved
+            effective[top_left_key] = resolved.topLeft
+            effective[top_right_key] = resolved.topRight
+            effective[bottom_right_key] = resolved.bottomRight
+            effective[bottom_left_key] = resolved.bottomLeft
+        end
+    end
+
+    apply_side_family('padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+        function(top, right, bottom, left)
+            return Insets.new(top, right, bottom, left)
+        end)
+    apply_side_family('margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
+        function(top, right, bottom, left)
+            return Insets.new(top, right, bottom, left)
+        end)
+    apply_side_family('borderWidth', 'borderWidthTop', 'borderWidthRight', 'borderWidthBottom', 'borderWidthLeft')
+    apply_corner_family('cornerRadius',
+        'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft')
+
+    local resolved_safe_area = SideQuad.resolve_layers({
+        {
+            aggregate = overrides and overrides.safeAreaInsets or nil,
+        },
+        {
+            aggregate = public_values.safeAreaInsets,
+        },
+    }, {
+        label = 'safeAreaInsets',
+        factory = function(top, right, bottom, left)
+            return Insets.new(top, right, bottom, left)
+        end,
+    }, 3)
+
+    if resolved_safe_area ~= nil then
+        effective.safeAreaInsets = resolved_safe_area
+    end
+
     rawset(self, '_effective_values', effective)
     rawset(self, '_responsive_dirty', false)
 
@@ -534,6 +639,17 @@ local function refresh_effective_values(self)
         self:mark_parent_order_dirty()
     end
 end
+
+local function get_effective_quad_value(self, key)
+    local effective_values = rawget(self, '_effective_values')
+    if effective_values ~= nil and EFFECTIVE_QUAD_KEYS[key] then
+        return effective_values[key]
+    end
+
+    local public_values = rawget(self, '_public_values')
+    return public_values and public_values[key]
+end
+Container._get_public_read_value = get_effective_quad_value
 
 local function axis_fill_supported_by_parent(self, axis_key)
     local parent = rawget(self, 'parent')
@@ -1588,8 +1704,7 @@ function Container:__index(key)
     local allowed_public_keys = rawget(self, '_allowed_public_keys')
 
     if allowed_public_keys and allowed_public_keys[key] then
-        local public_values = rawget(self, '_public_values')
-        return public_values and public_values[key]
+        return get_effective_quad_value(self, key)
     end
 
     return nil

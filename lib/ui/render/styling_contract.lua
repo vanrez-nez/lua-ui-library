@@ -25,11 +25,11 @@ StylingContract.ROOT_PROPERTY_KEYS = {
     'backgroundAlignX', 'backgroundAlignY',
 
     -- border (§7.1)
-    'borderColor', 'borderOpacity', 'borderWidthTop', 'borderWidthRight',
+    'borderColor', 'borderOpacity', 'borderWidth', 'borderWidthTop', 'borderWidthRight',
     'borderWidthBottom', 'borderWidthLeft', 'borderStyle', 'borderJoin', 'borderMiterLimit',
 
     -- corner radius (§8)
-    'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft',
+    'cornerRadius', 'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft',
 
     -- shadow (§9.1)
     'shadowColor', 'shadowOpacity', 'shadowOffsetX', 'shadowOffsetY', 'shadowBlur', 'shadowInset',
@@ -39,8 +39,9 @@ StylingContract.ROOT_PROPERTY_KEYS = {
 StylingContract.MOTION_CAPABLE_KEYS = {
     'backgroundColor', 'backgroundOpacity',
     'borderColor', 'borderOpacity',
+    'borderWidth',
     'borderWidthTop', 'borderWidthRight', 'borderWidthBottom', 'borderWidthLeft',
-    'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft',
+    'cornerRadius', 'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft',
     'shadowColor', 'shadowOpacity', 'shadowOffsetX', 'shadowOffsetY', 'shadowBlur',
 }
 

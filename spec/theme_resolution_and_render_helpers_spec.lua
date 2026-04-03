@@ -36,11 +36,15 @@ local function run_theme_resolution_tests()
         tokens = {
             ['button.surface.fillColor'] = 'theme-base',
             ['button.surface.fillColor.hovered'] = 'theme-hovered',
+            ['button.surface.backgroundColor'] = '#112233',
+            ['button.surface.backgroundColor.hovered'] = '#223344',
         },
     })
     local defaults = {
         ['button.surface.fillColor'] = 'default-base',
         ['button.surface.fillColor.hovered'] = 'default-hovered',
+        ['button.surface.backgroundColor'] = '#334455',
+        ['button.surface.backgroundColor.hovered'] = '#445566',
     }
 
     assert_equal(Resolver.resolve({

@@ -24,6 +24,10 @@ local LAYOUT_NODE_SCHEMA = {
         default = 0,
         set = function(ctx) ctx:markDirty() end
     },
+    paddingTop = { type = 'number', set = function(ctx) ctx:markDirty() end },
+    paddingRight = { type = 'number', set = function(ctx) ctx:markDirty() end },
+    paddingBottom = { type = 'number', set = function(ctx) ctx:markDirty() end },
+    paddingLeft = { type = 'number', set = function(ctx) ctx:markDirty() end },
     wrap = { type = 'boolean', default = false, set = function(ctx) ctx:markDirty() end },
     justify = { 
         validate = function(key, value, ctx, level)

@@ -7,6 +7,8 @@ local ThemeRuntime = require('lib.ui.themes.runtime')
 local DrawableSchema = require('lib.ui.core.drawable_schema')
 local Texture = require('lib.ui.graphics.texture')
 local Sprite = require('lib.ui.graphics.sprite')
+local SideQuad = require('lib.ui.core.side_quad')
+local CornerQuad = require('lib.ui.core.corner_quad')
 
 local Styling = {}
 
@@ -748,11 +750,124 @@ local function normalize_resolver_context(node, resolver_context)
     return context
 end
 
+local QUAD_FAMILIES = {
+    borderWidth = {
+        aggregate = 'borderWidth',
+        members = {
+            top = 'borderWidthTop',
+            right = 'borderWidthRight',
+            bottom = 'borderWidthBottom',
+            left = 'borderWidthLeft',
+        },
+        resolver = SideQuad,
+    },
+    cornerRadius = {
+        aggregate = 'cornerRadius',
+        members = {
+            topLeft = 'cornerRadiusTopLeft',
+            topRight = 'cornerRadiusTopRight',
+            bottomRight = 'cornerRadiusBottomRight',
+            bottomLeft = 'cornerRadiusBottomLeft',
+        },
+        resolver = CornerQuad,
+    },
+}
+
+local QUAD_PROPERTY_KEYS = {
+    borderWidth = true,
+    borderWidthTop = true, borderWidthRight = true, borderWidthBottom = true, borderWidthLeft = true,
+    cornerRadius = true,
+    cornerRadiusTopLeft = true, cornerRadiusTopRight = true,
+    cornerRadiusBottomRight = true, cornerRadiusBottomLeft = true,
+}
+
+local function resolve_override_value(source, part, property_name, variant)
+    if not Types.is_table(source) then
+        return nil
+    end
+
+    local part_table = source[part]
+    if not Types.is_table(part_table) then
+        return nil
+    end
+
+    local property_value = part_table[property_name]
+    if not Types.is_table(property_value) then
+        return property_value
+    end
+
+    if variant ~= nil and property_value[variant] ~= nil then
+        return property_value[variant]
+    end
+
+    return property_value.base
+end
+
+local function resolve_token_value(tokens, component, part, property_name, variant)
+    if not Types.is_table(tokens) then
+        return nil
+    end
+
+    local key = table.concat({ component, part, property_name }, '.')
+    if variant ~= nil and variant ~= 'base' then
+        local variant_key = key .. '.' .. tostring(variant)
+        if tokens[variant_key] ~= nil then
+            return tokens[variant_key]
+        end
+    end
+
+    return tokens[key]
+end
+
+local function resolve_quad_family_from_layers(node, family, layers)
+    local resolved_layers = {}
+
+    for layer_index = 1, #layers do
+        local layer = layers[layer_index]
+        if Types.is_table(layer) then
+            local resolved = {}
+
+            if layer.aggregate ~= nil then
+                resolved.aggregate = normalize_styling_value(family.aggregate, layer.aggregate, node)
+            end
+
+            for member_name, property_name in pairs(family.members) do
+                if layer[property_name] ~= nil then
+                    resolved[member_name] = normalize_styling_value(property_name, layer[property_name], node)
+                end
+            end
+
+            resolved_layers[#resolved_layers + 1] = resolved
+        end
+    end
+
+    local quad = family.resolver.resolve_layers(resolved_layers, {
+        label = family.aggregate,
+    }, 3)
+
+    if quad == nil then
+        return nil
+    end
+
+    local props = {}
+    props[family.aggregate] = quad
+
+    for member_name, property_name in pairs(family.members) do
+        props[property_name] = quad[member_name]
+    end
+
+    return props
+end
+
 local function resolve_contextual_props(node, resolver_context)
     local props = {}
     local part = resolver_context.part
 
     for _, key in ipairs(StylingContract.ROOT_PROPERTY_KEYS) do
+        if QUAD_PROPERTY_KEYS[key] then
+            goto continue
+        end
+
         local ok, value = pcall(
             ThemeRuntime.resolve,
             resolver_context.component,
@@ -778,6 +893,103 @@ local function resolve_contextual_props(node, resolver_context)
                 error(value, 0)
             end
         end
+
+        ::continue::
+    end
+
+    for _, family in pairs(QUAD_FAMILIES) do
+        local direct_layer = {
+            aggregate = node[family.aggregate],
+        }
+        for _, property_name in pairs(family.members) do
+            direct_layer[property_name] = node[property_name]
+        end
+
+        local override_layer = {
+            aggregate = resolve_override_value(
+                resolver_context.instanceOverrides,
+                part,
+                family.aggregate,
+                resolver_context.variant
+            ),
+        }
+        for _, property_name in pairs(family.members) do
+            override_layer[property_name] = resolve_override_value(
+                resolver_context.instanceOverrides,
+                part,
+                property_name,
+                resolver_context.variant
+            )
+        end
+
+        local skin_layer = {
+            aggregate = resolve_override_value(
+                resolver_context.partSkin,
+                part,
+                family.aggregate,
+                resolver_context.variant
+            ),
+        }
+        for _, property_name in pairs(family.members) do
+            skin_layer[property_name] = resolve_override_value(
+                resolver_context.partSkin,
+                part,
+                property_name,
+                resolver_context.variant
+            )
+        end
+
+        local theme_layer = {
+            aggregate = resolve_token_value(
+                resolver_context.theme and resolver_context.theme.tokens or nil,
+                resolver_context.component,
+                part,
+                family.aggregate,
+                resolver_context.variant
+            ),
+        }
+        for _, property_name in pairs(family.members) do
+            theme_layer[property_name] = resolve_token_value(
+                resolver_context.theme and resolver_context.theme.tokens or nil,
+                resolver_context.component,
+                part,
+                property_name,
+                resolver_context.variant
+            )
+        end
+
+        local defaults_layer = {
+            aggregate = resolve_token_value(
+                resolver_context.defaults,
+                resolver_context.component,
+                part,
+                family.aggregate,
+                resolver_context.variant
+            ),
+        }
+        for _, property_name in pairs(family.members) do
+            defaults_layer[property_name] = resolve_token_value(
+                resolver_context.defaults,
+                resolver_context.component,
+                part,
+                property_name,
+                resolver_context.variant
+            )
+        end
+
+        resolved = resolve_quad_family_from_layers(node, family, {
+            direct_layer,
+            override_layer,
+            skin_layer,
+            theme_layer,
+            defaults_layer,
+        })
+
+        if resolved ~= nil then
+            for property_name, value in pairs(resolved) do
+                props[property_name] = value
+            end
+        end
     end
 
     return props
@@ -795,11 +1007,44 @@ function Styling.assemble_props(node, resolver_context)
     local skin = node.skin
     local props = {}
     for _, key in ipairs(StylingContract.ROOT_PROPERTY_KEYS) do
+        if QUAD_PROPERTY_KEYS[key] then
+            goto continue
+        end
+
         local v = node[key]
         if v == nil then
             v = resolve_root_skin_value(skin, key)
         end
         props[key] = normalize_styling_value(key, v, node)
+
+        ::continue::
+    end
+
+    for _, family in pairs(QUAD_FAMILIES) do
+        local direct_layer = {
+            aggregate = node[family.aggregate],
+        }
+        for _, property_name in pairs(family.members) do
+            direct_layer[property_name] = node[property_name]
+        end
+
+        local skin_layer = {
+            aggregate = resolve_root_skin_value(skin, family.aggregate),
+        }
+        for _, property_name in pairs(family.members) do
+            skin_layer[property_name] = resolve_root_skin_value(skin, property_name)
+        end
+
+        local resolved = resolve_quad_family_from_layers(node, family, {
+            direct_layer,
+            skin_layer,
+        })
+
+        if resolved ~= nil then
+            for property_name, value in pairs(resolved) do
+                props[property_name] = value
+            end
+        end
     end
 
     return props

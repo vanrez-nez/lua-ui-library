@@ -1,6 +1,8 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Insets = require('lib.ui.core.insets')
+local SideQuad = require('lib.ui.core.side_quad')
+local CornerQuad = require('lib.ui.core.corner_quad')
 local Motion = require('lib.ui.motion')
 local Color = require('lib.ui.render.color')
 local Texture = require('lib.ui.graphics.texture')
@@ -71,9 +73,30 @@ local function check_enum(key, value, allowed, level)
     )
 end
 
+local function normalize_spacing_quad(label, value, level)
+    return SideQuad.normalize(value, {
+        label = label,
+        factory = function(top, right, bottom, left)
+            return Insets.new(top, right, bottom, left)
+        end,
+    }, level or 1)
+end
+
 local DRAWABLE_SCHEMA = {
-    padding = { validate = function(key, value) return Insets.normalize(value) end, default = 0 },
-    margin = { validate = function(key, value) return Insets.normalize(value) end, default = 0 },
+    padding = { validate = function(key, value, ctx, level)
+        return normalize_spacing_quad(key, value, level)
+    end, default = 0 },
+    paddingTop = { type = 'number' },
+    paddingRight = { type = 'number' },
+    paddingBottom = { type = 'number' },
+    paddingLeft = { type = 'number' },
+    margin = { validate = function(key, value, ctx, level)
+        return normalize_spacing_quad(key, value, level)
+    end, default = 0 },
+    marginTop = { type = 'number' },
+    marginRight = { type = 'number' },
+    marginBottom = { type = 'number' },
+    marginLeft = { type = 'number' },
     alignX = { validate = validate_alignment, default = 'start' },
     alignY = { validate = validate_alignment, default = 'start' },
     skin = { type = 'table' },
@@ -149,6 +172,12 @@ local DRAWABLE_SCHEMA = {
     borderOpacity = { validate = function(key, value, ctx, level)
         return check_opacity(key, value, level)
     end },
+    borderWidth = { validate = function(key, value, ctx, level)
+        return SideQuad.normalize(value, {
+            label = key,
+            validate_member = check_non_negative,
+        }, level)
+    end },
     borderWidthTop = { validate = function(key, value, ctx, level)
         return check_non_negative(key, value, level)
     end },
@@ -176,6 +205,12 @@ local DRAWABLE_SCHEMA = {
     end },
 
     -- corner radius
+    cornerRadius = { validate = function(key, value, ctx, level)
+        return CornerQuad.normalize(value, {
+            label = key,
+            validate_member = check_non_negative,
+        }, level)
+    end },
     cornerRadiusTopLeft = { validate = function(key, value, ctx, level)
         return check_non_negative(key, value, level)
     end },
