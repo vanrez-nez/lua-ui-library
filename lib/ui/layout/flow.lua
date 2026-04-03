@@ -3,6 +3,7 @@ local LayoutNode = require('lib.ui.layout.layout_node')
 local Types = require('lib.ui.utils.types')
 local MathUtils = require('lib.ui.utils.math')
 local Rectangle = require('lib.ui.core.rectangle')
+local LayoutSpacing = require('lib.ui.layout.spacing')
 
 local max = math.max
 local clamp_number = MathUtils.clamp_number
@@ -166,6 +167,16 @@ local function measure_entry(entry, stage, available_width, available_height,
     child:_refresh_if_dirty()
     entry.width = get_axis_size(child, 'width')
     entry.height = get_axis_size(child, 'height')
+    entry.outer_width = LayoutSpacing.get_outer_size(
+        entry.width,
+        entry.margin.left,
+        entry.margin.right
+    )
+    entry.outer_height = LayoutSpacing.get_outer_size(
+        entry.height,
+        entry.margin.top,
+        entry.margin.bottom
+    )
     return entry
 end
 
@@ -191,11 +202,16 @@ local function assert_no_circular_dependency(self, child)
 end
 
 local function make_entry(child)
+    local margin = LayoutSpacing.get_effective_margin(child)
+
     return {
         child = child,
         values = rawget(child, '_effective_values') or {},
+        margin = margin,
         width = 0,
         height = 0,
+        outer_width = LayoutSpacing.get_outer_size(0, margin.left, margin.right),
+        outer_height = LayoutSpacing.get_outer_size(0, margin.top, margin.bottom),
         pack_width = 0,
     }
 end
@@ -204,7 +220,7 @@ local function refresh_row_height(row)
     local height = 0
 
     for index = 1, #row.entries do
-        height = max(height, row.entries[index].height or 0)
+        height = max(height, row.entries[index].outer_height or 0)
     end
 
     row.height = height
@@ -245,7 +261,7 @@ local function build_rows(entries, available_width, gap, wrap)
 
         row.entries[#row.entries + 1] = entry
         row.pack_width = next_width
-        row.height = max(row.height or 0, entry.height or 0)
+        row.height = max(row.height or 0, entry.outer_height or 0)
     end
 
     return rows
@@ -406,7 +422,7 @@ function Flow:_apply_layout(stage)
 
                 local entry = make_entry(child)
                 measure_entry(entry, stage, available_width, available_height)
-                entry.pack_width = entry.width
+                entry.pack_width = entry.outer_width
                 visible_entries[#visible_entries + 1] = entry
             else
                 invisible_children[#invisible_children + 1] = child
@@ -443,7 +459,6 @@ function Flow:_apply_layout(stage)
             local between_gap
 
             if use_last_row_alignment and row_index == #rows then
-                -- The last wrapped row aligns by Flow.align and keeps the declared gap.
                 base_x, between_gap = resolve_last_row_alignment(
                     align,
                     available_width,
@@ -466,10 +481,13 @@ function Flow:_apply_layout(stage)
                 local entry = row.entries[entry_index]
                 local child = entry.child
 
-                child:_set_layout_offset(content_rect.x + x_cursor, content_rect.y + y_cursor)
+                child:_set_layout_offset(
+                    content_rect.x + x_cursor + entry.margin.left,
+                    content_rect.y + y_cursor + entry.margin.top
+                )
                 child:_refresh_if_dirty()
 
-                x_cursor = x_cursor + (entry.width or 0)
+                x_cursor = x_cursor + (entry.outer_width or 0)
 
                 if entry_index < #row.entries then
                     x_cursor = x_cursor + between_gap

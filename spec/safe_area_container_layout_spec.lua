@@ -216,6 +216,37 @@ local function run_safe_area_change_tests()
     stage:destroy()
 end
 
+local function run_safe_area_margin_composition_tests()
+    local stage = UI.Stage.new({
+        width = 300,
+        height = 200,
+        safeAreaInsets = { 20, 30, 40, 10 },
+    })
+    local safe = UI.SafeAreaContainer.new({
+        width = 300,
+        height = 200,
+        padding = { 3, 4, 5, 6 },
+    })
+    local child = UI.Drawable.new({
+        width = 20,
+        height = 10,
+        margin = { 5, 6, 7, 8 },
+    })
+
+    safe:addChild(child)
+    stage.baseSceneLayer:addChild(safe)
+    stage:update()
+
+    local child_x, child_y = get_world_origin(child)
+
+    assert_equal(child_x, 24,
+        'SafeAreaContainer should apply child margin after safe-area and padding reduction on the x axis')
+    assert_equal(child_y, 28,
+        'SafeAreaContainer should apply child margin after safe-area and padding reduction on the y axis')
+
+    stage:destroy()
+end
+
 local M = {}
 
 function M.run()
@@ -223,6 +254,7 @@ function M.run()
     run_zero_inset_and_passthrough_tests()
     run_nested_safe_area_tests()
     run_safe_area_change_tests()
+    run_safe_area_margin_composition_tests()
 end
 
 return M

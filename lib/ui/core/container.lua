@@ -1745,6 +1745,7 @@ function Container:_initialize(opts, extra_public_keys, config)
 
     rawset(self, '_public_values', initial_values)
     rawset(self, '_effective_values', Utils.copy_table(initial_values))
+    refresh_effective_values(self)
 
     if initial_values.responsive ~= nil and initial_values.breakpoints ~= nil then
         Assert.fail('Supplying responsive and breakpoints together at construction should fail')

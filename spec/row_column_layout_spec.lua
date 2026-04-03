@@ -11,6 +11,10 @@ local function make_box(width, height, opts)
     opts = opts or {}
     opts.width = width
     opts.height = height
+    if opts.margin ~= nil or opts.marginTop ~= nil or opts.marginRight ~= nil or
+        opts.marginBottom ~= nil or opts.marginLeft ~= nil then
+        return UI.Drawable.new(opts)
+    end
     return UI.Container.new(opts)
 end
 
@@ -195,6 +199,80 @@ local function run_column_layout_tests()
     stage:destroy()
 end
 
+local function run_margin_consumption_tests()
+    local stage = UI.Stage.new({
+        width = 320,
+        height = 240,
+    })
+    local row = UI.Row.new({
+        width = 200,
+        height = 40,
+        gap = 8,
+    })
+    local first = make_box(20, 10, {
+        interactive = true,
+        marginRight = 10,
+    })
+    local second = make_box(20, 10, {
+        interactive = true,
+        marginLeft = 5,
+    })
+    local overlap_row = UI.Row.new({
+        y = 60,
+        width = 200,
+        height = 40,
+        gap = 0,
+    })
+    local overlap_first = make_box(20, 10, {
+        marginRight = -10,
+    })
+    local overlap_second = make_box(20, 10, {
+        marginLeft = 5,
+    })
+    local column = UI.Column.new({
+        y = 120,
+        width = 60,
+        height = 120,
+        gap = 8,
+    })
+    local top = make_box(20, 20, {
+        marginBottom = 10,
+    })
+    local bottom = make_box(20, 20, {
+        marginTop = 5,
+    })
+
+    row:addChild(first)
+    row:addChild(second)
+    overlap_row:addChild(overlap_first)
+    overlap_row:addChild(overlap_second)
+    column:addChild(top)
+    column:addChild(bottom)
+    stage.baseSceneLayer:addChild(row)
+    stage.baseSceneLayer:addChild(overlap_row)
+    stage.baseSceneLayer:addChild(column)
+    stage:update()
+
+    local second_x, second_y = get_world_origin(second)
+    local overlap_second_x = get_world_origin(overlap_second)
+    local bottom_x, bottom_y = get_world_origin(bottom)
+
+    assert_equal(second_x, 43,
+        'Row should compose trailing margin, gap, and leading margin between adjacent border boxes')
+    assert_equal(second_y, 0,
+        'Row margin consumption should not alter the first row baseline')
+    assert_equal(row:_hit_test(30, 5), nil,
+        'Row margin and gap spacing should not expand child hit regions')
+    assert_equal(overlap_second_x, 15,
+        'Row should preserve negative resolved spacing as valid overlap')
+    assert_equal(bottom_x, 0,
+        'Column should keep cross-axis placement unchanged when consuming vertical margin')
+    assert_equal(bottom_y, 163,
+        'Column should compose bottom margin, gap, and top margin between adjacent border boxes')
+
+    stage:destroy()
+end
+
 local function run_nested_world_offset_read_tests()
     local stage = UI.Stage.new({
         width = 1024,
@@ -332,6 +410,7 @@ local function run()
     run_wrap_and_stretch_tests()
     run_nested_layout_measurement_tests()
     run_column_layout_tests()
+    run_margin_consumption_tests()
     run_nested_world_offset_read_tests()
     run_circular_dependency_tests()
 end

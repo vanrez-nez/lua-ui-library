@@ -241,10 +241,59 @@ local function run_empty_hidden_and_clip_tests()
     stage:destroy()
 end
 
+local function run_margin_consumption_tests()
+    local stage = UI.Stage.new({
+        width = 200,
+        height = 120,
+    })
+    local stack = UI.Stack.new({
+        width = 'content',
+        height = 'content',
+        padding = 10,
+    })
+    local visible = UI.Drawable.new({
+        tag = 'visible',
+        interactive = true,
+        width = 20,
+        height = 10,
+        marginLeft = -20,
+        marginTop = 5,
+        marginRight = 10,
+        marginBottom = 15,
+    })
+    local hidden = UI.Drawable.new({
+        visible = false,
+        width = 10,
+        height = 10,
+        margin = 100,
+    })
+
+    stack:addChild(visible)
+    stack:addChild(hidden)
+    stage.baseSceneLayer:addChild(stack)
+    stage:update()
+
+    assert_equal(stack:getLocalBounds().width, 30,
+        'Stack content sizing should measure visible children by their outer footprint')
+    assert_equal(stack:getLocalBounds().height, 50,
+        'Stack content sizing should include visible child margin in the measured footprint')
+    assert_equal(visible:getWorldBounds().x, -10,
+        'Stack should allow negative left margin to expand the child placement region before clipping')
+    assert_equal(visible:getWorldBounds().y, 15,
+        'Stack should apply top margin when resolving the child placement region')
+    assert_equal(stack:_hit_test(-5, 20), visible,
+        'Stack negative margins should move the child border box itself for hit testing')
+    assert_nil(stack:_hit_test(15, 20),
+        'Stack child margin should not create hit area outside the child border box')
+
+    stage:destroy()
+end
+
 local function run()
     run_content_box_placement_tests()
     run_layering_and_hit_resolution_tests()
     run_empty_hidden_and_clip_tests()
+    run_margin_consumption_tests()
 end
 
 return {

@@ -11,6 +11,10 @@ local function make_box(width, height, opts)
     opts = opts or {}
     opts.width = width
     opts.height = height
+    if opts.margin ~= nil or opts.marginTop ~= nil or opts.marginRight ~= nil or
+        opts.marginBottom ~= nil or opts.marginLeft ~= nil then
+        return UI.Drawable.new(opts)
+    end
     return UI.Container.new(opts)
 end
 
@@ -108,7 +112,11 @@ local function run_overflow_and_visibility_tests()
     local overflow_first = make_box(60, 10)
     local overflow_second = make_box(60, 10)
     local visible_first = make_box(20, 10)
-    local hidden = make_box(30, 10, { visible = false })
+    local hidden = make_box(30, 10, {
+        visible = false,
+        marginLeft = 50,
+        marginRight = 60,
+    })
     local visible_second = make_box(20, 10)
 
     overflow_flow:addChild(overflow_first)
@@ -189,10 +197,49 @@ local function run_oversized_child_tests()
     stage:destroy()
 end
 
+local function run_margin_wrap_tests()
+    local stage = UI.Stage.new({
+        width = 320,
+        height = 240,
+    })
+    local flow = UI.Flow.new({
+        width = 50,
+        height = 60,
+        gap = 0,
+        wrap = true,
+    })
+    local first = make_box(20, 10, {
+        marginRight = 10,
+    })
+    local second = make_box(20, 10, {
+        marginLeft = 5,
+    })
+
+    flow:addChild(first)
+    flow:addChild(second)
+    stage.baseSceneLayer:addChild(flow)
+    stage:update()
+
+    local first_x, first_y = get_world_origin(first)
+    local second_x, second_y = get_world_origin(second)
+
+    assert_equal(first_x, 0,
+        'Flow should keep the first child at the content origin when consuming child margin')
+    assert_equal(first_y, 0,
+        'Flow should keep the first row baseline at the content origin')
+    assert_equal(second_x, 5,
+        'Flow should place wrapped children after their leading horizontal margin')
+    assert_equal(second_y, 10,
+        'Flow wrapping should advance by the prior row outer footprint')
+
+    stage:destroy()
+end
+
 local function run()
     run_last_row_alignment_tests()
     run_overflow_and_visibility_tests()
     run_oversized_child_tests()
+    run_margin_wrap_tests()
 end
 
 return {

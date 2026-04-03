@@ -1,6 +1,6 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
-local Insets = require('lib.ui.core.insets')
+local SpacingSchema = require('lib.ui.core.spacing_schema')
 
 local JUSTIFY_VALUES = {
     start = true,
@@ -18,16 +18,44 @@ local ALIGN_VALUES = {
 }
 
 local LAYOUT_NODE_SCHEMA = {
-    gap = { type = 'number', default = 0, set = function(ctx) ctx:markDirty() end },
-    padding = { 
-        validate = function(key, value) return Insets.normalize(value) end, 
+    gap = {
+        validate = function(key, value, ctx, level)
+            return SpacingSchema.check_non_negative_finite(key, value, level)
+        end,
         default = 0,
         set = function(ctx) ctx:markDirty() end
     },
-    paddingTop = { type = 'number', set = function(ctx) ctx:markDirty() end },
-    paddingRight = { type = 'number', set = function(ctx) ctx:markDirty() end },
-    paddingBottom = { type = 'number', set = function(ctx) ctx:markDirty() end },
-    paddingLeft = { type = 'number', set = function(ctx) ctx:markDirty() end },
+    padding = {
+        validate = function(key, value, ctx, level)
+            return SpacingSchema.normalize_padding(key, value, level)
+        end,
+        default = 0,
+        set = function(ctx) ctx:markDirty() end
+    },
+    paddingTop = {
+        validate = function(key, value, ctx, level)
+            return SpacingSchema.check_non_negative_finite(key, value, level)
+        end,
+        set = function(ctx) ctx:markDirty() end
+    },
+    paddingRight = {
+        validate = function(key, value, ctx, level)
+            return SpacingSchema.check_non_negative_finite(key, value, level)
+        end,
+        set = function(ctx) ctx:markDirty() end
+    },
+    paddingBottom = {
+        validate = function(key, value, ctx, level)
+            return SpacingSchema.check_non_negative_finite(key, value, level)
+        end,
+        set = function(ctx) ctx:markDirty() end
+    },
+    paddingLeft = {
+        validate = function(key, value, ctx, level)
+            return SpacingSchema.check_non_negative_finite(key, value, level)
+        end,
+        set = function(ctx) ctx:markDirty() end
+    },
     wrap = { type = 'boolean', default = false, set = function(ctx) ctx:markDirty() end },
     justify = { 
         validate = function(key, value, ctx, level)

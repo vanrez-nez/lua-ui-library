@@ -3,6 +3,7 @@ local LayoutNode = require('lib.ui.layout.layout_node')
 local Types = require('lib.ui.utils.types')
 local MathUtils = require('lib.ui.utils.math')
 local Rectangle = require('lib.ui.core.rectangle')
+local LayoutSpacing = require('lib.ui.layout.spacing')
 
 local max = math.max
 local clamp_number = MathUtils.clamp_number
@@ -168,11 +169,25 @@ local function resolve_axis(value, available, min_value, max_value, config, axis
     )
 end
 
+local function refresh_entry_outer_sizes(entry)
+    entry.outer_main = LayoutSpacing.get_outer_size(
+        entry.final_main,
+        entry.main_leading,
+        entry.main_trailing
+    )
+    entry.outer_cross = LayoutSpacing.get_outer_size(
+        entry.final_cross,
+        entry.cross_leading,
+        entry.cross_trailing
+    )
+    return entry
+end
+
 local function get_line_main_extent(line, gap)
     local total = 0
 
     for index = 1, #line.entries do
-        total = total + (line.entries[index].final_main or 0)
+        total = total + (line.entries[index].outer_main or 0)
     end
 
     if #line.entries > 1 then
@@ -186,7 +201,7 @@ local function refresh_line_cross_extent(line)
     local cross_extent = 0
 
     for index = 1, #line.entries do
-        cross_extent = max(cross_extent, line.entries[index].final_cross or 0)
+        cross_extent = max(cross_extent, line.entries[index].outer_cross or 0)
     end
 
     line.cross_extent = cross_extent
@@ -238,6 +253,7 @@ local function measure_entry(entry, stage, config, available_main, available_cro
 
     entry.final_main = get_axis_size(child, config.main_size_key)
     entry.final_cross = get_axis_size(child, config.cross_size_key)
+    refresh_entry_outer_sizes(entry)
 
     return entry
 end
@@ -272,12 +288,23 @@ local function assert_no_circular_dependency(self, child, config, align)
     end
 end
 
-local function make_entry(child)
+local function make_entry(child, config)
+    local margin = LayoutSpacing.get_effective_margin(child)
+    local main_leading, main_trailing, cross_leading, cross_trailing =
+        LayoutSpacing.resolve_axis_margins(margin, config.main_size_key)
+
     return {
         child = child,
         values = rawget(child, '_effective_values') or {},
+        margin = margin,
+        main_leading = main_leading,
+        main_trailing = main_trailing,
+        cross_leading = cross_leading,
+        cross_trailing = cross_trailing,
         final_main = 0,
         final_cross = 0,
+        outer_main = LayoutSpacing.get_outer_size(0, main_leading, main_trailing),
+        outer_cross = LayoutSpacing.get_outer_size(0, cross_leading, cross_trailing),
     }
 end
 
@@ -323,6 +350,7 @@ end
 
 local function allocate_fill_sizes(line, available_main, gap, config)
     local fixed_extent = 0
+    local fill_margin_extent = 0
     local fill_entries = {}
 
     for index = 1, #line.entries do
@@ -330,8 +358,11 @@ local function allocate_fill_sizes(line, available_main, gap, config)
 
         if entry.values[config.main_size_key] == 'fill' then
             fill_entries[#fill_entries + 1] = entry
+            fill_margin_extent = fill_margin_extent +
+                entry.main_leading +
+                entry.main_trailing
         else
-            fixed_extent = fixed_extent + (entry.final_main or 0)
+            fixed_extent = fixed_extent + (entry.outer_main or 0)
         end
     end
 
@@ -339,7 +370,7 @@ local function allocate_fill_sizes(line, available_main, gap, config)
         return line
     end
 
-    local remaining = available_main - fixed_extent
+    local remaining = available_main - fixed_extent - fill_margin_extent
 
     if #line.entries > 1 then
         remaining = remaining - gap * (#line.entries - 1)
@@ -369,6 +400,7 @@ local function allocate_fill_sizes(line, available_main, gap, config)
             if resolved ~= share then
                 entry.final_main = resolved
                 available_remaining = available_remaining - resolved
+                refresh_entry_outer_sizes(entry)
                 table.remove(unresolved, index)
                 clamped = true
             end
@@ -391,6 +423,7 @@ local function allocate_fill_sizes(line, available_main, gap, config)
                 values[config.main_min_key],
                 values[config.main_max_key]
             )
+            refresh_entry_outer_sizes(entry)
         end
     end
 
@@ -544,18 +577,20 @@ function SequentialLayout.apply(self, stage, config)
             if child_is_visible(child) then
                 assert_no_circular_dependency(self, child, config, align)
 
-                local entry = make_entry(child)
+                local entry = make_entry(child, config)
                 local main_value = entry.values[config.main_size_key]
 
                 if main_value == 'fill' then
-                    entry.pack_main = clamp_number(
+                    entry.final_main = clamp_number(
                         0,
                         entry.values[config.main_min_key],
                         entry.values[config.main_max_key]
                     )
+                    refresh_entry_outer_sizes(entry)
+                    entry.pack_main = entry.outer_main
                 else
                     measure_entry(entry, stage, config, available_main, available_cross)
-                    entry.pack_main = entry.final_main
+                    entry.pack_main = entry.outer_main
                 end
 
                 visible_entries[#visible_entries + 1] = entry
@@ -606,7 +641,7 @@ function SequentialLayout.apply(self, stage, config)
                         available_main,
                         available_cross,
                         entry.final_main,
-                        stretch_cross
+                        max(0, stretch_cross - entry.cross_leading - entry.cross_trailing)
                     )
                 end
             end
@@ -661,7 +696,7 @@ function SequentialLayout.apply(self, stage, config)
             for entry_index = 1, #line.entries do
                 local entry = line.entries[entry_index]
                 local child = entry.child
-                local cross_position = cross_cursor
+                local cross_position = cross_cursor + entry.cross_leading
                 local available_line_cross = line.cross_extent or 0
 
                 if not wrap then
@@ -669,17 +704,22 @@ function SequentialLayout.apply(self, stage, config)
                 end
 
                 if align == 'center' then
-                    cross_position = cross_position +
-                        (available_line_cross - (entry.final_cross or 0)) / 2
+                    cross_position = cross_cursor +
+                        ((available_line_cross - (entry.outer_cross or 0)) / 2) +
+                        entry.cross_leading
                 elseif align == 'end' then
-                    cross_position = cross_position +
-                        (available_line_cross - (entry.final_cross or 0))
+                    cross_position = cross_cursor +
+                        (available_line_cross - (entry.outer_cross or 0)) +
+                        entry.cross_leading
                 end
 
-                local main_position = main_cursor
+                local main_position = main_cursor + entry.main_leading
 
                 if config.kind == 'Row' and direction == 'rtl' then
-                    main_position = available_main - main_cursor - (entry.final_main or 0)
+                    main_position = available_main -
+                        main_cursor -
+                        (entry.outer_main or 0) +
+                        entry.main_leading
                 end
 
                 local offset_x = content_rect.x
@@ -696,7 +736,7 @@ function SequentialLayout.apply(self, stage, config)
                 child:_set_layout_offset(offset_x, offset_y)
                 child:_refresh_if_dirty()
 
-                main_cursor = main_cursor + (entry.final_main or 0)
+                main_cursor = main_cursor + (entry.outer_main or 0)
 
                 if entry_index < #line.entries then
                     main_cursor = main_cursor + between_gap

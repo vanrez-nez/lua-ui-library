@@ -2,6 +2,7 @@ local Assert = require('lib.ui.utils.assert')
 local Container = require('lib.ui.core.container')
 local LayoutNode = require('lib.ui.layout.layout_node')
 local Rectangle = require('lib.ui.core.rectangle')
+local LayoutSpacing = require('lib.ui.layout.spacing')
 
 local max = math.max
 local min = math.min
@@ -67,7 +68,10 @@ local function place_children(self, content_rect)
 
     for index = 1, #children do
         local child = children[index]
-        child:_set_layout_offset(content_rect.x, content_rect.y)
+        local margin = LayoutSpacing.get_effective_margin(child)
+        local offset_x, offset_y =
+            LayoutSpacing.resolve_stack_layout_offset(content_rect, child, margin)
+        child:_set_layout_offset(offset_x, offset_y)
         child:_refresh_if_dirty()
     end
 
@@ -81,15 +85,21 @@ local function measure_content_extent(children, content_rect)
         local child = children[index]
 
         if child_is_visible(child) then
-            local bounds = get_child_parent_local_bounds(child):translate(
-                -content_rect.x,
-                -content_rect.y
+            local margin = LayoutSpacing.get_effective_margin(child)
+            local bounds = get_child_parent_local_bounds(child)
+            local left, top, right, bottom =
+                LayoutSpacing.resolve_outer_edges(bounds, margin)
+            local outer_bounds = Rectangle.from_edges(
+                left - content_rect.x,
+                top - content_rect.y,
+                right - content_rect.x,
+                bottom - content_rect.y
             )
 
             if content_bounds == nil then
-                content_bounds = bounds
+                content_bounds = outer_bounds
             else
-                content_bounds = content_bounds:union(bounds)
+                content_bounds = content_bounds:union(outer_bounds)
             end
         end
     end

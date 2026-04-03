@@ -1,12 +1,12 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
-local Insets = require('lib.ui.core.insets')
 local SideQuad = require('lib.ui.core.side_quad')
 local CornerQuad = require('lib.ui.core.corner_quad')
 local Motion = require('lib.ui.motion')
 local Color = require('lib.ui.render.color')
 local Texture = require('lib.ui.graphics.texture')
 local Sprite = require('lib.ui.graphics.sprite')
+local SpacingSchema = require('lib.ui.core.spacing_schema')
 
 local ALIGNMENT_VALUES = {
     start = true,
@@ -32,15 +32,7 @@ local function resolve_color(key, value, level)
     return Color.resolve(value)
 end
 
-local function check_finite_number(key, value, level)
-    if not Types.is_number(value) then
-        Assert.fail(key .. ' must be a number', level or 1)
-    end
-    if value ~= value or value == math.huge or value == -math.huge then
-        Assert.fail(key .. ' must be finite, got ' .. tostring(value), level or 1)
-    end
-    return value
-end
+local check_finite_number = SpacingSchema.check_finite_number
 
 local function check_opacity(key, value, level)
     check_finite_number(key, value, level)
@@ -73,30 +65,37 @@ local function check_enum(key, value, allowed, level)
     )
 end
 
-local function normalize_spacing_quad(label, value, level)
-    return SideQuad.normalize(value, {
-        label = label,
-        factory = function(top, right, bottom, left)
-            return Insets.new(top, right, bottom, left)
-        end,
-    }, level or 1)
-end
-
 local DRAWABLE_SCHEMA = {
     padding = { validate = function(key, value, ctx, level)
-        return normalize_spacing_quad(key, value, level)
+        return SpacingSchema.normalize_padding(key, value, level)
     end, default = 0 },
-    paddingTop = { type = 'number' },
-    paddingRight = { type = 'number' },
-    paddingBottom = { type = 'number' },
-    paddingLeft = { type = 'number' },
+    paddingTop = { validate = function(key, value, ctx, level)
+        return check_non_negative(key, value, level)
+    end },
+    paddingRight = { validate = function(key, value, ctx, level)
+        return check_non_negative(key, value, level)
+    end },
+    paddingBottom = { validate = function(key, value, ctx, level)
+        return check_non_negative(key, value, level)
+    end },
+    paddingLeft = { validate = function(key, value, ctx, level)
+        return check_non_negative(key, value, level)
+    end },
     margin = { validate = function(key, value, ctx, level)
-        return normalize_spacing_quad(key, value, level)
+        return SpacingSchema.normalize_margin(key, value, level)
     end, default = 0 },
-    marginTop = { type = 'number' },
-    marginRight = { type = 'number' },
-    marginBottom = { type = 'number' },
-    marginLeft = { type = 'number' },
+    marginTop = { validate = function(key, value, ctx, level)
+        return check_finite_number(key, value, level)
+    end },
+    marginRight = { validate = function(key, value, ctx, level)
+        return check_finite_number(key, value, level)
+    end },
+    marginBottom = { validate = function(key, value, ctx, level)
+        return check_finite_number(key, value, level)
+    end },
+    marginLeft = { validate = function(key, value, ctx, level)
+        return check_finite_number(key, value, level)
+    end },
     alignX = { validate = validate_alignment, default = 'start' },
     alignY = { validate = validate_alignment, default = 'start' },
     skin = { type = 'table' },
