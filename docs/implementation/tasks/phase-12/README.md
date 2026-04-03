@@ -1,5 +1,10 @@
 # Phase 12 Task Set
 
+Historical note: this task set predates the Phase 16 quad-normalization model.
+Use `docs/implementation/tasks/phase-16/README.md` for current execution
+guidance. If this file conflicts with the current spec or Phase 16 docs, treat
+this file as historical context only.
+
 Source implementation document for this phase:
 
 - `docs/implementation/phase-12-styling-schema.md`
@@ -17,7 +22,7 @@ Authority rules for this phase:
 Settled decisions that control this task set:
 
 - All new properties are optional at the schema level. A nil value is valid for every property in this phase — it signals "not set at the instance level" and falls through to skin, token, or library default during Phase 14 resolution.
-- No shorthand aliases are introduced in this phase. There is no `borderWidth` covering all four sides, no `cornerRadius` covering all four corners, no `background` group. The spec defines flat properties only.
+- Historical only: this task set originally assumed no quad-family aggregate props. The current spec now defines aggregate `borderWidth` and `cornerRadius`, plus shared quad-family normalization in Foundation.
 - Color validation runs at assignment time via `Color.resolve`. The resolved form is stored, not the raw input. This means downstream rendering never needs to re-normalize color inputs.
 - The schema does not validate that only one background source is set. That is a rendering concern belonging to Phase 13 source selection. Setting both `backgroundColor` and `backgroundGradient` is not a schema error.
 - `backgroundGradient` validation is structural: the table must have the correct shape, `kind` must be `"linear"`, `direction` must be a documented value, and `colors` must contain at least two valid color inputs. Structural violations are hard failures.

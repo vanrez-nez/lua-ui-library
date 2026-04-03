@@ -1,5 +1,8 @@
 # Task 03: Corner Radius And Shadow Properties
 
+Historical note: this task file predates the Phase 16 quad-normalization model.
+For the current contract, see `docs/implementation/tasks/phase-16/README.md`.
+
 ## Goal
 
 Add the four corner radius properties and the six shadow properties to `drawable_schema.lua`. Corner radius and shadow blur must enforce the non-negative constraint. Shadow color and opacity follow the same pattern as background and border color/opacity. `shadowInset` is a boolean.
@@ -26,7 +29,7 @@ Add the four corner radius properties and the six shadow properties to `drawable
 
 **`cornerRadiusTopLeft`, `cornerRadiusTopRight`, `cornerRadiusBottomRight`, `cornerRadiusBottomLeft`:**
 
-Each is numeric and must be `>= 0`. Negative values are hard failures. Zero is valid and means no rounding at that corner. Each corner is fully independent. There is no combined shorthand that sets all four.
+Each is numeric and must be `>= 0`. Negative values are hard failures. Zero is valid and means no rounding at that corner. This file originally assumed corner-only props; the current spec also defines aggregate `cornerRadius` using the shared `CornerQuad input` contract.
 
 The overflow protection described in the spec — where adjacent radii on one side exceed the side's available length — is a rendering concern that belongs in Phase 13. The schema does not validate radii against bounds because bounds are not known at assignment time.
 
@@ -79,7 +82,7 @@ Place the four corner radius entries as a contiguous block preceded by a `-- cor
 
 ## Non-Goals
 
-- No shorthand `cornerRadius` that sets all four corners. The spec does not define one.
+- Historical only: the current spec now defines aggregate `cornerRadius` using the shared `CornerQuad input` contract.
 - No shadow spread property — the spec explicitly excludes it from this revision.
 - No multiple simultaneous shadows — the spec limits to one shadow per node in this revision.
 - No bounds-aware overflow validation — that is Phase 13's responsibility.

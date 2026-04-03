@@ -1,5 +1,8 @@
 # Task 02: Border Properties
 
+Historical note: this task file predates the Phase 16 quad-normalization model.
+For the current contract, see `docs/implementation/tasks/phase-16/README.md`.
+
 ## Goal
 
 Add all nine border styling properties to `drawable_schema.lua`. Width properties must enforce the non-negative constraint. Enum properties must enforce their closed value sets. `borderMiterLimit` must be validated only when present and must be greater than zero.
@@ -34,7 +37,7 @@ Numeric, must be in `[0, 1]`. Identical range validation as `backgroundOpacity`.
 
 **`borderWidthTop`, `borderWidthRight`, `borderWidthBottom`, `borderWidthLeft`:**
 
-Each is numeric and must be `>= 0`. The spec says widths must be finite and not negative. A negative value is a hard failure. Zero is valid — a zero-width side simply paints nothing. All four are independent; there is no combined shorthand.
+Each is numeric and must be `>= 0`. The spec says widths must be finite and not negative. A negative value is a hard failure. Zero is valid — a zero-width side simply paints nothing. This file originally assumed side-only widths; the current spec also defines aggregate `borderWidth` using the shared `SideQuad input` contract.
 
 **`borderStyle`:**
 
@@ -79,7 +82,7 @@ Place all nine entries as a contiguous block preceded by a `-- border` comment.
 
 ## Non-Goals
 
-- No `borderWidth` shorthand covering all four sides. The spec does not define one.
+- Historical only: the current spec now defines aggregate `borderWidth` using the shared `SideQuad input` contract.
 - No stroke dash or stipple properties — the spec explicitly excludes dashed-line patterns from this revision.
 - No rendering logic.
 

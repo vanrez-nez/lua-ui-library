@@ -1,5 +1,11 @@
 # Phase 12: Drawable Styling Schema
 
+Historical note: this phase document predates the Phase 16 quad-normalization
+model. For current execution guidance, follow
+`docs/implementation/phase-16-quad-normalization.md` and
+`docs/implementation/tasks/phase-16/README.md`. Where this document conflicts
+with the current spec, the current spec and Phase 16 docs win.
+
 ## Purpose
 
 Extend the Drawable schema with all flat styling properties defined by the styling spec. This phase adds the public property surface only — no rendering logic. Rendering is covered in Phase 13.
@@ -110,7 +116,7 @@ Add to the existing schema validator. All properties are optional but when prese
 ## Key Normalizations
 
 - These properties sit at precedence level 1 in the styling resolution cascade (direct instance property). They do not replace the skin/token system — they override it per-property only.
-- No shorthand aliases are introduced (e.g., no `borderWidth` shorthand for all four sides). The spec does not define any.
+- Historical only: this phase originally assumed no quad-family aggregate props. The current spec now defines aggregate `borderWidth` and `cornerRadius`, plus shared quad-family normalization in Foundation.
 - The schema does not validate that only one background source is set — that is a rendering concern resolved at paint time by source selection priority.
 
 ---

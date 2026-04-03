@@ -1,8 +1,12 @@
 # Task 01: STYLING_KEYS Constant
 
+Historical note: this task file predates the Phase 16 quad-normalization model
+and the later extraction of `lib/ui/render/styling_contract.lua`. For current
+execution guidance, see `docs/implementation/tasks/phase-16/README.md`.
+
 ## Goal
 
-Define `STYLING_KEYS` as a module-level constant — a sequential table listing all 29 styling property names introduced in Phase 12. This constant drives the props assembly loop in the next task and must be complete, ordered by property group, and accurate.
+Define `STYLING_KEYS` as a module-level constant — a sequential table listing the styling property names introduced in Phase 12. This was the original plan before the project adopted shared quad-family contracts and moved the stable property vocabulary into `lib/ui/render/styling_contract.lua`.
 
 ## Spec Anchors
 
@@ -28,7 +32,7 @@ Define `STYLING_KEYS` as a local constant at the module level, before any functi
 
 **Contents:**
 
-The constant must contain exactly these 29 keys, in this order (grouped by property family):
+Historical only: this older task enumerates the pre-Phase-16 flat-only property set.
 
 Background (10):
 `backgroundColor`, `backgroundOpacity`, `backgroundGradient`, `backgroundImage`,
