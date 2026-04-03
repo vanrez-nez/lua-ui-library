@@ -6,9 +6,9 @@ Implement `Flow` as the fluid reading-order layout primitive without adding unsu
 
 ## Spec Anchors
 
-- `docs/spec/ui-foundation-spec.md §6.2.7 Flow`
-- `docs/spec/ui-foundation-spec.md §6.2.2 Common props`
-- `docs/spec/ui-foundation-spec.md §6.2.3 Common state model`
+- `docs/spec/ui-layout-spec.md §4.2 Common props`
+- `docs/spec/ui-layout-spec.md §4.3 Common state model`
+- `docs/spec/ui-layout-spec.md §8 Flow`
 
 ## Scope
 
@@ -22,6 +22,8 @@ Implement `Flow` as the fluid reading-order layout primitive without adding unsu
 
 - Flow places children in reading order.
 - When `wrap = true`, it wraps to a new row when remaining space is insufficient.
+- Flow consumes child margin when wrapping, measuring rows, and placing
+  children.
 - When `wrap = false`, overflow remains valid without wrapping.
 - The last row of a wrapped flow aligns to the `align` value and is not stretched to fill available space.
 - Invisible children do not occupy space in the flow.

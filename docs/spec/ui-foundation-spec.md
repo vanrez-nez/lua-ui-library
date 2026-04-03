@@ -1017,7 +1017,6 @@ Trace note: added the degenerate-clip case explicitly so implementation plans do
 `Drawable` must:
 
 - define a content box inside its padding
-- resolve alignment inside its content box
 - participate in the theming and skinning contract
 - participate in inherited render effects
 - provide isolation hooks when required by the render pipeline
@@ -1054,7 +1053,8 @@ for the corresponding `padding` members.
 the corresponding `margin` members.
 
 The authoritative behavioral semantics for `Drawable.padding`,
-`Drawable.padding*`, `Drawable.margin`, and `Drawable.margin*` are defined in
+`Drawable.padding*`, `Drawable.margin`, `Drawable.margin*`, `Drawable.alignX`,
+and `Drawable.alignY` are defined in
 [UI Layout Specification](./ui-layout-spec.md).
 
 **State model**

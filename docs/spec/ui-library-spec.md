@@ -17,7 +17,10 @@ This specification is split into a small set of authoritative documents.
 
 The foundation document defines the shared component model, composition grammar, state model, interaction model, behavioral completeness, contract stability, failure semantics, visual contract, classification taxonomy, identity contract, retained lifecycle and rendering model, runtime model, propagation, focus, responsive contract, render-skin contract, and theming contract.
 
-The layout document defines spacing semantics for `padding` and `margin`, layout-family common behavior, and the authoritative contracts for `Stack`, `Row`, `Column`, `Flow`, and `SafeAreaContainer`.
+The layout document defines spacing semantics for `padding` and `margin`,
+`Drawable` internal content alignment semantics, layout-family common behavior,
+and the authoritative contracts for `Stack`, `Row`, `Column`, `Flow`, and
+`SafeAreaContainer`.
 
 The controls document applies that component model, composition grammar, state model, interaction model, behavioral completeness, contract stability, failure semantics, and visual contract to the concrete control families and defines each control's responsibility boundary, compound structure, public state ownership, interaction callbacks, edge-case behavior, stability tier assignment, failure behavior, and stable visual surfaces on top of the foundation contracts.
 

@@ -6,9 +6,9 @@ Implement `Row` and `Column` as sequential layout primitives while keeping measu
 
 ## Spec Anchors
 
-- `docs/spec/ui-foundation-spec.md §6.2.5 Row`
-- `docs/spec/ui-foundation-spec.md §6.2.6 Column`
-- `docs/spec/ui-foundation-spec.md §6.2.3 Common state model`
+- `docs/spec/ui-layout-spec.md §4.3 Common state model`
+- `docs/spec/ui-layout-spec.md §6 Row`
+- `docs/spec/ui-layout-spec.md §7 Column`
 - `docs/spec/ui-foundation-spec.md §7.3 Responsive Rules`
 
 ## Scope
@@ -21,6 +21,8 @@ Implement `Row` and `Column` as sequential layout primitives while keeping measu
 
 - `Row` places children horizontally, honoring `direction`.
 - `Column` places children vertically.
+- Both consume child margin on the parent side and compose `gap` between margin
+  boxes rather than border boxes.
 - Both apply common layout props and common state model.
 - Overflow without clipping remains valid when `wrap = false` and `clipChildren = false`.
 - Circular measurement dependencies hard-fail deterministically.

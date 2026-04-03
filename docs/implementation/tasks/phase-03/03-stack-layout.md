@@ -6,8 +6,8 @@ Implement `Stack` as the layered layout primitive with no sequential axis and wi
 
 ## Spec Anchors
 
-- `docs/spec/ui-foundation-spec.md §6.2.4 Stack`
-- `docs/spec/ui-foundation-spec.md §6.2.3 Common state model`
+- `docs/spec/ui-layout-spec.md §4.3 Common state model`
+- `docs/spec/ui-layout-spec.md §5 Stack`
 
 ## Scope
 
@@ -20,12 +20,15 @@ Implement `Stack` as the layered layout primitive with no sequential axis and wi
 
 - Children resolve alignment and position independently within the stack content box.
 - Stack does not impose sequential placement.
+- Stack consumes child margin as a parent-side outer-footprint rule.
 - Overlapping children draw in ascending z-order and hit-test in reverse draw order.
 - Children beyond stack bounds clip only when `clipChildren = true`.
 
 ## Settled Boundaries
 
-- If `Stack` supports `width = "content"` by computing a child bounding box, that policy should be treated as implementation-level measurement behavior, not a newly stabilized public promise.
+- If `Stack` supports `width = "content"` by measuring visible child outer
+  footprints, that policy should be treated as implementation-level measurement
+  behavior, not a newly stabilized public promise.
 
 ## Non-Goals
 

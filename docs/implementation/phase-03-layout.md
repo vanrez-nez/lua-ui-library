@@ -4,6 +4,11 @@
 
 Introduce five layout containers — Stack, Row, Column, Flow, SafeAreaContainer — and the measurement/placement pass that sits inside Stage's update cycle. Establish the responsive rule infrastructure (percentage sizing, min/max clamping, declarative breakpoints). After this phase, any consumer can compose fully dynamic, responsive layouts without writing manual position arithmetic.
 
+This document is implementation history, not the current public authority. The
+authoritative layout behavior now lives in `docs/spec/ui-layout-spec.md`, while
+responsive-rule timing and dependency ownership remain in
+`docs/spec/ui-foundation-spec.md`.
+
 ---
 
 ## Dependencies
@@ -38,7 +43,8 @@ Shared measurement helpers:
 - `clipChildren` is available and uses the standard Container dual-path clipping.
 
 **Measurement**
-- Stack's own size is either configured explicitly or resolves to the bounding box of all children when set to "content".
+- Stack's own size is either configured explicitly or resolves from the union of
+  visible child outer footprints when set to `"content"`.
 - Does not impose any size on children; children keep their own configured sizes.
 
 **Properties**
@@ -53,16 +59,22 @@ Shared measurement helpers:
 
 **Behavior**
 - Children placed left-to-right (when `direction = "ltr"`) or right-to-left (when `direction = "rtl"`) in insertion order.
-- `gap` — pixel spacing between each consecutive pair of children.
+- `gap` — non-negative spacing inserted between adjacent child margin boxes.
 - `align` — cross-axis (vertical) alignment for children: start, center, end, stretch.
 - `justify` — main-axis (horizontal) distribution: start, center, end, space-between, space-around.
-- `wrap` (default false) — when true, children that would overflow the row's content-box width wrap to a new line; gap applies between lines as well.
+- `wrap` (default false) — when true, children that would overflow the row's
+  content-box width wrap to a new line; `gap` applies between lines as well.
+- Child margin is consumed by the Row on the parent side only. The resolved
+  distance between adjacent child border boxes is previous trailing margin, plus
+  `gap`, plus next leading margin.
 
 **Measurement**
-- During the layout pass, Row measures each visible child's resolved width and height.
+- During the layout pass, Row measures each visible child's resolved width and
+  height and builds lines from child outer footprints.
 - Children with `width = "fill"` share the remaining space equally after fixed-size and percentage-size children are placed.
-- After measuring all children, Row sets each child's `x` and `y` position within the Row's content box according to justify and align rules.
-- Consumer-set `x`/`y` on children is overwritten by the layout; `anchorX`/`anchorY` are respected within the Row's cross-axis alignment logic.
+- After measuring all children, Row places each child's border box inside its
+  parent-managed outer footprint according to justify, align, margin, and
+  direction rules.
 
 **Properties**
 - `direction` — "ltr" (default) or "rtl".
@@ -80,10 +92,13 @@ Shared measurement helpers:
 **Behavior**
 Identical to Row but along the vertical axis. Children placed top-to-bottom in insertion order.
 
-- `gap` — pixel spacing between each consecutive pair of children.
+- `gap` — non-negative spacing inserted between adjacent child margin boxes.
 - `align` — cross-axis (horizontal) alignment: start, center, end, stretch.
 - `justify` — main-axis (vertical) distribution: start, center, end, space-between, space-around.
 - `wrap` (default false) — when true, children that overflow the column's height wrap to a new column.
+- Child margin is consumed by the Column on the parent side only. The resolved
+  distance between adjacent child border boxes is previous bottom margin, plus
+  `gap`, plus next top margin.
 
 **Measurement**
 Same as Row with axes transposed.
@@ -99,16 +114,19 @@ Same as Row with axes transposed.
 
 **Behavior**
 - Places children in reading order (left-to-right) within the Flow's content-box width.
-- When a child would overflow the current row's remaining width, it wraps to the next row.
-- `wrap` (default true) — setting to false disables wrapping (children extend beyond the content-box width).
-- `gapX` — horizontal gap between children in the same row.
-- `gapY` — vertical gap between rows.
+- When a child would overflow the current row's remaining width, it wraps to the
+  next row using the child's outer footprint.
+- `wrap` (default true) — setting to false disables wrapping (children extend
+  beyond the content-box width).
+- `gap` — non-negative spacing between adjacent child margin boxes in a row and
+  between wrapped rows.
 - Children keep their intrinsic configured sizes; Flow does not resize them.
-- Row height within a Flow row is the maximum height among children in that row.
+- Row height within a Flow row is the maximum outer footprint height among
+  participating children.
+- Invisible children contribute no row width, row height, or margin footprint.
 
 **Properties**
-- `gapX` — number (default 0).
-- `gapY` — number (default 0).
+- `gap` — number (default 0).
 - `wrap` — boolean (default true).
 
 ---
@@ -124,7 +142,9 @@ Same as Row with axes transposed.
   - `applyBottom` (default true)
   - `applyLeft` (default true)
   - `applyRight` (default true)
-- Children are placed within the inset content area. The SafeAreaContainer itself fills its configured size (usually the full viewport).
+- Children are placed within the safe-area-adjusted region after parent padding
+  and then child margin are applied in that order. The SafeAreaContainer itself
+  fills its configured size (usually the full viewport).
 - On desktop, `love.window.getSafeArea()` returns zero insets for all edges, so SafeAreaContainer behaves as a plain Container.
 - Each SafeAreaContainer instance independently queries the same environment-reported safe area — insets are not relative to parent SafeAreaContainers.
 - When no safe area insets are reported (all zero), the container is valid and acts as a passthrough.
@@ -175,7 +195,10 @@ Two Stack containers side by side. Left stack: four children with different zInd
 Row on the left, Column on the right. Each has five visible children with distinct colors and size labels. Number keys toggle through justify modes (start, center, end, space-between, space-around); letter keys toggle align modes (start, center, end, stretch). Gap can be increased/decreased with plus/minus keys. Changes apply live.
 
 **Screen 3 — Flow**
-A Flow with 20 tiles of varying widths. A horizontal drag handle at the bottom of the screen adjusts the Flow's parent width from 150px to the full window width. Plus/minus keys adjust gapX; Shift+plus/minus adjust gapY. A "W" key toggles wrap on/off. The tile placement updates live on every frame as the parent width changes.
+A Flow with 20 tiles of varying widths. A horizontal drag handle at the bottom
+of the screen adjusts the Flow's parent width from 150px to the full window
+width. Plus/minus keys adjust the common `gap`. A "W" key toggles wrap on/off.
+The tile placement updates live on every frame as the parent width changes.
 
 **Screen 4 — SafeAreaContainer**
 A SafeAreaContainer filling the window. Debug rectangles paint the four safe-area inset regions in red. The main content area (inside the insets) is painted green. Per-edge apply flags are toggled with keys T (top), B (bottom), L (left), R (right). On desktop all insets are zero so the entire window is green; the test still exercises the code path and shows the toggle behavior.

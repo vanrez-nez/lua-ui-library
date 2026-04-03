@@ -9,6 +9,7 @@ It owns:
 
 - spacing semantics for `padding` and `margin`
 - spacing interaction rules between child nodes and parents
+- `Drawable` internal content alignment semantics
 - layout-family common props and common state model
 - `Stack`
 - `Row`
@@ -183,12 +184,31 @@ For non-layout parents:
 `Drawable` exposes `padding` and `margin` and participates in the spacing
 contract defined here.
 
+`Drawable.alignX` and `Drawable.alignY` are also layout-owned in the narrow
+sense of internal content alignment: they define how content resolves inside
+the `Drawable` content box, not how a parent places the `Drawable` itself.
+
 `Drawable` must:
 
 - define a content box inside its padding
 - apply its own `padding` when resolving that content box
+- resolve `alignX` and `alignY` inside that content box
 - not apply its own `margin` to itself
 - rely on the parent contract to determine whether `margin` is consumed
+
+`Drawable` internal alignment contract:
+
+- `alignX` and `alignY` apply only to content resolved inside the `Drawable`
+  content box
+- `alignX` and `alignY` do not place the `Drawable` in its parent
+- parent-driven child placement remains owned by the parent contract
+- `alignX = "stretch"` and `alignY = "stretch"` stretch the resolved content to
+  the corresponding content-box axis
+- `alignX = "start" | "center" | "end"` and
+  `alignY = "start" | "center" | "end"` place content within the corresponding
+  content-box axis without changing the `Drawable` border box
+- when padding collapses an axis of the content box to zero, content placement
+  on that axis resolves at the content origin and stretch resolves to zero size
 
 Behavioral edge cases:
 
@@ -196,6 +216,9 @@ Behavioral edge cases:
   clamp the content box to zero area
 - children positioned within a zero-area content box are placed at the content
   origin
+- `Drawable.alignX` and `Drawable.alignY` remain internal-content alignment
+  properties and do not become parent-layout placement properties under any
+  layout-family parent
 - a `Drawable` under a parent that does not explicitly consume child margin must
   treat its own margin as inert for placement and measurement under that parent
 - a `Drawable` whose negative margins produce overlap under a margin-consuming

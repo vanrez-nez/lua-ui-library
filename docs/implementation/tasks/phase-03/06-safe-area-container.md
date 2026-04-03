@@ -6,7 +6,7 @@ Implement `SafeAreaContainer` against environment-reported safe-area bounds, not
 
 ## Spec Anchors
 
-- `docs/spec/ui-foundation-spec.md §6.2.8 SafeAreaContainer`
+- `docs/spec/ui-layout-spec.md §9 SafeAreaContainer`
 - `docs/spec/ui-foundation-spec.md §6.4.1 Stage`
 
 ## Scope
@@ -23,6 +23,7 @@ Implement `SafeAreaContainer` against environment-reported safe-area bounds, not
 - Nested SafeAreaContainers apply relative to the same environment-reported safe area, not parent-adjusted insets.
 - When all edge flags are false, no inset adjustment is applied.
 - Descendant percentage sizing resolves against the safe-area-derived effective content region, not raw viewport bounds.
+- Child margin is consumed only after safe-area reduction and parent padding.
 
 ## Settled Boundaries
 
