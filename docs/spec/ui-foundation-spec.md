@@ -1896,7 +1896,7 @@ The library must remain in this range because:
 |----------|-----------|----------------|--------------------|-------------------|
 | Required named visual parts and part presence | library-owned | specification-defined component anatomy | none; only documented component revision can change this | stable and structural |
 | Part-to-role mapping such as `backdrop`, `surface`, `trigger`, `panel`, `caret` | library-owned | specification-defined component contract | none | stable and structural |
-| Color, typography, texture, atlas, quad, nine-slice, border, radius, opacity, blend, and shader inputs for named parts | shared overridable | token-resolved with library fallbacks when available | token substitution, part skin override, instance-level visual prop override where documented | stable when the part and property are documented |
+| Color, typography, texture, atlas, quad, nine-slice, border, radius, opacity, blend, and shader inputs for named parts | shared overridable | token-resolved with library fallbacks when available | token substitution, part skin override, instance-level visual prop override where documented; border, radius, shadow, and color-backed visual property definitions are owned by [UI Styling Specification](./ui-styling-spec.md) | stable when the part and property are documented |
 | Stateful skin variants for documented states | shared overridable | base skin plus variant-specific token or part-skin mapping | variant selection through stateful skin resolution and explicit variant overrides where documented | stable when the state and part are documented |
 | Brand identity choices, custom art direction, and consumer-provided renderer behavior inside a documented extension slot | consumer-owned | none required from the library | consumer-provided tokens, assets, or custom renderer slot | stable only through the documented extension slot boundary |
 | Internal draw-call decomposition, helper layers, batching strategy, and cache layout | library-owned implementation detail | implementation-defined | not overridable | not public API |
@@ -1909,7 +1909,7 @@ This revision standardizes these visual customization mechanisms:
 |-----------|-------|-------------|-------------------|
 | Token substitution | library-wide | the consumer provides token values for documented token keys used by component parts | stable |
 | Part skin override | component-wide or instance-level | the consumer supplies an explicit skin description for a named component part | stable |
-| Instance-level visual prop override | instance-level | the consumer passes a documented visual prop directly on a component instance | stable only for documented props |
+| Instance-level visual prop override | instance-level | the consumer passes a documented visual prop directly on a component instance; the styling property contract for these visual props is defined in [UI Styling Specification](./ui-styling-spec.md) | stable only for documented props |
 | Variant selection | component-wide or instance-level depending on the component contract | the component resolves a named or state-derived skin variant for its parts | stable when the variant contract is documented |
 | Custom renderer extension slot | part-level | the consumer replaces the render implementation of a documented part while leaving structure and behavior intact | stable only where a documented part exposes this slot |
 
@@ -1936,6 +1936,8 @@ This revision standardizes:
 - nine-slice definitions
 - shader references
 - stateful variants per component state
+
+The visual property definitions for styling-relevant scalar tokens (radii, border widths) and color tokens are defined in [UI Styling Specification](./ui-styling-spec.md). This document standardizes the token model and resolution order; it does not redefine the meaning of those visual properties.
 
 Token naming convention:
 
@@ -2029,6 +2031,8 @@ Each skinnable component part may resolve one of these render modes:
 - shader-modified draw
 - fully custom consumer renderer through a defined extension slot
 
+The visual property contract for color-backed, gradient-backed, and image-backed fills, border rendering, corner radius, and shadow is defined in [UI Styling Specification](./ui-styling-spec.md).
+
 ### 8.9 Render Skin Resolution
 
 The library must treat presentation as a resolved render skin rather than as ad hoc draw behavior embedded in each control.
@@ -2044,6 +2048,8 @@ A render skin may be composed from:
 - shaders
 - opacity and blend settings
 - state-dependent part visibility
+
+Styling-family opacity properties (`backgroundOpacity`, `borderOpacity`, `shadowOpacity`) are defined in [UI Styling Specification](./ui-styling-spec.md). Node-level opacity and blend mode remain owned by this document.
 
 Each render-capable component must expose named presentational parts that can be skinned independently.
 
@@ -2062,13 +2068,7 @@ The foundation contract in this section standardizes how these asset classes par
 
 ### 8.11 Nine-Slice Contract
 
-A nine-slice definition divides a texture region into nine rectangular cells using two horizontal and two vertical cut lines, each measured as an inset from the corresponding edge of the source texture region.
-
-The four corner cells do not stretch. They are drawn at their natural pixel size. The four edge cells stretch along one axis only: horizontal edges stretch horizontally; vertical edges stretch vertically. The center cell stretches along both axes.
-
-A nine-slice definition must specify the four edge inset measurements that define the cut positions.
-
-When the component's drawn size along an axis is smaller than the sum of the two opposing corner insets along that axis, the corners must scale down proportionally to fit. In this condition the edge and center cells for that axis are omitted.
+The nine-slice rendering procedure is defined in [UI Graphics Specification](./ui-graphics-spec.md). This document references nine-slice as a recognized skin asset type and token input category. It does not redefine the nine-slice cell division model, stretch rules, inset contract, or corner scale-down behavior.
 
 ### 8.12 Stateful Variant Resolution
 

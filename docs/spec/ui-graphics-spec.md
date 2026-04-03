@@ -27,6 +27,8 @@ This revision owns the following first-class graphics objects:
 
 The foundation contracts for render assets, token classes, failure semantics, render effects, theming, motion integration, and stability remain authoritative and are not redefined here.
 
+This document does not define styling properties such as background fill, border, corner radius, or shadow for any graphics object or retained primitive. Those visual property contracts are defined in [UI Styling Specification](./ui-styling-spec.md) and apply only to `Drawable`-based components.
+
 ## 4A. Graphics Object Classification And Identity
 
 The component-model rules in Section 3A of [UI Foundation Specification](./ui-foundation-spec.md) are binding where they apply to retained primitives. Non-component graphics objects in this document still have stable public contracts and identity boundaries.
@@ -121,7 +123,7 @@ The request must still fail deterministically when the requested width or height
 
 **Purpose and contract**
 
-`Texture` is a first-class image-source object. It owns intrinsic source dimensions and provides the backing pixel source for `Sprite`, `Image`, atlas regions, and texture-backed skin assets.
+`Texture` is a first-class image-source object. It owns intrinsic source dimensions and provides the backing pixel source for `Sprite`, `Image`, atlas regions, and texture-backed skin assets. `Texture` and `Sprite` are the accepted source types for image-backed background styling as defined in [UI Styling Specification](./ui-styling-spec.md).
 
 **Public contract**
 
@@ -239,6 +241,8 @@ ERRORS:
 
 `Image` is a closed presentational primitive with no consumer-fillable descendant slots in this revision. It may be placed inside any component that permits presentational descendants.
 
+`Image` does not expose styling properties such as background fill, border, corner radius, or shadow. Its visual contract is limited to fit, alignment, sampling, and source rendering as defined in this document. `Image` is also not an accepted source value for the `backgroundImage` styling property defined in [UI Styling Specification](./ui-styling-spec.md) — that property accepts `Texture` or `Sprite` sources only.
+
 **Behavioral edge cases**
 
 - An `Image` with `fit = "none"` renders at intrinsic size derived from the effective source view.
@@ -262,6 +266,25 @@ Consumer-owned surface:
 
 - `Texture`, `Atlas`, and `Sprite` source data supplied to graphics objects and `Image`
 
+Styling boundary:
+
+- background fill, border, corner radius, shadow, and related visual property contracts are not part of this document
+- those contracts are defined in [UI Styling Specification](./ui-styling-spec.md) and apply to `Drawable`-based containers, not to graphics objects directly
+
+## 9A. Nine-Slice Contract
+
+A nine-slice definition divides a texture region into nine rectangular cells using two horizontal and two vertical cut lines, each measured as an inset from the corresponding edge of the source texture region.
+
+The four corner cells do not stretch. They are drawn at their natural pixel size. The four edge cells stretch along one axis only: horizontal edges stretch horizontally; vertical edges stretch vertically. The center cell stretches along both axes.
+
+A nine-slice definition must specify the four edge inset measurements that define the cut positions.
+
+When the component's drawn size along an axis is smaller than the sum of the two opposing corner insets along that axis, the corners must scale down proportionally to fit. In this condition the edge and center cells for that axis are omitted.
+
+A nine-slice definition is invalid and fails deterministically when any inset measurement is negative or non-finite.
+
+[UI Foundation Specification](./ui-foundation-spec.md) references nine-slice as a skin asset type and token input category. This document owns the nine-slice rendering procedure.
+
 ## 10. Failure Semantics
 
 - Invalid `Texture` sources fail deterministically.
@@ -277,3 +300,4 @@ Consumer-owned surface:
 | `Atlas` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `Sprite` | `Stable` | `0.1.0` | no | n/a | n/a |
 | `Image` | `Stable` | `0.1.0` | no | n/a | n/a |
+| `NineSlice` | `Stable` | `0.1.0` | no | n/a | n/a |
