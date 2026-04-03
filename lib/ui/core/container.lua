@@ -8,6 +8,7 @@ local Object = require('lib.cls')
 local Schema = require('lib.ui.utils.schema')
 local Utils = require('lib.ui.utils.common')
 local Motion = require('lib.ui.motion')
+local CanvasPool = require('lib.ui.render.canvas_pool')
 
 local abs = math.abs
 
@@ -28,6 +29,8 @@ local LOCAL_TRANSFORM_KEYS = {
 local MEASUREMENT_KEYS = {
     width = true, height = true, minWidth = true, minHeight = true, maxWidth = true, maxHeight = true
 }
+
+local canvas_pools = setmetatable({}, { __mode = 'k' })
 
 
 local function is_layout_node(node)
@@ -608,9 +611,347 @@ local function draw_clip_polygon(graphics, self)
     end
 end
 
-local function draw_subtree(self, graphics, draw_callback, clip_state)
+local draw_subtree
+
+local function get_canvas_pool(graphics)
+    local pool = canvas_pools[graphics]
+
+    if pool == nil then
+        pool = CanvasPool.new({
+            graphics = graphics,
+        })
+        canvas_pools[graphics] = pool
+    end
+
+    return pool
+end
+
+local function get_current_canvas(graphics)
+    if not Types.is_function(graphics.getCanvas) then
+        return nil
+    end
+
+    return graphics.getCanvas()
+end
+
+local function set_current_canvas(graphics, canvas)
+    if not Types.is_function(graphics.setCanvas) then
+        return
+    end
+
+    graphics.setCanvas(canvas)
+end
+
+local function get_current_color(graphics)
+    if not Types.is_function(graphics.getColor) then
+        return nil
+    end
+
+    return { graphics.getColor() }
+end
+
+local function restore_color(graphics, color)
+    if color == nil or not Types.is_function(graphics.setColor) then
+        return
+    end
+
+    graphics.setColor(color[1], color[2], color[3], color[4])
+end
+
+local function get_current_shader(graphics)
+    if not Types.is_function(graphics.getShader) then
+        return nil
+    end
+
+    return graphics.getShader()
+end
+
+local function restore_shader(graphics, shader)
+    if not Types.is_function(graphics.setShader) then
+        return
+    end
+
+    graphics.setShader(shader)
+end
+
+local function get_current_blend_mode(graphics)
+    if not Types.is_function(graphics.getBlendMode) then
+        return nil
+    end
+
+    return { graphics.getBlendMode() }
+end
+
+local function set_blend_mode(graphics, mode, alpha_mode)
+    if not Types.is_function(graphics.setBlendMode) then
+        return
+    end
+
+    if alpha_mode == nil and mode == 'multiply' then
+        alpha_mode = 'premultiplied'
+    end
+
+    if alpha_mode ~= nil then
+        graphics.setBlendMode(mode, alpha_mode)
+        return
+    end
+
+    graphics.setBlendMode(mode)
+end
+
+local function restore_blend_mode(graphics, blend_mode)
+    if blend_mode == nil or not Types.is_function(graphics.setBlendMode) then
+        return
+    end
+
+    set_blend_mode(graphics, blend_mode[1], blend_mode[2])
+end
+
+local function clear_isolation_target(graphics)
+    if Types.is_function(graphics.clear) then
+        graphics.clear(0, 0, 0, 0)
+    end
+end
+
+local function get_motion_surface_value(surface, key)
+    if not Types.is_table(surface) then
+        return nil
+    end
+
+    local state = rawget(surface, '_motion_visual_state')
+    if state == nil then
+        return nil
+    end
+
+    return state[key]
+end
+
+local function resolve_drawable_effects(self)
+    if rawget(self, '_ui_drawable_instance') ~= true then
+        return nil
+    end
+
+    local opacity = get_motion_surface_value(self, 'opacity')
+    if opacity == nil then
+        opacity = get_effective_value(self, 'opacity')
+    end
+    if opacity == nil then
+        opacity = 1
+    end
+
+    local translation_x = get_motion_surface_value(self, 'translationX') or 0
+    local translation_y = get_motion_surface_value(self, 'translationY') or 0
+    local scale_x = get_motion_surface_value(self, 'scaleX')
+    local scale_y = get_motion_surface_value(self, 'scaleY')
+    local rotation = get_motion_surface_value(self, 'rotation') or 0
+
+    if scale_x == nil then
+        scale_x = 1
+    end
+
+    if scale_y == nil then
+        scale_y = 1
+    end
+
+    return {
+        shader = get_effective_value(self, 'shader'),
+        opacity = opacity,
+        blendMode = get_effective_value(self, 'blendMode'),
+        mask = get_effective_value(self, 'mask'),
+        translationX = translation_x,
+        translationY = translation_y,
+        scaleX = scale_x,
+        scaleY = scale_y,
+        rotation = rotation,
+    }
+end
+
+local function drawable_requires_isolation(effects)
+    if effects == nil then
+        return false
+    end
+
+    return effects.shader ~= nil or
+        effects.mask ~= nil or
+        effects.blendMode ~= nil or
+        effects.opacity ~= 1 or
+        effects.translationX ~= 0 or
+        effects.translationY ~= 0 or
+        effects.scaleX ~= 1 or
+        effects.scaleY ~= 1 or
+        effects.rotation ~= 0
+end
+
+local function get_isolation_canvas_size(self)
+    local root = get_root(self)
+
+    if rawget(root, '_ui_stage_instance') == true then
+        return math.max(1, math.ceil(root.width or 0)),
+            math.max(1, math.ceil(root.height or 0))
+    end
+
+    local bounds = self:getWorldBounds()
+
+    return math.max(1, math.ceil(math.max(bounds.width, bounds.x + bounds.width))),
+        math.max(1, math.ceil(math.max(bounds.height, bounds.y + bounds.height)))
+end
+
+local function composite_isolated_subtree(self, graphics, canvas, effects, clip_state)
+    if effects.mask ~= nil then
+        Assert.fail(
+            'Drawable mask rendering is not implemented by the current retained render path',
+            3
+        )
+    end
+
+    if effects.shader ~= nil and not Types.is_function(graphics.setShader) then
+        Assert.fail('graphics adapter must support setShader for Drawable shader rendering', 3)
+    end
+
+    if effects.blendMode ~= nil and (
+        not Types.is_function(graphics.setBlendMode) or
+        not Types.is_function(graphics.getBlendMode)
+    ) then
+        Assert.fail('graphics adapter must support blend-mode save/restore for Drawable compositing', 3)
+    end
+
+    if not Types.is_function(graphics.draw) then
+        Assert.fail('graphics adapter must support draw for isolated Drawable compositing', 3)
+    end
+
+    local previous_color = get_current_color(graphics)
+    local previous_shader = get_current_shader(graphics)
+    local previous_blend_mode = get_current_blend_mode(graphics)
+
+    set_scissor_rect(graphics, clip_state.scissor)
+    set_stencil_test(graphics, clip_state.stencil_compare, clip_state.stencil_value)
+
+    if Types.is_function(graphics.setColor) then
+        graphics.setColor(1, 1, 1, effects.opacity)
+    end
+
+    if effects.shader ~= nil then
+        graphics.setShader(effects.shader)
+    end
+
+    if effects.blendMode ~= nil then
+        set_blend_mode(graphics, effects.blendMode)
+    end
+
+    local draw_x = effects.translationX
+    local draw_y = effects.translationY
+    local rotation = effects.rotation
+    local scale_x = effects.scaleX
+    local scale_y = effects.scaleY
+
+    if draw_x ~= 0 or draw_y ~= 0 or rotation ~= 0 or scale_x ~= 1 or scale_y ~= 1 then
+        local bounds = rawget(self, '_local_bounds_cache') or self:getLocalBounds()
+        local pivot_x = (get_effective_value(self, 'pivotX') or 0) * bounds.width
+        local pivot_y = (get_effective_value(self, 'pivotY') or 0) * bounds.height
+        local world_pivot_x, world_pivot_y = self:localToWorld(pivot_x, pivot_y)
+
+        graphics.draw(
+            canvas,
+            world_pivot_x + draw_x,
+            world_pivot_y + draw_y,
+            rotation,
+            scale_x,
+            scale_y,
+            world_pivot_x,
+            world_pivot_y
+        )
+    else
+        graphics.draw(canvas, 0, 0)
+    end
+
+    restore_blend_mode(graphics, previous_blend_mode)
+    restore_shader(graphics, previous_shader)
+    restore_color(graphics, previous_color)
+end
+
+local function draw_isolated_subtree(self, graphics, draw_callback, clip_state, render_state, effects)
+    if not Types.is_function(graphics.newCanvas) or
+        not Types.is_function(graphics.setCanvas) or
+        not Types.is_function(graphics.draw) then
+        Assert.fail(
+            'graphics adapter must support canvas isolation for Drawable render effects',
+            3
+        )
+    end
+
+    local pool = get_canvas_pool(graphics)
+    local canvas_width, canvas_height = get_isolation_canvas_size(self)
+    local canvas = pool:acquire(canvas_width, canvas_height)
+    local previous_canvas = get_current_canvas(graphics)
+    local previous_color = get_current_color(graphics)
+    local previous_shader = get_current_shader(graphics)
+    local previous_blend_mode = get_current_blend_mode(graphics)
+    local previous_scissor = get_scissor_rect(graphics)
+    local previous_stencil_compare, previous_stencil_value = get_stencil_test(graphics)
+
+    set_current_canvas(graphics, canvas)
+
+    if Types.is_function(graphics.origin) then
+        graphics.origin()
+    end
+
+    clear_isolation_target(graphics)
+    set_scissor_rect(graphics, nil)
+    set_stencil_test(graphics, nil, nil)
+
+    if Types.is_function(graphics.setColor) then
+        graphics.setColor(1, 1, 1, 1)
+    end
+
+    if Types.is_function(graphics.setShader) then
+        graphics.setShader()
+    end
+
+    if previous_blend_mode ~= nil then
+        set_blend_mode(graphics, previous_blend_mode[1], previous_blend_mode[2])
+    end
+
+    draw_subtree(self, graphics, draw_callback, {
+        active_clips = {},
+        scissor = nil,
+        stencil_compare = nil,
+        stencil_value = nil,
+    }, {
+        suppress_effects_for = self,
+    })
+
+    set_current_canvas(graphics, previous_canvas)
+    set_scissor_rect(graphics, previous_scissor)
+    set_stencil_test(graphics, previous_stencil_compare, previous_stencil_value)
+    composite_isolated_subtree(self, graphics, canvas, effects, clip_state)
+    restore_blend_mode(graphics, previous_blend_mode)
+    restore_shader(graphics, previous_shader)
+    restore_color(graphics, previous_color)
+    pool:release(canvas)
+
+    return nil
+end
+
+draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
     if not get_effective_value(self, 'visible') then
         return nil
+    end
+
+    render_state = render_state or {}
+
+    if render_state.suppress_effects_for ~= self then
+        local effects = resolve_drawable_effects(self)
+
+        if drawable_requires_isolation(effects) then
+            return draw_isolated_subtree(
+                self,
+                graphics,
+                draw_callback,
+                clip_state,
+                render_state,
+                effects
+            )
+        end
     end
 
     local active_clips = clip_state.active_clips
@@ -649,7 +990,7 @@ local function draw_subtree(self, graphics, draw_callback, clip_state)
             local ordered_children = rawget(self, '_ordered_children') or {}
 
             for index = 1, #ordered_children do
-                draw_subtree(ordered_children[index], graphics, draw_callback, clip_state)
+                draw_subtree(ordered_children[index], graphics, draw_callback, clip_state, render_state)
             end
 
             clip_state.active_clips[#clip_state.active_clips] = nil
@@ -677,7 +1018,7 @@ local function draw_subtree(self, graphics, draw_callback, clip_state)
         local ordered_children = rawget(self, '_ordered_children') or {}
 
         for index = 1, #ordered_children do
-            draw_subtree(ordered_children[index], graphics, draw_callback, clip_state)
+            draw_subtree(ordered_children[index], graphics, draw_callback, clip_state, render_state)
         end
 
         set_stencil_test(graphics, 'equal', next_stencil_value)
@@ -702,7 +1043,7 @@ local function draw_subtree(self, graphics, draw_callback, clip_state)
     local ordered_children = rawget(self, '_ordered_children') or {}
 
     for index = 1, #ordered_children do
-        draw_subtree(ordered_children[index], graphics, draw_callback, clip_state)
+        draw_subtree(ordered_children[index], graphics, draw_callback, clip_state, render_state)
     end
 
     return nil

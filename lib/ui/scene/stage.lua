@@ -528,6 +528,22 @@ local function resolve_draw_args(graphics, draw_callback)
     return graphics, draw_callback
 end
 
+local function draw_node_default(node, graphics)
+    if rawget(node, '_destroyed') then
+        return
+    end
+
+    local draw_method = node.draw
+    if Types.is_function(draw_method) then
+        draw_method(node, graphics)
+    end
+
+    local draw_control = node._draw_control
+    if Types.is_function(draw_control) then
+        draw_control(node, graphics)
+    end
+end
+
 local function create_focus_aware_draw_callback(self, draw_callback)
     local function restore_focus_draw_state(node, previous, focused)
         if previous ~= focused then
@@ -562,7 +578,8 @@ local function create_focus_aware_draw_callback(self, draw_callback)
         end
 
         local ok, err = xpcall(function()
-            draw_callback(node)
+            draw_node_default(node, graphics)
+            draw_callback(node, graphics)
             decorate_focused_drawable(node, graphics)
         end, error_handler)
 
