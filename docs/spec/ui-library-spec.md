@@ -7,6 +7,7 @@ This specification is split into a small set of authoritative documents.
 ## 2. Authoritative Documents
 
 - [UI Foundation Specification](./ui-foundation-spec.md)
+- [UI Layout Specification](./ui-layout-spec.md)
 - [UI Controls Specification](./ui-controls-spec.md)
 - [UI Graphics Specification](./ui-graphics-spec.md)
 - [UI Motion Specification](./ui-motion-spec.md)
@@ -14,7 +15,9 @@ This specification is split into a small set of authoritative documents.
 
 ## 3. Document Responsibilities
 
-The foundation document defines the shared component model, composition grammar, state model, interaction model, behavioral completeness, contract stability, failure semantics, visual contract, classification taxonomy, identity contract, retained lifecycle and rendering model, runtime model, propagation, focus, responsive layout, render-skin contract, and theming contract.
+The foundation document defines the shared component model, composition grammar, state model, interaction model, behavioral completeness, contract stability, failure semantics, visual contract, classification taxonomy, identity contract, retained lifecycle and rendering model, runtime model, propagation, focus, responsive contract, render-skin contract, and theming contract.
+
+The layout document defines spacing semantics for `padding` and `margin`, layout-family common behavior, and the authoritative contracts for `Stack`, `Row`, `Column`, `Flow`, and `SafeAreaContainer`.
 
 The controls document applies that component model, composition grammar, state model, interaction model, behavioral completeness, contract stability, failure semantics, and visual contract to the concrete control families and defines each control's responsibility boundary, compound structure, public state ownership, interaction callbacks, edge-case behavior, stability tier assignment, failure behavior, and stable visual surfaces on top of the foundation contracts.
 

@@ -68,6 +68,75 @@
 
 `Layout pass`: A tree traversal during which each dirty node resolves its measurement and child placement according to its layout contract.
 
+## 3B. Shared Value Families
+
+### 3B.1 SideQuad Input
+
+`SideQuad input`: A public input family that resolves into the canonical shape
+`{ top, right, bottom, left }`.
+
+Accepted public forms in this revision:
+
+- `number`
+- `{ top = n, right = n, bottom = n, left = n }`
+- `{ n, n }`
+- `{ n, n, n, n }`
+
+Normalization rules:
+
+- `number` means all four sides equal
+- keyed-table form fills missing members with `0`
+- two-value sequence form means vertical, horizontal
+- four-value sequence form means top, right, bottom, left
+
+Invalid shapes fail deterministically.
+
+`SideQuad input` defines only shape normalization and member expansion. The
+owning property family remains authoritative for member domains such as
+"non-negative only" or other narrower constraints.
+
+Spacing-family constraints in this revision:
+
+- `padding` and any flat `padding*` members must be finite and `>= 0`
+- `margin` and any flat `margin*` members must be finite and may be positive,
+  zero, or negative
+
+### 3B.2 CornerQuad Input
+
+`CornerQuad input`: A public input family that resolves into the canonical shape
+`{ topLeft, topRight, bottomRight, bottomLeft }`.
+
+Accepted public forms in this revision:
+
+- `number`
+- `{ topLeft = n, topRight = n, bottomRight = n, bottomLeft = n }`
+- `{ n, n, n, n }`
+
+Normalization rules:
+
+- `number` means all four corners equal
+- keyed-table form fills missing members with `0`
+- four-value sequence form means topLeft, topRight, bottomRight, bottomLeft
+
+Invalid shapes fail deterministically.
+
+`CornerQuad input` defines only shape normalization and member expansion. The
+owning property family remains authoritative for member domains such as
+"non-negative only" or other narrower constraints.
+
+### 3B.3 Aggregate And Flat Override Rule
+
+When one property family exposes:
+
+- one aggregate property using `SideQuad input` or `CornerQuad input`
+- flat per-side or per-corner override props
+
+the merge rule in this revision is:
+
+- the aggregate property establishes the family fallback
+- flat overrides win for their own member
+- canonical resolved form is always expanded member-by-member
+
 ## 3A. Component Model
 
 ### 3A.1 Definition Of A Component
@@ -541,7 +610,7 @@ Foundation overflow model by family:
 | Family | Default overflow behavior | Functional minimum contract | Dynamic constraint change behavior |
 |--------|---------------------------|-----------------------------|------------------------------------|
 | `Container` and `Drawable` | overflow unless clipping is explicitly enabled; zero-area content boxes clamp to zero rather than producing invalid geometry | remains valid at zero size but may render nothing useful | re-resolve transforms, bounds, and content boxes on the next retained pass |
-| Layout primitives | place, wrap, or overflow according to the layout family rules already defined in Section 6.2 | remain structurally valid even when content cannot fully fit; clipping occurs only when enabled | re-measure and re-place children on the next layout pass |
+| Layout primitives | place, wrap, or overflow according to the [UI Layout Specification](./ui-layout-spec.md) | remain structurally valid even when content cannot fully fit; clipping occurs only when enabled | re-measure and re-place children on the next layout pass |
 | `ScrollableContainer` | scroll within the enabled axis set; no implicit clipping escape beyond the viewport | remains functional when the viewport is smaller than content so long as scrolling on at least one axis remains enabled | recalculate content extent, clamp offsets, and continue from the clamped position |
 | Runtime roots | resize and reflow subordinate content | remain valid at any finite viewport size even when descendant content becomes unusable | propagate resize and mark descendants dirty |
 
@@ -963,7 +1032,9 @@ Trace note: added the degenerate-clip case explicitly so implementation plans do
 **Props and API surface**
 
 - `padding`
+- `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft`
 - `margin`
+- `marginTop`, `marginRight`, `marginBottom`, `marginLeft`
 - `alignX: "start" | "center" | "end" | "stretch"`
 - `alignY: "start" | "center" | "end" | "stretch"`
 - `skin`
@@ -971,6 +1042,20 @@ Trace note: added the degenerate-clip case explicitly so implementation plans do
 - `opacity: number`
 - `blendMode`
 - `mask`
+
+`padding` uses `SideQuad input`.
+
+`margin` uses `SideQuad input`.
+
+`paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` are flat overrides
+for the corresponding `padding` members.
+
+`marginTop`, `marginRight`, `marginBottom`, `marginLeft` are flat overrides for
+the corresponding `margin` members.
+
+The authoritative behavioral semantics for `Drawable.padding`,
+`Drawable.padding*`, `Drawable.margin`, and `Drawable.margin*` are defined in
+[UI Layout Specification](./ui-layout-spec.md).
 
 **State model**
 
@@ -1012,7 +1097,6 @@ STATE render_dirty
 
 **Behavioral edge cases**
 
-- A `Drawable` with padding that causes the content box to reach zero area must clamp the content box to zero area. Children positioned within a zero-area content box are placed at the content origin.
 - A `Drawable` with no skin must render nothing for its background and must not fail.
 - A `Drawable` with `opacity = 0` remains in the tree and retains hit-test participation unless additionally marked non-interactive.
 - A `Drawable` with a missing or invalid shader must fail deterministically.
@@ -1020,267 +1104,24 @@ STATE render_dirty
 
 ### 6.2 Layout Family
 
-#### 6.2.1 Purpose and contract
-
-Layout primitives place children inside a content box. They own child measurement order, spacing rules, alignment resolution, responsive overrides, and overflow policy. Layout primitives do not own child interaction semantics.
-
-This revision standardizes: `Stack`, `Row`, `Column`, `Flow`, `SafeAreaContainer`.
-
-#### 6.2.2 Common props
-
-- `gap`
-- `padding`
-- `wrap: boolean`
-- `justify: "start" | "center" | "end" | "space-between" | "space-around"`
-- `align: "start" | "center" | "end" | "stretch"`
-- `responsive`
-
-#### 6.2.3 Common state model
-
-STATE layout_clean
-
-  ENTRY:
-    1. Child measurements and placements are current.
-
-  TRANSITIONS:
-    ON child addition, removal, size mutation, visibility mutation, or breakpoint change:
-      1. Mark layout invalid.
-      → layout_dirty
-
-STATE layout_dirty
-
-  ENTRY:
-    1. Child measurements or placements are stale.
-
-  TRANSITIONS:
-    ON next layout pass:
-      1. Resolve own content box.
-      2. Resolve each eligible child measurement.
-      3. Place children according to layout family rules.
-      4. Resolve overflow policy.
-      → layout_clean
-
-#### 6.2.4 Stack
-
-**Purpose and contract**
-
-`Stack` places all children within the same content box, layered by z-order. It is the default composition primitive for overlays, layered visuals, and positioned content.
-
-`Stack` must:
-
-- apply the common layout state model
-- allow each child to resolve its own alignment and anchor independently
-- not impose a sequential axis on children
-
-**Anatomy**
-
-- `root`: the stack node. Required.
-- `children`: zero or more layered child nodes. Optional.
-
-**Props and API surface**
-
-`Stack` does not define additional props beyond the common layout props.
-
-**State model**
-
-`Stack` uses the common layout state model defined in Section 6.2.3.
-
-**Accessibility contract**
-
-`Stack` is a non-interactive structural container. It does not add or require semantic accessibility attributes. Focusable descendants participate in traversal in tree order.
-
-**Composition rules**
-
-`Stack` may contain any number of child nodes. Children resolve their own alignment and position within the stack's content box independently. Overlapping children are drawn in ascending z-order. Hit testing resolves in reverse draw order.
-
-**Behavioral edge cases**
-
-- An empty `Stack` renders nothing and must not fail.
-- A `Stack` whose children are all `visible = false` behaves as an empty stack.
-- When `clipChildren = true`, children extending beyond the stack bounds are clipped in both rendering and hit testing.
-
-#### 6.2.5 Row
-
-**Purpose and contract**
-
-`Row` places children sequentially along the horizontal axis. It resolves cross-axis alignment vertically. `Row` is the primary horizontal composition primitive.
-
-`Row` must:
-
-- apply the common layout state model
-- place children left to right in insertion order when `direction = "ltr"`
-- resolve gap spacing between children
-- resolve cross-axis alignment for each child
-
-**Anatomy**
-
-- `root`: the row node. Required.
-- `children`: ordered child sequence along the horizontal axis. Optional.
-
-**Props and API surface**
-
-- `direction: "ltr" | "rtl"`
-
-Plus all common layout props.
-
-**State model**
-
-`Row` uses the common layout state model defined in Section 6.2.3.
-
-**Accessibility contract**
-
-`Row` is a non-interactive structural container. It does not add or require semantic accessibility attributes. Focusable descendants participate in traversal in insertion order.
-
-**Composition rules**
-
-`Row` may contain any number of children. Children that are themselves layout primitives are measured before placement. When `wrap = true`, overflow children are placed on subsequent rows. `Row` must not be nested inside itself in a way that creates a circular measurement dependency.
-
-**Behavioral edge cases**
-
-- An empty `Row` renders nothing and must not fail.
-- When total child measurement exceeds available width with `wrap = false`, the overflow policy applies. The default overflow policy allows overflow without clipping unless `clipChildren = true`.
-- A single child in a `Row` with `justify = "space-between"` resolves to the start position.
-- When one or more children consume remaining horizontal space through a fill-sized width, `Row` must resolve those widths deterministically and apply min/max clamps, but this revision does not standardize a specific sibling allocation algorithm.
-
-Trace note: added an explicit non-commitment on fill distribution so Phase 3 implementation does not accidentally freeze one policy, such as equal-share allocation, as public contract.
-
-#### 6.2.6 Column
-
-**Purpose and contract**
-
-`Column` places children sequentially along the vertical axis. It resolves cross-axis alignment horizontally. `Column` is the primary vertical composition primitive.
-
-`Column` must:
-
-- apply the common layout state model
-- place children top to bottom in insertion order
-- resolve gap spacing between children
-- resolve cross-axis alignment for each child
-
-**Anatomy**
-
-- `root`: the column node. Required.
-- `children`: ordered child sequence along the vertical axis. Optional.
-
-**Props and API surface**
-
-`Column` does not define additional props beyond the common layout props.
-
-**State model**
-
-`Column` uses the common layout state model defined in Section 6.2.3.
-
-**Accessibility contract**
-
-`Column` is a non-interactive structural container. It does not add or require semantic accessibility attributes. Focusable descendants participate in traversal in insertion order.
-
-**Composition rules**
-
-`Column` may contain any number of children. Children that are themselves layout primitives are measured before placement. `Column` must not be nested inside itself in a way that creates a circular measurement dependency.
-
-**Behavioral edge cases**
-
-- An empty `Column` renders nothing and must not fail.
-- When total child measurement exceeds available height with `wrap = false`, the overflow policy applies. The default overflow policy allows overflow without clipping unless `clipChildren = true`.
-- A single child in a `Column` with `justify = "space-between"` resolves to the start position.
-- When one or more children consume remaining vertical space through a fill-sized height, `Column` must resolve those heights deterministically and apply min/max clamps, but this revision does not standardize a specific sibling allocation algorithm.
-
-Trace note: added an explicit non-commitment on fill distribution so Phase 3 implementation does not accidentally freeze one policy, such as equal-share allocation, as public contract.
-
-#### 6.2.7 Flow
-
-**Purpose and contract**
-
-`Flow` places children in reading order across the primary axis, wrapping to a new line when remaining space on the current line is insufficient. It is intended for fluid responsive placement and not for strict grid semantics.
-
-`Flow` must:
-
-- apply the common layout state model
-- place children in reading order
-- wrap to a new row when `wrap = true` and remaining space is exhausted
-- resolve gap spacing between children across and along the primary axis
-
-**Anatomy**
-
-- `root`: the flow node. Required.
-- `children`: ordered child nodes placed in reading order. Optional.
-
-**Props and API surface**
-
-`Flow` does not define additional props beyond the common layout props.
-
-**State model**
-
-`Flow` uses the common layout state model defined in Section 6.2.3.
-
-**Accessibility contract**
-
-`Flow` is a non-interactive structural container. Focusable descendants participate in traversal in insertion order.
-
-**Composition rules**
-
-`Flow` may contain any number of children. Children with `visible = false` do not occupy space in the flow. `Flow` may be placed inside any other layout container.
-
-**Behavioral edge cases**
-
-- An empty `Flow` renders nothing and must not fail.
-- When `wrap = false` and children exceed available width, the overflow policy applies without wrapping.
-- The last row of a wrapped flow aligns to the `align` value and is not stretched to fill available space.
-- A single child wider than the full flow row occupies that row alone and is not clipped unless `clipChildren = true`.
-
-#### 6.2.8 SafeAreaContainer
-
-**Purpose and contract**
-
-`SafeAreaContainer` measures and positions its content region against the safe area bounds reported by the environment rather than against full viewport bounds. It is the designated container for content that must avoid device-level obstructions such as notches, status bars, and home indicators.
-
-`SafeAreaContainer` must:
-
-- derive its content area from the current safe area bounds
-- update its content area when safe area bounds change
-- support opt-in inset application per edge
-
-**Anatomy**
-
-- `root`: the safe area container node. Required.
-- `content`: the inset content region. Required.
-
-**Props and API surface**
-
-- `applyTop: boolean`
-- `applyBottom: boolean`
-- `applyLeft: boolean`
-- `applyRight: boolean`
-
-Plus all common layout props.
-
-**State model**
-
-`SafeAreaContainer` uses the common layout state model defined in Section 6.2.3.
-
-In addition:
-
-  TRANSITIONS:
-    ON safe area bounds change:
-      1. Re-derive content region from updated safe area bounds.
-      2. Mark layout invalid.
-      → layout_dirty
-
-**Accessibility contract**
-
-`SafeAreaContainer` is a non-interactive structural container. It does not add or require accessibility attributes.
-
-**Composition rules**
-
-`SafeAreaContainer` may contain any layout or drawable descendants. It must be placed in the tree where full safe-area context is available. Multiple nested `SafeAreaContainer` instances each apply insets relative to the same environment-reported safe area, not relative to the parent container's insets.
-
-Trace note: clarified that `SafeAreaContainer` remains bounds-based even when an implementation derives per-edge inset distances from those bounds internally. The public contract is not an insets-only environment API.
-
-**Behavioral edge cases**
-
-- When the environment reports no safe area insets, `SafeAreaContainer` renders identically to a plain container of the same dimensions.
-- When all `apply*` props are false, the container applies no inset adjustment.
-- `SafeAreaContainer` always queries the environment-reported safe area bounds regardless of where it appears in the tree.
+Layout behavior is defined in [UI Layout Specification](./ui-layout-spec.md).
+
+This revision standardizes these layout-family components:
+
+- `Stack`
+- `Row`
+- `Column`
+- `Flow`
+- `SafeAreaContainer`
+
+That document is authoritative for:
+
+- layout-family common props
+- layout-family common state model
+- child measurement and placement rules
+- `gap`, `padding`, and child `margin` behavior under layout parents
+- negative-margin overlap behavior in layouts
+- `SafeAreaContainer` safe-area-aware placement behavior
 
 ### 6.3 Scroll Primitive
 
@@ -1427,6 +1268,8 @@ Trace note: clarified that the content subtree is structurally required while th
 - `width: number`
 - `height: number`
 - `safeAreaInsets: { top, bottom, left, right }`
+
+`safeAreaInsets` uses `SideQuad input`.
 
 Trace note: `safeAreaInsets` and safe-area bounds are both part of the Stage environment surface. Exposing only raw insets without a queryable bounds view is insufficient for full Stage compliance.
 

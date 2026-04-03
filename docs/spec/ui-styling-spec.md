@@ -140,6 +140,12 @@ Unless a property defines a narrower domain, scalar styling inputs in this revis
 
 Negative values are invalid where the property describes a size, width, blur amount, radius, or opacity domain that cannot be negative.
 
+Quad-like styling families in this revision may additionally use the shared
+normalization contracts defined in [UI Foundation Specification](./ui-foundation-spec.md):
+
+- `SideQuad input`
+- `CornerQuad input`
+
 ## 5.2 Opacity Inputs
 
 The opacity domain is numeric and closed to the inclusive range `[0, 1]`.
@@ -387,10 +393,11 @@ This revision does not redefine the graphics-source object contracts, source loa
 
 ## 7.1 Border Properties
 
-The flat border property family in this revision is:
+The public border property family in this revision is:
 
 - `borderColor`
 - `borderOpacity`
+- `borderWidth`
 - `borderWidthTop`
 - `borderWidthRight`
 - `borderWidthBottom`
@@ -414,7 +421,20 @@ Implications:
 
 ## 7.2 Border Width Model
 
-Border widths are per-side in this revision.
+Border widths resolve per-side in this revision.
+
+`borderWidth` uses `SideQuad input` as defined in
+[UI Foundation Specification](./ui-foundation-spec.md).
+
+Per-side widths remain the canonical resolved form:
+
+- `borderWidthTop`
+- `borderWidthRight`
+- `borderWidthBottom`
+- `borderWidthLeft`
+
+Per-side widths override the aggregate `borderWidth` input for their own side
+when both are present at the same precedence layer.
 
 Each border width:
 
@@ -477,8 +497,9 @@ Invalid border line configuration fails deterministically.
 
 ## 8. Corner Radius Contract
 
-The flat corner-radius property family in this revision is:
+The public corner-radius property family in this revision is:
 
+- `cornerRadius`
 - `cornerRadiusTopLeft`
 - `cornerRadiusTopRight`
 - `cornerRadiusBottomRight`
@@ -497,7 +518,18 @@ Corner radius affects:
 - shadow and inset-shadow geometry where applicable
 - clipping of background, gradient-backed background, and image-backed background paint to the resolved rounded geometry
 
-This revision standardizes per-corner radius. A single shorthand radius prop is not required by this contract.
+`cornerRadius` uses `CornerQuad input` as defined in
+[UI Foundation Specification](./ui-foundation-spec.md).
+
+Per-corner values remain the canonical resolved form:
+
+- `cornerRadiusTopLeft`
+- `cornerRadiusTopRight`
+- `cornerRadiusBottomRight`
+- `cornerRadiusBottomLeft`
+
+Per-corner values override the aggregate `cornerRadius` input for their own
+corner when both are present at the same precedence layer.
 
 When adjacent corner radii on one side exceed the available side length, the implementation must proportionally scale the affected radii down so the resolved corner geometry fits within the painted box.
 
@@ -630,10 +662,12 @@ This includes, at minimum:
 - gradient colors
 - `borderColor`
 - `borderOpacity`
+- `borderWidth`
 - `borderWidthTop`
 - `borderWidthRight`
 - `borderWidthBottom`
 - `borderWidthLeft`
+- `cornerRadius`
 - `cornerRadiusTopLeft`
 - `cornerRadiusTopRight`
 - `cornerRadiusBottomRight`
