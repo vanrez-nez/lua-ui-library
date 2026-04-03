@@ -171,6 +171,7 @@ local function build_list_layout(orientation)
     if orientation == 'vertical' then
         local list = Column.new({
             tag = 'tabs_list',
+            internal = true,
             width = 'fill',
             height = 'content',
             gap = 4,
@@ -183,6 +184,7 @@ local function build_list_layout(orientation)
 
     local list = Row.new({
         tag = 'tabs_list',
+        internal = true,
         width = 'content',
         height = 'fill',
         gap = 4,
@@ -257,7 +259,7 @@ function Tabs:constructor(opts)
     rawset(self, '_list_region', list_region)
     end
 
-    local panels = Container({ tag = 'tabs_panels', width = 'fill', height = 'fill', y = 52, interactive = false })
+    local panels = Container({ tag = 'tabs_panels', internal = true, width = 'fill', height = 'fill', y = 52, interactive = false })
     Container._allow_fill_from_parent(panels, { width = true, height = true })
     Container.addChild(self, panels)
     rawset(self, '_panels_region', panels)
@@ -359,6 +361,7 @@ function Tabs:_register_tab(value, trigger_node, panel_node)
 
     local trigger = Drawable({
         tag = 'tabs_trigger_' .. value,
+        internal = true,
         width = 120,
         height = 40,
         interactive = true,
@@ -370,6 +373,7 @@ function Tabs:_register_tab(value, trigger_node, panel_node)
 
     local panel = Container({
         tag = 'tabs_panel_' .. value,
+        internal = true,
         width = 'fill',
         height = 'fill',
         interactive = true,

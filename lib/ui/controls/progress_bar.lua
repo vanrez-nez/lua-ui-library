@@ -94,11 +94,13 @@ function ProgressBar:constructor(opts)
 
     local track = Container.new({
         tag = (self.tag and (self.tag .. '.track')) or 'progress.track',
+        internal = true,
         interactive = false,
         focusable = false,
     })
     local indicator = Container.new({
         tag = (self.tag and (self.tag .. '.indicator')) or 'progress.indicator',
+        internal = true,
         interactive = false,
         focusable = false,
     })

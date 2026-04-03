@@ -31,7 +31,12 @@ Primary findings, ordered by severity:
    Problem: previously implemented controls now participate in the published motion surface or in graphics-backed rendering scenarios that were not part of their original task phases.
    Required normalization: include a retrofit task for `Button`, `Modal`, `Alert`, `Tabs`, and any other earlier controls whose visual or motion contract changed.
 
-5. Demo and acceptance coverage needs a broader scope than earlier phases.
+5. The shared retained render path still lacks explicit task ownership for `Drawable` render effects.
+   Spec anchors: `ui-foundation-spec.md §8.6 Visual Inheritance Within Composition`, `ui-foundation-spec.md §8.13 Shader Contract`, `ui-foundation-spec.md §8.14 Isolation Rules`
+   Problem: earlier work established `Drawable` public props such as `shader`, `opacity`, `blendMode`, and `mask`, but the current task plan never assigns the shared subtree-rendering work needed to apply those effects according to the published effect-chain and isolation rules.
+   Required normalization: add an explicit task for shared render-effect propagation, subtree isolation, and composited application of `Drawable` visual effects in the retained render path before relying on those surfaces in demos or retrofitted controls.
+
+6. Demo and acceptance coverage needs a broader scope than earlier phases.
    Spec anchors: `ui-graphics-spec.md`, `ui-motion-spec.md`, `ui-controls-spec.md`
    Problem: there is no existing harness that demonstrates graphics objects, image region rendering, popup/overlay motion integration, radio/select interaction, and the new control retrofits together.
    Required normalization: add a phase-level manual harness and regression scope that proves the spec-backed surfaces without turning test helpers into public API.

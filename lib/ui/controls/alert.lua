@@ -88,6 +88,7 @@ local function coerce_text_node(value, tag)
         if not can_construct_text() then
             local placeholder = Column.new({
                 tag = tag,
+                internal = true,
                 width = 0,
                 height = 0,
                 interactive = false,
@@ -99,12 +100,14 @@ local function coerce_text_node(value, tag)
             return placeholder
         end
 
-        return Text.new({
+        local text_node = Text.new({
             tag = tag,
+            internal = true,
             text = value,
             width = 0,
             wrap = true,
         })
+        return text_node
     end
 
     if is_content_node(value) then
@@ -121,6 +124,7 @@ local function build_actions_container(actions)
 
     local container = Row.new({
         tag = 'alert.actions',
+        internal = true,
         width = 0,
         height = 64,
         gap = 12,
@@ -227,6 +231,7 @@ function Alert:constructor(opts)
     local actions_container = build_actions_container(opts.actions)
     local layout = Column.new({
         tag = 'alert.body',
+        internal = true,
         width = 'fill',
         height = 'fill',
         gap = 16,

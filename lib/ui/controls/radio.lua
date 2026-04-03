@@ -36,6 +36,7 @@ function Radio:constructor(opts)
 
     local indicator = Container.new({
         tag = (self.tag and (self.tag .. '.indicator')) or 'radio.indicator',
+        internal = true,
         width = 20,
         height = 20,
         interactive = false,
@@ -43,6 +44,7 @@ function Radio:constructor(opts)
     })
     local label_slot = Container.new({
         tag = (self.tag and (self.tag .. '.label')) or 'radio.label',
+        internal = true,
         width = 'fill',
         height = 24,
         interactive = false,
@@ -51,6 +53,7 @@ function Radio:constructor(opts)
     Container._allow_fill_from_parent(label_slot, { width = true })
     local description_slot = Container.new({
         tag = (self.tag and (self.tag .. '.description')) or 'radio.description',
+        internal = true,
         width = 'fill',
         height = 20,
         interactive = false,

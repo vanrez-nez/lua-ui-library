@@ -183,6 +183,7 @@ function Notification:constructor(opts)
 
     local overlay_root = Container.new({
         tag = (self.tag and (self.tag .. '.overlay')) or 'notification.overlay',
+        internal = true,
         width = 'fill',
         height = 'fill',
         interactive = false,
@@ -192,6 +193,7 @@ function Notification:constructor(opts)
     rawset(overlay_root, '_ui_notification_owner', self)
     local surface = Container.new({
         tag = (self.tag and (self.tag .. '.surface')) or 'notification.surface',
+        internal = true,
         width = 280,
         height = 96,
         interactive = true,
@@ -199,6 +201,7 @@ function Notification:constructor(opts)
     })
     local content = Container.new({
         tag = (self.tag and (self.tag .. '.content')) or 'notification.content',
+        internal = true,
         width = 'fill',
         height = 'fill',
         interactive = false,
@@ -221,6 +224,7 @@ function Notification:constructor(opts)
     if self.closeMethod == 'button' then
         local close_control = Button.new({
             tag = (self.tag and (self.tag .. '.close')) or 'notification.close',
+            internal = true,
             width = 28,
             height = 28,
             onActivate = function()

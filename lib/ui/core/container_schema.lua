@@ -7,8 +7,19 @@ local function validate_container_size(key, value, ctx, level)
     return Schema.validate_size(key, value, ctx._config['allow_content_' .. prop_name] == true, level)
 end
 
+local function validate_optional_nonempty_string(key, value, _, level)
+    Assert.string(key, value, level)
+    if value == '' then
+        Assert.fail(key .. ' must not be an empty string', level)
+    end
+    return value
+end
+
 local CONTAINER_SCHEMA = {
-    tag = { type = 'string' },
+    id = { validate = validate_optional_nonempty_string },
+    name = { validate = validate_optional_nonempty_string },
+    tag = { validate = validate_optional_nonempty_string },
+    internal = { type = 'boolean', default = false },
     visible = { type = 'boolean', default = true },
     interactive = { type = 'boolean', default = false },
     enabled = { type = 'boolean', default = true },

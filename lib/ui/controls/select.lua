@@ -286,6 +286,7 @@ function Select:constructor(opts)
 
     local trigger = Drawable.new({
         tag = (self.tag and (self.tag .. '.trigger')) or 'select.trigger',
+        internal = true,
         width = 'fill',
         height = 40,
         interactive = true,
@@ -296,6 +297,7 @@ function Select:constructor(opts)
 
     local summary = Text.new({
         tag = (self.tag and (self.tag .. '.summary')) or 'select.summary',
+        internal = true,
         text = rawget(self, 'placeholder'),
         width = 'fill',
         fontSize = 16,
@@ -306,6 +308,7 @@ function Select:constructor(opts)
 
     local popup_root = Container.new({
         tag = (self.tag and (self.tag .. '.popup_root')) or 'select.popup_root',
+        internal = true,
         width = 0,
         height = 0,
         interactive = false,
@@ -313,6 +316,7 @@ function Select:constructor(opts)
     })
     local popup = Container.new({
         tag = (self.tag and (self.tag .. '.popup')) or 'select.popup',
+        internal = true,
         width = 180,
         height = 132,
         interactive = true,
@@ -320,6 +324,7 @@ function Select:constructor(opts)
     })
     local popup_slot = Container.new({
         tag = (self.tag and (self.tag .. '.popup_slot')) or 'select.popup_slot',
+        internal = true,
         width = 'fill',
         height = 'fill',
         interactive = false,

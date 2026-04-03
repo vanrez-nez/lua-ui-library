@@ -1688,6 +1688,7 @@ function Stage:constructor(opts)
 
     local base_scene_layer = Container({
         tag = 'base scene layer',
+        internal = true,
         width = 'fill',
         height = 'fill',
     })
@@ -1695,6 +1696,7 @@ function Stage:constructor(opts)
     Container._allow_child_fill(base_scene_layer, { width = true, height = true })
     local overlay_layer = Container({
         tag = 'overlay layer',
+        internal = true,
         width = 'fill',
         height = 'fill',
     })

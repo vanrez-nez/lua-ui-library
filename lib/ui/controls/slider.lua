@@ -151,11 +151,13 @@ function Slider:constructor(opts)
 
     local track = Container.new({
         tag = (self.tag and (self.tag .. '.track')) or 'slider.track',
+        internal = true,
         interactive = false,
         focusable = false,
     })
     local thumb = Container.new({
         tag = (self.tag and (self.tag .. '.thumb')) or 'slider.thumb',
+        internal = true,
         interactive = false,
         focusable = false,
     })

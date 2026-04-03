@@ -118,6 +118,11 @@ local function assert_no_cycle(parent, child, level)
 end
 
 local function get_root(node)
+    local attachment_root = rawget(node, '_attachment_root')
+    if attachment_root ~= nil and not rawget(attachment_root, '_destroyed') then
+        return attachment_root
+    end
+
     local current = node
     local parent = rawget(current, 'parent')
     while parent ~= nil do
@@ -125,6 +130,279 @@ local function get_root(node)
         parent = rawget(current, 'parent')
     end
     return current
+end
+
+local function get_public_value(self, key)
+    local public_values = rawget(self, '_public_values')
+    if public_values == nil then
+        return nil
+    end
+
+    return public_values[key]
+end
+
+local function is_internal_node(node)
+    return get_public_value(node, 'internal') == true
+end
+
+local function is_public_node(node)
+    return not rawget(node, '_destroyed') and not is_internal_node(node)
+end
+
+local function is_strict_descendant_of(node, ancestor)
+    local current = rawget(node, 'parent')
+    while current ~= nil do
+        if current == ancestor then
+            return true
+        end
+        current = rawget(current, 'parent')
+    end
+
+    return false
+end
+
+local function is_in_same_or_descendant_subtree(node, root)
+    return node == root or is_strict_descendant_of(node, root)
+end
+
+local function assign_attachment_root_recursive(node, attachment_root)
+    rawset(node, '_attachment_root', attachment_root)
+
+    if node == attachment_root then
+        rawset(node, '_id_index', rawget(node, '_id_index') or {})
+    else
+        rawset(node, '_id_index', nil)
+    end
+
+    local children = rawget(node, '_children') or {}
+    for index = 1, #children do
+        assign_attachment_root_recursive(children[index], attachment_root)
+    end
+end
+
+local function register_node_id_with_root(node, attachment_root)
+    if not is_public_node(node) then
+        return
+    end
+
+    local id = get_public_value(node, 'id')
+    if id == nil then
+        return
+    end
+
+    local index = rawget(attachment_root, '_id_index')
+    if index == nil then
+        index = {}
+        rawset(attachment_root, '_id_index', index)
+    end
+
+    index[id] = node
+end
+
+local function register_subtree_ids(node, attachment_root)
+    register_node_id_with_root(node, attachment_root)
+
+    local children = rawget(node, '_children') or {}
+    for index = 1, #children do
+        register_subtree_ids(children[index], attachment_root)
+    end
+end
+
+local function deregister_node_id_from_root(node, attachment_root)
+    if attachment_root == nil or not is_public_node(node) then
+        return
+    end
+
+    local id = get_public_value(node, 'id')
+    if id == nil then
+        return
+    end
+
+    local index = rawget(attachment_root, '_id_index')
+    if index ~= nil and index[id] == node then
+        index[id] = nil
+    end
+end
+
+local function deregister_subtree_ids(node, attachment_root)
+    deregister_node_id_from_root(node, attachment_root)
+
+    local children = rawget(node, '_children') or {}
+    for index = 1, #children do
+        deregister_subtree_ids(children[index], attachment_root)
+    end
+end
+
+local function rebuild_attachment_root_index(root)
+    rawset(root, '_id_index', {})
+    assign_attachment_root_recursive(root, root)
+    register_subtree_ids(root, root)
+end
+
+local function find_sibling_name_collision(node, name, parent)
+    if name == nil or parent == nil or not is_public_node(node) then
+        return nil
+    end
+
+    local children = rawget(parent, '_children') or {}
+    for index = 1, #children do
+        local sibling = children[index]
+        if sibling ~= node and is_public_node(sibling) and get_public_value(sibling, 'name') == name then
+            return sibling
+        end
+    end
+
+    return nil
+end
+
+local function validate_name_uniqueness(node, name, parent, level)
+    local collision = find_sibling_name_collision(node, name, parent)
+    if collision ~= nil then
+        Assert.fail(
+            'duplicate sibling name "' .. tostring(name) .. '" is invalid',
+            level or 1
+        )
+    end
+end
+
+local function collect_public_subtree_identity(node, state)
+    state = state or {
+        ids = {},
+        nodes = {},
+    }
+
+    state.nodes[node] = true
+
+    if is_public_node(node) then
+        local id = get_public_value(node, 'id')
+        if id ~= nil then
+            local existing = state.ids[id]
+            if existing ~= nil and existing ~= node then
+                Assert.fail('duplicate id "' .. tostring(id) .. '" is invalid', 3)
+            end
+            state.ids[id] = node
+        end
+    end
+
+    local children = rawget(node, '_children') or {}
+    for index = 1, #children do
+        collect_public_subtree_identity(children[index], state)
+    end
+
+    return state
+end
+
+local function validate_id_uniqueness_against_root(node, id, attachment_root, ignored_nodes, level)
+    if id == nil or not is_public_node(node) then
+        return
+    end
+
+    local index = attachment_root and rawget(attachment_root, '_id_index')
+    local existing = index and index[id] or nil
+    if existing ~= nil and existing ~= node and not (ignored_nodes and ignored_nodes[existing]) then
+        Assert.fail(
+            'duplicate id "' .. tostring(id) .. '" is invalid within one attachment root',
+            level or 1
+        )
+    end
+end
+
+local function validate_subtree_attach_identity(parent, child, level)
+    local target_root = get_root(parent)
+    local subtree_identity = collect_public_subtree_identity(child)
+
+    for id, node in pairs(subtree_identity.ids) do
+        validate_id_uniqueness_against_root(node, id, target_root, subtree_identity.nodes, level)
+    end
+
+    if is_public_node(child) then
+        validate_name_uniqueness(child, get_public_value(child, 'name'), parent, level)
+    end
+end
+
+local function validate_depth_argument(method_name, depth, default_depth)
+    if depth == nil then
+        return default_depth
+    end
+
+    if depth == math.huge then
+        return math.huge
+    end
+
+    Assert.number(method_name .. '.depth', depth, 3)
+
+    if depth ~= math.floor(depth) then
+        Assert.fail(method_name .. '.depth must be an integer, -1, or math.huge', 3)
+    end
+
+    if depth < -1 then
+        Assert.fail(method_name .. '.depth must not be less than -1', 3)
+    end
+
+    return depth
+end
+
+local function validate_lookup_key(method_name, key_name, value)
+    if value == nil then
+        Assert.fail(method_name .. '.' .. key_name .. ' must not be nil', 3)
+    end
+
+    Assert.string(method_name .. '.' .. key_name, value, 3)
+    if value == '' then
+        Assert.fail(method_name .. '.' .. key_name .. ' must not be an empty string', 3)
+    end
+
+    return value
+end
+
+local function find_by_id_bounded(node, id, depth)
+    if depth == 0 then
+        return nil
+    end
+
+    local children = rawget(node, '_children') or {}
+    for index = 1, #children do
+        local child = children[index]
+        if is_public_node(child) and get_public_value(child, 'id') == id then
+            return child
+        end
+
+        if depth == math.huge or depth > 1 then
+            local next_depth = (depth == math.huge) and math.huge or (depth - 1)
+            local found = find_by_id_bounded(child, id, next_depth)
+            if found ~= nil then
+                return found
+            end
+        end
+    end
+
+    return nil
+end
+
+local function find_by_tag_bounded(node, tag, depth, results)
+    results = results or {}
+
+    if depth == 0 then
+        if is_public_node(node) and get_public_value(node, 'tag') == tag then
+            results[#results + 1] = node
+        end
+        return results
+    end
+
+    local children = rawget(node, '_children') or {}
+    for index = 1, #children do
+        local child = children[index]
+        if is_public_node(child) and get_public_value(child, 'tag') == tag then
+            results[#results + 1] = child
+        end
+
+        if depth == math.huge or depth > 1 then
+            local next_depth = (depth == math.huge) and math.huge or (depth - 1)
+            find_by_tag_bounded(child, tag, next_depth, results)
+        end
+    end
+
+    return results
 end
 
 function Container:notify_stage_subtree_change(stage, handler_name, child, parent)
@@ -1126,6 +1404,87 @@ local function set_public_value(self, key, value, level)
         return value
     end
 
+    if key == 'id' then
+        local attachment_root = get_root(self)
+        local previous_id = public_values and public_values[key] or nil
+        if previous_id ~= nil then
+            deregister_node_id_from_root(self, attachment_root)
+        end
+
+        validate_id_uniqueness_against_root(self, value, attachment_root, nil, (level or 1) + 1)
+
+        if public_values then
+            public_values[key] = value
+        end
+        local effective_values = rawget(self, '_effective_values')
+        if effective_values then
+            effective_values[key] = value
+        end
+
+        register_node_id_with_root(self, attachment_root)
+        return value
+    end
+
+    if key == 'name' then
+        validate_name_uniqueness(self, value, rawget(self, 'parent'), (level or 1) + 1)
+    end
+
+    if key == 'internal' then
+        local attachment_root = get_root(self)
+        local previous_internal = public_values and public_values[key] == true or false
+        local next_internal = value == true
+
+        if previous_internal == next_internal then
+            return value
+        end
+
+        if not next_internal then
+            local id = get_public_value(self, 'id')
+            if id ~= nil then
+                local index = attachment_root and rawget(attachment_root, '_id_index') or nil
+                local existing = index and index[id] or nil
+                if existing ~= nil and existing ~= self then
+                    Assert.fail(
+                        'duplicate id "' .. tostring(id) .. '" is invalid within one attachment root',
+                        (level or 1) + 1
+                    )
+                end
+            end
+
+            local name = get_public_value(self, 'name')
+            local parent = rawget(self, 'parent')
+            if name ~= nil and parent ~= nil then
+                local children = rawget(parent, '_children') or {}
+                for index = 1, #children do
+                    local sibling = children[index]
+                    if sibling ~= self and is_public_node(sibling) and get_public_value(sibling, 'name') == name then
+                        Assert.fail(
+                            'duplicate sibling name "' .. tostring(name) .. '" is invalid',
+                            (level or 1) + 1
+                        )
+                    end
+                end
+            end
+        else
+            deregister_node_id_from_root(self, attachment_root)
+        end
+
+        if public_values then
+            public_values[key] = value
+        end
+        local effective_values = rawget(self, '_effective_values')
+        if effective_values then
+            effective_values[key] = value
+        end
+
+        if not next_internal then
+            register_node_id_with_root(self, attachment_root)
+        end
+
+        self:invalidate_stage_update_token()
+        return value
+    end
+
     if public_values then
         public_values[key] = value
     end
@@ -1178,6 +1537,8 @@ local function detach_child(parent, child)
     end
 
     local stage = get_root(parent)
+    local old_attachment_root = get_root(child)
+    deregister_subtree_ids(child, old_attachment_root)
 
     local children = rawget(parent, '_children')
     table.remove(children, index)
@@ -1190,6 +1551,8 @@ local function detach_child(parent, child)
     rawset(child, '_responsive_dirty', true)
     rawset(child, '_measurement_dirty', true)
     rawset(child, '_local_transform_dirty', true)
+    assign_attachment_root_recursive(child, child)
+    rebuild_attachment_root_index(child)
     child:invalidate_world()
     child:invalidate_descendant_geometry()
     parent:notify_stage_subtree_change(stage, '_handle_detached_subtree', child, parent)
@@ -1208,12 +1571,12 @@ local function destroy_subtree(node)
     local children = rawget(node, '_children') or {}
     for index = #children, 1, -1 do
         local child = children[index]
-        children[index] = nil
-        child.parent = nil
         destroy_subtree(child)
     end
 
     rawset(node, '_ordered_children', nil)
+    rawset(node, '_id_index', nil)
+    rawset(node, '_attachment_root', nil)
     rawset(node, '_destroyed', true)
 end
 
@@ -1291,6 +1654,8 @@ function Container:_initialize(opts, extra_public_keys, config)
     rawset(self, '_local_bounds_cache', Rectangle(0, 0, 0, 0))
     rawset(self, '_world_bounds_cache', Rectangle(0, 0, 0, 0))
     rawset(self, '_ui_container_instance', true)
+    rawset(self, '_attachment_root', self)
+    rawset(self, '_id_index', {})
 
     rawset(self, '_destroyed', false)
     rawset(self, '_responsive_dirty', true)
@@ -1302,6 +1667,8 @@ function Container:_initialize(opts, extra_public_keys, config)
     rawset(self, '_child_order_dirty', true)
     rawset(self, '_motion_visual_state', {})
     rawset(self, '_motion_last_request', nil)
+
+    register_node_id_with_root(self, self)
 end
 
 function Container:constructor(opts, extra_public_keys, config)
@@ -1421,6 +1788,8 @@ function Container:addChild(child)
         return child
     end
 
+    validate_subtree_attach_identity(self, child, 2)
+
     if child.parent then
         detach_child(child.parent, child)
     end
@@ -1428,6 +1797,9 @@ function Container:addChild(child)
     child.parent = self
     local children = rawget(self, '_children')
     children[#children + 1] = child
+    local attachment_root = get_root(self)
+    assign_attachment_root_recursive(child, attachment_root)
+    register_subtree_ids(child, attachment_root)
     rawset(self, '_child_order_dirty', true)
     self:invalidate_stage_update_token()
     self:invalidate_ancestor_layouts()
@@ -1457,6 +1829,47 @@ end
 
 function Container:getChildren()
     return Utils.copy_array(rawget(self, '_children') or {})
+end
+
+function Container:findById(id, depth)
+    assert_not_destroyed(self, 2)
+    ensure_current(self)
+
+    validate_lookup_key('Container.findById', 'id', id)
+    depth = validate_depth_argument('Container.findById', depth, -1)
+
+    if depth == 0 then
+        if is_public_node(self) and get_public_value(self, 'id') == id then
+            return self
+        end
+        return nil
+    end
+
+    if depth == -1 or depth == math.huge then
+        local attachment_root = get_root(self)
+        local index = attachment_root and rawget(attachment_root, '_id_index') or nil
+        local candidate = index and index[id] or nil
+        if candidate ~= nil and candidate ~= self and is_public_node(candidate) and is_strict_descendant_of(candidate, self) then
+            return candidate
+        end
+        return nil
+    end
+
+    return find_by_id_bounded(self, id, depth)
+end
+
+function Container:findByTag(tag, depth)
+    assert_not_destroyed(self, 2)
+    ensure_current(self)
+
+    validate_lookup_key('Container.findByTag', 'tag', tag)
+    depth = validate_depth_argument('Container.findByTag', depth, 1)
+
+    if depth == -1 then
+        depth = math.huge
+    end
+
+    return find_by_tag_bounded(self, tag, depth, {})
 end
 
 function Container:_get_ordered_children()

@@ -35,10 +35,11 @@ Collection of easing functions: linear, smoothstep, easeInQuad, easeOutQuad, eas
 **Classification:** Primitive — structural node, no visual output.
 
 **Identity and tree membership**
-- Every Container has a stable identity for its lifetime. Identity is represented by the Lua object reference itself; no additional ID field is required.
+- Every `Container` has a stable object identity for its lifetime, but the authoritative public contract now also includes per-node `id`, `name`, and `tag` plus subtree lookup semantics. This planning document no longer defines the public identity contract; `docs/spec/ui-foundation-spec.md §6.1.1` does.
 - A Container may have zero or one parent. Adding it to a new parent removes it from its previous parent.
 - `addChild(node)`, `removeChild(node)`, `getChildren()` — manages the ordered child list.
 - `destroy()` — severs tree membership for this node and all descendants; after this call the node must not be added to any tree.
+- Implementation planning should assume cached attachment-root references and an internal root-level `id` index are acceptable implementation details, while tag indexing remains deferred.
 
 **Transform**
 - Local transform inputs: `x`, `y` (position), `scaleX`, `scaleY`, `rotation` (radians), `skewX`, `skewY`, `anchorX`, `anchorY` (0–1 normalized position within parent content box), `pivotX`, `pivotY` (0–1 normalized rotation/scale center within own bounds).

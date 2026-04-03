@@ -493,6 +493,7 @@ function ScrollableContainer:constructor(opts)
     -- Viewport: clips children
     local viewport = Container({
         tag = 'scroll_viewport',
+        internal = true,
         width = 0,
         height = 0,
         clipChildren = true,
@@ -503,6 +504,7 @@ function ScrollableContainer:constructor(opts)
     -- Content: user-facing child container
     local content = Container({
         tag = 'scroll_content',
+        internal = true,
         width = 'fill',
         height = 'fill',
     })
@@ -520,6 +522,7 @@ function ScrollableContainer:constructor(opts)
     -- Vertical scrollbar track + thumb
     local v_track = Drawable({
         tag = 'scrollbar_v_track',
+        internal = true,
         width = SCROLLBAR_SIZE,
         height = 'fill',
         interactive = false,
@@ -529,6 +532,7 @@ function ScrollableContainer:constructor(opts)
     Container._allow_fill_from_parent(v_track, { height = true })
     local v_thumb = Drawable({
         tag = 'scrollbar_v_thumb',
+        internal = true,
         width = SCROLLBAR_SIZE,
         height = SCROLLBAR_MIN_THUMB,
         interactive = false,
@@ -542,6 +546,7 @@ function ScrollableContainer:constructor(opts)
     -- Horizontal scrollbar track + thumb
     local h_track = Drawable({
         tag = 'scrollbar_h_track',
+        internal = true,
         height = SCROLLBAR_SIZE,
         width = 'fill',
         interactive = false,
@@ -551,6 +556,7 @@ function ScrollableContainer:constructor(opts)
     Container._allow_fill_from_parent(h_track, { width = true })
     local h_thumb = Drawable({
         tag = 'scrollbar_h_thumb',
+        internal = true,
         height = SCROLLBAR_SIZE,
         width = SCROLLBAR_MIN_THUMB,
         interactive = false,

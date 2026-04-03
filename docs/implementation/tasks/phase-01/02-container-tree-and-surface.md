@@ -18,11 +18,12 @@ Implement `Container` as the retained structural primitive while keeping its pub
 - Ordered child storage
 - Destruction and tree detachment behavior
 - Stable storage for the documented `Container` prop surface
+- Foundational tree hooks needed by attachment-root and internal-node bookkeeping
 
 ## Public Surface Requirements
 
 - Keep the documented props exactly within the spec surface:
-  `tag`, `visible`, `interactive`, `enabled`, `focusable`, `clipChildren`, `zIndex`,
+  `id`, `name`, `tag`, `visible`, `interactive`, `enabled`, `focusable`, `clipChildren`, `zIndex`,
   `anchorX`, `anchorY`, `pivotX`, `pivotY`, `x`, `y`, `width`, `height`,
   `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `scaleX`, `scaleY`,
   `rotation`, `skewX`, `skewY`, `breakpoints`.
@@ -33,12 +34,15 @@ Implement `Container` as the retained structural primitive while keeping its pub
 
 - `addChild`, `removeChild`, and `getChildren` manage one parent maximum and stable insertion order.
 - Reparenting is allowed, but the child must be removed from its prior parent before entering the new one.
+- Reparenting and subtree attach logic must be structured so later identity checks can fail atomically without partially committing the move.
 - Cyclic parenting attempts hard-fail deterministically.
 - `destroy()` detaches the subtree and ends further retained-tree participation for that instance.
+- The tree model must support explicit internal-node marking rather than inferring "internal" from a public field like `tag`.
 
 ## Settled Surface Constraints
 
 - `width` and `height` must preserve the full spec surface now; Phase 1 must not narrow them to a numeric-only API.
+- `id`, `name`, and `tag` are part of the documented `Container` surface; do not leave them out because earlier drafts treated object reference as sufficient identity.
 - Phase 1 only needs concrete execution paths for explicit numeric sizes and direct-root `fill` cases required by the test harness.
 - `width = "content"` on a node with no intrinsic measurement rule remains an invalid configuration and must fail deterministically.
 - `breakpoints` stays part of the public surface even if its resolution hooks are placeholders in this phase.

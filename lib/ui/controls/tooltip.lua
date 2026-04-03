@@ -212,6 +212,7 @@ function Tooltip:constructor(opts)
 
     local trigger = Container.new({
         tag = (self.tag and (self.tag .. '.trigger')) or 'tooltip.trigger',
+        internal = true,
         width = 180,
         height = 42,
         interactive = true,
@@ -219,6 +220,7 @@ function Tooltip:constructor(opts)
     })
     local overlay_root = Container.new({
         tag = (self.tag and (self.tag .. '.overlay')) or 'tooltip.overlay',
+        internal = true,
         width = 'fill',
         height = 'fill',
         interactive = false,
@@ -227,6 +229,7 @@ function Tooltip:constructor(opts)
     Container._allow_fill_from_parent(overlay_root, { width = true, height = true })
     local surface = Container.new({
         tag = (self.tag and (self.tag .. '.surface')) or 'tooltip.surface',
+        internal = true,
         width = 220,
         height = 80,
         interactive = false,
@@ -234,6 +237,7 @@ function Tooltip:constructor(opts)
     })
     local content = Container.new({
         tag = (self.tag and (self.tag .. '.content')) or 'tooltip.content',
+        internal = true,
         width = 'fill',
         height = 'fill',
         interactive = false,

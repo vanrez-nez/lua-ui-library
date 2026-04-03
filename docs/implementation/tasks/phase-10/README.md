@@ -40,5 +40,6 @@ Task order:
 4. `03-radio-and-radiogroup-controls.md`
 5. `04-select-and-option-controls.md`
 6. `05-notification-and-tooltip-controls.md`
-7. `06-retrofit-existing-controls-for-motion-and-graphics.md`
-8. `07-demo-and-acceptance.md`
+7. `06a-shared-drawable-render-effects-and-isolation.md`
+8. `06-retrofit-existing-controls-for-motion-and-graphics.md`
+9. `07-demo-and-acceptance.md`

@@ -54,6 +54,7 @@ function Button:constructor(opts)
 
     local content = Container({
         tag = 'button_content',
+        internal = true,
         width = 'fill',
         height = 'fill',
         interactive = false,

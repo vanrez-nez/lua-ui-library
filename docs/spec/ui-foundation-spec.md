@@ -20,7 +20,7 @@
 
 `Attachment root`: The highest ancestor reachable from a node by following parent links until no parent remains. A detached node is its own attachment root.
 
-`Internal node`: A retained node created and owned by the framework to implement layout, clipping, scrolling, or other framework mechanics without becoming public structural API.
+`Internal node`: A retained node with `internal = true`. An internal node remains part of the retained tree for structure, layout, transform, rendering, clipping, focus ancestry, and event ancestry, but it does not participate as a public lookup or public addressing match.
 
 `Slot`: A named child position or named subpart within a component contract.
 
@@ -753,11 +753,17 @@ The consumer owns business meaning, application state orchestration, scene regis
 - `root`: the `Container` instance itself. Required.
 - `children`: ordered child nodes. Optional.
 
+All retained child membership in this tree model is `Container`-family membership.
+In other words, the searchable retained subtree consists only of `Container`
+instances and their subclasses. Non-`Container` values are not valid retained
+children and are outside the lookup contract.
+
 **Props and API surface**
 
 - `id: string | nil`
 - `name: string | nil`
 - `tag: string | nil`
+- `internal: boolean`
 - `visible: boolean`
 - `interactive: boolean`
 - `enabled: boolean`
@@ -782,6 +788,10 @@ Trace note: clarified that the accepted `width` and `height` surface is stable a
 
 `Container` owns the retained-node addressing and classification contract for the foundation tree.
 
+The lookup contract applies only to retained nodes in the `Container` family.
+Because retained child membership is `Container`-family-only, every match
+returned by `findById` or `findByTag` is a `Container` instance or subclass.
+
 Field roles:
 
 | Field | Purpose | Uniqueness boundary | Public lookup role |
@@ -795,26 +805,30 @@ Field rules:
 - `id`, `name`, and `tag` accept only `string | nil`.
 - `nil` means the field is unset and is valid for all three fields.
 - Empty-string and non-string assignments are invalid configuration and must fail deterministically.
+- `internal` is a boolean structural lookup-boundary property. Its default value is `false`.
 - `id` is machine-facing structural address only. It is not a display label or classification label.
 - `name` is a human-facing label for inspectors, debuggers, and editor hierarchy views. It has no effect on rendering, layout, or runtime behavior.
 - `tag` is the consumer-facing classification field. It is not a singular address and it has no uniqueness requirement.
-- Public `tag` must remain consumer-facing. Internal framework labeling must use a separate private mechanism rather than overloading the public `tag` field.
+- A node with `internal = true` remains in the retained tree but is excluded from public lookup matching and public uniqueness participation as defined below.
+- Internal nodes may still carry `id`, `name`, or `tag` as local metadata, but those values are outside the public lookup and public uniqueness contract.
+- Public `tag` remains consumer-facing classification. Internal nodes do not appear as `findByTag` matches even when they carry a tag.
 
 Write-time validation:
 
-- assigning or changing a non-`nil` `id` on an attached node must validate uniqueness against the node's current attachment root before the change commits
-- attaching a node with a non-`nil` `id` must validate uniqueness against the target attachment root before the attach commits
-- assigning or changing a non-`nil` `name` on an attached node must validate uniqueness against the node's direct siblings before the change commits
-- attaching a node with a non-`nil` `name` must validate uniqueness against the target parent's direct children before the attach commits
+- assigning or changing a non-`nil` `id` on an attached non-internal node must validate uniqueness against the node's current attachment root before the change commits
+- attaching a non-internal node with a non-`nil` `id` must validate uniqueness against the target attachment root before the attach commits
+- assigning or changing a non-`nil` `name` on an attached non-internal node must validate uniqueness against the node's direct non-internal siblings before the change commits
+- attaching a non-internal node with a non-`nil` `name` must validate uniqueness against the target parent's direct non-internal children before the attach commits
 - `tag` has no uniqueness validation
-- when an incoming subtree is attached, all non-`nil` `id` values in that subtree must be validated against the target attachment root before any node in that subtree is attached
+- when an incoming subtree is attached, all non-`nil` `id` values on non-internal nodes in that subtree must be validated against the target attachment root before any node in that subtree is attached
+- changing `internal` on an attached node must update public lookup participation and public uniqueness participation atomically
 
 Reparenting rules:
 
-- `id`, `name`, and `tag` persist on the node across reparenting
-- `id` must be revalidated against the new attachment root during reparenting
-- `name` must be revalidated against the new direct siblings during reparenting
-- if reparenting or subtree attachment fails any `id` or `name` validation, the operation must fail deterministically without partially committing tree changes
+- `id`, `name`, `tag`, and `internal` persist on the node across reparenting
+- `id` must be revalidated against the new attachment root during reparenting for non-internal nodes
+- `name` must be revalidated against the new direct non-internal siblings during reparenting for non-internal nodes
+- if reparenting or subtree attachment fails any public `id` or public `name` validation, the operation must fail deterministically without partially committing tree changes
 
 Lookup rules:
 
@@ -841,7 +855,8 @@ Lookup behavior:
 - negative depth values other than `-1` are invalid configuration and must fail deterministically
 - fractional depth values are invalid configuration and must fail deterministically
 - no `findByName` or other subtree name-search API is standardized in this revision
-- internal nodes are excluded from `id` uniqueness validation, `name` uniqueness validation, and all public lookup results
+- nodes with `internal = true` are excluded from `id` uniqueness validation, `name` uniqueness validation, and all public lookup matches
+- lookup traversal continues through internal nodes, so non-internal descendants under internal wrappers remain discoverable within the receiver subtree
 
 **State model**
 

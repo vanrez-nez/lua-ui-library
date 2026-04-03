@@ -14,20 +14,23 @@ Consolidation rules for this phase:
 Settled spec clarifications carried into this task set:
 
 - `Container.width` and `Container.height` keep the full accepted domain from `§6.1.1`; the `Trace note` there closes the earlier draft ambiguity.
+- `Container.id`, `Container.name`, and `Container.tag` are part of the public surface; retained-node addressing is no longer "Lua object reference only" at the spec boundary.
 - `focusScope` and `trapFocus` are not introduced as public `Container` props in Phase 1.
 - `visible = false` changes rendering and direct-target participation, but does not detach the node from retained-tree geometry or descendant-state resolution while attached.
 - Effective targeting is ancestor-aware: visibility, clipping, and enabled participation all constrain direct targets.
 - Degenerate clip bounds produce an empty effective clip region, not a no-op clip.
 - `Drawable` may derive focused rendering state internally, but that state is not a durable public node property.
 - `Stage` must expose viewport bounds, safe-area insets, safe-area bounds, the root input entry point, and the root focus-scope boundary even before later interaction systems are fully implemented.
+- Public lookup excludes internal framework nodes; internal helper labeling must not leak through the public `tag`/lookup contract.
 
 Task order:
 
 1. `00-compliance-review.md`
 2. `01-core-math-and-geometry.md`
 3. `02-container-tree-and-surface.md`
-4. `03-container-transform-and-dirty-state.md`
-5. `04-container-order-clipping-hit-testing.md`
-6. `05-drawable-content-box-and-visual-surface.md`
-7. `06-stage-root-and-two-pass-traversal.md`
-8. `07-phase-01-demo-and-acceptance.md`
+4. `02a-container-identity-and-lookup.md`
+5. `03-container-transform-and-dirty-state.md`
+6. `04-container-order-clipping-hit-testing.md`
+7. `05-drawable-content-box-and-visual-surface.md`
+8. `06-stage-root-and-two-pass-traversal.md`
+9. `07-phase-01-demo-and-acceptance.md`
