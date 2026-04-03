@@ -36,6 +36,7 @@ return {
     ThemeResolver = require('lib.ui.themes.resolver'),
     ThemeRuntime = require('lib.ui.themes.runtime'),
     DefaultThemeTokens = require('lib.ui.themes.default'),
+    Color = require('lib.ui.render.color'),
     CanvasPool = require('lib.ui.render.canvas_pool'),
     NineSlice = require('lib.ui.render.nine_slice'),
     Scene = require('lib.ui.scene.scene'),
