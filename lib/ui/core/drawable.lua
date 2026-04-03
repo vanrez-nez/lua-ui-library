@@ -5,6 +5,7 @@ local Insets = require('lib.ui.core.insets')
 local Rectangle = require('lib.ui.core.rectangle')
 local Schema = require('lib.ui.utils.schema')
 local Motion = require('lib.ui.motion')
+local Styling = require('lib.ui.render.styling')
 
 local max = math.max
 
@@ -277,6 +278,16 @@ end
 
 function Drawable:_raise_motion(phase, payload)
     return Motion.request(self, phase, payload or {})
+end
+
+-- Draw method called by the stage draw cycle before _draw_control.
+-- Paints the styling layer (shadow, background, border) using the resolved
+-- props from the four-level cascade. Runs unconditionally — Styling.draw
+-- handles the empty-props case without painting anything.
+function Drawable:draw(graphics)
+    local bounds = self:getWorldBounds()
+    local props = Styling.assemble_props(self, nil)
+    Styling.draw(props, bounds, graphics)
 end
 
 return Drawable
