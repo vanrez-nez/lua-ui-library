@@ -16,7 +16,6 @@ end
 local function make_screen_scope()
     local scope = {
         resources = {},
-        cleanups = {},
         released = false,
     }
 
@@ -25,13 +24,6 @@ local function make_screen_scope()
             self.resources[#self.resources + 1] = value
         end
         return value
-    end
-
-    function scope:on_cleanup(fn)
-        if type(fn) == 'function' then
-            self.cleanups[#self.cleanups + 1] = fn
-        end
-        return fn
     end
 
     function scope:font(...)
@@ -43,16 +35,11 @@ local function make_screen_scope()
             return
         end
 
-        for index = #self.cleanups, 1, -1 do
-            pcall(self.cleanups[index])
-        end
-
         for index = #self.resources, 1, -1 do
             call_release(self.resources[index])
             self.resources[index] = nil
         end
 
-        self.cleanups = {}
         self.resources = {}
         self.released = true
         collectgarbage('collect')
@@ -107,11 +94,11 @@ function DemoBase:toggle()
 end
 
 function DemoBase:set_title(value)
-    self.title = value or self.title
+    self.title = value or 'No Title'
 end
 
 function DemoBase:set_description(value)
-    self.description = value or ''
+    self.description = value
 end
 
 function DemoBase:get_screen_count()
@@ -166,6 +153,10 @@ function DemoBase:_reset_global_state()
 end
 
 function DemoBase:_cleanup_active_screen()
+    if self.active_screen ~= nil and type(self.active_screen.release) == 'function' then
+        pcall(self.active_screen.release, self.active_screen)
+    end
+
     if self.active_scope ~= nil then
         self.active_scope:cleanup()
     end

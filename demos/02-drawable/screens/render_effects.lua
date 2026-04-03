@@ -126,15 +126,6 @@ local function make_effect_panel(scope, root, helpers, case)
         }
     end)
 
-    scope:on_cleanup(function()
-        if rawget(red, '_destroyed') ~= true then
-            red:destroy()
-        end
-        if rawget(green, '_destroyed') ~= true then
-            green:destroy()
-        end
-    end)
-
     return panel
 end
 

@@ -1,721 +1,298 @@
-# Demos Plan
+# Demos
 
-## Purpose
+`demos/` contains small, isolated Love2D apps whose only purpose is to teach
+developers how to use the UI library through real, runnable examples.
 
-This document defines the new demo implementation plan under `demos/`.
+This is the first rule of the demo system:
 
-The demo system must be:
+- demos educate
+- demos guide
+- demos make developers familiar with the UI library
 
-- component-centered
-- behavior-centered
-- isolated
-- progressive in dependencies
-- traceable to current spec contracts
+Because of that, every demo must be structured as a learning surface first and
+a runnable app second.
 
-The implementation target is `demos/`.
-`test/` is now free for future rebuilt runnable harnesses, but the planning and structure definition belongs in `demos/`.
+## Main Screen Rule
 
-Primary authority:
+Demo implementation must not mix setup and demo.
 
-- [UI Library Specification](../docs/spec/ui-library-spec.md)
-- [UI Foundation Specification](../docs/spec/ui-foundation-spec.md)
-- [UI Controls Specification](../docs/spec/ui-controls-spec.md)
-- [UI Graphics Specification](../docs/spec/ui-graphics-spec.md)
-- [UI Motion Specification](../docs/spec/ui-motion-spec.md)
+The main execution file for a screen, typically `screens/{name}.lua`, must stay
+plain, minimal, and readable.
 
-Working rules:
+A developer reading that file should immediately understand:
 
-- `demos/rules.md`
+- how to import the library
+- how to construct the component
+- how to compose the scene
+- how to run the minimal flow needed for the example
 
-## Rules
+The main screen file must read like code that could be copied into a standalone
+Lua example.
 
-Each demo should:
+Besides the `Stage` setup managed by the shared helper layer, the main screen
+file must remain simple enough that, if transported into another Lua file, it
+still reads like runnable component-usage code rather than demo infrastructure.
 
-- own one component or one tightly coupled compound component
-- validate one clear contract surface
-- avoid mixing unrelated systems
-- expose observable acceptance results
-- use only real public constructors and documented props
-- prove the component contract directly instead of simulating missing behavior in demo-local code
+That means:
 
-Each demo should not:
+- no demo-interaction layer belongs in the execution file
+- no native buttons, labels, inspector widgets, or other demo chrome belong in
+  the execution file
+- no logic for positioning demo-only controls or overlays belongs in the
+  execution file
+- no external functions unrelated to the component usage should be declared in
+  the execution file
+- no instrumentation wrappers should hide real component construction
+- no clever helper code should obscure how the component is actually used
+- no top-level constants or config blocks should exist only to "style the
+  demo" when direct declarative values would be easier to read
+- no setup-heavy scaffolding should pollute the main screen file
 
-- be phase-driven
-- be a generic “foundation” or “graphics” bucket
-- behave like a kitchen-sink showcase
-- imply undocumented helper APIs
-- explain behavior away with "not yet implemented", "deferred", or similar phase language
+If a developer must read setup code before understanding how the component is
+used, the demo is structured incorrectly.
 
-## Progressive Dependency Order
+Prefer declarative, readable code that favors user understanding of how to use
+the thing being demoed.
 
-The demos should still be progressive, but the unit of progression is the component, not grouped implementation milestones:
+The execution file should prioritize:
 
-1. low-level retained primitives used by many subsequent demos
-2. standalone presentational primitives
-3. simple interactive controls
-4. coordinated compound controls
-5. overlay controls
-6. cross-cutting motion coverage
+- direct construction
+- direct composition
+- direct property values
+- obvious flow
 
-## Planned Demo Set
+The execution file should avoid:
 
-### 01-container
+- demo-only UI wiring
+- overlay positioning systems
+- helper abstractions that save little but hide intent
+- "styling the demo" through indirection when the real lesson is component usage
 
-Primary components:
+## Spec First
 
-- `Container`
+Before implementing a demo:
 
-Should test:
+1. identify the authoritative spec section
+2. list the exact public props and behaviors to validate
+3. list the invalid or ambiguous cases that must not be implied as valid
+4. define screen cases from the contract, not from implementation convenience
 
-- retained-tree parenting
-- local versus world bounds
-- visibility
-- width/height sizing
-- percentage sizing against parent
-- min/max clamp behavior
-- zero-size edge behavior
+Demo code must not invent semantics that the spec does not define.
 
-Should expose:
+If implementation and expected behavior disagree:
 
-- resolved bounds
-- parent/child relationship inspection
+1. stop
+2. inspect the spec
+3. document the conflict before normalizing the demo around one accidental implementation behavior
 
-### 02-drawable
+If a component does not own a behavior, the demo must not recreate that
+behavior with demo-local math just to make a more impressive screen.
 
-Primary components:
+Examples:
 
-- `Drawable`
+- a `Drawable` demo must not implement child layout or spacing composition
+- a non-layout component demo must not pretend to measure or arrange descendants
 
-Should test:
+Primary spec authority:
 
-- `alignX` and `alignY`
-- padding and margin
-- opacity
-- skin
-- blend mode
-- motion
+- [UI Library Specification](/Users/vanrez/Documents/game-dev/lua-ui-library/docs/spec/ui-library-spec.md)
+- [UI Foundation Specification](/Users/vanrez/Documents/game-dev/lua-ui-library/docs/spec/ui-foundation-spec.md)
+- [UI Controls Specification](/Users/vanrez/Documents/game-dev/lua-ui-library/docs/spec/ui-controls-spec.md)
+- [UI Graphics Specification](/Users/vanrez/Documents/game-dev/lua-ui-library/docs/spec/ui-graphics-spec.md)
+- [UI Motion Specification](/Users/vanrez/Documents/game-dev/lua-ui-library/docs/spec/ui-motion-spec.md)
 
-Should expose:
+## Demo Shape
 
-- assigned bounds versus content box
-- aligned content result for active alignment cases
-- inspectable configured visual-surface props on `Drawable`
-- visible subtree compositing differences for `opacity` and `blendMode`
-- motion requests and resolved visual-state writes for harness-driven motion inspection
+Each demo must validate one public contract at a time through the real
+implementation of the component under test.
 
-Should not retest:
+A demo may cover:
 
-- retained-tree parenting already covered by `01-container`
-- local versus world bounds already covered by `01-container`
-- base width and height sizing already covered by `01-container`
-- percentage sizing already covered by `01-container`
-- clamp behavior already covered by `01-container`
-- visibility behavior already covered by `01-container`
+- one component
+- one tightly coupled component pair
 
-### 03-stage
+A demo must not become:
 
-Primary components:
+- a kitchen-sink playground
+- a phase showcase
+- an implementation experiment disconnected from the spec
+- a demo-local simulation of behavior the component does not actually own
+- a wall of setup code that hides actual component usage
 
-- `Stage`
+## File Structure
 
-Should test:
+Preferred layout for a non-trivial multi-screen demo:
 
-- base scene layer versus overlay layer
-- reverse draw-order target resolution
-- no-target behavior
-- two-pass update/draw contract
-- layer precedence independent of cross-layer `zIndex`
+- `main.lua` for bootstrap, screen registration, and Love callbacks only
+- one demo-local `screen_helpers.lua` when repeated instrumentation is needed
+- one `screens/` directory with one file per screen
+- one companion `screens/{name}_setup.lua` for non-essential instrumentation
 
-Should expose:
+Every non-trivial screen should be split into two files:
 
-- resolved hit target
-- active layer
-- guarded two-pass failure path
+- `{name}.lua`
+- `{name}_setup.lua`
 
-### 04-row
+`{name}.lua` is the execution file.
 
-Primary components:
+It should contain only:
 
-- `Row`
+- imports relevant to the component being demoed
+- direct object construction for the target component
+- direct scene composition for the target component
+- the minimal runtime flow needed to make the example work
 
-Should test:
+Prefer direct, declarative values in the execution file when only a small
+number of objects are being constructed.
 
-- main-axis ordering
-- gap behavior
-- cross-axis alignment
-- fill/content/fixed sizing combinations
-- overflow behavior
-- wrap behavior if part of current `Row` contract
+Do not add small indirection layers such as:
 
-Should expose:
+- tiny constants used once
+- one-off config tables that only rename obvious literals
+- helper functions that save only one or two repeated lines
 
-- child order
-- resolved child sizes
+`{name}_setup.lua` is the setup file.
 
-### 05-column
+It may contain:
 
-Primary components:
+- demo instrumentation
+- hint wiring
+- inspection overlays
+- native buttons
+- screen-local positioning utilities
+- other non-essential visual scaffolding
 
-- `Column`
+The execution file must not call generic wrappers such as:
 
-Should test:
+- `mark_box(...)`
+- `attach_drawable(...)`
+- `make_node(...)`
 
-- vertical sequencing
-- gap behavior
-- cross-axis alignment
-- content-height behavior
-- fill/content/fixed sizing combinations
+When setup code needs to manipulate or inspect nodes created by the execution
+file, it must bind to those nodes through stable public `id` values and
+retained lookup such as `findById(...)`.
 
-Should expose:
+The contract division is:
 
-- resolved child sizes
-- total content height
+- execution file: constructs the real public scene and declares stable node IDs
+- setup file: finds those nodes through the same public contract the reader
+  should understand
 
-### 06-flow
+## Shared Infrastructure
 
-Primary components:
+All demos use the shared plain-Love shell in
+[demos/common/demo_base.lua](/Users/vanrez/Documents/game-dev/lua-ui-library/demos/common/demo_base.lua).
 
-- `Flow`
+Use shared infrastructure from `demos/common/`:
 
-Should test:
+- `bootstrap.lua`
+- `demo_base.lua`
+- `colors.lua`
 
-- reading-order placement
-- wrapping to additional rows
-- last-row behavior
-- overflow behavior when wrapping is disabled
+Do not duplicate:
 
-Should expose:
+- root bootstrap logic
+- header or footer rendering
+- screen switching
+- reset behavior
+- memory overlay
+- sidebar framework
 
-- item positions
-- row breaks
+`DemoBase` owns:
 
-### 07-safe-area-container
+- left/right screen switching
+- screen reset
+- navigation visibility
+- memory monitor visibility
+- quit handling
+- screen rebuild between switches
+- reset of common global Love state after screen teardown
 
-Primary components:
+The demo must not override those responsibilities.
 
-- `SafeAreaContainer`
+## Screen Lifecycle
 
-Should test:
+Every screen must be a factory registered through `DemoBase:push_screen(...)`.
 
-- safe-area-aware insetting
-- resize and safe-area change re-evaluation
-- child bounds inside safe-area region
+Each screen factory receives:
 
-Should expose:
+- `index`
+- `scope`
+- `owner`
 
-- viewport bounds
-- safe-area bounds
-- resolved inset child bounds
+Use `scope` only for temporary tracked Love resources such as fonts.
 
-### 08-scrollable-container
+`scope` is not a cleanup-callback API.
 
-Primary components:
+Do not rely on manual teardown inside demo code.
 
-- `ScrollableContainer`
+Every reset must rebuild the screen from scratch.
 
-Should test:
+## Sidebar
 
-- viewport clipping
-- scroll extents
-- vertical and horizontal scrolling where supported
-- nested scroll ownership
-- momentum and overscroll where implemented
+The sidebar is only for non-visible state that cannot be inspected with the
+mouse.
 
-Should expose:
+Use the sidebar for:
 
-- scroll offsets
-- content extent
-- visible viewport
+- non-visible state
+- hidden-node facts
+- state that cannot be inspected through the shared hover hint
 
-### 09-texture
+Do not use the sidebar for:
 
-Primary components:
+- long prose
+- behavior explanations
+- duplicate navigation markers
+- values already available through hover hints
+- visible-object inspection data
 
-- `Texture`
+Behavior explanations belong in the header description below the title.
 
-Should test:
+Sidebar lines should be:
 
-- intrinsic dimensions
-- valid source construction
-- deterministic failure for invalid backing source
+- short
+- factual
+- current
+- easy to compare across frames
 
-Should expose:
+Shared sidebar helpers:
 
-- source identity
-- intrinsic size
+- `add_info_item(title, lines) -> index`
+- `set_info_title(index, title)`
+- `set_info_lines(index, lines)`
+- `set_info_collapsed(index, collapsed)`
+- `toggle_info_item(index)`
+- `clear_info_items()`
 
-### 10-atlas
+Sidebar state is screen-scoped and is cleared automatically on screen switch and
+screen reset.
 
-Primary components:
+## Hover Hints
 
-- `Atlas`
+Hover hints exist to inspect the hovered object and nothing else.
 
-Should test:
+The first row is always fixed:
 
-- region registration
-- region lookup
-- invalid region data failure
-- region metadata consistency against the backing texture
+- `node: {name}`
 
-Should expose:
+That row is owned by the shared hint renderer and must not be redefined per
+screen.
 
-- registered region names
-- region coordinates and sizes
+All remaining hint rows should:
 
-### 11-sprite
+- expose only inspectable properties relevant to the behavior under test
+- use property labels that match the real property naming
+- use unique labels within the same hint
+- use dotted labels for true sub-properties such as `rect.content` or `rect.bounds`
+- prefer grouped labels when inspecting a pair or set as one concept
+- prefer badges for scalar values
 
-Primary components:
+Repeated hint labels are invalid and should fail deterministically.
 
-- `Sprite`
+Do not use hints for:
 
-Should test:
-
-- atlas-backed region resolution
-- direct texture-region construction where supported
-- intrinsic sprite dimensions from region data
-- clipped/out-of-bounds region behavior if the current graphics spec allows a warning/fallback path
-
-Should expose:
-
-- source texture
-- resolved region
-- intrinsic sprite size
-
-### 12-image
-
-Primary components:
-
-- `Image`
-
-Should test:
-
-- full-texture rendering
-- sprite-backed rendering
-- `contain`, `cover`, and `stretch`
-- alignment inside its assigned box
-- sampling mode behavior where visible
-
-Should expose:
-
-- source type
-- resolved draw region
-- fit mode
-
-### 13-text
-
-Primary components:
-
-- `Text`
-
-Should test:
-
-- `font`
-- `fontSize`
-- `lineHeight`
-- `textAlign`
-- `textVariant`
-- wrapping with and without `maxWidth`
-- explicit newline measurement
-- intrinsic remeasurement after content change
-- deterministic invalid font and invalid `lineHeight` handling
-
-Should expose:
-
-- measured width/height
-- pass/fail checks for wrap and line-height behavior
-
-### 14-button
-
-Primary components:
-
-- `Button`
-
-Should test:
-
-- content slot behavior
-- pointer activation
-- keyboard activation
-- disabled suppression
-- negotiated pressed state
-- focused versus hovered versus pressed behavior
-
-Should expose:
-
-- activation count
-- effective pressed state
-- focus owner
-
-### 15-checkbox
-
-Primary components:
-
-- `Checkbox`
-
-Should test:
-
-- checked, unchecked, and indeterminate behavior
-- negotiated checked state
-- toggle order
-- disabled handling
-- label/description content structure where applicable
-
-Should expose:
-
-- requested checked state
-- effective checked state
-
-### 16-switch
-
-Primary components:
-
-- `Switch`
-
-Should test:
-
-- checked-state behavior
-- tap behavior
-- drag-threshold and snap behavior
-- disabled handling
-
-Should expose:
-
-- requested checked state
-- effective checked state
-
-### 17-radio-group
-
-Primary components:
-
-- `Radio`
-- `RadioGroup`
-
-Reason for pairing:
-
-- `Radio` is not meaningful without `RadioGroup` coordination in this spec revision
-
-Should test:
-
-- registration
-- single-value coordination
-- roving focus
-- disabled option behavior
-- traversal edge behavior
-- invalid duplicate value failure
-
-Should expose:
-
-- current value
-- focused radio
-
-### 18-slider
-
-Primary components:
-
-- `Slider`
-
-Should test:
-
-- clamping
-- stepping
-- pointer dragging
-- track activation
-- orientation behavior if implemented
-
-Should expose:
-
-- requested value
-- effective clamped value
-- normalized ratio
-
-### 19-progress-bar
-
-Primary components:
-
-- `ProgressBar`
-
-Should test:
-
-- determinate progress
-- indeterminate mode
-- orientation behavior if implemented
-- range normalization
-
-Should expose:
-
-- effective value
-- effective normalized ratio
-- indeterminate state
-
-### 20-text-input
-
-Primary components:
-
-- `TextInput`
-
-Should test:
-
-- controlled value
-- controlled selection
-- placeholder rules
-- submit behavior
-- read-only versus disabled behavior
-- composition plumbing as observable logical behavior
-
-Should expose:
-
-- current value
-- current selection
-- focus owner
-
-### 21-text-area
-
-Primary components:
-
-- `TextArea`
-
-Should test:
-
-- multiline editing behavior
-- internal scrolling
-- wrap behavior
-- newline insertion
-- scroll behavior when wrapping is disabled
-- read-only versus disabled behavior
-
-Should expose:
-
-- current value
-- current selection
-- scroll offsets
-
-### 22-tabs
-
-Primary components:
-
-- `Tabs`
-
-Should test:
-
-- trigger/panel mapping
-- active value behavior
-- roving focus
-- manual activation
-- disabled-trigger skipping
-- invalid value recovery
-
-Should expose:
-
-- active tab value
-- focused trigger
-
-### 23-select
-
-Primary components:
-
-- `Select`
-- `Option`
-
-Reason for pairing:
-
-- `Option` is meaningful only as a coordinated descendant of `Select`
-
-Should test:
-
-- single-select behavior
-- multi-select behavior
-- placeholder rendering
-- summary rendering
-- popup open/close
-- disabled option behavior
-- duplicate option failure path
-
-Should expose:
-
-- effective selection
-- open state
-- focused option
-
-### 24-modal
-
-Primary components:
-
-- `Modal`
-
-Should test:
-
-- negotiated open state
-- backdrop dismissal behavior
-- escape dismissal behavior
-- focus trapping
-- focus restoration
-- overlay-layer mounting
-
-Should expose:
-
-- open state
-- focus owner
-- restoration target
-
-### 25-alert
-
-Primary components:
-
-- `Alert`
-
-Should test:
-
-- required title and actions
-- optional message
-- `initialFocus`
-- alert-specific validation failures
-- inherited modal behavior that remains part of the public alert contract
-
-Should expose:
-
-- focused action
-- open state
-- guarded failure results
-
-### 26-notification
-
-Primary components:
-
-- `Notification`
-
-Should test:
-
-- open/close behavior
-- explicit dismissal
-- auto-dismiss timing
-- stack participation where implemented
-- placement behavior
-
-Should expose:
-
-- open state
-- dismissal mode
-- resolved placement
-
-### 27-tooltip
-
-Primary components:
-
-- `Tooltip`
-
-Should test:
-
-- trigger modes: hover, focus, manual
-- anchored placement
-- fallback placement near edges
-- open-state behavior
-
-Should expose:
-
-- open state
-- resolved placement
-- anchor region summary
-
-### 28-motion
-
-Primary components:
-
-- motion integration across documented component surfaces
-
-Should test:
-
-- `motionPreset`
-- explicit `motion`
-- valid target restrictions
-- valid property restrictions
-- adapter boundary behavior
-- interruption behavior where observable
-
-Minimum surfaces to cover:
-
-- one control surface
-- one overlay surface
-- one value-driven surface
-- one graphics-capable surface
-
-Should expose:
-
-- active phase
-- active target
-- active properties
-
-## Component Ownership Summary
-
-Each component should have one primary demo home:
-
-- `Container`: `01-container`
-- `Drawable`: `02-drawable`
-- `Stage`: `03-stage`
-- `Row`: `04-row`
-- `Column`: `05-column`
-- `Flow`: `06-flow`
-- `SafeAreaContainer`: `07-safe-area-container`
-- `ScrollableContainer`: `08-scrollable-container`
-- `Texture`: `09-texture`
-- `Atlas`: `10-atlas`
-- `Sprite`: `11-sprite`
-- `Image`: `12-image`
-- `Text`: `13-text`
-- `Button`: `14-button`
-- `Checkbox`: `15-checkbox`
-- `Switch`: `16-switch`
-- `Radio` and `RadioGroup`: `17-radio-group`
-- `Slider`: `18-slider`
-- `ProgressBar`: `19-progress-bar`
-- `TextInput`: `20-text-input`
-- `TextArea`: `21-text-area`
-- `Tabs`: `22-tabs`
-- `Select` and `Option`: `23-select`
-- `Modal`: `24-modal`
-- `Alert`: `25-alert`
-- `Notification`: `26-notification`
-- `Tooltip`: `27-tooltip`
-- motion integration: `28-motion`
-
-## Rebuild Order
-
-Recommended implementation order inside `demos/` and separate `test/` harnesses:
-
-1. `01-container`
-2. `02-drawable`
-3. `03-stage`
-4. `04-row`
-5. `05-column`
-6. `06-flow`
-7. `07-safe-area-container`
-8. `08-scrollable-container`
-9. `09-texture`
-10. `10-atlas`
-11. `11-sprite`
-12. `12-image`
-13. `13-text`
-14. `14-button`
-15. `15-checkbox`
-16. `16-switch`
-17. `17-radio-group`
-18. `18-slider`
-19. `19-progress-bar`
-20. `20-text-input`
-21. `21-text-area`
-22. `22-tabs`
-23. `23-select`
-24. `24-modal`
-25. `25-alert`
-26. `26-notification`
-27. `27-tooltip`
-28. `28-motion`
-
-## Non-Goals
-
-This plan intentionally does not:
-
-- preserve old phase demo grouping
-- use generic buckets like “Foundation” or “Graphics” as demo homes
-- treat `_test/` as the current truth
-- merge unrelated controls into a single large acceptance harness
-
-`_test/` is historical reference only and does not define current demo behavior.
+- free-form instructions
+- behavior explanations
+- duplicated visible labels
+- unrelated runtime data

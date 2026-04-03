@@ -1,12 +1,8 @@
-local DemoColors = require('demos.common.colors')
+local UI = require('lib.ui')
 
+local Drawable = UI.Drawable
 local ALIGNMENTS = { 'start', 'center', 'end', 'stretch' }
 local CASES = {}
-
-local GRID_ORIGIN_X = 120
-local GRID_ORIGIN_Y = 120
-local GRID_STEP_X = 310
-local GRID_STEP_Y = 180
 local NODE_WIDTH = 220
 local NODE_HEIGHT = 120
 
@@ -27,11 +23,12 @@ for row = 1, #ALIGNMENTS do
             stretch = 'Stretch',
         })[align_x]
         CASES[#CASES + 1] = {
+            id = string.format('alignments-%s-%s', align_y, align_x),
             label = vertical_name .. ' ' .. horizontal_name,
-            x = GRID_ORIGIN_X + ((column - 1) * GRID_STEP_X),
-            y = GRID_ORIGIN_Y + ((row - 1) * GRID_STEP_Y),
             alignX = align_x,
             alignY = align_y,
+            row = row,
+            column = column,
         }
     end
 end
@@ -42,37 +39,19 @@ return function(owner, helpers)
         'Shows every valid Drawable alignment combination using only the Drawable bounds and the resolved sample box.',
         function(scope, stage)
             local root = stage.baseSceneLayer
+
             for index = 1, #CASES do
                 local case = CASES[index]
-                local node = helpers.make_node(scope, root, {
-                    x = case.x,
-                    y = case.y,
+                local node = Drawable.new({
+                    id = case.id,
+                    x = 0,
+                    y = 0,
                     width = NODE_WIDTH,
                     height = NODE_HEIGHT,
                     alignX = case.alignX,
                     alignY = case.alignY,
-                }, case.label, DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.2), DemoColors.roles.accent_blue_line)
-                rawset(node, '_demo_sample_size', {
-                    width = 72,
-                    height = 40,
                 })
-                helpers.set_hint(node, function(current)
-                    return {
-                        {
-                            label = 'alignment',
-                            badges = {
-                                helpers.badge('alignX', current.alignX),
-                                helpers.badge('alignY', current.alignY),
-                            },
-                        },
-                        {
-                            label = 'rect.sample',
-                            badges = {
-                                helpers.badge('sample', helpers.format_rect(current:resolveContentRect(72, 40))),
-                            },
-                        },
-                    }
-                end)
+                root:addChild(node)
             end
 
             return {

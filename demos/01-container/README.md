@@ -227,7 +227,7 @@ To reduce implementation complexity, the demo should follow these rules:
 - do not duplicate metric text rendering logic per screen
 - do not duplicate resize logic per screen when one helper can own it
 - do not mix screen switching with screen content logic
-- do not require every screen to manually destroy resources; rely on `DemoBase` scope cleanup
+- do not require every screen to manually release tracked Love resources; rely on `DemoBase` scope cleanup
 - do not create a separate custom inspection overlay when the shared sidebar can carry the metrics
 
 Recommended pattern:
@@ -251,7 +251,7 @@ The final demo is acceptable when:
 - property usage is explicit
 - the implementation remains compact because scenario data drives the setup
 - no screen depends on later component demos
-- screen switching and cleanup remain owned by `DemoBase`
+- screen switching and tracked-resource cleanup remain owned by `DemoBase`
 
 ## Non-Goals
 

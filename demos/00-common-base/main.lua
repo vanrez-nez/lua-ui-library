@@ -45,7 +45,7 @@ function love.load()
                 g.setColor(DemoColors.roles.accent_highlight)
                 g.printf(
                     string.format(
-                        'Screen %d/%d\nSwitching screens forces cleanup and rebuild from the shared demo base.',
+                        'Screen %d/%d\nSwitching screens rebuilds the active screen from the shared demo base.',
                         index,
                         owner:get_screen_count()
                     ),

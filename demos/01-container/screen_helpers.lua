@@ -332,12 +332,6 @@ function ScreenHelpers.make_node(scope, parent, opts, label, fill_color, line_co
     rawset(node, '_demo_opts', opts)
     parent:addChild(node)
 
-    scope:on_cleanup(function()
-        if rawget(node, '_destroyed') ~= true then
-            node:destroy()
-        end
-    end)
-
     return node
 end
 

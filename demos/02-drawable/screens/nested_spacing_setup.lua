@@ -1,26 +1,25 @@
 local DemoColors = require('demos.common.colors')
 local DemoInstruments = require('demos.02-drawable.demo_instruments')
+local Hint = require('demos.common.hint')
 local NativeControls = require('demos.common.native_controls')
 
 local INSET_STEP = 5
 local MAX_INSET = 60
-local NAVIGATOR_ORDER = { 3, 2, 1 }
+local NAVIGATOR_ORDER = {
+    'nested-spacing-inner',
+    'nested-spacing-middle',
+    'nested-spacing-outer',
+}
 
 local NODE_STYLES = {
-    {
+    ['nested-spacing-outer'] = {
         label = 'Outer',
-        fill = DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.18),
-        line = DemoColors.roles.accent_green_line,
     },
-    {
+    ['nested-spacing-middle'] = {
         label = 'Middle',
-        fill = DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.18),
-        line = DemoColors.roles.accent_violet_line,
     },
-    {
+    ['nested-spacing-inner'] = {
         label = 'Inner',
-        fill = DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.2),
-        line = DemoColors.roles.accent_cyan_line,
     },
 }
 
@@ -95,45 +94,72 @@ local function set_inset(node, property, side, delta)
     node[property] = next
 end
 
+local function place_centered_in_parent(parent, child)
+    local margin = child.margin or { top = 0, right = 0, bottom = 0, left = 0 }
+    local slot = parent:resolveContentRect(
+        child.width + (margin.left or 0) + (margin.right or 0),
+        child.height + (margin.top or 0) + (margin.bottom or 0)
+    )
+
+    child.x = slot.x + (margin.left or 0)
+    child.y = slot.y + (margin.top or 0)
+end
+
 function Setup.install(args)
     local scope = args.scope
-    local owner = args.owner
     local helpers = args.helpers
-    local nodes = args.nodes
+    local stage = args.stage
+    local root = args.root
     local label_font = scope:font(11)
     local title_font = scope:font(12)
     local selected_nav_index = 2
     local navigator = nil
     local controls = {}
+    local nodes_by_id = {}
 
-    for index = 1, #nodes do
-        DemoInstruments.decorate_drawable(nodes[index], NODE_STYLES[index])
-        DemoInstruments.set_spacing_hint(nodes[index], helpers)
-    end
-
-    local function cleanup()
-        for index = #nodes, 1, -1 do
-            local node = nodes[index]
-            if rawget(node, '_destroyed') ~= true then
-                node:destroy()
-            end
+    for index = 1, #NAVIGATOR_ORDER do
+        local node_id = NAVIGATOR_ORDER[index]
+        local node = root:findById(node_id, -1)
+        if node == nil then
+            error('nested_spacing_setup: missing node "' .. node_id .. '"', 2)
         end
-    end
 
-    scope:on_cleanup(cleanup)
-
-    local function selected_index()
-        return NAVIGATOR_ORDER[selected_nav_index]
+        nodes_by_id[node_id] = node
+        rawset(node, '_demo_label', NODE_STYLES[node_id].label)
+        Hint.set_hint_name(node, NODE_STYLES[node_id].label)
+        DemoInstruments.set_spacing_hint(node, helpers)
     end
 
     local function selected_node()
-        return nodes[selected_index()]
+        return nodes_by_id[NAVIGATOR_ORDER[selected_nav_index]]
+    end
+
+    local function root_node()
+        return nodes_by_id['nested-spacing-outer']
+    end
+
+    local function middle_node()
+        return nodes_by_id['nested-spacing-middle']
+    end
+
+    local function inner_node()
+        return nodes_by_id['nested-spacing-inner']
     end
 
     local function update()
+        local viewport = root:getWorldBounds()
+        local outer = root_node()
+        local middle = middle_node()
+        local inner = inner_node()
+
+        outer.x = math.floor(viewport.x + ((viewport.width - outer.width) * 0.5) + 0.5)
+        outer.y = math.floor(viewport.y + ((viewport.height - outer.height) * 0.5) + 0.5)
+        place_centered_in_parent(outer, middle)
+        place_centered_in_parent(middle, inner)
+
         navigator = NativeControls.build_centered_navigator_layout(
-            love.graphics.getWidth(),
-            owner.header_height + 10,
+            viewport.width,
+            114,
             title_font,
             rawget(selected_node(), '_demo_label') or 'Middle'
         )
@@ -177,36 +203,7 @@ function Setup.install(args)
     local function draw_overlay(graphics)
         local mouse_x, mouse_y = love.mouse.getPosition()
         local node = selected_node()
-        local selected_style = NODE_STYLES[selected_index()]
-        local selected_bounds = node:getWorldBounds()
-        local content_rect = DemoInstruments.to_world_rect(node, node:getContentRect())
         local navigator_text = rawget(node, '_demo_label') or 'Middle'
-
-        if DemoInstruments.has_insets(node.margin) then
-            local margin = node.margin
-            local margin_rect = DemoInstruments.to_world_rect(node, {
-                x = -margin.left,
-                y = -margin.top,
-                width = node.width + margin.left + margin.right,
-                height = node.height + margin.top + margin.bottom,
-            })
-            NativeControls.draw_rect(
-                graphics,
-                margin_rect,
-                'line',
-                NativeControls.set_alpha(DemoColors.roles.accent_highlight, 0.85),
-                2
-            )
-        end
-
-        NativeControls.draw_rect(
-            graphics,
-            content_rect,
-            'fill',
-            NativeControls.set_alpha(DemoColors.roles.accent_amber_fill, 0.16)
-        )
-        NativeControls.draw_rect(graphics, content_rect, 'line', DemoColors.roles.accent_amber_line)
-        NativeControls.draw_rect(graphics, selected_bounds, 'line', selected_style.line, 3)
 
         NativeControls.draw_button(
             graphics,
@@ -223,7 +220,7 @@ function Setup.install(args)
             NativeControls.point_in_rect(navigator.right, mouse_x, mouse_y)
         )
         NativeControls.draw_rect(graphics, navigator.body, 'fill', DemoColors.roles.surface_alt)
-        NativeControls.draw_rect(graphics, navigator.body, 'line', selected_style.line)
+        NativeControls.draw_rect(graphics, navigator.body, 'line', node.borderColor)
         graphics.setColor(DemoColors.roles.text)
         graphics.setFont(title_font)
         graphics.print(
@@ -269,11 +266,11 @@ function Setup.install(args)
         end
     end
 
-    return {
+    rawset(stage, '_demo_screen_hooks', {
         mousepressed = mousepressed,
         update = update,
         draw_overlay = draw_overlay,
-    }
+    })
 end
 
 return Setup
