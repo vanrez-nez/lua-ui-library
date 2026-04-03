@@ -190,6 +190,10 @@ function TextInput:constructor(opts)
     rawset(self, '_composition_text', '')
     rawset(self, '_caret_blink_t', 0)
     rawset(self, '_caret_blink_on', true)
+    rawset(self, '_styling_context', {
+        component = 'textInput',
+        part = 'field',
+    })
 
     self:_add_event_listener('ui.activate', function(event)
         if rawget(self, '_destroyed') then return end

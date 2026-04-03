@@ -70,6 +70,10 @@ function Button:constructor(opts)
 
     rawset(self, 'surface', self)
     rawset(self, 'border', self)
+    rawset(self, '_styling_context', {
+        component = 'button',
+        part = 'surface',
+    })
     rawset(self, '_last_visual_variant', self:_resolve_visual_variant())
 
     self:_add_event_listener('ui.activate', function(event)

@@ -1,4 +1,5 @@
 local Container = require('lib.ui.core.container')
+local Drawable = require('lib.ui.core.drawable')
 local Button = require('lib.ui.controls.button')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Assert = require('lib.ui.utils.assert')
@@ -191,13 +192,17 @@ function Notification:constructor(opts)
     })
     Container._allow_fill_from_parent(overlay_root, { width = true, height = true })
     rawset(overlay_root, '_ui_notification_owner', self)
-    local surface = Container.new({
+    local surface = Drawable.new({
         tag = (self.tag and (self.tag .. '.surface')) or 'notification.surface',
         internal = true,
         width = 280,
         height = 96,
         interactive = true,
         focusable = false,
+    })
+    rawset(surface, '_styling_context', {
+        component = 'notification',
+        part = 'surface',
     })
     local content = Container.new({
         tag = (self.tag and (self.tag .. '.content')) or 'notification.content',

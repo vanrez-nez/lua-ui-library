@@ -3,6 +3,10 @@ local Types = require('lib.ui.utils.types')
 
 local Resolver = {}
 
+-- docs/spec/ui-foundation-spec.md §8.4:
+-- component-bound tokens use "<component>.<part>.<property>" and variant-
+-- specific tokens append ".<variant>". Token binding is explicit; there is no
+-- implicit CSS-like selector or descendant-based token matching.
 local function token_key(component, part, property_name, variant)
     local key = table.concat({ component, part, property_name }, '.')
 

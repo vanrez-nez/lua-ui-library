@@ -1,4 +1,5 @@
 local Drawable = require('lib.ui.core.drawable')
+local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
@@ -106,6 +107,35 @@ function Checkbox:constructor(opts)
     rawset(self, '_checked_controlled', opts.checked ~= nil)
     rawset(self, '_checked_uncontrolled', normalize_state(opts.checked) or 'unchecked')
 
+    local box = Drawable.new({
+        tag = (self.tag and (self.tag .. '.box')) or 'checkbox.box',
+        internal = true,
+        width = 20,
+        height = 20,
+        interactive = false,
+        focusable = false,
+    })
+    local indicator = Drawable.new({
+        tag = (self.tag and (self.tag .. '.indicator')) or 'checkbox.indicator',
+        internal = true,
+        width = 12,
+        height = 12,
+        interactive = false,
+        focusable = false,
+    })
+    rawset(box, '_styling_context', {
+        component = 'checkbox',
+        part = 'box',
+    })
+    rawset(indicator, '_styling_context', {
+        component = 'checkbox',
+        part = 'indicator',
+    })
+    box:addChild(indicator)
+    Container.addChild(self, box)
+    rawset(self, 'box', box)
+    rawset(self, 'indicator', indicator)
+
     ControlUtils.assert_controlled_pair('checked', opts.checked, 'onCheckedChange', opts.onCheckedChange, 2)
 
     self:_add_event_listener('ui.activate', function(event)
@@ -162,6 +192,35 @@ function Checkbox:update(dt)
         ev.enabled = not disabled
         ev.interactive = not disabled
         ev.focusable = not disabled
+    end
+
+    local box = rawget(self, 'box')
+    local indicator = rawget(self, 'indicator')
+    local width = rawget(self, '_resolved_width') or 0
+    local height = rawget(self, '_resolved_height') or 0
+    local box_size = math.min(width, height, 20)
+    local indicator_size = math.max(0, box_size - 8)
+    local variant = self:_resolve_visual_variant()
+
+    if box ~= nil then
+        box.x = (width - box_size) * 0.5
+        box.y = (height - box_size) * 0.5
+        box.width = box_size
+        box.height = box_size
+        rawset(box, '_styling_variant', variant)
+        box:markDirty()
+    end
+
+    if indicator ~= nil then
+        local state = get_effective_checked(self)
+        local show_indicator = state ~= 'unchecked'
+        indicator.width = indicator_size
+        indicator.height = indicator_size
+        indicator.x = (box_size - indicator_size) * 0.5
+        indicator.y = (box_size - indicator_size) * 0.5
+        indicator.visible = show_indicator
+        rawset(indicator, '_styling_variant', variant)
+        indicator:markDirty()
     end
 
     return self

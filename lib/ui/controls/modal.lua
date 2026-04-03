@@ -1,5 +1,5 @@
 local Container = require('lib.ui.core.container')
-local Row = require('lib.ui.layout.row')
+local Drawable = require('lib.ui.core.drawable')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Types = require('lib.ui.utils.types')
 local Assert = require('lib.ui.utils.assert')
@@ -213,7 +213,7 @@ function Modal:constructor(opts)
         interactive = false,
     })
     Container._allow_fill_from_parent(overlay_root, { width = true, height = true })
-    local backdrop = Container.new({
+    local backdrop = Drawable.new({
         tag = (self.tag and (self.tag .. '.backdrop')) or 'modal.backdrop',
         internal = true,
         width = 'fill',
@@ -221,6 +221,10 @@ function Modal:constructor(opts)
         interactive = true,
     })
     Container._allow_fill_from_parent(backdrop, { width = true, height = true })
+    rawset(backdrop, '_styling_context', {
+        component = 'modal',
+        part = 'backdrop',
+    })
     local overlay_frame = Container.new({
         tag = (self.tag and (self.tag .. '.frame')) or 'modal.frame',
         internal = true,
@@ -228,7 +232,7 @@ function Modal:constructor(opts)
         height = 0,
         interactive = false,
     })
-    local surface = Row.new({
+    local surface = Drawable.new({
         tag = (self.tag and (self.tag .. '.surface')) or 'modal.surface',
         internal = true,
         width = '80%',
@@ -244,8 +248,12 @@ function Modal:constructor(opts)
         interactive = false,
         focusable = false,
         padding = { 20, 20, 20, 20 },
-        align = 'stretch',
-        justify = 'start',
+        alignX = 'stretch',
+        alignY = 'stretch',
+    })
+    rawset(surface, '_styling_context', {
+        component = 'modal',
+        part = 'surface',
     })
     local content_slot = Container.new({
         tag = (self.tag and (self.tag .. '.content')) or 'modal.content',

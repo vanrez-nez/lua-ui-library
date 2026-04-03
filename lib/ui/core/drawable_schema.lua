@@ -30,10 +30,18 @@ local function resolve_color(key, value, level)
     return Color.resolve(value)
 end
 
-local function check_opacity(key, value, level)
+local function check_finite_number(key, value, level)
     if not Types.is_number(value) then
-        Assert.fail(key .. ' must be a number in [0, 1]', level or 1)
+        Assert.fail(key .. ' must be a number', level or 1)
     end
+    if value ~= value or value == math.huge or value == -math.huge then
+        Assert.fail(key .. ' must be finite, got ' .. tostring(value), level or 1)
+    end
+    return value
+end
+
+local function check_opacity(key, value, level)
+    check_finite_number(key, value, level)
     if value < 0 or value > 1 then
         Assert.fail(key .. ' must be in [0, 1], got ' .. value, level or 1)
     end
@@ -41,13 +49,15 @@ local function check_opacity(key, value, level)
 end
 
 local function check_non_negative(key, value, level)
-    if not Types.is_number(value) then
-        Assert.fail(key .. ' must be a number >= 0', level or 1)
-    end
+    check_finite_number(key, value, level)
     if value < 0 then
         Assert.fail(key .. ' must be >= 0, got ' .. value, level or 1)
     end
     return value
+end
+
+local function check_numeric(key, value, level)
+    return check_finite_number(key, value, level)
 end
 
 local function check_enum(key, value, allowed, level)
@@ -119,8 +129,12 @@ local DRAWABLE_SCHEMA = {
     end },
     backgroundRepeatX = { type = 'boolean' },
     backgroundRepeatY = { type = 'boolean' },
-    backgroundOffsetX = { type = 'number' },
-    backgroundOffsetY = { type = 'number' },
+    backgroundOffsetX = { validate = function(key, value, ctx, level)
+        return check_numeric(key, value, level)
+    end },
+    backgroundOffsetY = { validate = function(key, value, ctx, level)
+        return check_numeric(key, value, level)
+    end },
     backgroundAlignX = { validate = function(key, value, ctx, level)
         return check_enum(key, value, { 'start', 'center', 'end' }, level)
     end },
@@ -154,9 +168,7 @@ local DRAWABLE_SCHEMA = {
         return check_enum(key, value, { 'none', 'miter', 'bevel' }, level)
     end },
     borderMiterLimit = { validate = function(key, value, ctx, level)
-        if not Types.is_number(value) then
-            Assert.fail(key .. ' must be a number', level or 1)
-        end
+        check_finite_number(key, value, level)
         if value <= 0 then
             Assert.fail(key .. ' must be > 0, got ' .. value, level or 1)
         end
@@ -184,8 +196,12 @@ local DRAWABLE_SCHEMA = {
     shadowOpacity = { validate = function(key, value, ctx, level)
         return check_opacity(key, value, level)
     end },
-    shadowOffsetX = { type = 'number' },
-    shadowOffsetY = { type = 'number' },
+    shadowOffsetX = { validate = function(key, value, ctx, level)
+        return check_numeric(key, value, level)
+    end },
+    shadowOffsetY = { validate = function(key, value, ctx, level)
+        return check_numeric(key, value, level)
+    end },
     shadowBlur = { validate = function(key, value, ctx, level)
         return check_non_negative(key, value, level)
     end },

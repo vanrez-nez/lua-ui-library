@@ -286,7 +286,7 @@ end
 -- handles the empty-props case without painting anything.
 function Drawable:draw(graphics)
     local bounds = self:getWorldBounds()
-    local props = Styling.assemble_props(self, nil)
+    local props = Styling.assemble_props(self, rawget(self, '_styling_context'))
     Styling.draw(props, bounds, graphics)
 end
 

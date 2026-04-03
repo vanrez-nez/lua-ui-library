@@ -294,6 +294,10 @@ function Select:constructor(opts)
     })
     Container._allow_fill_from_parent(trigger, { width = true })
     rawset(trigger, 'pointerFocusCoupling', 'before')
+    rawset(trigger, '_styling_context', {
+        component = 'select',
+        part = 'trigger',
+    })
 
     local summary = Text.new({
         tag = (self.tag and (self.tag .. '.summary')) or 'select.summary',
@@ -314,13 +318,17 @@ function Select:constructor(opts)
         interactive = false,
         focusable = false,
     })
-    local popup = Container.new({
+    local popup = Drawable.new({
         tag = (self.tag and (self.tag .. '.popup')) or 'select.popup',
         internal = true,
         width = 180,
         height = 132,
         interactive = true,
         focusable = false,
+    })
+    rawset(popup, '_styling_context', {
+        component = 'select',
+        part = 'popup',
     })
     local popup_slot = Container.new({
         tag = (self.tag and (self.tag .. '.popup_slot')) or 'select.popup_slot',
@@ -487,6 +495,8 @@ function Select:update(dt)
     end
 
     rawset(self, '_last_open_state', wants_open)
+    rawset(rawget(self, 'trigger'), '_styling_variant', wants_open and 'open' or 'base')
+    rawset(rawget(self, 'popup'), '_styling_variant', wants_open and 'open' or 'base')
     return self
 end
 

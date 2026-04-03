@@ -84,7 +84,10 @@ local function sync_parts(self)
 
     local track = rawget(self, 'track')
     local thumb = rawget(self, 'thumb')
-    local bounds = self:getLocalBounds()
+    local bounds = {
+        width = rawget(self, '_resolved_width') or 0,
+        height = rawget(self, '_resolved_height') or 0,
+    }
 
     if rawget(self, 'orientation') == 'vertical' then
         track.x = bounds.width * 0.35
@@ -149,17 +152,25 @@ function Slider:constructor(opts)
     rawset(self, '_dragging', false)
     rawset(self, '_last_motion_value', effective_value(self))
 
-    local track = Container.new({
+    local track = Drawable.new({
         tag = (self.tag and (self.tag .. '.track')) or 'slider.track',
         internal = true,
         interactive = false,
         focusable = false,
     })
-    local thumb = Container.new({
+    local thumb = Drawable.new({
         tag = (self.tag and (self.tag .. '.thumb')) or 'slider.thumb',
         internal = true,
         interactive = false,
         focusable = false,
+    })
+    rawset(track, '_styling_context', {
+        component = 'slider',
+        part = 'track',
+    })
+    rawset(thumb, '_styling_context', {
+        component = 'slider',
+        part = 'thumb',
     })
     Container.addChild(self, track)
     Container.addChild(self, thumb)
@@ -301,6 +312,9 @@ function Slider:update(dt)
     end
     rawset(self, '_last_motion_value', value)
 
+    local variant = self:_resolve_visual_variant()
+    rawset(rawget(self, 'track'), '_styling_variant', variant)
+    rawset(rawget(self, 'thumb'), '_styling_variant', variant)
     sync_parts(self)
     return self
 end

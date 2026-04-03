@@ -1,6 +1,12 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
+local Schema = require('lib.ui.utils.schema')
 local CanvasPool = require('lib.ui.render.canvas_pool')
+local StylingContract = require('lib.ui.render.styling_contract')
+local ThemeRuntime = require('lib.ui.themes.runtime')
+local DrawableSchema = require('lib.ui.core.drawable_schema')
+local Texture = require('lib.ui.graphics.texture')
+local Sprite = require('lib.ui.graphics.sprite')
 
 local Styling = {}
 
@@ -53,6 +59,25 @@ local function resolve_radii(props, bounds)
     end
 
     return { tl = tl, tr = tr, br = br, bl = bl }
+end
+
+local function derive_inner_radii(props, radii)
+    local wt = props.borderWidthTop or 0
+    local wr = props.borderWidthRight or 0
+    local wb = props.borderWidthBottom or 0
+    local wl = props.borderWidthLeft or 0
+
+    -- Corner radius applies to the stroke centerline. The inner silhouette
+    -- therefore contracts inward by half of the local border width. For mixed
+    -- per-side borders, use the same adjacent-side averaging already used by
+    -- the border corner arcs so inset geometry stays visually aligned with the
+    -- current border paint model.
+    return {
+        tl = math.max(0, radii.tl - ((wt + wl) * 0.5)),
+        tr = math.max(0, radii.tr - ((wt + wr) * 0.5)),
+        br = math.max(0, radii.br - ((wb + wr) * 0.5)),
+        bl = math.max(0, radii.bl - ((wb + wl) * 0.5)),
+    }
 end
 
 -- ---------------------------------------------------------------------------
@@ -259,13 +284,54 @@ local function get_source_dims(img)
     return iw, ih
 end
 
+local function resolve_background_draw_source(img)
+    local src_w, src_h = get_source_dims(img)
+    if src_w <= 0 or src_h <= 0 then
+        return nil, nil, 0, 0
+    end
+
+    if Types.is_instance(img, Texture) then
+        local drawable = img:getDrawable()
+        if drawable == nil then
+            return nil, nil, 0, 0
+        end
+        return drawable, nil, src_w, src_h
+    end
+
+    if Types.is_instance(img, Sprite) then
+        local texture = img:getTexture()
+        local region = img:getRegion()
+        local drawable = texture and texture:getDrawable() or nil
+        if drawable == nil or region == nil then
+            return nil, nil, 0, 0
+        end
+
+        local quad = nil
+        if love ~= nil and love.graphics ~= nil and Types.is_function(love.graphics.newQuad) then
+            quad = love.graphics.newQuad(
+                region.x,
+                region.y,
+                region.width,
+                region.height,
+                texture:getWidth(),
+                texture:getHeight()
+            )
+        end
+
+        return drawable, quad, src_w, src_h
+    end
+
+    return img, nil, src_w, src_h
+end
+
 local function paint_background_image(props, bounds, graphics, radii)
     local img = props.backgroundImage
     local opacity = props.backgroundOpacity or 1
     if opacity <= 0 then return end
 
-    local src_w, src_h = get_source_dims(img)
+    local drawable, quad, src_w, src_h = resolve_background_draw_source(img)
     if src_w <= 0 or src_h <= 0 then return end
+    if drawable == nil then return end
     if not Types.is_function(graphics.draw) then return end
 
     local align_x = props.backgroundAlignX or 'start'
@@ -317,7 +383,11 @@ local function paint_background_image(props, bounds, graphics, radii)
     while ix < x_end do
         local iy = y_start
         while iy < y_end do
-            graphics.draw(img, ix, iy)
+            if quad ~= nil then
+                graphics.draw(drawable, quad, ix, iy)
+            else
+                graphics.draw(drawable, ix, iy)
+            end
             iy = iy + src_h
             if not rep_y then break end
         end
@@ -558,8 +628,9 @@ local function paint_inset_shadow(props, bounds, graphics, radii)
 
     if inner_w <= 0 or inner_h <= 0 then return end
 
+    local inner_radii = derive_inner_radii(props, radii)
     local saved_stencil = save_stencil(graphics)
-    local inner_pts = rounded_rect_points(inner_x, inner_y, inner_w, inner_h, radii)
+    local inner_pts = rounded_rect_points(inner_x, inner_y, inner_w, inner_h, inner_radii)
 
     -- Clip all subsequent paint to the interior.
     if Types.is_function(graphics.stencil) and Types.is_function(graphics.polygon) then
@@ -574,13 +645,13 @@ local function paint_inset_shadow(props, bounds, graphics, radii)
     if blur <= 0 then
         local saved = save_color(graphics)
         draw_shadow_shape(graphics, inner_x + ox, inner_y + oy, inner_w, inner_h,
-            c[1], c[2], c[3], final_alpha, radii)
+            c[1], c[2], c[3], final_alpha, inner_radii)
         restore_color(graphics, saved)
     else
         local margin = math.ceil(blur)
         render_shadow_soft(
             graphics, c, final_alpha, blur,
-            margin, margin, inner_w, inner_h, radii,
+            margin, margin, inner_w, inner_h, inner_radii,
             inner_x + ox - margin, inner_y + oy - margin
         )
     end
@@ -620,47 +691,117 @@ function Styling.draw(props, bounds, graphics)
 end
 
 -- ---------------------------------------------------------------------------
--- STYLING_KEYS — all 29 flat styling property names introduced in Phase 12.
--- Ordered by property group: background, border, corner radius, shadow.
--- ---------------------------------------------------------------------------
-
-local STYLING_KEYS = {
-    -- background (10)
-    'backgroundColor', 'backgroundOpacity', 'backgroundGradient', 'backgroundImage',
-    'backgroundRepeatX', 'backgroundRepeatY', 'backgroundOffsetX', 'backgroundOffsetY',
-    'backgroundAlignX', 'backgroundAlignY',
-    -- border (9)
-    'borderColor', 'borderOpacity', 'borderWidthTop', 'borderWidthRight',
-    'borderWidthBottom', 'borderWidthLeft', 'borderStyle', 'borderJoin', 'borderMiterLimit',
-    -- corner radius (4)
-    'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft',
-    -- shadow (6)
-    'shadowColor', 'shadowOpacity', 'shadowOffsetX', 'shadowOffsetY', 'shadowBlur', 'shadowInset',
-}
-
--- ---------------------------------------------------------------------------
 -- Styling.assemble_props — build a resolved props table for Styling.draw.
 --
--- Resolution cascade (spec §4B):
---   1. Node instance property  (node[key] via __index / _public_values)
---   2. Node skin table         (node.skin[key] if node.skin is set)
---   3. nil                     (no styling tokens are defined in the defaults)
+-- This function is intentionally limited to the flat styling-property families
+-- defined by docs/spec/ui-styling-spec.md §§6-9. It does not define aliases or
+-- grouped style objects beyond those spec-owned fields.
 --
--- Boolean keys (backgroundRepeatX, backgroundRepeatY, shadowInset) are handled
--- with an explicit nil check so that `false` is not treated as absent and does
--- not fall through to the next resolution tier.
+-- Full styling precedence is defined by:
+-- - ui-styling-spec §4B
+-- - ui-foundation-spec §§8.3-8.4
+--
+-- The current implementation only assembles the documented property names onto
+-- a props table for the renderer. It does not imply that undocumented token
+-- bindings, aliases, or implicit selector matching are valid.
 -- ---------------------------------------------------------------------------
 
+local function resolve_root_skin_value(skin, property_name)
+    if not Types.is_table(skin) then
+        return nil
+    end
+
+    return skin[property_name]
+end
+
+local function normalize_styling_value(property_name, value, node)
+    if value == nil then
+        return nil
+    end
+
+    return Schema.validate(DrawableSchema, property_name, value, node, 3, 'Drawable')
+end
+
+local function normalize_resolver_context(node, resolver_context)
+    if not Types.is_table(resolver_context) then
+        return nil
+    end
+
+    local context = {}
+    for key, value in pairs(resolver_context) do
+        context[key] = value
+    end
+
+    if context.partSkin == nil and Types.is_table(rawget(node, 'skin')) then
+        context.partSkin = rawget(node, 'skin')
+    end
+
+    if context.variant == nil then
+        local explicit_variant = rawget(node, '_styling_variant')
+        if explicit_variant ~= nil then
+            context.variant = explicit_variant
+        elseif Types.is_function(node._resolve_visual_variant) then
+            context.variant = node:_resolve_visual_variant()
+        end
+    end
+
+    return context
+end
+
+local function resolve_contextual_props(node, resolver_context)
+    local props = {}
+    local part = resolver_context.part
+
+    for _, key in ipairs(StylingContract.ROOT_PROPERTY_KEYS) do
+        local ok, value = pcall(
+            ThemeRuntime.resolve,
+            resolver_context.component,
+            part,
+            key,
+            resolver_context.variant,
+            {
+                instanceValue = node[key],
+                instanceOverrides = resolver_context.instanceOverrides,
+                partSkin = resolver_context.partSkin,
+                theme = resolver_context.theme,
+                defaults = resolver_context.defaults,
+            }
+        )
+
+        if ok then
+            props[key] = normalize_styling_value(key, value, node)
+        else
+            local message = tostring(value)
+            if message:find('missing token "', 1, true) ~= nil then
+                props[key] = nil
+            else
+                error(value, 0)
+            end
+        end
+    end
+
+    return props
+end
+
 function Styling.assemble_props(node, resolver_context)
+    resolver_context = normalize_resolver_context(node, resolver_context)
+
+    if Types.is_table(resolver_context) then
+        if resolver_context.component ~= nil and resolver_context.part ~= nil then
+            return resolve_contextual_props(node, resolver_context)
+        end
+    end
+
     local skin = node.skin
     local props = {}
-    for _, key in ipairs(STYLING_KEYS) do
+    for _, key in ipairs(StylingContract.ROOT_PROPERTY_KEYS) do
         local v = node[key]
-        if v == nil and skin ~= nil then
-            v = skin[key]
+        if v == nil then
+            v = resolve_root_skin_value(skin, key)
         end
-        props[key] = v
+        props[key] = normalize_styling_value(key, v, node)
     end
+
     return props
 end
 

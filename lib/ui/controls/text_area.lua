@@ -1,6 +1,7 @@
 local TextInput = require('lib.ui.controls.text_input')
 local ScrollableContainer = require('lib.ui.scroll.scrollable_container')
 local Container = require('lib.ui.core.container')
+local Drawable = require('lib.ui.core.drawable')
 local Assert = require('lib.ui.utils.assert')
 
 local TextArea = TextInput:extends('TextArea')
@@ -10,6 +11,10 @@ function TextArea:constructor(opts)
     TextInput.constructor(self, opts)
 
     rawset(self, '_ui_text_area_control', true)
+    rawset(self, '_styling_context', {
+        component = 'textArea',
+        part = 'field',
+    })
 
     rawset(self, 'wrap', opts.wrap ~= false)
     rawset(self, 'rows', opts.rows)
@@ -24,6 +29,20 @@ function TextArea:constructor(opts)
         end
     end
 
+    local region_surface = Drawable.new({
+        tag = (self.tag and (self.tag .. '.scroll-region')) or 'textArea.scroll-region',
+        internal = true,
+        width = 'fill',
+        height = 'fill',
+        interactive = false,
+        focusable = false,
+    })
+    Container._allow_fill_from_parent(region_surface, { width = true, height = true })
+    rawset(region_surface, '_styling_context', {
+        component = 'textArea',
+        part = 'scroll region',
+    })
+
     local region = ScrollableContainer._create_scroll_region({
         scroll_x = (self.wrap == false) and self.scrollXEnabled,
         scroll_y = self.scrollYEnabled,
@@ -33,7 +52,9 @@ function TextArea:constructor(opts)
         height = 'fill',
     })
     Container._allow_fill_from_parent(region, { width = true, height = true })
-    Container.addChild(self, region)
+    region_surface:addChild(region)
+    Container.addChild(self, region_surface)
+    rawset(self, 'scrollRegion', region_surface)
     rawset(self, '_scroll_region', region)
 
     self:_add_event_listener('ui.submit', function(event)
@@ -80,6 +101,11 @@ function TextArea:update(dt)
         region.scrollXEnabled = rx
         region.scrollYEnabled = rawget(self, 'scrollYEnabled') ~= false
         region.momentum = rawget(self, 'momentum') == true
+    end
+
+    local region_surface = rawget(self, 'scrollRegion')
+    if region_surface ~= nil then
+        rawset(region_surface, '_styling_variant', self:_resolve_visual_variant())
     end
 
     return self

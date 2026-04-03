@@ -1,4 +1,5 @@
 local Container = require('lib.ui.core.container')
+local Drawable = require('lib.ui.core.drawable')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
@@ -227,13 +228,17 @@ function Tooltip:constructor(opts)
         focusable = false,
     })
     Container._allow_fill_from_parent(overlay_root, { width = true, height = true })
-    local surface = Container.new({
+    local surface = Drawable.new({
         tag = (self.tag and (self.tag .. '.surface')) or 'tooltip.surface',
         internal = true,
         width = 220,
         height = 80,
         interactive = false,
         focusable = false,
+    })
+    rawset(surface, '_styling_context', {
+        component = 'tooltip',
+        part = 'surface',
     })
     local content = Container.new({
         tag = (self.tag and (self.tag .. '.content')) or 'tooltip.content',

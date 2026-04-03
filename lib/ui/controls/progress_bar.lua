@@ -35,7 +35,10 @@ end
 local function sync_parts(self)
     local track = rawget(self, 'track')
     local indicator = rawget(self, 'indicator')
-    local bounds = self:getLocalBounds()
+    local bounds = {
+        width = rawget(self, '_resolved_width') or 0,
+        height = rawget(self, '_resolved_height') or 0,
+    }
     local current_ratio = ratio(self)
 
     track.x = 0
@@ -92,17 +95,25 @@ function ProgressBar:constructor(opts)
         Assert.fail('ProgressBar.orientation must be "horizontal" or "vertical"', 2)
     end
 
-    local track = Container.new({
+    local track = Drawable.new({
         tag = (self.tag and (self.tag .. '.track')) or 'progress.track',
         internal = true,
         interactive = false,
         focusable = false,
     })
-    local indicator = Container.new({
+    local indicator = Drawable.new({
         tag = (self.tag and (self.tag .. '.indicator')) or 'progress.indicator',
         internal = true,
         interactive = false,
         focusable = false,
+    })
+    rawset(track, '_styling_context', {
+        component = 'progressBar',
+        part = 'track',
+    })
+    rawset(indicator, '_styling_context', {
+        component = 'progressBar',
+        part = 'indicator',
     })
 
     Container.addChild(self, track)
@@ -142,6 +153,10 @@ function ProgressBar:update(dt)
             nextValue = current_ratio,
         })
     end
+
+    local variant = self.indeterminate and 'indeterminate' or 'determinate'
+    rawset(rawget(self, 'track'), '_styling_variant', variant)
+    rawset(rawget(self, 'indicator'), '_styling_variant', variant)
 
     rawset(self, '_last_motion_ratio', current_ratio)
     sync_parts(self)

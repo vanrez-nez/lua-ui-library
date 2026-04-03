@@ -34,13 +34,17 @@ function Radio:constructor(opts)
     rawset(self, 'value', opts.value)
     rawset(self, 'disabled', opts.disabled == true)
 
-    local indicator = Container.new({
+    local indicator = Drawable.new({
         tag = (self.tag and (self.tag .. '.indicator')) or 'radio.indicator',
         internal = true,
         width = 20,
         height = 20,
         interactive = false,
         focusable = false,
+    })
+    rawset(indicator, '_styling_context', {
+        component = 'radio',
+        part = 'indicator',
     })
     local label_slot = Container.new({
         tag = (self.tag and (self.tag .. '.label')) or 'radio.label',
@@ -153,6 +157,11 @@ function Radio:update(dt)
         ev.enabled = not disabled
         ev.interactive = not disabled
         ev.focusable = not disabled
+    end
+
+    local indicator = rawget(self, 'indicator')
+    if indicator ~= nil then
+        rawset(indicator, '_styling_variant', self:_resolve_visual_variant())
     end
 
     return self

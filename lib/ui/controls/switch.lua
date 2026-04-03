@@ -1,4 +1,5 @@
 local Drawable = require('lib.ui.core.drawable')
+local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 
@@ -54,6 +55,35 @@ function Switch:constructor(opts)
     rawset(self, '_drag_start_x', 0)
     rawset(self, '_drag_dx', 0)
     rawset(self, '_last_drag_dx', 0)
+
+    local track = Drawable.new({
+        tag = (self.tag and (self.tag .. '.track')) or 'switch.track',
+        internal = true,
+        width = 40,
+        height = 24,
+        interactive = false,
+        focusable = false,
+    })
+    local thumb = Drawable.new({
+        tag = (self.tag and (self.tag .. '.thumb')) or 'switch.thumb',
+        internal = true,
+        width = 18,
+        height = 18,
+        interactive = false,
+        focusable = false,
+    })
+    rawset(track, '_styling_context', {
+        component = 'switch',
+        part = 'track',
+    })
+    rawset(thumb, '_styling_context', {
+        component = 'switch',
+        part = 'thumb',
+    })
+    track:addChild(thumb)
+    Container.addChild(self, track)
+    rawset(self, 'track', track)
+    rawset(self, 'thumb', thumb)
 
     ControlUtils.assert_controlled_pair('checked', opts.checked, 'onCheckedChange', opts.onCheckedChange, 2)
 
@@ -170,6 +200,34 @@ function Switch:update(dt)
         rawset(self, '_dragging', false)
         rawset(self, '_drag_dx', 0)
         rawset(self, '_last_drag_dx', 0)
+    end
+
+    local track = rawget(self, 'track')
+    local thumb = rawget(self, 'thumb')
+    local width = rawget(self, '_resolved_width') or 0
+    local height = rawget(self, '_resolved_height') or 0
+    local track_width = math.max(32, math.min(width, 48))
+    local track_height = math.max(18, math.min(height, 28))
+    local thumb_size = math.max(12, track_height - 6)
+    local variant = self:_resolve_visual_variant()
+    local thumb_x = checked_value(self) and (track_width - thumb_size - 3) or 3
+
+    if track ~= nil then
+        track.width = track_width
+        track.height = track_height
+        track.x = (width - track_width) * 0.5
+        track.y = (height - track_height) * 0.5
+        rawset(track, '_styling_variant', variant)
+        track:markDirty()
+    end
+
+    if thumb ~= nil then
+        thumb.width = thumb_size
+        thumb.height = thumb_size
+        thumb.x = thumb_x
+        thumb.y = (track_height - thumb_size) * 0.5
+        rawset(thumb, '_styling_variant', variant)
+        thumb:markDirty()
     end
 
     return self

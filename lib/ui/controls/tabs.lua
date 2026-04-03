@@ -111,6 +111,7 @@ local function sync_visual_state(self)
         end
         rawset(node, '_tab_active', active)
         rawset(node, '_tab_disabled', disabled)
+        rawset(node, '_styling_variant', self:_resolve_trigger_variant(node))
     end
 
     for key, node in pairs(panels) do
@@ -128,6 +129,7 @@ local function sync_visual_state(self)
             ev.focusable = active
         end
         rawset(node, '_tab_active', active)
+        rawset(node, '_styling_variant', self:_resolve_panel_variant(node))
     end
 end
 
@@ -195,6 +197,44 @@ local function build_list_layout(orientation)
     return list
 end
 
+local function sync_indicator_geometry(self)
+    local indicator = rawget(self, 'indicator')
+    local active_value = effective_value(self)
+    local trigger = active_value and (rawget(self, '_trigger_nodes') or {})[active_value] or nil
+    local orientation = rawget(self, 'orientation')
+
+    if indicator == nil then
+        return
+    end
+
+    if trigger == nil then
+        indicator.visible = false
+        indicator:markDirty()
+        return
+    end
+
+    local trigger_bounds = {
+        width = rawget(trigger, '_resolved_width') or 0,
+        height = rawget(trigger, '_resolved_height') or 0,
+    }
+    local origin_x = (rawget(trigger, '_layout_offset_x') or 0) + ((rawget(trigger, '_effective_values') or {}).x or 0)
+    local origin_y = (rawget(trigger, '_layout_offset_y') or 0) + ((rawget(trigger, '_effective_values') or {}).y or 0)
+
+    indicator.visible = true
+    if orientation == 'vertical' then
+        indicator.x = origin_x
+        indicator.y = origin_y
+        indicator.width = 4
+        indicator.height = trigger_bounds.height
+    else
+        indicator.x = origin_x
+        indicator.y = origin_y + trigger_bounds.height - 4
+        indicator.width = trigger_bounds.width
+        indicator.height = 4
+    end
+    indicator:markDirty()
+end
+
 function Tabs:constructor(opts)
     opts = opts or {}
     local drawable_opts = ControlUtils.base_opts(opts, {
@@ -233,6 +273,33 @@ function Tabs:constructor(opts)
 
     local list_root
     local list_region = build_list_layout(self.orientation)
+    local list_surface = Drawable.new({
+        tag = 'tabs_list_surface',
+        internal = true,
+        width = 'fill',
+        height = self.orientation == 'vertical' and 'fill' or 44,
+        interactive = false,
+        focusable = false,
+    })
+    local indicator = Drawable.new({
+        tag = 'tabs_indicator',
+        internal = true,
+        width = 0,
+        height = 0,
+        interactive = false,
+        focusable = false,
+    })
+    rawset(list_surface, '_styling_context', {
+        component = 'tabs',
+        part = 'list',
+    })
+    rawset(indicator, '_styling_context', {
+        component = 'tabs',
+        part = 'indicator',
+    })
+    list_surface:addChild(list_region)
+    list_surface:addChild(indicator)
+    Container._allow_fill_from_parent(list_surface, { width = true, height = true })
     if self.listScrollable then
         list_root = ScrollableContainer.new({
             width = 'fill',
@@ -245,10 +312,9 @@ function Tabs:constructor(opts)
         Container._allow_fill_from_parent(list_root, { width = true })
         Container.addChild(self, list_root)
         rawset(self, '_list_root', list_root)
-        list_root.content:addChild(list_region)
-        rawset(self, '_list_region', list_region)
+        list_root.content:addChild(list_surface)
     else
-        list_root = list_region
+        list_root = list_surface
         if self.orientation == 'vertical' then
             list_root.height = 'content'
         else
@@ -263,7 +329,10 @@ function Tabs:constructor(opts)
     Container._allow_fill_from_parent(panels, { width = true, height = true })
     Container.addChild(self, panels)
     rawset(self, '_panels_region', panels)
-    rawset(self, 'indicator', rawget(self, '_list_region'))
+    rawset(self, '_list_surface', list_surface)
+    rawset(self, '_list_region', list_region)
+    rawset(self, 'list', list_surface)
+    rawset(self, 'indicator', indicator)
     rawset(self, 'panel', panels)
 
     self:_add_event_listener('ui.activate', function(event)
@@ -369,9 +438,13 @@ function Tabs:_register_tab(value, trigger_node, panel_node)
     })
     rawset(trigger, 'pointerFocusCoupling', 'before')
     rawset(trigger, '_tab_trigger_value', value)
+    rawset(trigger, '_styling_context', {
+        component = 'tabs',
+        part = 'trigger',
+    })
     trigger:addChild(trigger_node)
 
-    local panel = Container({
+    local panel = Drawable({
         tag = 'tabs_panel_' .. value,
         internal = true,
         width = 'fill',
@@ -381,6 +454,10 @@ function Tabs:_register_tab(value, trigger_node, panel_node)
     })
     Container._allow_fill_from_parent(panel, { width = true, height = true })
     rawset(panel, '_tab_panel_value', value)
+    rawset(panel, '_styling_context', {
+        component = 'tabs',
+        part = 'panel',
+    })
     panel:addChild(panel_node)
 
     rawget(self, '_list_region'):addChild(trigger)
@@ -410,6 +487,7 @@ function Tabs:update(dt)
     end
 
     sync_visual_state(self)
+    sync_indicator_geometry(self)
 
     local previous = rawget(self, '_last_motion_value')
     if previous ~= value then
