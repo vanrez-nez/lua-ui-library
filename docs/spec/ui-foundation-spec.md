@@ -18,6 +18,10 @@
 
 `Root`: A node with no parent in the UI tree. `Stage` is the top runtime root.
 
+`Attachment root`: The highest ancestor reachable from a node by following parent links until no parent remains. A detached node is its own attachment root.
+
+`Internal node`: A retained node created and owned by the framework to implement layout, clipping, scrolling, or other framework mechanics without becoming public structural API.
+
 `Slot`: A named child position or named subpart within a component contract.
 
 `Variant`: A supported behavioral or presentational mode defined by the component contract.
@@ -129,6 +133,7 @@ The identity of a component is the combination of:
 
 Additional identity rules:
 
+- This section defines component identity, not retained-node instance addressing. Per-node `id`, `name`, `tag`, and lookup behavior are defined by the `Container` contract in Section 6.1.1.
 - No aliases are stabilized in this revision. A shortened or alternative name is not part of the contract unless it is explicitly added in a future revision.
 - Internal helper structure is an implementation detail unless the part is named in the Anatomy section or stabilized in a theming contract.
 - Changing a component's tier, required named parts, root ownership rules, or lifecycle observability is a breaking change.
@@ -750,6 +755,8 @@ The consumer owns business meaning, application state orchestration, scene regis
 
 **Props and API surface**
 
+- `id: string | nil`
+- `name: string | nil`
 - `tag: string | nil`
 - `visible: boolean`
 - `interactive: boolean`
@@ -766,8 +773,75 @@ The consumer owns business meaning, application state orchestration, scene regis
 - `rotation: number`
 - `skewX`, `skewY: number`
 - `breakpoints: table | nil`
+- `findById(id, depth?) -> Container | nil`
+- `findByTag(tag, depth?) -> Container[]`
 
 Trace note: clarified that the accepted `width` and `height` surface is stable at first publication. Implementation phases may stage resolution-path completion, but they must not narrow the accepted prop domain.
+
+**Identity, naming, tagging, and lookup**
+
+`Container` owns the retained-node addressing and classification contract for the foundation tree.
+
+Field roles:
+
+| Field | Purpose | Uniqueness boundary | Public lookup role |
+|-------|---------|---------------------|--------------------|
+| `id` | structural address | unique within one attachment root | singular lookup through `findById` |
+| `name` | human-readable label | unique among direct siblings | no subtree name lookup in this revision |
+| `tag` | classification label | none | bulk lookup through `findByTag` |
+
+Field rules:
+
+- `id`, `name`, and `tag` accept only `string | nil`.
+- `nil` means the field is unset and is valid for all three fields.
+- Empty-string and non-string assignments are invalid configuration and must fail deterministically.
+- `id` is machine-facing structural address only. It is not a display label or classification label.
+- `name` is a human-facing label for inspectors, debuggers, and editor hierarchy views. It has no effect on rendering, layout, or runtime behavior.
+- `tag` is the consumer-facing classification field. It is not a singular address and it has no uniqueness requirement.
+- Public `tag` must remain consumer-facing. Internal framework labeling must use a separate private mechanism rather than overloading the public `tag` field.
+
+Write-time validation:
+
+- assigning or changing a non-`nil` `id` on an attached node must validate uniqueness against the node's current attachment root before the change commits
+- attaching a node with a non-`nil` `id` must validate uniqueness against the target attachment root before the attach commits
+- assigning or changing a non-`nil` `name` on an attached node must validate uniqueness against the node's direct siblings before the change commits
+- attaching a node with a non-`nil` `name` must validate uniqueness against the target parent's direct children before the attach commits
+- `tag` has no uniqueness validation
+- when an incoming subtree is attached, all non-`nil` `id` values in that subtree must be validated against the target attachment root before any node in that subtree is attached
+
+Reparenting rules:
+
+- `id`, `name`, and `tag` persist on the node across reparenting
+- `id` must be revalidated against the new attachment root during reparenting
+- `name` must be revalidated against the new direct siblings during reparenting
+- if reparenting or subtree attachment fails any `id` or `name` validation, the operation must fail deterministically without partially committing tree changes
+
+Lookup rules:
+
+| Method | Return | Default depth | Match set |
+|--------|--------|---------------|-----------|
+| `findById(id, depth?)` | `Container | nil` | `-1` | first matching public retained node in the receiver subtree |
+| `findByTag(tag, depth?)` | `Container[]` | `1` | all matching public retained nodes in the receiver subtree |
+
+Depth semantics for both methods:
+
+| Value | Meaning |
+|-------|---------|
+| `0` | receiver only |
+| `1` | direct children only |
+| `2` | children and grandchildren |
+| `-1` or `math.huge` | full descendant subtree |
+
+Lookup behavior:
+
+- `findById` returns the matching node when found and `nil` when no matching node exists in the receiver subtree
+- `findByTag` returns a table in depth-first pre-order using sibling insertion order and returns an empty table when no matches exist
+- `findById` and `findByTag` must fail deterministically when their search key is `nil`, empty, or not a string
+- `depth = 0` is valid for both methods and limits evaluation to the receiver itself
+- negative depth values other than `-1` are invalid configuration and must fail deterministically
+- fractional depth values are invalid configuration and must fail deterministically
+- no `findByName` or other subtree name-search API is standardized in this revision
+- internal nodes are excluded from `id` uniqueness validation, `name` uniqueness validation, and all public lookup results
 
 **State model**
 
@@ -830,6 +904,8 @@ A `Container` that is not interactive does not participate as a hit-test target 
 
 Direct target eligibility is determined from effective participation after applying visibility, ancestor clipping, and enabled-state constraints, not from raw local flags alone.
 
+Attachment-root addressing is structural. Calling `findById` from a non-root node searches only that node's subtree even when another node with the same `id` exists elsewhere under the same attachment root.
+
 Trace note: added an explicit effective-targeting sentence because Phase 1 planning exposed ambiguity between structural traversal and direct target eligibility.
 
 **Behavioral edge cases**
@@ -840,6 +916,9 @@ Trace note: added an explicit effective-targeting sentence because Phase 1 plann
 - A `Container` with `clipChildren = true` whose resolved clip bounds are degenerate produces an empty effective clip region.
 - A `Container` with `width = "fill"` as a direct child of `Stage` resolves against the full viewport width.
 - A `Container` with `enabled = false` must not receive activated events and must suppress focus acquisition for itself and its descendants.
+- A detached `Container` is its own attachment root until attached under a parent.
+- A subtree attach that would introduce any duplicate public `id` within one attachment root must fail atomically with no partial attachment.
+- A rename or reparent that would introduce a duplicate sibling `name` must fail without moving the node or partially committing the mutation.
 
 Trace note: clarified that `visible = false` changes rendering and direct-target participation, but does not detach the node from retained-tree geometry, transform, or descendant-state resolution while it remains attached.
 

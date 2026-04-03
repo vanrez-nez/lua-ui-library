@@ -317,6 +317,37 @@ local function run_overlay_precedence_and_input_boundary_tests()
     stage:destroy()
 end
 
+local function run_default_node_draw_tests()
+    local stage = Stage.new({ width = 160, height = 90 })
+    local drawable = UI.Drawable.new({
+        tag = 'drawable',
+        width = 20,
+        height = 20,
+    })
+    local graphics = {
+        calls = {},
+    }
+
+    function drawable:draw(adapter)
+        adapter.calls[#adapter.calls + 1] = 'draw:' .. tostring(self.tag)
+    end
+
+    function drawable:_draw_control(adapter)
+        adapter.calls[#adapter.calls + 1] = 'draw_control:' .. tostring(self.tag)
+    end
+
+    stage.baseSceneLayer:addChild(drawable)
+    stage:update()
+    stage:draw(graphics)
+
+    assert_equal(graphics.calls[1], 'draw:drawable',
+        'Stage.draw without a custom callback should invoke instance draw methods')
+    assert_equal(graphics.calls[2], 'draw_control:drawable',
+        'Stage.draw without a custom callback should invoke retained control draw hooks')
+
+    stage:destroy()
+end
+
 local function run_two_pass_tests()
     local stage = Stage.new({ width = 100, height = 80 })
 
@@ -404,6 +435,7 @@ local function run()
     run_viewport_and_safe_area_tests()
     run_environment_synchronization_tests()
     run_overlay_precedence_and_input_boundary_tests()
+    run_default_node_draw_tests()
     run_two_pass_tests()
     run_update_token_invalidation_tests()
     run_queued_state_change_tests()
