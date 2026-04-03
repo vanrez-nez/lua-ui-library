@@ -38,7 +38,7 @@ love demos/02-drawable
 ```
 
 `01-container` covers retained tree, bounds, sizing, clamp, and visibility behavior.
-`02-drawable` only covers the `Drawable` surface not already proven by `01-container`: alignments, padding, margin, opacity, skin, blend mode, mask, and motion inspection. Shader application is still deferred in the current runtime.
+`02-drawable` only covers the `Drawable` surface not already proven by `01-container`: alignments, padding, margin, opacity, skin, blend mode, retained render effects, and motion inspection. The demo does not currently include a dedicated shader screen, and mask rendering still fails deterministically until a concrete mask asset contract is implemented.
 
 ## Unit Tests
 

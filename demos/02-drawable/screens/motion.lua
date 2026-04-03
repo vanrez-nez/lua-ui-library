@@ -39,11 +39,11 @@ return function(owner, helpers)
                 y = 220,
                 width = 280,
                 height = 180,
-                padding = 16,
+                padding = 15,
                 motion = {
                     reflow = make_descriptor(0.25),
                 },
-            }, 'motion target A', DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.2), DemoColors.roles.accent_blue_line)
+            }, 'Low Fade', DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.2), DemoColors.roles.accent_blue_line)
             helpers.show_content(left, 96, 44)
             helpers.show_motion_bar(left)
 
@@ -52,11 +52,11 @@ return function(owner, helpers)
                 y = 220,
                 width = 280,
                 height = 180,
-                padding = 16,
+                padding = 15,
                 motion = {
                     reflow = make_descriptor(0.85),
                 },
-            }, 'motion target B', DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.2), DemoColors.roles.accent_cyan_line)
+            }, 'High Fade', DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.2), DemoColors.roles.accent_cyan_line)
             helpers.show_content(right, 96, 44)
             helpers.show_motion_bar(right)
 
@@ -66,7 +66,7 @@ return function(owner, helpers)
                     local completed = last and last.completed and last.completed[1] or nil
                     return {
                         {
-                            label = 'props',
+                            label = 'motion',
                             badges = {
                                 helpers.badge('phase', last and last.phase or 'none'),
                                 helpers.badge('target', completed and completed.target or 'none'),

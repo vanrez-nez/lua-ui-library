@@ -2,17 +2,17 @@ local DemoColors = require('demos.common.colors')
 
 local CASES = {
     {
-        label = 'base skin',
+        label = 'Base',
         x = 170,
         skin = { id = 'panel.base', variant = 'default', radius = 10 },
     },
     {
-        label = 'hover skin',
+        label = 'Hover',
         x = 480,
         skin = { id = 'panel.hover', variant = 'hover', radius = 14 },
     },
     {
-        label = 'danger skin',
+        label = 'Danger',
         x = 790,
         skin = { id = 'panel.danger', variant = 'danger', radius = 14 },
     },
@@ -32,13 +32,13 @@ return function(owner, helpers)
                     y = 220,
                     width = 220,
                     height = 160,
-                    padding = 14,
+                    padding = 10,
                     skin = case.skin,
                 }, case.label, DemoColors.rgba(DemoColors.roles.accent_red_fill, 0.18), DemoColors.roles.accent_red_line)
                 helpers.show_content(node, 88, 44)
                 helpers.set_hint(node, {
                     {
-                        label = 'props',
+                        label = 'skin',
                         badges = {
                             helpers.badge('skin.id', case.skin.id),
                             helpers.badge('skin.variant', case.skin.variant),

@@ -23,10 +23,8 @@ Primary authority:
 - [UI Graphics Specification](../docs/spec/ui-graphics-spec.md)
 - [UI Motion Specification](../docs/spec/ui-motion-spec.md)
 
-Reference inputs:
+Working rules:
 
-- `docs/implementation/tasks/*/demo-and-acceptance.md`
-- `_test/` historical harnesses
 - `demos/rules.md`
 
 ## Rules
@@ -38,6 +36,7 @@ Each demo should:
 - avoid mixing unrelated systems
 - expose observable acceptance results
 - use only real public constructors and documented props
+- prove the component contract directly instead of simulating missing behavior in demo-local code
 
 Each demo should not:
 
@@ -45,12 +44,13 @@ Each demo should not:
 - be a generic “foundation” or “graphics” bucket
 - behave like a kitchen-sink showcase
 - imply undocumented helper APIs
+- explain behavior away with "not yet implemented", "deferred", or similar phase language
 
 ## Progressive Dependency Order
 
-The demos should still be progressive, but the unit of progression is the component, not the phase:
+The demos should still be progressive, but the unit of progression is the component, not grouped implementation milestones:
 
-1. low-level retained primitives used by many later demos
+1. low-level retained primitives used by many subsequent demos
 2. standalone presentational primitives
 3. simple interactive controls
 4. coordinated compound controls
@@ -93,14 +93,14 @@ Should test:
 - opacity
 - skin
 - blend mode
-- mask
 - motion
 
 Should expose:
 
 - assigned bounds versus content box
 - aligned content result for active alignment cases
-- stored visual-surface props that are stable on `Drawable` even when later render systems are still deferred
+- inspectable configured visual-surface props on `Drawable`
+- visible subtree compositing differences for `opacity` and `blendMode`
 - motion requests and resolved visual-state writes for harness-driven motion inspection
 
 Should not retest:
@@ -678,7 +678,7 @@ Each component should have one primary demo home:
 
 ## Rebuild Order
 
-Recommended implementation order inside `demos/` and later `test/` harnesses:
+Recommended implementation order inside `demos/` and separate `test/` harnesses:
 
 1. `01-container`
 2. `02-drawable`
@@ -718,4 +718,4 @@ This plan intentionally does not:
 - treat `_test/` as the current truth
 - merge unrelated controls into a single large acceptance harness
 
-`_test/` is historical reference only.
+`_test/` is historical reference only and does not define current demo behavior.

@@ -1,15 +1,15 @@
 local DemoColors = require('demos.common.colors')
 
 local CASES = {
-    { label = 'blend alpha', value = 'alpha', x = 170 },
-    { label = 'blend add', value = 'add', x = 480 },
-    { label = 'blend multiply', value = 'multiply', x = 790 },
+    { label = 'Alpha', value = 'alpha', x = 170 },
+    { label = 'Add', value = 'add', x = 480 },
+    { label = 'Multiply', value = 'multiply', x = 790 },
 }
 
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Tracks blendMode on Drawable as public surface data while keeping the harness honest about current deferred rendering behavior.',
+        'Shows the configured Drawable.blendMode values while the retained render-effects screen demonstrates the visible subtree compositing result.',
         function(scope, stage)
             local root = stage.baseSceneLayer
 
@@ -20,13 +20,13 @@ return function(owner, helpers)
                     y = 220,
                     width = 220,
                     height = 160,
-                    padding = 14,
+                    padding = 10,
                     blendMode = case.value,
                 }, case.label, DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.18), DemoColors.roles.accent_green_line)
                 helpers.show_content(node, 88, 44)
                 helpers.set_hint(node, {
                     {
-                        label = 'props',
+                        label = 'blendMode',
                         badges = {
                             helpers.badge('blendMode', case.value),
                         },
@@ -36,7 +36,7 @@ return function(owner, helpers)
 
             return {
                 title = 'Blend Mode',
-                description = 'This screen verifies that blendMode survives on Drawable without claiming full subtree compositing behavior that is still deferred.',
+                description = 'Inspect the assigned blendMode values here, then compare them with the retained render-effects screen where add and multiply are rendered through the shared compositing path.',
             }
         end
     )

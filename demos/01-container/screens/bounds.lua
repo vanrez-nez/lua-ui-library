@@ -15,57 +15,72 @@ return function(owner, helpers)
                 height = 260,
             }, 'parent', DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.24), DemoColors.roles.accent_blue_line)
             helpers.set_hint_fields(parent, {
-                props = { 'x', 'y', 'width', 'height' },
-                ['local'] = { 'x', 'y', 'w', 'h' },
-                world = { 'x', 'y', 'w', 'h' },
+                rows = {
+                    { label = 'position', source = 'opts', keys = { 'x', 'y' } },
+                    { label = 'dimensions', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'bounds.local', source = 'local_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                    { label = 'bounds.world', source = 'world_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                },
             })
 
             local child_a = helpers.make_node(scope, parent, {
-                x = 32,
-                y = 28,
-                width = 156,
-                height = 94,
+                x = 30,
+                y = 30,
+                width = 160,
+                height = 90,
             }, 'child A', DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.22), DemoColors.roles.accent_green_line)
             helpers.set_hint_fields(child_a, {
-                props = { 'x', 'y', 'width', 'height' },
-                ['local'] = { 'x', 'y', 'w', 'h' },
-                world = { 'x', 'y', 'w', 'h' },
+                rows = {
+                    { label = 'position', source = 'opts', keys = { 'x', 'y' } },
+                    { label = 'dimensions', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'bounds.local', source = 'local_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                    { label = 'bounds.world', source = 'world_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                },
             })
 
             local child_b = helpers.make_node(scope, parent, {
-                x = 246,
-                y = 44,
-                width = 182,
-                height = 118,
+                x = 250,
+                y = 40,
+                width = 180,
+                height = 120,
             }, 'child B', DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.22), DemoColors.roles.accent_cyan_line)
             helpers.set_hint_fields(child_b, {
-                props = { 'x', 'y', 'width', 'height' },
-                ['local'] = { 'x', 'y', 'w', 'h' },
-                world = { 'x', 'y', 'w', 'h' },
+                rows = {
+                    { label = 'position', source = 'opts', keys = { 'x', 'y' } },
+                    { label = 'dimensions', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'bounds.local', source = 'local_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                    { label = 'bounds.world', source = 'world_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                },
             })
 
             local grandchild = helpers.make_node(scope, child_b, {
-                x = 26,
+                x = 30,
                 y = 30,
-                width = 96,
-                height = 52,
+                width = 100,
+                height = 50,
             }, 'grandchild', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
             helpers.set_hint_fields(grandchild, {
-                props = { 'x', 'y', 'width', 'height' },
-                ['local'] = { 'x', 'y', 'w', 'h' },
-                world = { 'x', 'y', 'w', 'h' },
+                rows = {
+                    { label = 'position', source = 'opts', keys = { 'x', 'y' } },
+                    { label = 'dimensions', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'bounds.local', source = 'local_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                    { label = 'bounds.world', source = 'world_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                },
             })
 
             local offset_child = helpers.make_node(scope, child_b, {
-                x = -18,
-                y = 72,
-                width = 76,
-                height = 34,
+                x = -20,
+                y = 70,
+                width = 80,
+                height = 30,
             }, 'offset child', DemoColors.rgba(DemoColors.roles.accent_red_fill, 0.22), DemoColors.roles.accent_red_line)
             helpers.set_hint_fields(offset_child, {
-                props = { 'x', 'y', 'width', 'height' },
-                ['local'] = { 'x', 'y', 'w', 'h' },
-                world = { 'x', 'y', 'w', 'h' },
+                rows = {
+                    { label = 'position', source = 'opts', keys = { 'x', 'y' } },
+                    { label = 'dimensions', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'bounds.local', source = 'local_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                    { label = 'bounds.world', source = 'world_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                },
             })
 
             return {

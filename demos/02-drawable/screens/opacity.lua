@@ -1,15 +1,15 @@
 local DemoColors = require('demos.common.colors')
 
 local CASES = {
-    { label = 'opacity 1.0', value = 1, x = 170 },
-    { label = 'opacity 0.5', value = 0.5, x = 480 },
-    { label = 'opacity 0.0', value = 0, x = 790 },
+    { label = 'Full', value = 1, x = 170 },
+    { label = 'Soft', value = 0.5, x = 480 },
+    { label = 'Hidden', value = 0, x = 790 },
 }
 
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Exercises Drawable.opacity as a stable prop without implying a later render-isolation implementation that is not active here.',
+        'Shows how Drawable.opacity participates in retained subtree compositing while keeping the content box inspectable.',
         function(scope, stage)
             local root = stage.baseSceneLayer
 
@@ -20,20 +20,20 @@ return function(owner, helpers)
                     y = 220,
                     width = 220,
                     height = 160,
-                    padding = 14,
+                    padding = 10,
                     opacity = case.value,
                 }, case.label, DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.2), DemoColors.roles.accent_cyan_line)
                 helpers.show_content(node, 88, 44)
                 helpers.set_hint(node, function(current)
                     return {
                         {
-                            label = 'props',
+                            label = 'opacity',
                             badges = {
                                 helpers.badge('opacity', helpers.format_scalar(current.opacity)),
                             },
                         },
                         {
-                            label = 'rect',
+                            label = 'rect.content',
                             badges = {
                                 helpers.badge('content', helpers.format_rect(current:getContentRect())),
                             },
@@ -44,7 +44,7 @@ return function(owner, helpers)
 
             return {
                 title = 'Opacity',
-                description = 'The screen keeps all nodes inspectable while showing that Drawable.opacity is already part of the stable public surface.',
+                description = 'Inspect the configured opacity values and compare them with the dedicated render-effects screen, where the same retained subtree compositing is made visually obvious.',
             }
         end
     )

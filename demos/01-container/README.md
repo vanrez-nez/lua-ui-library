@@ -4,7 +4,7 @@
 
 Build the first component demo for `Container`.
 
-This demo must verify the `Container` contract directly, not indirectly through `Drawable`, controls, or old phase harness behavior.
+This demo must verify the `Container` contract directly, not indirectly through `Drawable`, controls, or old grouped harness behavior.
 
 Primary authority:
 
@@ -13,11 +13,6 @@ Primary authority:
 - `docs/spec/ui-foundation-spec.md §3A`
 - `docs/spec/ui-foundation-spec.md §3B`
 - `docs/spec/ui-foundation-spec.md §3G`
-
-Useful historical reference:
-
-- `docs/implementation/tasks/phase-01/07-phase-01-demo-and-acceptance.md`
-- `_test/phase1/`
 
 ## What This Demo Must Prove
 
@@ -266,4 +261,4 @@ This demo should not:
 - test `Stage`
 - test control behavior
 - become a general foundation harness
-- recreate the old phase-01 mega-demo
+- recreate an old cross-component mega-demo

@@ -20,31 +20,47 @@ return function(owner, helpers)
                 width = parent_width,
                 height = parent_height,
             }, 'parent', DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.24), DemoColors.roles.accent_blue_line)
-            helpers.set_hint_fields(parent, { visible = true })
+            helpers.set_hint_fields(parent, {
+                rows = {
+                    { label = 'visibility', source = 'visible', keys = { 'value' } },
+                },
+            })
 
             local child = helpers.make_node(scope, parent, {
-                x = 28,
-                y = 24,
+                x = 30,
+                y = 20,
                 width = 180,
                 height = 132,
             }, 'child', DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.22), DemoColors.roles.accent_green_line)
-            helpers.set_hint_fields(child, { visible = true })
+            helpers.set_hint_fields(child, {
+                rows = {
+                    { label = 'visibility', source = 'visible', keys = { 'value' } },
+                },
+            })
 
             local grandchild = helpers.make_node(scope, child, {
-                x = 24,
-                y = 18,
+                x = 20,
+                y = 20,
                 width = 116,
                 height = 86,
             }, 'grandchild', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
-            helpers.set_hint_fields(grandchild, { visible = true })
+            helpers.set_hint_fields(grandchild, {
+                rows = {
+                    { label = 'visibility', source = 'visible', keys = { 'value' } },
+                },
+            })
 
             local great_grandchild = helpers.make_node(scope, grandchild, {
-                x = 18,
-                y = 14,
+                x = 20,
+                y = 15,
                 width = 68,
                 height = 44,
             }, 'great grandchild', DemoColors.rgba(DemoColors.roles.accent_red_fill, 0.22), DemoColors.roles.accent_red_line)
-            helpers.set_hint_fields(great_grandchild, { visible = true })
+            helpers.set_hint_fields(great_grandchild, {
+                rows = {
+                    { label = 'visibility', source = 'visible', keys = { 'value' } },
+                },
+            })
 
             return {
                 title = 'Visibility',

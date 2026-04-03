@@ -18,6 +18,21 @@ These rules apply to every runnable demo under `demos/`.
 
 Each demo must validate one public contract at a time.
 
+The demo must prove that contract through the real implementation of the component under test.
+
+The execution code is the primary learning surface.
+
+That execution code should stay isolated because it will be reused in documentation and examples.
+
+If a developer reads the execution file, they should see only the code needed to understand:
+
+- how to import the library
+- how to construct the component
+- how to compose the scene
+- how to run the minimal loop or update flow for that example
+
+If that same execution code is copied into a standalone Lua example, it should still run without depending on demo-only chrome.
+
 A demo may cover:
 
 - one component
@@ -28,6 +43,8 @@ A demo must not become:
 - a phase showcase
 - a kitchen-sink playground
 - an implementation experiment disconnected from the spec
+- a demo-local simulation of behavior the component does not actually own
+- a wall of setup code that hides the actual component usage
 
 ## Spec First
 
@@ -40,11 +57,88 @@ Before implementing a demo:
 
 Demo code must not invent semantics that the spec does not define.
 
+Demo code must not require the reader to understand demo infrastructure before they can understand the component usage.
+
+Demo docs must not justify missing or incorrect behavior with phase language such as:
+
+- deferred
+- later
+- not yet implemented
+- current runtime
+
+If the behavior is not real and observable in the component being demoed, the screen should not claim it.
+
 If implementation and expected behavior disagree:
 
 - stop
 - inspect the spec
 - if the spec is unclear, document the conflict before normalizing the demo around one accidental implementation behavior
+
+If a component does not own a behavior, the demo must not recreate that behavior with demo-local math just to make a more impressive screen.
+
+Examples:
+
+- a `Drawable` demo must not implement child layout or spacing composition
+- a non-layout component demo must not pretend to measure or arrange descendants
+
+## Learning Surface Rules
+
+The demo source is a learnable API guide first and a runnable demo second.
+
+Every non-trivial screen should be split into two files:
+
+- `{name}.lua`
+- `{name}_setup.lua`
+
+The purpose of each file is different.
+
+`{name}.lua` is the execution file.
+
+It is the code the developer is meant to learn from.
+
+It should show only:
+
+- imports relevant to the component being demoed
+- object construction for the target component
+- scene composition for the target component
+- the minimal runtime flow needed to make that example work
+
+It should read like a standalone example.
+
+If copied into documentation, it should still make sense as the component usage snippet.
+
+`{name}_setup.lua` is the setup file.
+
+It may contain:
+
+- demo instrumentation
+- native buttons
+- hint wiring
+- inspection overlays
+- screen-local positioning utilities
+- cleanup registration
+- non-essential visual scaffolding
+
+The setup file exists to keep the execution file readable.
+
+The execution file must not call generic helpers like:
+
+- `mark_box(...)`
+- `attach_drawable(...)`
+- `make_node(...)`
+- similar wrappers that hide target construction or scene composition
+
+The execution file may call one setup entry point after the main scene exists.
+
+Example shape:
+
+1. create the target objects directly
+2. compose them directly
+3. pass them to setup/instrumentation
+
+The developer should not need to read the setup file to understand how the component itself is being used.
+
+If a reader must parse demo widgets, inspector layout, or helper wrappers before reaching the component usage, the screen is incorrectly structured.
 
 ## DemoBase Rules
 
@@ -55,7 +149,6 @@ Use:
 - `demos.common.bootstrap`
 - `demos.common.demo_base`
 - `demos.common.colors`
-- `demos.common.screen_scope`
 
 Do not duplicate:
 
@@ -102,7 +195,7 @@ Preferred structure:
 - `main.lua` for bootstrap, screen registration, and Love callbacks only
 - one shared demo-local helper module for reusable scenario wiring
 - one `screens/` directory with one file per screen
-- shared lifecycle helpers such as `ScreenScope` stay under `demos/common/`
+- shared lifecycle helpers stay under `demos/common/` when they are reused across demos
 
 Do not keep all screen builders inline in one large `main.lua` once a demo grows beyond a trivial case.
 
@@ -136,35 +229,97 @@ Sidebar lines should be:
 
 ## Hover Hint Rules
 
-All visible objects get a hint for inspecting their relevant properties.
+Hover hints exist to inspect the hovered object and nothing else.
 
-Visible inspectable nodes must use a shared hover hint overlay from the demo-local screen helper rather than pushing those same values into the sidebar.
+The first row is always fixed:
 
-The hover hint should:
+- `node: {name}`
 
-- appear next to the mouse
-- use a solid overlay panel
-- show node name and inspectable runtime facts
-- use reusable labeled badge formatting
-- render visible nodes at reduced opacity until hovered
-- resolve selected properties automatically from the node's configured opts
+That row is owned by the shared hint renderer and must not be redefined per screen.
 
-ONLY RELEVANT PROPERTIES BELONG IN THE HINT.
+The `name` value should:
 
-`props`, `local`, `world`, `visible`, and `clamp` rows must only appear when those properties are being evaluated by that screen.
+- identify the hovered case or object
+- stay short and readable
+- avoid dumping configuration values when a clearer case name exists
+- match the visible label drawn on the inspected object
 
-Do not dump generic hint rows that are unrelated to the behavior under test.
+Good names:
 
-Example:
+- `Single`
+- `Nested`
+- `Full`
+- `Center`
 
-- a clipping screen parent may show `props: width height clipChildren`
-- that same parent should not also show `world`, `visible`, or `clamp` unless those are part of the screen's actual claim
-- a visibility screen node may show `visible`
-- that same node should not dump `props`, `local`, or `world` if the screen is only testing visibility timing or visibility inheritance
+Bad names:
 
-Visible rect labels should contain only the node name.
+- `opacity 1.0`
+- `alignX center alignY end`
+- long descriptive sentences
+- raw inset dumps such as `padding 12/28/36/20`
+- raw enum bundles such as `start / stretch`
 
-Do not concatenate prop values into visible node labels or hover titles when those values are already shown in the hint body.
+All remaining hint rows should:
+
+- expose only inspectable properties relevant to the behavior under test
+- use property labels that match the real property naming
+- use unique labels within the same hint
+- use dotted labels for sub-properties such as `rect.content`, `rect.bounds`, or `props.padding.top`
+- prefer grouped labels when a screen is inspecting a pair or set as one concept, such as `position` for `x` and `y`, or `dimensions` for `width` and `height`
+- prefer badges for scalar values
+- allow table values to be expanded into per-key badges through the shared hint normalizer
+
+Repeated hint labels are invalid and should fail deterministically.
+
+Grouping is the exception to the dotted sub-property rule:
+
+- use `position` instead of separate `x` and `y` rows when the screen is inspecting placement as one concept
+- use `dimensions` or `size` instead of separate `width` and `height` rows when the screen is inspecting size as one concept
+- use dotted labels when the value is a real sub-property of a larger concept, such as `bounds.local`, `bounds.world`, `clamp.width`, or `rect.content`
+
+Do not use hints for:
+
+- free-form instructions
+- behavior explanations
+- duplicated visible labels
+- unrelated runtime data
+
+If a screen is demonstrating scale, rotation, alignment, clipping, opacity, or similar, the hint should only show the properties needed to inspect that behavior.
+
+Visible node labels follow the same naming rule as the hint name:
+
+- they identify the case
+- they stay short
+- they do not dump raw values that already belong in the hint
+- they should read well on screen without requiring the viewer to parse configuration syntax
+
+When a screen draws inspection geometry, keep the visual vocabulary small and stable:
+
+- prefer a primary `container` shape
+- prefer a single `target` shape when the screen is about content, alignment, or resolved inner placement
+- add extra overlays such as `padding` or `margin` only when they are the behavior under test
+- do not stack multiple overlapping helper rects unless each one is necessary to read the claim being demonstrated
+
+If a screen is interactive instead of preset:
+
+- show a clear selection state on the object currently being edited
+- keep the controls close to the affected object so the mapping is obvious without reading extra text
+- make each control mutate one property in one direction at a time
+- keep the edited values inspectable through the same hover-hint rules as preset screens
+
+When choosing offsets, insets, padding, or margin values for a demo:
+
+- prefer simple proportional steps such as `5`, `10`, `15`, and `20`
+- prefer larger visible box sizes such as `50`, `100`, and `150` when the demo is about nested sizing, spacing, or accumulation
+- prefer values that are easy to compare visually, such as doubles or clean increments
+- avoid awkward values such as `4`, `18`, `19`, `160`, or near-miss sizes when a cleaner proportional value would communicate the same point
+- choose numbers that reduce mental subtraction for the reviewer
+
+If a case is meant to compare mixed insets, the relationship between the values should be visually legible at a glance.
+
+If a screen composes nested boxes, prefer a stable size ladder such as `50 -> 100 -> 150` so the reviewer can recognize the progression before inspecting the hint.
+
+The goal is to offload cognitive calculation from the reviewer, not to make the reviewer decode more geometry.
 
 ## Title And Description Rules
 
@@ -176,6 +331,24 @@ The header description must summarize:
 
 - what this screen is testing
 - what the reviewer should pay attention to
+- what the reviewer should expect to see visually before hovering
+- what hovering or inspection should confirm
+
+Descriptions should orient the reviewer to the visible comparison first and the inspected details second.
+
+Good description structure:
+
+- identify the main visual cues on screen
+- explain what each cue means
+- state what the hint confirms when inspected
+
+If a screen contains multiple overlays or guide shapes, the description must explain:
+
+- which shape is the container
+- which shape is the target
+- which overlays are optional guides such as padding or margin
+
+Do not write descriptions that assume the reviewer already knows the implementation details.
 
 Do not repeat that information in the sidebar.
 

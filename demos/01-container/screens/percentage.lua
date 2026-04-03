@@ -17,26 +17,38 @@ return function(owner, helpers)
                 minHeight = 240,
             }, 'parent', DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.22), DemoColors.roles.accent_cyan_line)
             helpers.set_hint_fields(parent, {
-                props = { 'width', 'height' },
-                ['local'] = { 'w', 'h' },
-                clamp = { 'minW', 'minH' },
+                rows = {
+                    { label = 'size.requested', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'size.resolved', source = 'local_bounds', keys = { 'w', 'h' } },
+                    { label = 'clamp.minimum', source = 'clamp', keys = { 'minW', 'minH' } },
+                },
             })
 
             local child = helpers.make_node(scope, parent, {
-                x = 24,
-                y = 24,
+                x = 20,
+                y = 20,
                 width = '50%',
                 height = '50%',
             }, 'child', DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.22), DemoColors.roles.accent_green_line)
-            helpers.set_hint_fields(child, { props = { 'width', 'height' }, ['local'] = { 'w', 'h' } })
+            helpers.set_hint_fields(child, {
+                rows = {
+                    { label = 'size.requested', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'size.resolved', source = 'local_bounds', keys = { 'w', 'h' } },
+                },
+            })
 
             local nested = helpers.make_node(scope, child, {
-                x = 12,
-                y = 12,
+                x = 10,
+                y = 10,
                 width = '50%',
                 height = '50%',
             }, 'nested', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
-            helpers.set_hint_fields(nested, { props = { 'width', 'height' }, ['local'] = { 'w', 'h' } })
+            helpers.set_hint_fields(nested, {
+                rows = {
+                    { label = 'size.requested', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'size.resolved', source = 'local_bounds', keys = { 'w', 'h' } },
+                },
+            })
 
             local pulse_parent_size = helpers.make_size_pulse(
                 parent,
@@ -46,8 +58,8 @@ return function(owner, helpers)
                 function()
                     return love.graphics.getHeight() * 0.58
                 end,
-                64,
-                38,
+                60,
+                40,
                 0.9
             )
 

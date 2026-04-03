@@ -1,114 +1,225 @@
 local DemoColors = require('demos.common.colors')
 
+local CASES = {
+    {
+        column = 'padding',
+        label = 'Top',
+        padding = { 20, 0, 0, 0 },
+        margin = 0,
+        show_padding = true,
+        show_margin = false,
+        fill = DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2),
+        line = DemoColors.roles.accent_green_line,
+    },
+    {
+        column = 'padding',
+        label = 'Right',
+        padding = { 0, 20, 0, 0 },
+        margin = 0,
+        show_padding = true,
+        show_margin = false,
+        fill = DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2),
+        line = DemoColors.roles.accent_green_line,
+    },
+    {
+        column = 'padding',
+        label = 'Bottom',
+        padding = { 0, 0, 20, 0 },
+        margin = 0,
+        show_padding = true,
+        show_margin = false,
+        fill = DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2),
+        line = DemoColors.roles.accent_green_line,
+    },
+    {
+        column = 'padding',
+        label = 'Left',
+        padding = { 0, 0, 0, 20 },
+        margin = 0,
+        show_padding = true,
+        show_margin = false,
+        fill = DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2),
+        line = DemoColors.roles.accent_green_line,
+    },
+    {
+        column = 'padding',
+        label = 'Mixed',
+        padding = { 5, 10, 20, 15 },
+        margin = 0,
+        show_padding = true,
+        show_margin = false,
+        fill = DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2),
+        line = DemoColors.roles.accent_green_line,
+    },
+    {
+        column = 'margin',
+        label = 'Top',
+        padding = 10,
+        margin = { 20, 0, 0, 0 },
+        show_padding = false,
+        show_margin = true,
+        fill = DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.2),
+        line = DemoColors.roles.accent_violet_line,
+    },
+    {
+        column = 'margin',
+        label = 'Right',
+        padding = 10,
+        margin = { 0, 20, 0, 0 },
+        show_padding = false,
+        show_margin = true,
+        fill = DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.2),
+        line = DemoColors.roles.accent_violet_line,
+    },
+    {
+        column = 'margin',
+        label = 'Bottom',
+        padding = 10,
+        margin = { 0, 0, 20, 0 },
+        show_padding = false,
+        show_margin = true,
+        fill = DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.2),
+        line = DemoColors.roles.accent_violet_line,
+    },
+    {
+        column = 'margin',
+        label = 'Left',
+        padding = 10,
+        margin = { 0, 0, 0, 20 },
+        show_padding = false,
+        show_margin = true,
+        fill = DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.2),
+        line = DemoColors.roles.accent_violet_line,
+    },
+    {
+        column = 'margin',
+        label = 'Mixed',
+        padding = 10,
+        margin = { 5, 10, 20, 15 },
+        show_padding = false,
+        show_margin = true,
+        fill = DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.2),
+        line = DemoColors.roles.accent_violet_line,
+    },
+}
+
+local BOX_SIZE = 100
+local COLUMN_GAP = 260
+local ROW_GAP = 30
+
+local function has_insets(insets)
+    return insets ~= nil
+        and (insets.top ~= 0 or insets.right ~= 0 or insets.bottom ~= 0 or insets.left ~= 0)
+end
+
+local function append_inset_groups(entries, helpers, label, insets)
+    if not has_insets(insets) then
+        return
+    end
+
+    entries[#entries + 1] = {
+        label = label .. '.vertical',
+        badges = {
+            helpers.badge('top', helpers.format_scalar(insets.top)),
+            helpers.badge('bottom', helpers.format_scalar(insets.bottom)),
+        },
+    }
+
+    entries[#entries + 1] = {
+        label = label .. '.horizontal',
+        badges = {
+            helpers.badge('left', helpers.format_scalar(insets.left)),
+            helpers.badge('right', helpers.format_scalar(insets.right)),
+        },
+    }
+end
+
+local function build_hint(helpers, node, case)
+    local entries = {
+        {
+            label = 'container',
+            badges = {
+                helpers.badge('bounds', helpers.format_rect(node:getLocalBounds())),
+            },
+        },
+        {
+            label = 'target',
+            badges = {
+                helpers.badge('content', helpers.format_rect(node:getContentRect())),
+            },
+        },
+    }
+
+    if case.show_padding then
+        append_inset_groups(entries, helpers, 'padding', node.padding)
+    end
+
+    if case.show_margin then
+        append_inset_groups(entries, helpers, 'margin', node.margin)
+    end
+
+    return entries
+end
+
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Separates internal padding from external margin without implying sibling layout behavior.',
+        'Left column isolates padding one side at a time, then shows a mixed case. Right column does the same for margin. The main box is always the drawable container. Padding adds an inner target box; margin adds an outer guide. Hover a case to inspect the affected edges directly.',
         function(scope, stage)
             local root = stage.baseSceneLayer
+            local nodes = {}
 
-            local padded_a = helpers.make_node(scope, root, {
-                x = 120,
-                y = 180,
-                width = 220,
-                height = 170,
-                padding = 8,
-            }, 'padding 8', DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2), DemoColors.roles.accent_green_line)
-            helpers.show_content(padded_a, 90, 42)
+            for index = 1, #CASES do
+                local case = CASES[index]
+                local node = helpers.make_node(scope, root, {
+                    x = 0,
+                    y = 0,
+                    width = BOX_SIZE,
+                    height = BOX_SIZE,
+                    padding = case.padding,
+                    margin = case.margin,
+                }, case.label, case.fill, case.line)
 
-            local padded_b = helpers.make_node(scope, root, {
-                x = 390,
-                y = 180,
-                width = 220,
-                height = 170,
-                padding = { 12, 28, 36, 20 },
-            }, 'padding 12/28/36/20', DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2), DemoColors.roles.accent_green_line)
-            helpers.show_content(padded_b, 90, 42)
+                if case.show_padding then
+                    rawset(node, '_demo_show_content', true)
+                end
 
-            local margin_a = helpers.make_node(scope, root, {
-                x = 760,
-                y = 196,
-                width = 190,
-                height = 138,
-                margin = 18,
-                padding = 12,
-            }, 'margin 18', DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.2), DemoColors.roles.accent_violet_line)
-            helpers.show_margin(margin_a)
-            helpers.show_content(margin_a, 76, 36)
+                if case.show_margin then
+                    helpers.show_margin(node)
+                end
 
-            local margin_b = helpers.make_node(scope, root, {
-                x = 1030,
-                y = 204,
-                width = 190,
-                height = 138,
-                margin = { 10, 32, 22, 14 },
-                padding = 12,
-            }, 'margin 10/32/22/14', DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.2), DemoColors.roles.accent_violet_line)
-            helpers.show_margin(margin_b)
-            helpers.show_content(margin_b, 76, 36)
-
-            helpers.set_hint(padded_a, function(node)
-                return {
-                    {
-                        label = 'props',
-                        badges = {
-                            helpers.badge('padding', helpers.format_insets(node.padding)),
-                        },
-                    },
-                    {
-                        label = 'rect',
-                        badges = {
-                            helpers.badge('content', helpers.format_rect(node:getContentRect())),
-                        },
-                    },
-                }
-            end)
-
-            helpers.set_hint(padded_b, function(node)
-                return {
-                    {
-                        label = 'props',
-                        badges = {
-                            helpers.badge('padding', helpers.format_insets(node.padding)),
-                        },
-                    },
-                    {
-                        label = 'rect',
-                        badges = {
-                            helpers.badge('content', helpers.format_rect(node:getContentRect())),
-                        },
-                    },
-                }
-            end)
-
-            for _, node in ipairs({ margin_a, margin_b }) do
                 helpers.set_hint(node, function(current)
-                    return {
-                        {
-                            label = 'props',
-                            badges = {
-                                helpers.badge('margin', helpers.format_insets(current.margin)),
-                            },
-                        },
-                        {
-                            label = 'rect',
-                            badges = {
-                                helpers.badge('bounds', helpers.format_rect(current:getLocalBounds())),
-                            },
-                        },
-                        {
-                            label = 'rect',
-                            badges = {
-                                helpers.badge('content', helpers.format_rect(current:getContentRect())),
-                            },
-                        },
-                    }
+                    return build_hint(helpers, current, case)
                 end)
+
+                nodes[#nodes + 1] = {
+                    node = node,
+                    column = case.column,
+                    row_index = ((index - 1) % 5),
+                }
             end
 
             return {
                 title = 'Padding / Margin',
-                description = 'Padding changes the drawable content box. Gold outlines show the external margin guide; the node bounds themselves do not grow.',
+                description = 'This demo compares padding and margin side by side. On the left, padding keeps the target box contained inside its parent, so the target shrinks and shifts inward. On the right, margin does not resize the target box; instead, the outer guide expands around the same parent bounds. The last row in each column combines multiple edges so the mixed case can be compared against the single-edge cases above it.',
+                update = function()
+                    local screen_width = love.graphics.getWidth()
+                    local screen_height = love.graphics.getHeight()
+                    local total_width = (BOX_SIZE * 2) + COLUMN_GAP
+                    local total_height = (BOX_SIZE * 5) + (ROW_GAP * 4)
+                    local start_x = math.floor((screen_width - total_width) * 0.5 + 0.5)
+                    local start_y = math.floor((screen_height - total_height) * 0.5 + 0.5)
+                    local column_x = {
+                        padding = start_x,
+                        margin = start_x + BOX_SIZE + COLUMN_GAP,
+                    }
+
+                    for index = 1, #nodes do
+                        local entry = nodes[index]
+                        entry.node.x = column_x[entry.column]
+                        entry.node.y = start_y + (entry.row_index * (BOX_SIZE + ROW_GAP))
+                    end
+                end,
             }
         end
     )

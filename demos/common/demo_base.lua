@@ -1,7 +1,65 @@
-local ScreenScope = require('demos.common.screen_scope')
 local MemoryMonitor = require('demos.common.memory_monitor')
 local InfoSidebar = require('demos.common.info_sidebar')
 local DemoColors = require('demos.common.colors')
+
+local function call_release(value)
+    if value == nil then
+        return
+    end
+
+    local release = value.release
+    if type(release) == 'function' then
+        pcall(release, value)
+    end
+end
+
+local function make_screen_scope()
+    local scope = {
+        resources = {},
+        cleanups = {},
+        released = false,
+    }
+
+    function scope:track(value)
+        if value ~= nil then
+            self.resources[#self.resources + 1] = value
+        end
+        return value
+    end
+
+    function scope:on_cleanup(fn)
+        if type(fn) == 'function' then
+            self.cleanups[#self.cleanups + 1] = fn
+        end
+        return fn
+    end
+
+    function scope:font(...)
+        return self:track(love.graphics.newFont(...))
+    end
+
+    function scope:cleanup()
+        if self.released then
+            return
+        end
+
+        for index = #self.cleanups, 1, -1 do
+            pcall(self.cleanups[index])
+        end
+
+        for index = #self.resources, 1, -1 do
+            call_release(self.resources[index])
+            self.resources[index] = nil
+        end
+
+        self.cleanups = {}
+        self.resources = {}
+        self.released = true
+        collectgarbage('collect')
+    end
+
+    return scope
+end
 
 local DemoBase = {}
 DemoBase.__index = DemoBase
@@ -135,7 +193,7 @@ function DemoBase:_activate_screen(index)
 
     self:_cleanup_active_screen()
 
-    local scope = ScreenScope.new()
+    local scope = make_screen_scope()
     local screen = self.screens[index](index, scope, self) or {}
 
     self.active_index = index

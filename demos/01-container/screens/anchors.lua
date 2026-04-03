@@ -26,16 +26,12 @@ local function make_row(helpers, label, badges)
     return row
 end
 
-local function make_node_hint(helpers, node, badges, world_keys)
-    local rows = {
-        {
-            label = 'node',
-            badges = {
-                helpers.badge(nil, rawget(node, '_demo_label')),
-            },
-        },
-        make_row(helpers, 'props', badges),
-    }
+local function make_node_hint(helpers, node, base_rows, world_keys)
+    local rows = {}
+
+    for index = 1, #base_rows do
+        rows[#rows + 1] = base_rows[index]
+    end
 
     if world_keys ~= nil then
         local world = node:getWorldBounds()
@@ -57,7 +53,7 @@ local function make_node_hint(helpers, node, badges, world_keys)
             world_badges[#world_badges + 1] = { 'h', world.height }
         end
 
-        rows[#rows + 1] = make_row(helpers, 'world', world_badges)
+        rows[#rows + 1] = make_row(helpers, 'bounds.world', world_badges)
     end
 
     return rows
@@ -80,16 +76,18 @@ return function(owner, helpers)
             helpers.set_hint(single_parent, function(node)
                 local bounds = node:getLocalBounds()
                 return make_node_hint(helpers, node, {
-                    { 'w', bounds.width },
-                    { 'h', bounds.height },
+                    make_row(helpers, 'dimensions', {
+                        { 'width', bounds.width },
+                        { 'height', bounds.height },
+                    }),
                 }, { x = true, y = true, w = true, h = true })
             end)
 
             local single_child = helpers.make_node(scope, single_parent, {
                 x = 0,
                 y = 0,
-                width = 96,
-                height = 72,
+                width = 100,
+                height = 70,
                 anchorX = 0.5,
                 anchorY = 0.5,
                 pivotX = 0.5,
@@ -102,32 +100,38 @@ return function(owner, helpers)
             })
             helpers.set_hint(single_child, function(node)
                 return make_node_hint(helpers, node, {
-                    { 'x', node.x },
-                    { 'y', node.y },
-                    { 'anchorX', node.anchorX },
-                    { 'anchorY', node.anchorY },
+                    make_row(helpers, 'position', {
+                        { 'x', node.x },
+                        { 'y', node.y },
+                    }),
+                    make_row(helpers, 'anchor', {
+                        { 'anchorX', node.anchorX },
+                        { 'anchorY', node.anchorY },
+                    }),
                 }, { x = true, y = true })
             end)
 
             local nested_parent = helpers.make_node(scope, root, {
                 x = 0,
                 y = 0,
-                width = 292,
-                height = 264,
+                width = 300,
+                height = 260,
             }, 'Nested', DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2), DemoColors.roles.accent_green_line)
             helpers.set_hint(nested_parent, function(node)
                 local bounds = node:getLocalBounds()
                 return make_node_hint(helpers, node, {
-                    { 'w', bounds.width },
-                    { 'h', bounds.height },
+                    make_row(helpers, 'dimensions', {
+                        { 'width', bounds.width },
+                        { 'height', bounds.height },
+                    }),
                 }, { x = true, y = true, w = true, h = true })
             end)
 
             local nested_child = helpers.make_node(scope, nested_parent, {
-                x = -28,
-                y = -24,
-                width = 132,
-                height = 96,
+                x = -30,
+                y = -20,
+                width = 130,
+                height = 100,
                 anchorX = 1,
                 anchorY = 1,
             }, 'Nested Child', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
@@ -136,18 +140,22 @@ return function(owner, helpers)
             })
             helpers.set_hint(nested_child, function(node)
                 return make_node_hint(helpers, node, {
-                    { 'x', node.x },
-                    { 'y', node.y },
-                    { 'anchorX', node.anchorX },
-                    { 'anchorY', node.anchorY },
+                    make_row(helpers, 'position', {
+                        { 'x', node.x },
+                        { 'y', node.y },
+                    }),
+                    make_row(helpers, 'anchor', {
+                        { 'anchorX', node.anchorX },
+                        { 'anchorY', node.anchorY },
+                    }),
                 }, { x = true, y = true })
             end)
 
             local nested_grandchild = helpers.make_node(scope, nested_child, {
                 x = 0,
                 y = 0,
-                width = 58,
-                height = 44,
+                width = 60,
+                height = 40,
                 anchorX = 0.5,
                 anchorY = 0.5,
                 pivotX = 0.5,
@@ -160,10 +168,14 @@ return function(owner, helpers)
             })
             helpers.set_hint(nested_grandchild, function(node)
                 return make_node_hint(helpers, node, {
-                    { 'x', node.x },
-                    { 'y', node.y },
-                    { 'anchorX', node.anchorX },
-                    { 'anchorY', node.anchorY },
+                    make_row(helpers, 'position', {
+                        { 'x', node.x },
+                        { 'y', node.y },
+                    }),
+                    make_row(helpers, 'anchor', {
+                        { 'anchorX', node.anchorX },
+                        { 'anchorY', node.anchorY },
+                    }),
                 }, { x = true, y = true })
             end)
 
@@ -176,10 +188,10 @@ return function(owner, helpers)
                     local screen_height = love.graphics.getHeight()
                     local gap = 72
 
-                    single_parent.width = helpers.round(260 + (math.sin(elapsed * 1.1) * 54))
-                    single_parent.height = helpers.round(240 + (math.cos(elapsed * 0.9) * 44))
-                    nested_parent.width = helpers.round(292 + (math.cos(elapsed * 0.95) * 58))
-                    nested_parent.height = helpers.round(264 + (math.sin(elapsed * 1.05) * 46))
+                    single_parent.width = helpers.round(260 + (math.sin(elapsed * 1.1) * 50))
+                    single_parent.height = helpers.round(240 + (math.cos(elapsed * 0.9) * 40))
+                    nested_parent.width = helpers.round(300 + (math.cos(elapsed * 0.95) * 60))
+                    nested_parent.height = helpers.round(260 + (math.sin(elapsed * 1.05) * 40))
 
                     local total_width = single_parent.width + gap + nested_parent.width
                     local base_x = helpers.round((screen_width - total_width) * 0.5)

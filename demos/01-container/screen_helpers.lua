@@ -1,26 +1,18 @@
 local DemoColors = require('demos.common.colors')
+local Hint = require('demos.common.hint')
+local CommonScreenHelpers = require('demos.common.screen_helpers')
 local UI = require('lib.ui')
 
-local Stage = UI.Stage
 local Container = UI.Container
 
-local ScreenHelpers = {}
+local ScreenHelpers = {
+    round = Hint.round,
+    format_rect = Hint.format_rect,
+    badge = Hint.badge,
+    set_hint = Hint.set_hint,
+    set_hint_name = Hint.set_hint_name,
+}
 ScreenHelpers._draw_context = nil
-ScreenHelpers._hint_font = nil
-
-function ScreenHelpers.round(value)
-    return math.floor((value or 0) + 0.5)
-end
-
-function ScreenHelpers.format_rect(rect)
-    return string.format(
-        'x:%d y:%d w:%d h:%d',
-        ScreenHelpers.round(rect.x),
-        ScreenHelpers.round(rect.y),
-        ScreenHelpers.round(rect.width),
-        ScreenHelpers.round(rect.height)
-    )
-end
 
 local function random_range(minimum, maximum)
     if maximum <= minimum then
@@ -107,43 +99,13 @@ local function get_world_quad(node)
     }
 end
 
-local function make_badge(key, value)
-    return {
-        key = key,
-        value = value,
-    }
-end
-
-ScreenHelpers.badge = make_badge
-
 local function make_text_entry(label, text)
     return {
         label = label,
         badges = {
-            make_badge(nil, text),
+            Hint.badge(nil, text),
         },
     }
-end
-
-local function normalize_hint_entries(entries)
-    local normalized = {}
-
-    for index = 1, #entries do
-        local entry = entries[index]
-
-        if type(entry) == 'string' then
-            normalized[#normalized + 1] = make_text_entry('info', entry)
-        else
-            normalized[#normalized + 1] = entry
-        end
-    end
-
-    return normalized
-end
-
-function ScreenHelpers.set_hint(node, hint)
-    rawset(node, '_demo_hint', hint)
-    return node
 end
 
 function ScreenHelpers.set_inspect_props(node, prop_keys)
@@ -169,7 +131,7 @@ local function append_badge_entry(entries, label, keys, source)
     local badges = {}
     for index = 1, #keys do
         local key = keys[index]
-        badges[#badges + 1] = make_badge(key, format_value(source[key]))
+        badges[#badges + 1] = Hint.badge(key, format_value(source[key]))
     end
 
     if #badges > 0 then
@@ -180,188 +142,91 @@ local function append_badge_entry(entries, label, keys, source)
     end
 end
 
+local function append_grouped_rows(entries, groups, sources)
+    if type(groups) ~= 'table' then
+        return false
+    end
+
+    for index = 1, #groups do
+        local group = groups[index]
+        local label = group.label
+        local source_name = group.source or 'opts'
+        local keys = group.keys
+        append_badge_entry(entries, label, keys, sources[source_name] or {})
+    end
+
+    return #groups > 0
+end
+
 function ScreenHelpers.get_hint_entries(node)
-    local hint = rawget(node, '_demo_hint')
-    if type(hint) == 'function' then
-        return normalize_hint_entries(hint(node))
-    end
-
-    if type(hint) == 'table' then
-        return normalize_hint_entries(hint)
-    end
-
-    local opts = rawget(node, '_demo_opts') or {}
-    local local_bounds = node:getLocalBounds()
-    local world_bounds = node:getWorldBounds()
-    local hint_fields = rawget(node, '_demo_hint_fields') or {}
-    local inspect_props = rawget(node, '_demo_inspect_props') or hint_fields.props or { 'x', 'y', 'width', 'height' }
-    local entries = {
-        {
-            label = 'node',
-            badges = {
-                make_badge(nil, rawget(node, '_demo_label') or (node.tag or 'container')),
+    return Hint.resolve_entries(node, function(current)
+        local opts = rawget(current, '_demo_opts') or {}
+        local local_bounds = current:getLocalBounds()
+        local world_bounds = current:getWorldBounds()
+        local hint_fields = rawget(current, '_demo_hint_fields') or {}
+        local inspect_props = rawget(current, '_demo_inspect_props') or hint_fields.props or { 'x', 'y', 'width', 'height' }
+        local sources = {
+            opts = opts,
+            local_bounds = {
+                x = local_bounds.x,
+                y = local_bounds.y,
+                w = local_bounds.width,
+                h = local_bounds.height,
             },
-        },
-    }
-
-    append_badge_entry(entries, 'props', inspect_props, opts)
-    append_badge_entry(entries, 'local', hint_fields['local'], {
-        x = local_bounds.x,
-        y = local_bounds.y,
-        w = local_bounds.width,
-        h = local_bounds.height,
-    })
-    append_badge_entry(entries, 'world', hint_fields.world, {
-        x = world_bounds.x,
-        y = world_bounds.y,
-        w = world_bounds.width,
-        h = world_bounds.height,
-    })
-
-    if hint_fields.visible == true then
-        entries[#entries + 1] = {
-            label = 'visible',
-            badges = {
-                make_badge(nil, tostring(ScreenHelpers.is_visible(node))),
+            world_bounds = {
+                x = world_bounds.x,
+                y = world_bounds.y,
+                w = world_bounds.width,
+                h = world_bounds.height,
+            },
+            visible = {
+                value = tostring(ScreenHelpers.is_visible(current)),
+            },
+            clamp = {
+                minW = opts.minWidth,
+                maxW = opts.maxWidth,
+                minH = opts.minHeight,
+                maxH = opts.maxHeight,
             },
         }
-    end
+        local entries = {}
 
-    append_badge_entry(entries, 'clamp', hint_fields.clamp, {
-        minW = opts.minWidth,
-        maxW = opts.maxWidth,
-        minH = opts.minHeight,
-        maxH = opts.maxHeight,
+        if not append_grouped_rows(entries, hint_fields.rows, sources) then
+            append_badge_entry(entries, 'props', inspect_props, sources.opts)
+            append_badge_entry(entries, 'local', hint_fields['local'], sources.local_bounds)
+            append_badge_entry(entries, 'world', hint_fields.world, sources.world_bounds)
+
+            if hint_fields.visible == true then
+                entries[#entries + 1] = {
+                    label = 'visible',
+                    badges = {
+                        Hint.badge(nil, sources.visible.value),
+                    },
+                }
+            end
+
+            append_badge_entry(entries, 'clamp', hint_fields.clamp, sources.clamp)
+        end
+
+        return entries
+    end, {
+        string_entry_factory = function(text)
+            return make_text_entry('info', text)
+        end,
     })
-
-    return entries
 end
 
 function ScreenHelpers.draw_hover_overlay(graphics)
     local draw_context = ScreenHelpers._draw_context
-    if draw_context == nil or draw_context.hovered_node == nil then
-        return
-    end
-
-    local entries = ScreenHelpers.get_hint_entries(draw_context.hovered_node)
-    if entries == nil or #entries == 0 then
-        return
-    end
-
-    local previous_font = graphics.getFont()
-    local font = ScreenHelpers._hint_font or previous_font
-    graphics.setFont(font)
-    local line_height = font:getHeight()
-    local padding = 10
-    local gap = 4
-    local row_gap = 8
-    local badge_padding_x = 4
-    local badge_padding_y = 4
-    local badge_gap = 4
-    local segment_gap = 4
-    local label_gap = 10
-    local width = 0
-
-    local layout = {}
-
-    for index = 1, #entries do
-        local entry = entries[index]
-        local label = tostring(entry.label or 'info')
-        local label_width = font:getWidth(label .. ':')
-        local badges = entry.badges or {}
-        local badge_layout = {}
-        local badges_width = 0
-
-        for badge_index = 1, #badges do
-            local badge = badges[badge_index]
-            local key_text = badge.key and (tostring(badge.key) .. ': ') or ''
-            local value_text = tostring(badge.value)
-            local badge_width = font:getWidth(key_text) + font:getWidth(value_text) + (badge_padding_x * 2)
-
-            badge_layout[#badge_layout + 1] = {
-                key_text = key_text,
-                value_text = value_text,
-                width = badge_width,
-            }
-
-            badges_width = badges_width + badge_width
-            if badge_index < #badges then
-                badges_width = badges_width + badge_gap + segment_gap
-            end
-        end
-
-        local row_width = label_width + label_gap + badges_width
-        width = math.max(width, row_width)
-        layout[#layout + 1] = {
-            label = label,
-            label_width = label_width,
-            badges = badge_layout,
-            row_width = row_width,
-        }
-    end
-
-    local badge_height = line_height + (badge_padding_y * 2)
-    local overlay_width = width + (padding * 2)
-    local overlay_height = (#layout * badge_height) + ((math.max(0, #layout - 1)) * row_gap) + (padding * 2)
-    local screen_width, screen_height = graphics.getDimensions()
-    local x = draw_context.mouse_x + gap
-    local y = draw_context.mouse_y + gap
-
-    if x + overlay_width > screen_width - 12 then
-        x = draw_context.mouse_x - overlay_width - gap
-    end
-
-    if y + overlay_height > screen_height - 12 then
-        y = draw_context.mouse_y - overlay_height - gap
-    end
-
-    x = math.max(12, x)
-    y = math.max(12, y)
-
-    graphics.setColor(DemoColors.roles.surface)
-    graphics.rectangle('fill', x, y, overlay_width, overlay_height)
-    graphics.setColor(DemoColors.roles.border_light)
-    graphics.rectangle('line', x, y, overlay_width, overlay_height)
-
-    local current_y = y + padding
-    for index = 1, #layout do
-        local row = layout[index]
-        local cursor_x = x + padding
-
-        graphics.setColor(DemoColors.roles.accent_highlight)
-        graphics.print(row.label .. ':', cursor_x, current_y + badge_padding_y)
-        cursor_x = cursor_x + row.label_width + label_gap
-
-        for badge_index = 1, #row.badges do
-            local badge = row.badges[badge_index]
-
-            graphics.setColor(DemoColors.roles.surface_emphasis)
-            graphics.rectangle('fill', cursor_x, current_y, badge.width, badge_height)
-            graphics.setColor(DemoColors.roles.border_light)
-            graphics.rectangle('line', cursor_x, current_y, badge.width, badge_height)
-
-            local text_x = cursor_x + badge_padding_x
-            local text_y = current_y + badge_padding_y
-
-            if badge.key_text ~= '' then
-                graphics.setColor(DemoColors.roles.body_subtle)
-                graphics.print(badge.key_text, text_x, text_y)
-                text_x = text_x + font:getWidth(badge.key_text)
-            end
-
-            graphics.setColor(DemoColors.roles.body)
-            graphics.print(badge.value_text, text_x, text_y)
-
-            cursor_x = cursor_x + badge.width
-            if badge_index < #row.badges then
-                cursor_x = cursor_x + badge_gap + segment_gap
-            end
-        end
-
-        current_y = current_y + badge_height + row_gap
-    end
-
-    graphics.setFont(previous_font)
+    local hovered_node = draw_context and draw_context.hovered_node or nil
+    local payload = hovered_node and Hint.resolve_payload(hovered_node, function(current)
+        return ScreenHelpers.get_hint_entries(current)
+    end, {
+        string_entry_factory = function(text)
+            return make_text_entry('info', text)
+        end,
+    }) or nil
+    Hint.draw_hover_overlay(graphics, draw_context, payload)
 end
 
 function ScreenHelpers.draw_demo_node(graphics, node)
@@ -453,26 +318,10 @@ function ScreenHelpers.draw_demo_markers(graphics, node)
     end
 end
 
-function ScreenHelpers.make_stage(scope)
-    local stage = Stage.new({
-        width = love.graphics.getWidth(),
-        height = love.graphics.getHeight(),
-    })
-
-    if ScreenHelpers._hint_font == nil then
-        ScreenHelpers._hint_font = love.graphics.newFont(10)
-    end
-
-    scope:on_cleanup(function()
-        stage:destroy()
-    end)
-
-    return stage
-end
-
 function ScreenHelpers.mark_box(node, label, fill_color, line_color)
     rawset(node, '_demo_box', true)
     rawset(node, '_demo_label', label)
+    Hint.set_hint_name(node, label)
     rawset(node, '_demo_fill_color', fill_color)
     rawset(node, '_demo_line_color', line_color)
     return node
@@ -492,76 +341,8 @@ function ScreenHelpers.make_node(scope, parent, opts, label, fill_color, line_co
     return node
 end
 
-function ScreenHelpers.sync_stage(stage)
-    stage:resize(love.graphics.getWidth(), love.graphics.getHeight())
-    stage:update(0)
-end
-
 function ScreenHelpers.screen_wrapper(owner, description, build)
-    return function(index, scope)
-        local stage = ScreenHelpers.make_stage(scope)
-        local state = build(scope, stage)
-        local info_index = nil
-        local header_description = state.description or description
-
-        if state.sidebar ~= nil then
-            info_index = owner:add_info_item(state.sidebar_title or state.title, {})
-        end
-
-        owner:set_title(state.title)
-        owner:set_description(header_description)
-
-        return {
-            keypressed = function(_, key)
-                if type(state.keypressed) == 'function' then
-                    return state.keypressed(_, key) == true
-                end
-
-                return false
-            end,
-            mousepressed = function(_, x, y, button)
-                if type(state.mousepressed) == 'function' then
-                    return state.mousepressed(_, x, y, button) == true
-                end
-
-                return false
-            end,
-            update = function(_, dt)
-                if type(state.update) == 'function' then
-                    state.update(dt)
-                end
-
-                stage:resize(love.graphics.getWidth(), love.graphics.getHeight())
-                stage:update(dt)
-                owner:set_title(state.title)
-                owner:set_description(header_description)
-                if info_index ~= nil then
-                    owner:set_info_title(info_index, state.sidebar_title or state.title)
-                    owner:set_info_lines(info_index, state.sidebar(index, owner:get_screen_count()))
-                end
-            end,
-            draw = function()
-                if not rawget(stage, '_update_ran') then
-                    ScreenHelpers.sync_stage(stage)
-                end
-
-                local mouse_x, mouse_y = love.mouse.getPosition()
-                ScreenHelpers._draw_context = {
-                    mouse_x = mouse_x,
-                    mouse_y = mouse_y,
-                    hovered_node = nil,
-                    hovered_area = nil,
-                }
-
-                stage:draw(love.graphics, function(node)
-                    ScreenHelpers.draw_demo_node(love.graphics, node)
-                    ScreenHelpers.draw_demo_markers(love.graphics, node)
-                end)
-                ScreenHelpers.draw_hover_overlay(love.graphics)
-                ScreenHelpers._draw_context = nil
-            end,
-        }
-    end
+    return CommonScreenHelpers.screen_wrapper(owner, ScreenHelpers, description, build)
 end
 
 return ScreenHelpers

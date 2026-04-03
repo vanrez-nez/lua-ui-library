@@ -23,29 +23,40 @@ return function(owner, helpers)
                 clipChildren = false,
             }, 'overflow parent', DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.24), DemoColors.roles.accent_blue_line)
             helpers.set_hint_fields(overflow_parent, {
-                props = { 'width', 'height', 'clipChildren' },
+                rows = {
+                    { label = 'dimensions', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'clipping', source = 'opts', keys = { 'clipChildren' } },
+                },
             })
 
             local overflow_child = helpers.make_node(scope, overflow_parent, {
                 x = 120,
-                y = 42,
+                y = 40,
                 width = 160,
-                height = 92,
+                height = 90,
             }, 'overflow child', DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.22), DemoColors.roles.accent_green_line)
             helpers.set_hint_fields(overflow_child, {
-                props = { 'x', 'y', 'width', 'height', 'clipChildren' },
-                world = { 'x', 'y', 'w', 'h' },
+                rows = {
+                    { label = 'position', source = 'opts', keys = { 'x', 'y' } },
+                    { label = 'dimensions', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'clipping', source = 'opts', keys = { 'clipChildren' } },
+                    { label = 'bounds.world', source = 'world_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                },
             })
 
             local overflow_grandchild = helpers.make_node(scope, overflow_child, {
-                x = 86,
-                y = 18,
+                x = 90,
+                y = 20,
                 width = 120,
-                height = 44,
+                height = 40,
             }, 'overflow grandchild', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
             helpers.set_hint_fields(overflow_grandchild, {
-                props = { 'x', 'y', 'width', 'height', 'clipChildren' },
-                world = { 'x', 'y', 'w', 'h' },
+                rows = {
+                    { label = 'position', source = 'opts', keys = { 'x', 'y' } },
+                    { label = 'dimensions', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'clipping', source = 'opts', keys = { 'clipChildren' } },
+                    { label = 'bounds.world', source = 'world_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                },
             })
 
             local clipped_parent = helpers.make_node(scope, root, {
@@ -56,29 +67,40 @@ return function(owner, helpers)
                 clipChildren = true,
             }, 'clipped parent', DemoColors.rgba(DemoColors.roles.accent_red_fill, 0.22), DemoColors.roles.accent_red_line)
             helpers.set_hint_fields(clipped_parent, {
-                props = { 'width', 'height', 'clipChildren' },
+                rows = {
+                    { label = 'dimensions', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'clipping', source = 'opts', keys = { 'clipChildren' } },
+                },
             })
 
             local clipped_child = helpers.make_node(scope, clipped_parent, {
                 x = 120,
-                y = 42,
+                y = 40,
                 width = 160,
-                height = 192,
+                height = 200,
             }, 'clipped child', DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.22), DemoColors.roles.accent_cyan_line)
             helpers.set_hint_fields(clipped_child, {
-                props = { 'x', 'y', 'width', 'height', 'clipChildren' },
-                world = { 'x', 'y', 'w', 'h' },
+                rows = {
+                    { label = 'position', source = 'opts', keys = { 'x', 'y' } },
+                    { label = 'dimensions', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'clipping', source = 'opts', keys = { 'clipChildren' } },
+                    { label = 'bounds.world', source = 'world_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                },
             })
 
             local clipped_grandchild = helpers.make_node(scope, clipped_child, {
-                x = 86,
-                y = 18,
+                x = 90,
+                y = 20,
                 width = 140,
-                height = 44,
+                height = 40,
             }, 'clipped grandchild', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
             helpers.set_hint_fields(clipped_grandchild, {
-                props = { 'x', 'y', 'width', 'height', 'clipChildren' },
-                world = { 'x', 'y', 'w', 'h' },
+                rows = {
+                    { label = 'position', source = 'opts', keys = { 'x', 'y' } },
+                    { label = 'dimensions', source = 'opts', keys = { 'width', 'height' } },
+                    { label = 'clipping', source = 'opts', keys = { 'clipChildren' } },
+                    { label = 'bounds.world', source = 'world_bounds', keys = { 'x', 'y', 'w', 'h' } },
+                },
             })
 
             local clickable_nodes = {

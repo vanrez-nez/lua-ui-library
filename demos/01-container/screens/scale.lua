@@ -26,16 +26,12 @@ local function make_row(helpers, label, badges)
     return row
 end
 
-local function make_node_hint(helpers, node, badges, world_keys)
-    local rows = {
-        {
-            label = 'node',
-            badges = {
-                helpers.badge(nil, rawget(node, '_demo_label')),
-            },
-        },
-        make_row(helpers, 'props', badges),
-    }
+local function make_node_hint(helpers, node, base_rows, world_keys)
+    local rows = {}
+
+    for index = 1, #base_rows do
+        rows[#rows + 1] = base_rows[index]
+    end
 
     if world_keys ~= nil then
         local world = node:getWorldBounds()
@@ -57,7 +53,7 @@ local function make_node_hint(helpers, node, badges, world_keys)
             world_badges[#world_badges + 1] = { 'h', world.height }
         end
 
-        rows[#rows + 1] = make_row(helpers, 'world', world_badges)
+        rows[#rows + 1] = make_row(helpers, 'bounds.world', world_badges)
     end
 
     return rows
@@ -80,8 +76,10 @@ return function(owner, helpers)
             helpers.set_hint(single_parent, function(node)
                 local bounds = node:getLocalBounds()
                 return make_node_hint(helpers, node, {
-                    { 'w', bounds.width },
-                    { 'h', bounds.height },
+                    make_row(helpers, 'dimensions', {
+                        { 'width', bounds.width },
+                        { 'height', bounds.height },
+                    }),
                 }, { x = true, y = true, w = true, h = true })
             end)
 
@@ -97,10 +95,14 @@ return function(owner, helpers)
             }, 'Single Child', DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.22), DemoColors.roles.accent_cyan_line)
             helpers.set_hint(single_child, function(node)
                 return make_node_hint(helpers, node, {
-                    { 'scaleX', node.scaleX },
-                    { 'scaleY', node.scaleY },
-                    { 'pivotX', node.pivotX },
-                    { 'pivotY', node.pivotY },
+                    make_row(helpers, 'scale', {
+                        { 'scaleX', node.scaleX },
+                        { 'scaleY', node.scaleY },
+                    }),
+                    make_row(helpers, 'pivot', {
+                        { 'pivotX', node.pivotX },
+                        { 'pivotY', node.pivotY },
+                    }),
                 }, { w = true, h = true })
             end)
 
@@ -113,16 +115,18 @@ return function(owner, helpers)
             helpers.set_hint(nested_parent, function(node)
                 local bounds = node:getLocalBounds()
                 return make_node_hint(helpers, node, {
-                    { 'w', bounds.width },
-                    { 'h', bounds.height },
+                    make_row(helpers, 'dimensions', {
+                        { 'width', bounds.width },
+                        { 'height', bounds.height },
+                    }),
                 }, { x = true, y = true, w = true, h = true })
             end)
 
             local nested_child = helpers.make_node(scope, nested_parent, {
                 x = 0,
                 y = 0,
-                width = 136,
-                height = 98,
+                width = 140,
+                height = 100,
                 pivotX = 0.5,
                 pivotY = 0.5,
                 scaleX = 1.2,
@@ -130,16 +134,18 @@ return function(owner, helpers)
             }, 'Nested Child', DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24), DemoColors.roles.accent_amber_line)
             helpers.set_hint(nested_child, function(node)
                 return make_node_hint(helpers, node, {
-                    { 'scaleX', node.scaleX },
-                    { 'scaleY', node.scaleY },
+                    make_row(helpers, 'scale', {
+                        { 'scaleX', node.scaleX },
+                        { 'scaleY', node.scaleY },
+                    }),
                 }, { w = true, h = true })
             end)
 
             local nested_grandchild = helpers.make_node(scope, nested_child, {
                 x = 0,
                 y = 0,
-                width = 72,
-                height = 54,
+                width = 70,
+                height = 50,
                 pivotX = 0.5,
                 pivotY = 0.5,
                 scaleX = 0.9,
@@ -147,8 +153,10 @@ return function(owner, helpers)
             }, 'Nested Grandchild', DemoColors.rgba(DemoColors.roles.accent_red_fill, 0.24), DemoColors.roles.accent_red_line)
             helpers.set_hint(nested_grandchild, function(node)
                 return make_node_hint(helpers, node, {
-                    { 'scaleX', node.scaleX },
-                    { 'scaleY', node.scaleY },
+                    make_row(helpers, 'scale', {
+                        { 'scaleX', node.scaleX },
+                        { 'scaleY', node.scaleY },
+                    }),
                 }, { w = true, h = true })
             end)
 
