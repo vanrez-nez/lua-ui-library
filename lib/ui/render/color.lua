@@ -1,17 +1,61 @@
 local Color = {}
 
--- Named color catalog — nine entries only, per spec §5.3
--- Values are {r, g, b, a} in [0, 1] space
+-- Named color catalog.
+-- Values are {r, g, b, a} in [0, 1] space.
 local NAMED_COLORS = {
-    transparent = { 0,         0,         0,         0 },
-    black       = { 0,         0,         0,         1 },
-    white       = { 1,         1,         1,         1 },
-    red         = { 1,         0,         0,         1 },
-    green       = { 0,         128 / 255, 0,         1 },  -- #008000
-    blue        = { 0,         0,         1,         1 },
-    yellow      = { 1,         1,         0,         1 },
-    cyan        = { 0,         1,         1,         1 },
-    magenta     = { 1,         0,         1,         1 },
+    apricot = { 0.965, 0.627, 0.302, 1.0 },
+    aqua = { 0.369, 0.784, 0.898, 1.0 },
+    bisque = { 0.949, 0.804, 0.812, 1.0 },
+    black = { 0, 0, 0, 1 },
+    blue = { 0.0, 0.471, 0.749, 1.0 },
+    brick = { 0.655, 0.318, 0.329, 1.0 },
+    brown = { 0.573, 0.373, 0.322, 1.0 },
+    burgundy = { 0.569, 0.306, 0.447, 1.0 },
+    charcoal = { 0.439, 0.455, 0.486, 1.0 },
+    copper = { 0.741, 0.392, 0.224, 1.0 },
+    cornflower = { 0.384, 0.659, 0.898, 1.0 },
+    cranberry = { 0.82, 0.318, 0.478, 1.0 },
+    crimson = { 0.894, 0.365, 0.314, 1.0 },
+    emerald = { 0.098, 0.592, 0.365, 1.0 },
+    forest = { 0.318, 0.431, 0.353, 1.0 },
+    grass = { 0.224, 0.494, 0.345, 1.0 },
+    granite = { 0.647, 0.667, 0.659, 1.0 },
+    gray = { 0.573, 0.553, 0.533, 1.0 },
+    grape = { 0.424, 0.365, 0.502, 1.0 },
+    green = { 0.0, 0.663, 0.361, 1.0 },
+    indigo = { 0.282, 0.302, 0.478, 1.0 },
+    ivy = { 0.086, 0.608, 0.384, 1.0 },
+    lagoon = { 0.184, 0.38, 0.396, 1.0 },
+    lake = { 0.137, 0.357, 0.659, 1.0 },
+    mahogany = { 0.557, 0.349, 0.353, 1.0 },
+    maroon = { 0.62, 0.298, 0.431, 1.0 },
+    melon = { 1.0, 0.682, 0.231, 1.0 },
+    midnight = { 0.263, 0.314, 0.376, 1.0 },
+    mint = { 0.51, 0.847, 0.835, 1.0 },
+    mist = { 0.835, 0.894, 0.753, 1.0 },
+    moss = { 0.408, 0.447, 0.302, 1.0 },
+    orange = { 1.0, 0.424, 0.184, 1.0 },
+    orchid = { 0.667, 0.376, 0.749, 1.0 },
+    paprika = { 0.933, 0.498, 0.294, 1.0 },
+    pine = { 0.137, 0.494, 0.455, 1.0 },
+    plum = { 0.518, 0.349, 0.569, 1.0 },
+    pumpkin = { 1.0, 0.435, 0.298, 1.0 },
+    purple = { 0.463, 0.357, 0.655, 1.0 },
+    raisin = { 0.467, 0.365, 0.478, 1.0 },
+    red = { 1.0, 0.4, 0.369, 1.0 },
+    scarlet = { 0.965, 0.314, 0.345, 1.0 },
+    slate = { 0.369, 0.412, 0.369, 1.0 },
+    spruce = { 0.29, 0.388, 0.365, 1.0 },
+    steel = { 0.216, 0.369, 0.467, 1.0 },
+    sunflower = { 1.0, 0.71, 0.067, 1.0 },
+    teal = { 0.0, 0.514, 0.541, 1.0 },
+    tomato = { 0.824, 0.318, 0.369, 1.0 },
+    transparent = { 0, 0, 0, 0 },
+    turquoise = { 0.0, 0.667, 0.576, 1.0 },
+    violet = { 0.616, 0.478, 0.824, 1.0 },
+    white = { 1, 1, 1, 1 },
+    wine = { 0.569, 0.306, 0.447, 1.0 },
+    yellow = { 1.0, 0.91, 0.0, 1.0 },
 }
 
 local function shallow_copy(t)
@@ -179,9 +223,11 @@ function Color.resolve(input)
             return parse_hex(input, 3)
         elseif input:sub(1, 4) == "hsl(" or input:sub(1, 5) == "hsla(" then
             return parse_hsl(input, 3)
-        elseif NAMED_COLORS[input] then
-            return shallow_copy(NAMED_COLORS[input])
         else
+            local normalized = input:lower()
+            if NAMED_COLORS[normalized] then
+                return shallow_copy(NAMED_COLORS[normalized])
+            end
             error("color: unsupported color string '" .. input .. "'", 2)
         end
     else

@@ -183,21 +183,16 @@ When any component value exceeds `1`, the input is treated as a `[0, 255]` range
 
 This document standardizes the accepted public input forms and the requirement that supported alternative color models or spaces resolve into the same RGBA result domain. It does not standardize one internal color-processing implementation.
 
-Named colors are intentionally narrow in this revision.
+Named colors are a supported public color-input form in this revision.
 
-The full named-color catalog in this revision is:
+The following names are required and portable:
 
 - `transparent`
 - `black`
 - `white`
-- `red`
-- `green`
-- `blue`
-- `yellow`
-- `cyan`
-- `magenta`
 
-The library must not imply any named-color catalog beyond this set unless a later revision documents it explicitly.
+Implementations may support additional named colors. Additional names are
+implementation-defined unless a later revision standardizes them explicitly.
 
 ## 5.4 Color Conversion
 
