@@ -2179,6 +2179,12 @@ end
 local function synchronize_for_read(self)
     assert_not_destroyed(self, 2)
 
+    -- Draw pass must remain read-only. Stage:update() is responsible for
+    -- producing a frame-current tree before Stage:draw() begins.
+    if rawget(self, '_drawing') then
+        return self
+    end
+
     -- For host-driven stages, always re-poll the live host viewport/safe-area
     -- so that property reads reflect the current host state regardless of
     -- whether update() has already run this frame.
@@ -2467,14 +2473,32 @@ function Stage:draw(graphics, draw_callback)
     assert_not_destroyed(self, 2)
 
     graphics, draw_callback = self:_prepare_draw(graphics, draw_callback)
+    local previous_drawing = rawget(self, '_drawing')
 
-    self.baseSceneLayer:_draw_subtree_resolved(graphics, function(node)
-        draw_callback(node, graphics)
-    end)
+    local error_handler = function(message)
+        if debug ~= nil and Types.is_function(debug.traceback) then
+            return debug.traceback(message, 2)
+        end
 
-    self:_draw_overlay_layer_resolved(graphics, draw_callback)
+        return message
+    end
 
+    rawset(self, '_drawing', true)
+
+    local ok, err = xpcall(function()
+        self.baseSceneLayer:_draw_subtree_resolved(graphics, function(node)
+            draw_callback(node, graphics)
+        end)
+
+        self:_draw_overlay_layer_resolved(graphics, draw_callback)
+    end, error_handler)
+
+    rawset(self, '_drawing', previous_drawing)
     rawset(self, '_update_ran', false)
+
+    if not ok then
+        error(err, 0)
+    end
 
     return self
 end
