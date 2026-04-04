@@ -1,6 +1,7 @@
 local MemoryMonitor = require('demos.common.memory_monitor')
 local InfoSidebar = require('demos.common.info_sidebar')
 local DemoColors = require('demos.common.colors')
+local DemoProfiling = require('demos.common.demo_profiling')
 
 local function call_release(value)
     if value == nil then
@@ -66,6 +67,8 @@ function DemoBase.new(opts)
     self.active_scope = nil
     self.active_screen = nil
     self.memory_monitor = MemoryMonitor.new()
+    self.profiling = nil
+    self._profiling_auto_initialized = false
 
     self.title_font = love.graphics.newFont(15)
     self.description_font = love.graphics.newFont(13)
@@ -77,6 +80,10 @@ function DemoBase.new(opts)
         title_font = self.sidebar_title_font,
         body_font = self.sidebar_body_font,
     })
+
+    if opts.profiling ~= nil then
+        self.profiling = DemoProfiling.new(opts.profiling)
+    end
 
     return self
 end
@@ -207,11 +214,19 @@ function DemoBase:push_screen(factory)
     if self.active_index == 0 then
         self:_activate_screen(1)
     end
+
+    if self.profiling ~= nil and not self._profiling_auto_initialized then
+        self._profiling_auto_initialized = self.profiling:maybe_start_auto(self)
+    end
 end
 
 function DemoBase:handle_keypressed(key)
     if key == 'escape' then
         love.event.quit()
+        return true
+    end
+
+    if self.profiling ~= nil and self.profiling:handle_keypressed(key) then
         return true
     end
 
@@ -285,6 +300,10 @@ function DemoBase:update(dt)
     if screen ~= nil and type(screen.update) == 'function' then
         screen:update(dt)
     end
+
+    if self.profiling ~= nil and self.profiling:update() then
+        return
+    end
 end
 
 function DemoBase:draw()
@@ -336,6 +355,16 @@ function DemoBase:draw()
     end
 
     self.memory_monitor:draw()
+
+    if self.profiling ~= nil then
+        self.profiling:draw_status(g, DemoColors)
+    end
+end
+
+function DemoBase:shutdown()
+    if self.profiling ~= nil then
+        self.profiling:shutdown()
+    end
 end
 
 return DemoBase

@@ -1,6 +1,7 @@
 local DemoColors = require('demos.common.colors')
 
 local NativeControls = {}
+local DISABLED_ALPHA = 0.45
 
 local function floor(value)
     return math.floor(value + 0.5)
@@ -33,16 +34,32 @@ function NativeControls.draw_rect(graphics, rect, mode, color, line_width)
     end
 end
 
-function NativeControls.draw_button(graphics, font, rect, label, hovered)
+function NativeControls.draw_button(graphics, font, rect, label, hovered, disabled)
+    local fill_color = disabled and DemoColors.roles.surface_alt or
+        (hovered and DemoColors.roles.surface_emphasis or DemoColors.roles.surface_interactive)
+    local border_color = disabled and DemoColors.roles.border or DemoColors.roles.border_light
+    local text_color = disabled and DemoColors.roles.text_muted or DemoColors.roles.text
+
+    if disabled then
+        fill_color = NativeControls.set_alpha(fill_color, DISABLED_ALPHA)
+        border_color = NativeControls.set_alpha(border_color, DISABLED_ALPHA)
+        text_color = NativeControls.set_alpha(text_color, DISABLED_ALPHA)
+    end
+
     NativeControls.draw_rect(
         graphics,
         rect,
         'fill',
-        hovered and DemoColors.roles.surface_emphasis or DemoColors.roles.surface_interactive
+        fill_color
     )
-    NativeControls.draw_rect(graphics, rect, 'line', DemoColors.roles.border_light)
+    NativeControls.draw_rect(
+        graphics,
+        rect,
+        'line',
+        border_color
+    )
 
-    graphics.setColor(DemoColors.roles.text)
+    graphics.setColor(text_color)
     graphics.setFont(font)
     graphics.print(
         label,
@@ -78,6 +95,55 @@ function NativeControls.build_centered_navigator_layout(screen_width, top_y, fon
             height = nav_height,
         },
     }
+end
+
+function NativeControls.draw_navigator(graphics, font, layout, text, hovered_left, hovered_right, body_line_color, disabled)
+    local fill_color = disabled and DemoColors.roles.surface or DemoColors.roles.surface_alt
+    local line_color = disabled and DemoColors.roles.border or (body_line_color or DemoColors.roles.border_light)
+    local text_color = disabled and DemoColors.roles.text_muted or DemoColors.roles.text
+
+    if disabled then
+        fill_color = NativeControls.set_alpha(fill_color, DISABLED_ALPHA)
+        line_color = NativeControls.set_alpha(line_color, DISABLED_ALPHA)
+        text_color = NativeControls.set_alpha(text_color, DISABLED_ALPHA)
+    end
+
+    NativeControls.draw_button(
+        graphics,
+        font,
+        layout.left,
+        '<',
+        hovered_left,
+        disabled
+    )
+    NativeControls.draw_button(
+        graphics,
+        font,
+        layout.right,
+        '>',
+        hovered_right,
+        disabled
+    )
+    NativeControls.draw_rect(
+        graphics,
+        layout.body,
+        'fill',
+        fill_color
+    )
+    NativeControls.draw_rect(
+        graphics,
+        layout.body,
+        'line',
+        line_color
+    )
+
+    graphics.setColor(text_color)
+    graphics.setFont(font)
+    graphics.print(
+        text,
+        layout.body.x + floor((layout.body.width - font:getWidth(text)) * 0.5),
+        layout.body.y + floor((layout.body.height - font:getHeight()) * 0.5) - 1
+    )
 end
 
 function NativeControls.build_edge_control_layout(bounds, control_layout)

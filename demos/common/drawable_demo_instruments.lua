@@ -7,24 +7,30 @@ local function has_insets(insets)
         and (insets.top ~= 0 or insets.right ~= 0 or insets.bottom ~= 0 or insets.left ~= 0)
 end
 
-local function append_inset_groups(entries, helpers, label, insets)
+local function append_inset_row(entries, helpers, label, insets)
     if not has_insets(insets) then
         return
     end
 
     entries[#entries + 1] = {
-        label = label .. '.vertical',
+        label = label,
         badges = {
+            helpers.badge('left', helpers.format_scalar(insets.left)),
             helpers.badge('top', helpers.format_scalar(insets.top)),
+            helpers.badge('right', helpers.format_scalar(insets.right)),
             helpers.badge('bottom', helpers.format_scalar(insets.bottom)),
         },
     }
+end
 
+local function append_rect_row(entries, helpers, label, rect)
     entries[#entries + 1] = {
-        label = label .. '.horizontal',
+        label = label,
         badges = {
-            helpers.badge('left', helpers.format_scalar(insets.left)),
-            helpers.badge('right', helpers.format_scalar(insets.right)),
+            helpers.badge('x', helpers.format_scalar(rect.x)),
+            helpers.badge('y', helpers.format_scalar(rect.y)),
+            helpers.badge('width', helpers.format_scalar(rect.width)),
+            helpers.badge('height', helpers.format_scalar(rect.height)),
         },
     }
 end
@@ -39,25 +45,23 @@ function DemoInstruments.decorate_drawable(node, style)
     return node
 end
 
-function DemoInstruments.set_spacing_hint(node, helpers)
+function DemoInstruments.set_spacing_hint(node, helpers, type_label)
     helpers.set_hint(node, function(current)
+        local bounds = current:getLocalBounds()
+        local content = current:getContentRect()
         local entries = {
             {
-                label = 'container',
+                label = 'type',
                 badges = {
-                    helpers.badge('bounds', helpers.format_rect(current:getLocalBounds())),
-                },
-            },
-            {
-                label = 'target',
-                badges = {
-                    helpers.badge('content', helpers.format_rect(current:getContentRect())),
+                    helpers.badge(nil, type_label or 'Drawable'),
                 },
             },
         }
 
-        append_inset_groups(entries, helpers, 'padding', current.padding)
-        append_inset_groups(entries, helpers, 'margin', current.margin)
+        append_rect_row(entries, helpers, 'child.container', bounds)
+        append_rect_row(entries, helpers, 'child.content', content)
+        append_inset_row(entries, helpers, 'padding', current.padding)
+        append_inset_row(entries, helpers, 'margin', current.margin)
 
         return entries
     end)

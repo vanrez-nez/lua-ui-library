@@ -1,5 +1,5 @@
 local DemoColors = require('demos.common.colors')
-local DemoInstruments = require('demos.02-drawable.demo_instruments')
+local DemoInstruments = require('demos.common.drawable_demo_instruments')
 local Hint = require('demos.common.hint')
 local NativeControls = require('demos.common.native_controls')
 

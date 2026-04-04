@@ -1,6 +1,6 @@
 local DemoColors = require('demos.common.colors')
 local Hint = require('demos.common.hint')
-local CommonScreenHelpers = require('demos.common.screen_helpers')
+local ScreenHelper = require('demos.common.screen_helper')
 local Motion = require('lib.ui.motion')
 local UI = require('lib.ui')
 
@@ -32,6 +32,14 @@ local function get_world_rect(node, rect)
         width = local_rect.width,
         height = local_rect.height,
     }
+end
+
+local function get_effective_content_rect(node)
+    if type(node.getContentRect) == 'function' then
+        return node:getContentRect()
+    end
+
+    return node:_get_effective_content_rect()
 end
 
 local function apply_box_style(node, fill_color, line_color)
@@ -91,7 +99,16 @@ local function sync_content_overlay(node)
         return
     end
 
-    set_overlay_rect(overlay, get_world_rect(node, node:getContentRect()))
+    set_overlay_rect(overlay, get_world_rect(node, get_effective_content_rect(node)))
+end
+
+local function sync_bounds_overlay(node)
+    local overlay = rawget(node, '_demo_bounds_overlay')
+    if overlay == nil then
+        return
+    end
+
+    set_overlay_rect(overlay, get_world_rect(node))
 end
 
 local function sync_sample_overlay(node)
@@ -152,6 +169,7 @@ local function sync_node_visuals(node)
         return
     end
 
+    sync_bounds_overlay(node)
     sync_content_overlay(node)
     sync_sample_overlay(node)
     sync_margin_overlay(node)
@@ -174,7 +192,7 @@ end
 
 function ScreenHelpers.get_hint_entries(node)
     return Hint.resolve_entries(node, function(current)
-        local content_rect = current:getContentRect()
+        local content_rect = get_effective_content_rect(current)
         local opts = rawget(current, '_demo_opts') or {}
 
         return {
@@ -221,6 +239,9 @@ function ScreenHelpers.draw_demo_node(graphics, node)
     local draw_context = ScreenHelpers._draw_context
     local bounds = node:getWorldBounds()
     local label = rawget(node, '_demo_label') or (node.tag or 'drawable')
+    local label_rect_mode = rawget(node, '_demo_label_rect') or 'bounds'
+    local label_inset_x = rawget(node, '_demo_label_inset_x') or 8
+    local label_inset_y = rawget(node, '_demo_label_inset_y') or 8
     local is_hovered = false
 
     if draw_context ~= nil and node:containsPoint(draw_context.mouse_x, draw_context.mouse_y) then
@@ -233,7 +254,14 @@ function ScreenHelpers.draw_demo_node(graphics, node)
     end
 
     graphics.setColor(DemoColors.roles.body)
-    local label_x, label_y = node:localToWorld(8, 8)
+    local label_rect = node:getLocalBounds()
+    if label_rect_mode == 'content' then
+        label_rect = get_effective_content_rect(node)
+    end
+    local label_x, label_y = node:localToWorld(
+        label_rect.x + label_inset_x,
+        label_rect.y + label_inset_y
+    )
     graphics.print(label, label_x, label_y)
 end
 
@@ -258,68 +286,77 @@ function ScreenHelpers.show_content(node, sample_width, sample_height)
         borderWidth = 1,
     })
     if sample_width ~= nil and sample_height ~= nil then
+        rawset(node, '_demo_sample_size', {
+            width = sample_width,
+            height = sample_height,
+        })
         ensure_overlay(node, '_demo_sample_overlay', {
             backgroundColor = DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.35),
             borderColor = DemoColors.roles.accent_cyan_line,
             borderWidth = 1,
         })
-        rawset(node, '_demo_sample_size', {
-            width = sample_width,
-            height = sample_height,
-        })
     end
-    return node
+end
+
+function ScreenHelpers.show_bounds(node)
+    ensure_overlay(node, '_demo_bounds_overlay', {
+        backgroundColor = { 184, 191, 207, 18 },
+        borderColor = { 184, 191, 207 },
+        borderWidth = 1,
+        borderStyle = 'rough',
+    })
 end
 
 function ScreenHelpers.show_margin(node)
     ensure_overlay(node, '_demo_margin_overlay', {
-        borderColor = DemoColors.roles.accent_highlight,
+        backgroundColor = nil,
+        borderColor = DemoColors.roles.accent_gold_line,
         borderWidth = 1,
     })
-    return node
 end
 
-function ScreenHelpers.show_sample(node, sample_width, sample_height)
-    ensure_overlay(node, '_demo_sample_overlay', {
-        backgroundColor = DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.35),
-        borderColor = DemoColors.roles.accent_cyan_line,
-        borderWidth = 1,
-    })
-    rawset(node, '_demo_sample_size', {
-        width = sample_width,
-        height = sample_height,
-    })
-    return node
-end
-
-function ScreenHelpers.show_motion_bar(node)
+function ScreenHelpers.show_motion_track(node)
     ensure_overlay(node, '_demo_motion_track_overlay', {
-        borderColor = DemoColors.roles.accent_green_line,
+        backgroundColor = DemoColors.rgba(DemoColors.roles.surface, 0.9),
+        borderColor = DemoColors.roles.body,
         borderWidth = 1,
     })
     ensure_overlay(node, '_demo_motion_fill_overlay', {
-        backgroundColor = DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.9),
-        borderColor = DemoColors.roles.accent_green_line,
+        backgroundColor = DemoColors.roles.accent_cyan_fill,
+        borderColor = DemoColors.roles.accent_cyan_line,
         borderWidth = 1,
     })
-    return node
-end
-
-function ScreenHelpers.show_outline_only(node)
-    node.backgroundColor = nil
-    return node
 end
 
 function ScreenHelpers.sync_stage_visuals(stage)
     sync_subtree(stage.baseSceneLayer)
+    sync_subtree(stage.overlayLayer)
 end
 
-function ScreenHelpers.request_motion(node, phase, payload)
-    return Motion.request(node, phase, payload or {})
+function ScreenHelpers.draw_demo_markers(graphics, node)
+    local markers = rawget(node, '_demo_markers')
+    if markers == nil or not ScreenHelpers.is_visible(node) then
+        return
+    end
+
+    local bounds = node:getWorldBounds()
+    local marker_x = bounds.x + bounds.width - 10
+    local marker_y = bounds.y + 10
+
+    if markers.motion then
+        graphics.setColor(DemoColors.roles.accent_cyan_line)
+        graphics.circle('fill', marker_x, marker_y, 4)
+        marker_x = marker_x - 12
+    end
+
+    if markers.effect then
+        graphics.setColor(DemoColors.roles.accent_gold_line)
+        graphics.rectangle('fill', marker_x - 4, marker_y - 4, 8, 8)
+    end
 end
 
 function ScreenHelpers.screen_wrapper(owner, description, build)
-    return CommonScreenHelpers.screen_wrapper(owner, ScreenHelpers, description, build)
+    return ScreenHelper.screen_wrapper(owner, ScreenHelpers, description, build)
 end
 
 return ScreenHelpers

@@ -1,251 +1,150 @@
 local UI = require('lib.ui')
 
+local Column = UI.Column
+local Container = UI.Container
 local Drawable = UI.Drawable
-
-local CASES = {
-    {
-        column = 'padding',
-        label = 'Top',
-        padding = { 20, 0, 0, 0 },
-        margin = 0,
-        show_padding = true,
-        show_margin = false,
-    },
-    {
-        column = 'padding',
-        label = 'Right',
-        padding = { 0, 20, 0, 0 },
-        margin = 0,
-        show_padding = true,
-        show_margin = false,
-    },
-    {
-        column = 'padding',
-        label = 'Bottom',
-        padding = { 0, 0, 20, 0 },
-        margin = 0,
-        show_padding = true,
-        show_margin = false,
-    },
-    {
-        column = 'padding',
-        label = 'Left',
-        padding = { 0, 0, 0, 20 },
-        margin = 0,
-        show_padding = true,
-        show_margin = false,
-    },
-    {
-        column = 'padding',
-        label = 'Mixed',
-        padding = { 5, 10, 20, 15 },
-        margin = 0,
-        show_padding = true,
-        show_margin = false,
-    },
-    {
-        column = 'margin',
-        label = 'Top',
-        padding = 10,
-        margin = { 20, 0, 0, 0 },
-        show_padding = false,
-        show_margin = true,
-    },
-    {
-        column = 'margin',
-        label = 'Right',
-        padding = 10,
-        margin = { 0, 20, 0, 0 },
-        show_padding = false,
-        show_margin = true,
-    },
-    {
-        column = 'margin',
-        label = 'Bottom',
-        padding = 10,
-        margin = { 0, 0, 20, 0 },
-        show_padding = false,
-        show_margin = true,
-    },
-    {
-        column = 'margin',
-        label = 'Left',
-        padding = 10,
-        margin = { 0, 0, 0, 20 },
-        show_padding = false,
-        show_margin = true,
-    },
-    {
-        column = 'margin',
-        label = 'Mixed',
-        padding = 10,
-        margin = { 5, 10, 20, 15 },
-        show_padding = false,
-        show_margin = true,
-    },
-}
-
-local BOX_SIZE = 100
-local COLUMN_GAP = 260
-local ROW_GAP = 30
-
-local function has_insets(insets)
-    return insets ~= nil
-        and (insets.top ~= 0 or insets.right ~= 0 or insets.bottom ~= 0 or insets.left ~= 0)
-end
-
-local function append_inset_groups(entries, helpers, label, insets)
-    if not has_insets(insets) then
-        return
-    end
-
-    entries[#entries + 1] = {
-        label = label .. '.vertical',
-        badges = {
-            helpers.badge('top', helpers.format_scalar(insets.top)),
-            helpers.badge('bottom', helpers.format_scalar(insets.bottom)),
-        },
-    }
-
-    entries[#entries + 1] = {
-        label = label .. '.horizontal',
-        badges = {
-            helpers.badge('left', helpers.format_scalar(insets.left)),
-            helpers.badge('right', helpers.format_scalar(insets.right)),
-        },
-    }
-end
-
-local function build_hint(helpers, node, case)
-    local entries = {
-        {
-            label = 'container',
-            badges = {
-                helpers.badge('bounds', helpers.format_rect(node:getLocalBounds())),
-            },
-        },
-        {
-            label = 'target',
-            badges = {
-                helpers.badge('content', helpers.format_rect(node:getContentRect())),
-            },
-        },
-    }
-
-    if case.show_padding then
-        append_inset_groups(entries, helpers, 'padding', node.padding)
-    end
-
-    if case.show_margin then
-        append_inset_groups(entries, helpers, 'margin', node.margin)
-    end
-
-    return entries
-end
+local Flow = UI.Flow
+local Row = UI.Row
+local Stack = UI.Stack
 
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Left column isolates padding one side at a time, then shows a mixed case. Right column does the same for margin. The main box is always the drawable container. Padding adds an inner target box; margin adds an outer guide. Hover a case to inspect the affected edges directly.',
+        'Use the selectors to compare one Drawable under different parent contracts. Padding always changes the Drawable itself. Margin only changes placement when the selected parent layout consumes it.',
         function(scope, stage)
             local root = stage.baseSceneLayer
-            local nodes = {}
 
-            for index = 1, #CASES do
-                local case = CASES[index]
-                local outer = nil
-                local node = nil
+            local host = Container.new({
+                id = 'spacing-host',
+                x = 0,
+                y = 0,
+                width = 420,
+                height = 420,
+            })
+            root:addChild(host)
 
-                if case.show_padding then
-                    node = Drawable.new({
-                        id = string.format('spacing-%s-%d', case.column, index),
-                        x = 0,
-                        y = 0,
-                        width = BOX_SIZE,
-                        height = BOX_SIZE,
-                        padding = case.padding,
-                        margin = case.margin,
-                        backgroundColor = { 125, 235, 168, 51 },
-                        borderColor = { 125, 235, 168 },
-                        borderWidth = 1,
-                    })
-                    root:addChild(node)
-                    outer = node
+            local drawable_parent = Drawable.new({
+                id = 'spacing-parent-drawable',
+                width = 300,
+                height = 300,
+                padding = 0,
+                margin = 0,
+                backgroundColor = { 184, 191, 207, 18 },
+                borderColor = { 184, 191, 207 },
+                borderWidth = 1,
+                borderStyle = 'rough',
+                borderPattern = 'dashed',
+                borderDashLength = 8,
+                borderGapLength = 6,
+            })
+            local drawable_child = Drawable.new({
+                id = 'spacing-child-drawable',
+                x = 0,
+                y = 0,
+                width = 144,
+                height = 144,
+                padding = 10,
+                margin = 0,
+                backgroundColor = { 125, 235, 168, 51 },
+                borderColor = { 125, 235, 168 },
+                borderWidth = 1,
+                borderStyle = 'rough',
+            })
+            drawable_parent:addChild(drawable_child)
+            host:addChild(drawable_parent)
 
-                    local content_rect = node:getContentRect()
-                    node:addChild(Drawable.new({
-                        internal = true,
-                        enabled = false,
-                        x = content_rect.x,
-                        y = content_rect.y,
-                        width = content_rect.width,
-                        height = content_rect.height,
-                        backgroundColor = { 245, 204, 97, 51 },
-                        borderColor = { 245, 204, 97 },
-                        borderWidth = 1,
-                    }))
-                else
-                    outer = Drawable.new({
-                        internal = true,
-                        enabled = false,
-                        x = 0,
-                        y = 0,
-                        width = BOX_SIZE + case.margin.left + case.margin.right,
-                        height = BOX_SIZE + case.margin.top + case.margin.bottom,
-                        borderColor = { 229, 199, 82 },
-                        borderWidth = 1,
-                    })
-                    root:addChild(outer)
+            local stack_parent = Stack.new({
+                id = 'spacing-parent-stack',
+                width = 300,
+                height = 300,
+                padding = 0,
+                justify = 'center',
+                align = 'center',
+            })
+            local stack_child = Drawable.new({
+                id = 'spacing-child-stack',
+                width = 144,
+                height = 144,
+                padding = 10,
+                margin = 0,
+                backgroundColor = { 125, 235, 168, 51 },
+                borderColor = { 125, 235, 168 },
+                borderWidth = 1,
+                borderStyle = 'rough',
+            })
+            stack_parent:addChild(stack_child)
+            host:addChild(stack_parent)
 
-                    node = Drawable.new({
-                        id = string.format('spacing-%s-%d', case.column, index),
-                        x = case.margin.left,
-                        y = case.margin.top,
-                        width = BOX_SIZE,
-                        height = BOX_SIZE,
-                        padding = case.padding,
-                        margin = case.margin,
-                        backgroundColor = { 204, 163, 250, 51 },
-                        borderColor = { 204, 163, 250 },
-                        borderWidth = 1,
-                    })
-                    outer:addChild(node)
-                end
+            local row_parent = Row.new({
+                id = 'spacing-parent-row',
+                width = 300,
+                height = 300,
+                padding = 0,
+                justify = 'center',
+                align = 'center',
+            })
+            local row_child = Drawable.new({
+                id = 'spacing-child-row',
+                width = 144,
+                height = 144,
+                padding = 10,
+                margin = 0,
+                backgroundColor = { 125, 235, 168, 51 },
+                borderColor = { 125, 235, 168 },
+                borderWidth = 1,
+                borderStyle = 'rough',
+            })
+            row_parent:addChild(row_child)
+            host:addChild(row_parent)
 
-                helpers.set_hint(node, function(current)
-                    return build_hint(helpers, current, case)
-                end)
+            local column_parent = Column.new({
+                id = 'spacing-parent-column',
+                width = 300,
+                height = 300,
+                padding = 0,
+                justify = 'center',
+                align = 'center',
+            })
+            local column_child = Drawable.new({
+                id = 'spacing-child-column',
+                width = 144,
+                height = 144,
+                padding = 10,
+                margin = 0,
+                backgroundColor = { 125, 235, 168, 51 },
+                borderColor = { 125, 235, 168 },
+                borderWidth = 1,
+                borderStyle = 'rough',
+            })
+            column_parent:addChild(column_child)
+            host:addChild(column_parent)
 
-                nodes[#nodes + 1] = {
-                    outer = outer,
-                    node = node,
-                    margin = node.margin,
-                    column = case.column,
-                    row_index = ((index - 1) % 5),
-                }
-            end
+            local flow_parent = Flow.new({
+                id = 'spacing-parent-flow',
+                width = 300,
+                height = 300,
+                padding = 0,
+                justify = 'center',
+                align = 'center',
+                wrap = true,
+            })
+            local flow_child = Drawable.new({
+                id = 'spacing-child-flow',
+                width = 144,
+                height = 144,
+                padding = 10,
+                margin = 0,
+                backgroundColor = { 125, 235, 168, 51 },
+                borderColor = { 125, 235, 168 },
+                borderWidth = 1,
+                borderStyle = 'rough',
+            })
+            flow_parent:addChild(flow_child)
+            host:addChild(flow_parent)
 
             return {
-                title = 'Padding / Margin',
-                description = 'This demo compares padding and margin side by side. On the left, padding keeps the target box contained inside its parent, so the target shrinks and shifts inward. On the right, margin does not resize the target box; instead, the outer guide expands around the same parent bounds. The last row in each column combines multiple edges so the mixed case can be compared against the single-edge cases above it.',
-                update = function()
-                    local screen_width = love.graphics.getWidth()
-                    local screen_height = love.graphics.getHeight()
-                    local total_width = (BOX_SIZE * 2) + COLUMN_GAP
-                    local total_height = (BOX_SIZE * 5) + (ROW_GAP * 4)
-                    local start_x = math.floor((screen_width - total_width) * 0.5 + 0.5)
-                    local start_y = math.floor((screen_height - total_height) * 0.5 + 0.5)
-                    local column_x = {
-                        padding = start_x,
-                        margin = start_x + BOX_SIZE + COLUMN_GAP,
-                    }
-
-                    for index = 1, #nodes do
-                        local entry = nodes[index]
-                        entry.outer.x = column_x[entry.column] - (entry.margin.left or 0)
-                        entry.outer.y = start_y + (entry.row_index * (BOX_SIZE + ROW_GAP)) - (entry.margin.top or 0)
-                    end
-                end,
+                title = 'Spacing Contracts',
+                description = 'Spacing, alignment properties, and sizes react differently depending on how elements are nested. Each combination defines a behavior contract. Use the playground below to explore those differences across element types. Use the presets to navigate through common cases.',
             }
         end
     )

@@ -123,8 +123,8 @@ A demo must not become:
 
 Preferred layout for a non-trivial multi-screen demo:
 
-- `main.lua` for bootstrap, screen registration, and Love callbacks only
-- one demo-local `screen_helpers.lua` when repeated instrumentation is needed
+- `main.lua` for bootstrap and screen registration only
+- shared helper utilities in `demos/common/screen_helper.lua`
 - one `screens/` directory with one file per screen
 - one companion `screens/{name}_setup.lua` for non-essential instrumentation
 

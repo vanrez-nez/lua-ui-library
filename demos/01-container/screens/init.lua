@@ -1,4 +1,4 @@
-return {
+local screen_modules = {
     require('demos.01-container.screens.bounds'),
     require('demos.01-container.screens.sizing'),
     require('demos.01-container.screens.percentage'),
@@ -9,3 +9,7 @@ return {
     require('demos.01-container.screens.pivot'),
     require('demos.01-container.screens.scale'),
 }
+
+screen_modules.helpers = require('demos.common.screen_helper')
+
+return screen_modules
