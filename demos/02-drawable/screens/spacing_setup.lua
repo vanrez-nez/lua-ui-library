@@ -1,11 +1,7 @@
 local DemoColors = require('demos.common.colors')
 local DemoInstruments = require('demos.common.drawable_demo_instruments')
+local LayoutSpacingVisuals = require('demos.common.layout_spacing_visuals')
 local NativeControls = require('demos.common.native_controls')
-
-local PADDING_BACKGROUND_COLOR = DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.2)
-local MARGIN_BACKGROUND_COLOR = DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.2)
-local PADDING_PATTERN_COLOR = DemoColors.rgba(DemoColors.roles.accent_amber_line, 0.25)
-local MARGIN_PATTERN_COLOR = DemoColors.rgba(DemoColors.roles.accent_violet_line, 0.25)
 
 local SPACING_OPTIONS = {
     { label = 'None', value = { 0, 0, 0, 0 } },
@@ -286,158 +282,12 @@ local function append_rect_row(entries, helpers, label, rect)
     }
 end
 
-local function resolve_display_size(value, available)
-    if type(value) == 'number' then
-        return value
-    end
-
-    if value == 'fill' then
-        return available
-    end
-
-    if type(value) == 'string' then
-        local percent = value:match('^(%d+)%%$')
-        if percent ~= nil then
-            return math.floor((available * tonumber(percent)) / 100)
-        end
-    end
-
-    return available
-end
-
 local function get_effective_content_rect(node)
     if type(node.getContentRect) == 'function' then
         return node:getContentRect()
     end
 
     return node:_get_effective_content_rect()
-end
-
-local function get_world_rect(node, rect)
-    local local_rect = rect or node:getLocalBounds()
-    local x, y = node:localToWorld(local_rect.x, local_rect.y)
-
-    return {
-        x = x,
-        y = y,
-        width = local_rect.width,
-        height = local_rect.height,
-    }
-end
-
-local function inset_rect(rect, insets)
-    local left = insets.left or 0
-    local top = insets.top or 0
-    local right = insets.right or 0
-    local bottom = insets.bottom or 0
-
-    return {
-        x = rect.x + left,
-        y = rect.y + top,
-        width = math.max(0, rect.width - left - right),
-        height = math.max(0, rect.height - top - bottom),
-    }
-end
-
-local function expand_rect(rect, insets)
-    local left = insets.left or 0
-    local top = insets.top or 0
-    local right = insets.right or 0
-    local bottom = insets.bottom or 0
-
-    return {
-        x = rect.x - left,
-        y = rect.y - top,
-        width = rect.width + left + right,
-        height = rect.height + top + bottom,
-    }
-end
-
-local function draw_stripe_fill(graphics, rect, color, step)
-    if rect.width <= 0 or rect.height <= 0 then
-        return
-    end
-
-    local spacing = step or 8
-    local start = math.floor(rect.x - rect.height)
-    local finish = math.floor(rect.x + rect.width)
-
-    graphics.setScissor(rect.x, rect.y, rect.width, rect.height)
-    graphics.setColor(color)
-
-    for x = start, finish, spacing do
-        graphics.line(x, rect.y + rect.height, x + rect.height, rect.y)
-    end
-
-    graphics.setScissor()
-end
-
-local function draw_dot_fill(graphics, rect, color, step, radius)
-    if rect.width <= 0 or rect.height <= 0 then
-        return
-    end
-
-    local spacing = step or 14
-    local dot_radius = radius or 2
-    local start_x = rect.x + math.floor(spacing / 2)
-    local start_y = rect.y + math.floor(spacing / 2)
-
-    graphics.setScissor(rect.x, rect.y, rect.width, rect.height)
-    graphics.setColor(color)
-
-    for y = start_y, rect.y + rect.height, spacing do
-        for x = start_x, rect.x + rect.width, spacing do
-            graphics.circle('fill', x, y, dot_radius)
-        end
-    end
-
-    graphics.setScissor()
-end
-
-local function draw_reverse_stripe_fill(graphics, rect, color, step)
-    if rect.width <= 0 or rect.height <= 0 then
-        return
-    end
-
-    local spacing = step or 8
-    local start = math.floor(rect.x - rect.height)
-    local finish = math.floor(rect.x + rect.width)
-
-    graphics.setScissor(rect.x, rect.y, rect.width, rect.height)
-    graphics.setColor(color)
-
-    for x = start, finish, spacing do
-        graphics.line(x, rect.y, x + rect.height, rect.y + rect.height)
-    end
-
-    graphics.setScissor()
-end
-
-local function draw_pattern_region(graphics, outer_rect, hole_rects, background_color, pattern_drawer)
-    if outer_rect.width <= 0 or outer_rect.height <= 0 then
-        return
-    end
-
-    graphics.stencil(function()
-        graphics.rectangle('fill', outer_rect.x, outer_rect.y, outer_rect.width, outer_rect.height)
-    end, 'replace', 1)
-
-    for index = 1, #hole_rects do
-        local hole = hole_rects[index]
-        if hole.width > 0 and hole.height > 0 then
-            graphics.stencil(function()
-                graphics.rectangle('fill', hole.x, hole.y, hole.width, hole.height)
-            end, 'replace', 0, true)
-        end
-    end
-
-    graphics.setStencilTest('greater', 0)
-    if background_color ~= nil then
-        graphics.setColor(background_color)
-        graphics.rectangle('fill', outer_rect.x, outer_rect.y, outer_rect.width, outer_rect.height)
-    end
-    pattern_drawer(outer_rect)
-    graphics.setStencilTest()
 end
 
 local function build_navigator_layout(left_x, top_y, body_width, font)
@@ -1217,47 +1067,10 @@ function Setup.install(args)
         end
 
         local entry = parent_entries[type_index]
-        local parent_bounds_rect = get_world_rect(entry.parent)
-        local parent_content_rect = get_world_rect(entry.parent, get_effective_content_rect(entry.parent))
-        local child_bounds_rect = get_world_rect(entry.child)
-        local child_content_rect = get_world_rect(entry.child, get_effective_content_rect(entry.child))
-        local parent_padding = entry.parent.padding or { top = 0, right = 0, bottom = 0, left = 0 }
-        local child_padding = entry.child.padding or { top = 0, right = 0, bottom = 0, left = 0 }
-        local parent_margin = entry.parent.margin or { top = 0, right = 0, bottom = 0, left = 0 }
-        local child_margin = entry.child.margin or { top = 0, right = 0, bottom = 0, left = 0 }
-
-        if has_insets(parent_margin) then
-            draw_pattern_region(graphics, expand_rect(parent_bounds_rect, parent_margin), {
-                parent_bounds_rect,
-            }, MARGIN_BACKGROUND_COLOR, function(rect)
-                draw_reverse_stripe_fill(graphics, rect, MARGIN_PATTERN_COLOR, 8)
-            end)
-        end
-
-        if has_insets(parent_padding) then
-            draw_pattern_region(graphics, parent_bounds_rect, {
-                parent_content_rect,
-            }, PADDING_BACKGROUND_COLOR, function(rect)
-                draw_stripe_fill(graphics, rect, PADDING_PATTERN_COLOR, 8)
-            end)
-        end
-
-        if has_insets(child_margin) then
-            draw_pattern_region(graphics, expand_rect(child_bounds_rect, child_margin), {
-                child_bounds_rect,
-            }, MARGIN_BACKGROUND_COLOR, function(rect)
-                draw_reverse_stripe_fill(graphics, rect, MARGIN_PATTERN_COLOR, 8)
-            end)
-        end
-
-        if has_insets(child_padding) then
-            draw_pattern_region(graphics, child_bounds_rect, {
-                child_content_rect,
-            }, PADDING_BACKGROUND_COLOR, function(rect)
-                draw_stripe_fill(graphics, rect, PADDING_PATTERN_COLOR, 8)
-            end)
-        end
-
+        LayoutSpacingVisuals.draw_margin_overlay(graphics, entry.parent)
+        LayoutSpacingVisuals.draw_padding_overlay(graphics, entry.parent)
+        LayoutSpacingVisuals.draw_margin_overlay(graphics, entry.child)
+        LayoutSpacingVisuals.draw_padding_overlay(graphics, entry.child)
     end
 
     local function draw_overlay(graphics)

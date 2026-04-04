@@ -1,7 +1,8 @@
 local screen_modules = {
     require('demos.02-drawable.screens.alignments'),
     require('demos.02-drawable.screens.spacing'),
-    require('demos.02-drawable.screens.nested_padding'),
+    require('demos.02-drawable.screens.layout_stack'),
+    require('demos.02-drawable.screens.layout_row'),
     require('demos.02-drawable.screens.opacity'),
     require('demos.02-drawable.screens.skin'),
     require('demos.02-drawable.screens.blendmode'),
