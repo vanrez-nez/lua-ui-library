@@ -202,6 +202,29 @@ local DRAWABLE_SCHEMA = {
         end
         return value
     end },
+    borderPattern = { validate = function(key, value, ctx, level)
+        return check_enum(key, value, { 'solid', 'dashed' }, level)
+    end },
+    borderDashLength = { validate = function(key, value, ctx, level)
+        check_finite_number(key, value, level)
+        if value <= 0 then
+            Assert.fail(key .. ' must be > 0, got ' .. value, level or 1)
+        end
+        if value > 255 then
+            Assert.fail(key .. ' must be <= 255, got ' .. value, level or 1)
+        end
+        return value
+    end },
+    borderGapLength = { validate = function(key, value, ctx, level)
+        check_finite_number(key, value, level)
+        if value < 0 then
+            Assert.fail(key .. ' must be >= 0, got ' .. value, level or 1)
+        end
+        if value > 255 then
+            Assert.fail(key .. ' must be <= 255, got ' .. value, level or 1)
+        end
+        return value
+    end },
 
     -- corner radius
     cornerRadius = { validate = function(key, value, ctx, level)
