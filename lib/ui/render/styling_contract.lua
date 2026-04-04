@@ -27,6 +27,7 @@ StylingContract.ROOT_PROPERTY_KEYS = {
     -- border (§7.1)
     'borderColor', 'borderOpacity', 'borderWidth', 'borderWidthTop', 'borderWidthRight',
     'borderWidthBottom', 'borderWidthLeft', 'borderStyle', 'borderJoin', 'borderMiterLimit',
+    'borderPattern', 'borderDashLength', 'borderGapLength',
 
     -- corner radius (§8)
     'cornerRadius', 'cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft',

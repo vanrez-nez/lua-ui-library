@@ -147,10 +147,15 @@ end
 
 local function save_line_state(graphics)
     local s = {}
-    if Types.is_function(graphics.getLineWidth)  then s.width  = graphics.getLineWidth()  end
-    if Types.is_function(graphics.getLineStyle)  then s.style  = graphics.getLineStyle()  end
-    if Types.is_function(graphics.getLineJoin)   then s.join   = graphics.getLineJoin()   end
-    if Types.is_function(graphics.getMiterLimit) then s.miter  = graphics.getMiterLimit() end
+    if Types.is_function(graphics.getLineWidth)   then s.width  = graphics.getLineWidth()  end
+    if Types.is_function(graphics.getLineStyle)   then s.style  = graphics.getLineStyle()  end
+    if Types.is_function(graphics.getLineJoin)    then s.join   = graphics.getLineJoin()   end
+    if Types.is_function(graphics.getMiterLimit)  then s.miter  = graphics.getMiterLimit() end
+    if Types.is_function(graphics.getLineStipple) then
+        local pat, rep = graphics.getLineStipple()
+        s.stipple_pattern = pat
+        s.stipple_repeat  = rep
+    end
     return s
 end
 
@@ -159,6 +164,13 @@ local function restore_line_state(graphics, s)
     if s.style ~= nil and Types.is_function(graphics.setLineStyle)  then graphics.setLineStyle(s.style)   end
     if s.join  ~= nil and Types.is_function(graphics.setLineJoin)   then graphics.setLineJoin(s.join)     end
     if s.miter ~= nil and Types.is_function(graphics.setMiterLimit) then graphics.setMiterLimit(s.miter)  end
+    if Types.is_function(graphics.setLineStipple) then
+        if s.stipple_pattern ~= nil then
+            graphics.setLineStipple(s.stipple_pattern, s.stipple_repeat)
+        else
+            graphics.setLineStipple()
+        end
+    end
 end
 
 -- Write the rounded rect silhouette into stencil buffer (value = 1).
@@ -419,10 +431,83 @@ end
 -- Border — center-aligned per spec §7.
 -- ---------------------------------------------------------------------------
 
+-- Maps (dashLength, gapLength) to a (pattern, repeat) pair for the native
+-- stipple API. Normalizes the dash ratio across 16 bits, then selects a repeat
+-- factor to scale to the requested pixel lengths.
+-- Pattern bits are read LSB-first, so lower bits correspond to earlier pixels.
+local function compute_stipple(dash_len, gap_len)
+    local total    = dash_len + gap_len
+    local rep      = math.max(1, math.min(255, math.ceil(total / 16)))
+    local dash_bits = math.max(1, math.min(15, math.floor(dash_len / rep + 0.5)))
+    local pat      = math.floor(2 ^ dash_bits) - 1
+    return pat, rep
+end
+
+local function draw_dashed_line(graphics, x1, y1, x2, y2, dash_len, gap_len)
+    if not Types.is_function(graphics.line) then
+        return
+    end
+
+    local dx = x2 - x1
+    local dy = y2 - y1
+    local length = math.sqrt((dx * dx) + (dy * dy))
+
+    if length <= 0 then
+        return
+    end
+
+    if gap_len <= 0 then
+        graphics.line(x1, y1, x2, y2)
+        return
+    end
+
+    local ux = dx / length
+    local uy = dy / length
+    local step = dash_len + gap_len
+
+    for offset = 0, length, step do
+        local dash_end = math.min(offset + dash_len, length)
+        graphics.line(
+            x1 + (ux * offset),
+            y1 + (uy * offset),
+            x1 + (ux * dash_end),
+            y1 + (uy * dash_end)
+        )
+    end
+end
+
+local function draw_dashed_arc(graphics, cx, cy, r, a1, a2, dash_len, gap_len)
+    if r <= 0 or not Types.is_function(graphics.arc) then
+        return
+    end
+
+    local span = a2 - a1
+    local arc_length = math.abs(span) * r
+
+    if arc_length <= 0 then
+        return
+    end
+
+    if gap_len <= 0 then
+        graphics.arc('line', cx, cy, r, a1, a2)
+        return
+    end
+
+    local direction = (span >= 0) and 1 or -1
+    local step = dash_len + gap_len
+
+    for offset = 0, arc_length, step do
+        local dash_end = math.min(offset + dash_len, arc_length)
+        local dash_a1 = a1 + direction * (offset / r)
+        local dash_a2 = a1 + direction * (dash_end / r)
+        graphics.arc('line', cx, cy, r, dash_a1, dash_a2)
+    end
+end
+
 local function apply_border_line_state(props, graphics)
-    local style = props.borderStyle
-    local join  = props.borderJoin
-    local miter = props.borderMiterLimit
+    local style   = props.borderStyle
+    local join    = props.borderJoin
+    local miter   = props.borderMiterLimit
 
     if style ~= nil and Types.is_function(graphics.setLineStyle) then
         graphics.setLineStyle(style)
@@ -432,6 +517,9 @@ local function apply_border_line_state(props, graphics)
     end
     if miter ~= nil and join == 'miter' and Types.is_function(graphics.setMiterLimit) then
         graphics.setMiterLimit(miter)
+    end
+    if Types.is_function(graphics.setLineStipple) then
+        graphics.setLineStipple()
     end
 end
 
@@ -446,6 +534,15 @@ local function paint_border(props, bounds, graphics, radii)
     local c = props.borderColor
     if c == nil then return end
 
+    -- Cycle ceiling guard (spec §7.4)
+    if props.borderPattern == 'dashed' then
+        local dl = props.borderDashLength or 8
+        local gl = props.borderGapLength  or 6
+        if dl + gl > 255 then
+            error('borderDashLength + borderGapLength must not exceed 255, got ' .. (dl + gl), 2)
+        end
+    end
+
     local a = c[4] * (props.borderOpacity or 1)
     local saved_color = save_color(graphics)
     local saved_line  = save_line_state(graphics)
@@ -456,8 +553,14 @@ local function paint_border(props, bounds, graphics, radii)
     apply_border_line_state(props, graphics)
 
     local x, y, w, h = bounds.x, bounds.y, bounds.width, bounds.height
+    local dashed = props.borderPattern == 'dashed'
+    local dash_len = props.borderDashLength or 8
+    local gap_len = props.borderGapLength or 6
 
-    if wt == wr and wr == wb and wb == wl and wt > 0 then
+    -- Dashed borders always use per-side rendering so each line() call resets
+    -- the stipple phase, satisfying the per-side dash-start contract (spec §7.4).
+    if wt == wr and wr == wb and wb == wl and wt > 0
+        and (not dashed or gap_len <= 0) then
         -- Uniform width — single rounded-rectangle stroke.
         if Types.is_function(graphics.setLineWidth) then graphics.setLineWidth(wt) end
         local pts = rounded_rect_points(x, y, w, h, radii)
@@ -470,14 +573,18 @@ local function paint_border(props, bounds, graphics, radii)
         local function draw_side_line(lw, x1, y1, x2, y2)
             if lw <= 0 then return end
             if Types.is_function(graphics.setLineWidth) then graphics.setLineWidth(lw) end
-            if Types.is_function(graphics.line) then
+            if dashed then
+                draw_dashed_line(graphics, x1, y1, x2, y2, dash_len, gap_len)
+            elseif Types.is_function(graphics.line) then
                 graphics.line(x1, y1, x2, y2)
             end
         end
         local function draw_corner_arc(lw, cx, cy, r, a1, a2)
             if lw <= 0 or r <= 0 then return end
             if Types.is_function(graphics.setLineWidth) then graphics.setLineWidth(lw) end
-            if Types.is_function(graphics.arc) then
+            if dashed then
+                draw_dashed_arc(graphics, cx, cy, r, a1, a2, dash_len, gap_len)
+            elseif Types.is_function(graphics.arc) then
                 graphics.arc('line', cx, cy, r, a1, a2)
             end
         end

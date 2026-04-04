@@ -20,7 +20,7 @@ All terminology defined in [UI Foundation Specification](./ui-foundation-spec.md
 
 `Image-backed background`: A background source that paints a graphics-backed image or texture input according to the styling placement rules defined in this document.
 
-`Border`: The stroke-like visual edge drawn around a node or part according to the documented width, color, opacity, join, stipple, and radius rules.
+`Border`: The stroke-like visual edge drawn around a node or part according to the documented width, color, opacity, join, pattern, and radius rules.
 
 `Corner radius`: The rounding definition applied per corner to the node or part border and background geometry.
 
@@ -405,6 +405,9 @@ The public border property family in this revision is:
 - `borderStyle`
 - `borderJoin`
 - `borderMiterLimit`
+- `borderPattern`
+- `borderDashLength`
+- `borderGapLength`
 
 Borders are part of the styling contract for any root or named part whose owning component exposes border styling.
 
@@ -461,18 +464,27 @@ The border line contract in this revision includes:
 - `borderStyle`
 - `borderJoin`
 - `borderMiterLimit`
+- `borderPattern`
+- `borderDashLength`
+- `borderGapLength`
 
 The purpose of these fields is:
 
-- `borderStyle`: the stroke rendering style family
+- `borderStyle`: the stroke rendering quality family
 - `borderJoin`: the corner join behavior
 - `borderMiterLimit`: the miter threshold when the selected join behavior uses one
+- `borderPattern`: the border segmentation family
+- `borderDashLength`: the dash segment length in logical units when `borderPattern` is `"dashed"`
+- `borderGapLength`: the gap segment length in logical units when `borderPattern` is `"dashed"`
 
 Accepted values in this revision:
 
 - `borderStyle: "smooth" | "rough"`
 - `borderJoin: "none" | "miter" | "bevel"`
 - `borderMiterLimit: number | nil`
+- `borderPattern: "solid" | "dashed"`
+- `borderDashLength: number`
+- `borderGapLength: number`
 
 `borderMiterLimit`:
 
@@ -491,7 +503,46 @@ Accepted values in this revision:
 - `bevel`: the corner is flattened
 - `none`: no additional join cap geometry is applied where segments meet
 
-This revision does not standardize border stipple or dashed-line border patterns.
+`borderStyle` and `borderPattern` are orthogonal. Any combination of the two is valid.
+
+`borderPattern` controls the segmentation of the rendered border stroke:
+
+- `solid`: the border paints as a continuous uninterrupted stroke
+- `dashed`: the border paints as repeated dash-gap segments
+
+Default values when not explicitly resolved:
+
+- `borderPattern = "solid"`
+- `borderDashLength = 8`
+- `borderGapLength = 6`
+
+`borderDashLength`:
+
+- is numeric, expressed in logical units
+- must be finite
+- must be strictly greater than zero
+- must not exceed 255
+
+`borderGapLength`:
+
+- is numeric, expressed in logical units
+- must be finite
+- must be greater than or equal to zero
+- must not exceed 255
+
+The combined cycle (`borderDashLength + borderGapLength`) must not exceed 255 logical units. This ceiling aligns with the practical capacity of pattern-based rendering primitives and ensures consistent behavior across implementations.
+
+When `borderPattern = "solid"`, `borderDashLength` and `borderGapLength` are ignored.
+
+When `borderPattern = "dashed"`:
+
+- each resolved side is patterned independently, starting with a dash at its own local origin
+- a partial trailing dash is permitted when the side length does not align with a whole cycle
+- a side with a resolved border width of zero paints nothing for that side regardless of pattern settings
+- `borderJoin` does not introduce join geometry across a dash gap
+- rendered dash and gap lengths are the closest achievable approximation of the requested values; exact pixel-accurate fidelity is not guaranteed
+
+`borderGapLength = 0` with `borderPattern = "dashed"` is valid and produces back-to-back dash segments with no visible gap. This is visually equivalent to `borderPattern = "solid"` and implementations may optimize this case accordingly.
 
 Invalid border line configuration fails deterministically.
 
@@ -696,6 +747,13 @@ Hard-failure cases include:
 - non-integer component value in a detected `[0, 255]` range input
 - negative width, blur, or radius where not permitted
 - invalid border line configuration
+- `borderPattern` outside the accepted enum set
+- non-finite `borderDashLength` or `borderGapLength`
+- `borderDashLength <= 0`
+- `borderDashLength > 255`
+- `borderGapLength < 0`
+- `borderGapLength > 255`
+- `borderDashLength + borderGapLength > 255`
 
 Supported conversion cases include:
 
