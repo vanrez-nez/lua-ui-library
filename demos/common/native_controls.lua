@@ -88,12 +88,14 @@ function NativeControls.build_edge_control_layout(bounds, control_layout)
     local button_size = 20
     local value_width = 128
     local panel_width = (panel_padding * 2) + button_size + 6 + value_width + 6 + button_size
-    local panel_height = (panel_padding * 2) + (row_height * 2) + row_gap
     local layout = {}
 
     for index = 1, #control_layout do
         local panel = control_layout[index]
         local panel_rect
+        local row_count = #panel.rows
+        local panel_height = (panel_padding * 2) + (row_height * row_count) +
+            (math.max(0, row_count - 1) * row_gap)
 
         if panel.side == 'top' then
             panel_rect = {

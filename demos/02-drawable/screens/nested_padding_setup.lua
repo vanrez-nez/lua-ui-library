@@ -28,28 +28,24 @@ local CONTROL_LAYOUT = {
         side = 'top',
         rows = {
             { property = 'padding', inset = 'top', label = 'Top Padding' },
-            { property = 'margin', inset = 'top', label = 'Top Margin' },
         },
     },
     {
         side = 'right',
         rows = {
             { property = 'padding', inset = 'right', label = 'Right Padding' },
-            { property = 'margin', inset = 'right', label = 'Right Margin' },
         },
     },
     {
         side = 'bottom',
         rows = {
             { property = 'padding', inset = 'bottom', label = 'Bottom Padding' },
-            { property = 'margin', inset = 'bottom', label = 'Bottom Margin' },
         },
     },
     {
         side = 'left',
         rows = {
             { property = 'padding', inset = 'left', label = 'Left Padding' },
-            { property = 'margin', inset = 'left', label = 'Left Margin' },
         },
     },
 }
@@ -95,13 +91,27 @@ local function set_inset(node, property, side, delta)
 end
 
 local function place_centered_in_parent(parent, child)
+    local bounds = child:getLocalBounds()
     local slot = parent:resolveContentRect(
-        child.width,
-        child.height
+        bounds.width,
+        bounds.height
     )
 
     child.x = slot.x
     child.y = slot.y
+end
+
+local function copy_color(color)
+    if color == nil then
+        return nil
+    end
+
+    return {
+        color[1],
+        color[2],
+        color[3],
+        color[4],
+    }
 end
 
 function Setup.install(args)
@@ -120,11 +130,12 @@ function Setup.install(args)
         local node_id = NAVIGATOR_ORDER[index]
         local node = root:findById(node_id, -1)
         if node == nil then
-            error('nested_spacing_setup: missing node "' .. node_id .. '"', 2)
+            error('nested_padding_setup: missing node "' .. node_id .. '"', 2)
         end
 
         nodes_by_id[node_id] = node
         rawset(node, '_demo_label', NODE_STYLES[node_id].label)
+        rawset(node, '_demo_base_border_color', copy_color(node.borderColor))
         Hint.set_hint_name(node, NODE_STYLES[node_id].label)
         DemoInstruments.set_spacing_hint(node, helpers)
     end
@@ -145,14 +156,31 @@ function Setup.install(args)
         return nodes_by_id['nested-spacing-inner']
     end
 
+    local function sync_selection_border()
+        local active = selected_node()
+
+        for index = 1, #NAVIGATOR_ORDER do
+            local node = nodes_by_id[NAVIGATOR_ORDER[index]]
+            local base_border_color = rawget(node, '_demo_base_border_color')
+
+            if node == active then
+                node.borderColor = DemoColors.names.white
+            else
+                node.borderColor = base_border_color
+            end
+        end
+    end
+
     local function update()
         local viewport = root:getWorldBounds()
         local outer = root_node()
         local middle = middle_node()
         local inner = inner_node()
+        local outer_bounds = outer:getLocalBounds()
 
-        outer.x = math.floor(viewport.x + ((viewport.width - outer.width) * 0.5) + 0.5)
-        outer.y = math.floor(viewport.y + ((viewport.height - outer.height) * 0.5) + 0.5)
+        sync_selection_border()
+        outer.x = math.floor(viewport.x + ((viewport.width - outer_bounds.width) * 0.5) + 0.5)
+        outer.y = math.floor(viewport.y + ((viewport.height - outer_bounds.height) * 0.5) + 0.5)
         place_centered_in_parent(outer, middle)
         place_centered_in_parent(middle, inner)
 

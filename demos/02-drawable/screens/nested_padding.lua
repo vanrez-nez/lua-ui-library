@@ -12,10 +12,9 @@ return function(owner, helpers)
                 id = 'nested-spacing-outer',
                 x = 0,
                 y = 0,
-                width = 150,
-                height = 150,
+                width = 'content',
+                height = 'content',
                 padding = 10,
-                margin = 0,
                 backgroundColor = { 36, 59, 47, 46 },
                 borderColor = { 78, 138, 99 },
                 borderWidth = 1
@@ -25,10 +24,9 @@ return function(owner, helpers)
                 id = 'nested-spacing-middle',
                 x = 0,
                 y = 0,
-                width = 100,
-                height = 100,
+                width = 'content',
+                height = 'content',
                 padding = 10,
-                margin = 10,
                 backgroundColor = { 52, 40, 74, 46 },
                 borderColor = { 131, 98, 184 },
                 borderWidth = 1
@@ -41,7 +39,6 @@ return function(owner, helpers)
                 width = 50,
                 height = 50,
                 padding = 5,
-                margin = 5,
                 backgroundColor = { 31, 64, 68, 51 },
                 borderColor = { 79, 164, 173 },
                 borderWidth = 1
@@ -52,8 +49,8 @@ return function(owner, helpers)
             middle:addChild(inner)
 
             return {
-                title = 'Nested Spacing',
-                description = 'This screen is intentionally just one retained Drawable nesting chain: outer contains middle, and middle contains inner.',
+                title = 'Nested Padding',
+                description = 'Use this screen to see how Drawable padding changes the content box immediately and, on content-sized ancestors, also changes measured border-box size through the nesting chain. Outer and middle grow from child border-box measurement, while the fixed-size inner leaf keeps the same outer size and only insets its own content.',
             }
         end
     )
