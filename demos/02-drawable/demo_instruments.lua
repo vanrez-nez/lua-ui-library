@@ -30,10 +30,10 @@ local function append_inset_groups(entries, helpers, label, insets)
 end
 
 function DemoInstruments.decorate_drawable(node, style)
-    rawset(node, '_demo_box', true)
     rawset(node, '_demo_label', style.label)
-    rawset(node, '_demo_fill_color', style.fill)
-    rawset(node, '_demo_line_color', style.line)
+    node.backgroundColor = style.fill
+    node.borderColor = style.line
+    node.borderWidth = 1
     Hint.set_hint_name(node, style.label)
 
     return node

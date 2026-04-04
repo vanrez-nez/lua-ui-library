@@ -1,4 +1,6 @@
-local DemoColors = require('demos.common.colors')
+local UI = require('lib.ui')
+
+local Drawable = UI.Drawable
 
 local CASES = {
     {
@@ -8,8 +10,6 @@ local CASES = {
         margin = 0,
         show_padding = true,
         show_margin = false,
-        fill = DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2),
-        line = DemoColors.roles.accent_green_line,
     },
     {
         column = 'padding',
@@ -18,8 +18,6 @@ local CASES = {
         margin = 0,
         show_padding = true,
         show_margin = false,
-        fill = DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2),
-        line = DemoColors.roles.accent_green_line,
     },
     {
         column = 'padding',
@@ -28,8 +26,6 @@ local CASES = {
         margin = 0,
         show_padding = true,
         show_margin = false,
-        fill = DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2),
-        line = DemoColors.roles.accent_green_line,
     },
     {
         column = 'padding',
@@ -38,8 +34,6 @@ local CASES = {
         margin = 0,
         show_padding = true,
         show_margin = false,
-        fill = DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2),
-        line = DemoColors.roles.accent_green_line,
     },
     {
         column = 'padding',
@@ -48,8 +42,6 @@ local CASES = {
         margin = 0,
         show_padding = true,
         show_margin = false,
-        fill = DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2),
-        line = DemoColors.roles.accent_green_line,
     },
     {
         column = 'margin',
@@ -58,8 +50,6 @@ local CASES = {
         margin = { 20, 0, 0, 0 },
         show_padding = false,
         show_margin = true,
-        fill = DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.2),
-        line = DemoColors.roles.accent_violet_line,
     },
     {
         column = 'margin',
@@ -68,8 +58,6 @@ local CASES = {
         margin = { 0, 20, 0, 0 },
         show_padding = false,
         show_margin = true,
-        fill = DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.2),
-        line = DemoColors.roles.accent_violet_line,
     },
     {
         column = 'margin',
@@ -78,8 +66,6 @@ local CASES = {
         margin = { 0, 0, 20, 0 },
         show_padding = false,
         show_margin = true,
-        fill = DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.2),
-        line = DemoColors.roles.accent_violet_line,
     },
     {
         column = 'margin',
@@ -88,8 +74,6 @@ local CASES = {
         margin = { 0, 0, 0, 20 },
         show_padding = false,
         show_margin = true,
-        fill = DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.2),
-        line = DemoColors.roles.accent_violet_line,
     },
     {
         column = 'margin',
@@ -98,8 +82,6 @@ local CASES = {
         margin = { 5, 10, 20, 15 },
         show_padding = false,
         show_margin = true,
-        fill = DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.2),
-        line = DemoColors.roles.accent_violet_line,
     },
 }
 
@@ -171,21 +153,63 @@ return function(owner, helpers)
 
             for index = 1, #CASES do
                 local case = CASES[index]
-                local node = helpers.make_node(scope, root, {
-                    x = 0,
-                    y = 0,
-                    width = BOX_SIZE,
-                    height = BOX_SIZE,
-                    padding = case.padding,
-                    margin = case.margin,
-                }, case.label, case.fill, case.line)
+                local outer = nil
+                local node = nil
 
                 if case.show_padding then
-                    rawset(node, '_demo_show_content', true)
-                end
+                    node = Drawable.new({
+                        id = string.format('spacing-%s-%d', case.column, index),
+                        x = 0,
+                        y = 0,
+                        width = BOX_SIZE,
+                        height = BOX_SIZE,
+                        padding = case.padding,
+                        margin = case.margin,
+                        backgroundColor = { 125, 235, 168, 51 },
+                        borderColor = { 125, 235, 168 },
+                        borderWidth = 1,
+                    })
+                    root:addChild(node)
+                    outer = node
 
-                if case.show_margin then
-                    helpers.show_margin(node)
+                    local content_rect = node:getContentRect()
+                    node:addChild(Drawable.new({
+                        internal = true,
+                        enabled = false,
+                        x = content_rect.x,
+                        y = content_rect.y,
+                        width = content_rect.width,
+                        height = content_rect.height,
+                        backgroundColor = { 245, 204, 97, 51 },
+                        borderColor = { 245, 204, 97 },
+                        borderWidth = 1,
+                    }))
+                else
+                    outer = Drawable.new({
+                        internal = true,
+                        enabled = false,
+                        x = 0,
+                        y = 0,
+                        width = BOX_SIZE + case.margin.left + case.margin.right,
+                        height = BOX_SIZE + case.margin.top + case.margin.bottom,
+                        borderColor = { 229, 199, 82 },
+                        borderWidth = 1,
+                    })
+                    root:addChild(outer)
+
+                    node = Drawable.new({
+                        id = string.format('spacing-%s-%d', case.column, index),
+                        x = case.margin.left,
+                        y = case.margin.top,
+                        width = BOX_SIZE,
+                        height = BOX_SIZE,
+                        padding = case.padding,
+                        margin = case.margin,
+                        backgroundColor = { 204, 163, 250, 51 },
+                        borderColor = { 204, 163, 250 },
+                        borderWidth = 1,
+                    })
+                    outer:addChild(node)
                 end
 
                 helpers.set_hint(node, function(current)
@@ -193,7 +217,9 @@ return function(owner, helpers)
                 end)
 
                 nodes[#nodes + 1] = {
+                    outer = outer,
                     node = node,
+                    margin = node.margin,
                     column = case.column,
                     row_index = ((index - 1) % 5),
                 }
@@ -216,8 +242,8 @@ return function(owner, helpers)
 
                     for index = 1, #nodes do
                         local entry = nodes[index]
-                        entry.node.x = column_x[entry.column]
-                        entry.node.y = start_y + (entry.row_index * (BOX_SIZE + ROW_GAP))
+                        entry.outer.x = column_x[entry.column] - (entry.margin.left or 0)
+                        entry.outer.y = start_y + (entry.row_index * (BOX_SIZE + ROW_GAP)) - (entry.margin.top or 0)
                     end
                 end,
             }

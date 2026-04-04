@@ -50,7 +50,21 @@ return function(owner, helpers)
                     height = NODE_HEIGHT,
                     alignX = case.alignX,
                     alignY = case.alignY,
+                    backgroundColor = { 117, 184, 255, 51 },
+                    borderColor = { 117, 184, 255 },
+                    borderWidth = 1,
                 })
+                node:addChild(Drawable.new({
+                    internal = true,
+                    enabled = false,
+                    x = 0,
+                    y = 0,
+                    width = 72,
+                    height = 40,
+                    backgroundColor = { 107, 235, 250, 89 },
+                    borderColor = { 107, 235, 250 },
+                    borderWidth = 1,
+                }))
                 root:addChild(node)
             end
 

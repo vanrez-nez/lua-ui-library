@@ -156,6 +156,9 @@ function CommonScreenHelpers.screen_wrapper(owner, helpers, description, build)
                 end
 
                 stage:update(dt)
+                if type(helpers.sync_stage_visuals) == 'function' then
+                    helpers.sync_stage_visuals(stage, dt)
+                end
                 owner:set_title(screen_title)
                 owner:set_description(header_description)
                 if info_index ~= nil then
