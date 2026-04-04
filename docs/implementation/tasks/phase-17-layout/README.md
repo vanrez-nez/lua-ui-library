@@ -49,6 +49,13 @@ Task order:
 2. `01-spacing-surface-alignment.md`
 3. `02-layout-margin-consumption.md`
 4. `03-acceptance-and-doc-sync.md`
+5. `04-flow-direction.md`
+6. `05-fill-circular-layout-families.md`
+7. `06-drawable-alignment-contract.md`
+8. `07-common-prop-validation-gaps.md`
+
+Tasks 04–07 target gaps introduced by the §2.6 / §3.3 / §4.2 / §8.3 spec
+update applied after the original task set was written.
 
 Execution policy for this phase:
 

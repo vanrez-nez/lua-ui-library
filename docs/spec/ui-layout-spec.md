@@ -9,7 +9,7 @@ It owns:
 
 - spacing semantics for `padding` and `margin`
 - spacing interaction rules between child nodes and parents
-- `Drawable` internal content alignment semantics
+- `Drawable` box model, content sizing, and internal content alignment semantics
 - layout-family common props and common state model
 - `Stack`
 - `Row`
@@ -69,7 +69,7 @@ Value constraints:
 - `padding` members must be finite and `>= 0`
 - `margin` members must be finite and may be positive, zero, or negative
 
-### 2.3 Spacing Ownership
+### 2.3 Spacing Ownership And Direction
 
 Spacing responsibilities are explicit in this revision:
 
@@ -82,7 +82,16 @@ Spacing responsibilities are explicit in this revision:
 - when a parent does not explicitly consume child margin, child `margin` is
   inert for placement and measurement under that parent
 
-### 2.4 Boxes
+The directional distinction that underpins this model is:
+
+- `padding` is inward. It acts on the node itself. It shrinks the content box
+  relative to the border box, contributes to the node's own border-box size,
+  and does not require any cooperation from the parent.
+- `margin` is outward. It is a request for space outside the node's border
+  box. It requires the parent to read and honor it. Without a parent that
+  explicitly consumes child margin, margin is inert.
+
+### 2.4 Boxes And Resolution Order
 
 For any node participating in spacing-aware layout:
 
@@ -94,10 +103,16 @@ For any node participating in spacing-aware layout:
 Resolved order:
 
 1. Normalize aggregate and flat spacing props into canonical four-member values.
-2. Resolve the node's border box from normal measurement rules.
+2. Resolve the node's border box. Sizing mode resolution for explicit numeric
+   dimensions, `"fill"`, `"content"`, and percentage sizing, and application of
+   `minWidth`, `minHeight`, `maxWidth`, `maxHeight` clamps, is defined in
+   [UI Foundation Specification](./ui-foundation-spec.md) §6.1 and §7.3.
 3. Resolve the node's content box by insetting the border box by padding.
 4. If the parent consumes child margin, resolve the child's outer footprint by
    expanding the child's border box by margin.
+
+Padding therefore resolves on the node itself before any parent-owned margin
+consumption is considered.
 
 ### 2.5 Parent Contracts
 
@@ -126,12 +141,16 @@ A parent whose component contract explicitly says it consumes child margin must:
 
 Margin consumption is never implicit. Each parent type must opt in explicitly.
 
-### 2.6 Measurement Contract
+### 2.6 Measurement
 
 Spacing affects measurement in two distinct places:
 
 - node self-measurement
 - parent child-footprint measurement
+
+This follows the same directional split as the spacing contract: padding
+affects the node's own measurement, while margin affects parent-owned child
+footprint measurement only when the parent explicitly consumes it.
 
 Rules:
 
@@ -141,6 +160,15 @@ Rules:
 - a margin-consuming parent includes child outer footprints in its own
   content-based measurement
 - a non-margin-consuming parent ignores child margin during measurement
+- `Drawable` is a node with an intrinsic `"content"` measurement rule on both
+  axes
+- when `Drawable` is content-sized on an axis, its resolved border-box size on
+  that axis is the measured content extent plus its own padding on that axis
+- a layout-family component that is content-sized on an axis must not contain a
+  visible child with `"fill"` sizing on that same axis; this configuration
+  creates a circular measurement dependency and must fail deterministically; the
+  failure mode is a `Hard failure` as defined in
+  [UI Foundation Specification](./ui-foundation-spec.md) §3G.1
 
 ### 2.7 Hit Testing And Clipping Contract
 
@@ -152,8 +180,8 @@ Rules:
 - `margin` never creates hit area outside the node's own bounds
 - `margin` never enlarges the node's own clip region
 - negative-margin overlap does not merge hit regions between siblings
-- hit testing continues to resolve against real node bounds
-- clipping continues to resolve against real node bounds and ancestor clip chain
+- hit testing continues to resolve against the node's border box
+- clipping continues to resolve against the node's border box and ancestor clip chain
 
 ### 2.8 Negative Margin Contract
 
@@ -179,14 +207,19 @@ For non-layout parents:
 - retained-tree visibility behavior remains the same
 - child margin is inert there anyway
 
-## 3. Drawable Participation
+## 3. Drawable
 
 `Drawable` exposes `padding` and `margin` and participates in the spacing
-contract defined here.
+contract defined here. This section applies the shared spacing contract to
+`Drawable`'s own box model, content sizing, and internal alignment behavior.
 
-`Drawable.alignX` and `Drawable.alignY` are also layout-owned in the narrow
-sense of internal content alignment: they define how content resolves inside
-the `Drawable` content box, not how a parent places the `Drawable` itself.
+### 3.1 Box Model Contract
+
+`Drawable` owns a three-region box model:
+
+- `border box`: the node's resolved outer size
+- `padding region`: the space between the border box and the content box
+- `content box`: the interior region available for child composition
 
 `Drawable` must:
 
@@ -196,21 +229,90 @@ the `Drawable` content box, not how a parent places the `Drawable` itself.
 - not apply its own `margin` to itself
 - rely on the parent contract to determine whether `margin` is consumed
 
-`Drawable` internal alignment contract:
+The `Drawable` border box is always the content box plus the node's own
+padding on each axis. Padding is therefore both a content-box inset and a
+contributor to the `Drawable`'s own resolved size. This is a property of the
+`Drawable` itself and does not depend on whether the parent is a layout family.
+
+Padding remains internal spacing only. It does not become external spacing, and
+it does not alter the node's margin box or any parent-owned margin consumption
+rule.
+
+Giving `Drawable` a box model does not make it a layout family. Box-model
+ownership and layout-family ownership are separate contracts.
+
+### 3.2 Content Sizing Contract
+
+`Drawable` supports `width = "content"` and `height = "content"` as valid
+sizing modes.
+
+When `Drawable` is content-sized on an axis, it must resolve its border-box
+size on that axis as:
+
+`border_box[axis] = content_extent[axis] + padding_start[axis] + padding_end[axis]`
+
+For this measurement:
+
+- `content_extent` is the union of visible child border boxes in the
+  `Drawable`'s local space after child transforms are resolved
+- child `margin` is ignored entirely
+- only the positive quadrant relative to the content-box origin contributes to
+  `content_extent`; child bounds extending negatively are overflow, not size
+  contributors
+- a `Drawable` with no visible contributing children resolves `content_extent`
+  to zero on that axis
+
+`Drawable` content sizing measures child border boxes, not child padding or
+child margin directly. Child padding therefore propagates through the sizing
+chain by enlarging the child border box. Child margin does not propagate under
+`Drawable` because `Drawable` does not consume child margin.
+
+`Drawable.width = "content"` is invalid when any visible child has
+`width = "fill"`. `Drawable.height = "content"` is invalid when any visible
+child has `height = "fill"`. These configurations must fail deterministically.
+The failure mode is a `Hard failure` as defined in
+[UI Foundation Specification](./ui-foundation-spec.md) §3G.1.
+
+A `Drawable` whose visible children are all positioned such that their border
+boxes fall entirely outside the positive quadrant resolves `content_extent` to
+zero on each affected axis. The resolved border-box size is therefore the
+padding width and height only, and all children overflow. This is valid.
+
+This content-sizing rule gives `Drawable` an intrinsic measurement contract. It
+does not make `Drawable` a layout family, and it does not give `Drawable`
+ownership of sibling sequencing or child-margin consumption.
+
+### 3.3 Internal Alignment Contract
+
+`Drawable.alignX` and `Drawable.alignY` are internal content-alignment props.
+They define how content resolves inside the `Drawable` content box. They do not
+place the `Drawable` in its parent.
+
+"Content" for alignment purposes is the union of visible child border boxes in
+the `Drawable`'s local space — the same `content_extent` defined in §3.2.
+Alignment shifts this union as a whole within the content box. When `Drawable`
+contains multiple children, alignment is not applied independently per child;
+it is applied to the aggregate content union.
+
+Rules:
 
 - `alignX` and `alignY` apply only to content resolved inside the `Drawable`
   content box
 - `alignX` and `alignY` do not place the `Drawable` in its parent
 - parent-driven child placement remains owned by the parent contract
-- `alignX = "stretch"` and `alignY = "stretch"` stretch the resolved content to
-  the corresponding content-box axis
+- `alignX = "stretch"` and `alignY = "stretch"` stretch the content union to
+  span the full corresponding content-box dimension on that axis
 - `alignX = "start" | "center" | "end"` and
-  `alignY = "start" | "center" | "end"` place content within the corresponding
-  content-box axis without changing the `Drawable` border box
+  `alignY = "start" | "center" | "end"` place the content union within the
+  corresponding content-box axis without changing the `Drawable` border box
+- on any axis where `Drawable` is content-sized, the corresponding alignment
+  property remains valid but is inert because the content extent already
+  determines that axis of the content box and leaves no remaining space for
+  alignment
 - when padding collapses an axis of the content box to zero, content placement
   on that axis resolves at the content origin and stretch resolves to zero size
 
-Behavioral edge cases:
+### 3.4 Behavioral Edge Cases
 
 - a `Drawable` with padding that causes the content box to reach zero area must
   clamp the content box to zero area
@@ -243,19 +345,24 @@ This revision standardizes:
 
 ### 4.2 Common Props
 
-- `gap`
+- `gap: number`
 - `padding`
 - `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft`
 - `wrap: boolean`
 - `justify: "start" | "center" | "end" | "space-between" | "space-around"`
 - `align: "start" | "center" | "end" | "stretch"`
 - `responsive`
+- `clipChildren: boolean` — inherited from `Container`
+  ([UI Foundation Specification](./ui-foundation-spec.md) §6.1); when `true`,
+  clips both rendering and hit testing to the component's border box
 
 `padding` in layout-family common props uses `SideQuad input`.
 
 `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft` are flat overrides
 for the corresponding `padding` members when a layout-family component exposes
 them.
+
+`gap` must be finite and `>= 0`. Negative `gap` is not valid in this revision.
 
 Common spacing rules:
 
@@ -272,8 +379,20 @@ Ownership note:
 
 - `responsive` appears here because layout-family components expose it as part
   of their common prop surface
-- the responsive rule model, timing, and resolution semantics remain owned by
-  the Foundation specification
+- the responsive rule model, timing, resolution semantics, and the relationship
+  between `responsive` and the `Container`-inherited `breakpoints` prop are
+  owned by [UI Foundation Specification](./ui-foundation-spec.md) §7.3; if both
+  `responsive` and `breakpoints` are supplied on the same node, the
+  configuration is invalid and must fail deterministically
+
+Common prop defaults when a prop is omitted:
+
+- `gap`: `0`
+- `wrap`: `false`
+- `justify`: `"start"`
+- `align`: `"start"`
+- `clipChildren`: `false`
+- `responsive`: `nil` (no responsive rules active)
 
 ### 4.3 Common State Model
 
@@ -299,6 +418,16 @@ STATE layout_dirty
       3. Place children according to layout family rules.
       4. Resolve overflow policy.
       → layout_clean
+
+Eligibility: a child is eligible for measurement and placement if and only if
+`visible = true` at the time of the layout pass. Children with `visible = false`
+are skipped entirely in both measurement and placement.
+
+Size mutation: mutations that mark layout dirty include changes to `width`,
+`height`, `minWidth`, `maxWidth`, `minHeight`, `maxHeight`, `padding`,
+`paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft`, and any child prop
+whose change alters that child's resolved measurement. Changes that do not
+affect any node's resolved measurement do not mark layout dirty.
 
 ## 5. Stack
 
@@ -340,8 +469,18 @@ Children resolve their own alignment and position within the stack's content box
 independently, but each child's available placement region is the stack content
 box inset by that child's effective margins. Child margins do not create
 sibling spacing in `Stack`; they only adjust each child's own placement region.
-Overlapping children are drawn in ascending z-order. Hit testing resolves in
-reverse draw order.
+Overlapping children are drawn in ascending `zIndex` order; among siblings with
+equal `zIndex`, draw order is stable insertion order. Hit testing resolves in
+reverse draw order. `zIndex` is a `Container`-inherited integer prop defined in
+[UI Foundation Specification](./ui-foundation-spec.md) §6.1. Its default value
+is `0`.
+
+Authoring note: child `margin` in `Stack` acts as an inset against the stack
+edges — it shrinks each child's individual placement region. This is different
+from `Row` and `Column`, where child `margin` contributes to sequential spacing
+footprints between adjacent children. Authors writing components intended to be
+placed in either a `Stack` or a sequential layout must account for this
+behavioral difference.
 
 ### 5.7 Behavioral Edge Cases
 
@@ -375,7 +514,7 @@ primitive.
 
 ### 6.3 Props And API Surface
 
-- `direction: "ltr" | "rtl"`
+- `direction: "ltr" | "rtl"` — default `"ltr"`
 
 Plus all common layout props.
 
@@ -414,8 +553,9 @@ circular measurement dependency.
   region
 - when one or more children consume remaining horizontal space through a
   fill-sized width, `Row` must resolve those widths deterministically and apply
-  min/max clamps, but this revision does not standardize a specific sibling
-  allocation algorithm
+  `minWidth` and `maxWidth` clamps as defined in
+  [UI Foundation Specification](./ui-foundation-spec.md) §6.1; this revision
+  does not standardize a specific sibling allocation algorithm
 
 Trace note: this revision intentionally does not freeze one fill-distribution
 policy, such as equal-share allocation, as public contract.
@@ -478,8 +618,9 @@ way that creates a circular measurement dependency.
   region
 - when one or more children consume remaining vertical space through a
   fill-sized height, `Column` must resolve those heights deterministically and
-  apply min/max clamps, but this revision does not standardize a specific
-  sibling allocation algorithm
+  apply `minHeight` and `maxHeight` clamps as defined in
+  [UI Foundation Specification](./ui-foundation-spec.md) §6.1; this revision
+  does not standardize a specific sibling allocation algorithm
 
 Trace note: this revision intentionally does not freeze one fill-distribution
 policy, such as equal-share allocation, as public contract.
@@ -506,7 +647,9 @@ intended for fluid responsive placement and not for strict grid semantics.
 
 ### 8.3 Props And API Surface
 
-`Flow` does not define additional props beyond the common layout props.
+- `direction: "ltr" | "rtl"` — default `"ltr"`
+
+Plus all common layout props.
 
 ### 8.4 State Model
 
@@ -520,20 +663,31 @@ participate in traversal in insertion order.
 ### 8.6 Composition Rules
 
 `Flow` may contain any number of children. `Flow` consumes child margin.
-Wrapping decisions use each child's outer footprint. `gap` is inserted between
-adjacent child margin boxes in a row. Negative margins may reduce spacing or
-create overlap between neighboring child border boxes, but wrapping still uses
+Wrapping decisions use each child's outer footprint. The wrapping condition is:
+a child is placed on the current row if its outer footprint width fits within
+the remaining available width on that row, where remaining width equals total
+available width minus the sum of all already-placed children's outer footprints
+on the current row minus the accumulated `gap` widths between them. When a
+child does not fit and `wrap = true`, it begins a new row. A child whose outer
+footprint exceeds the full available width occupies its own row alone and is not
+clipped unless `clipChildren = true`. `gap` is inserted between adjacent child
+margin boxes within a row. Negative margins may reduce spacing or create overlap
+between neighboring child border boxes, but wrapping decisions still use
 resolved outer footprints. Children with `visible = false` do not occupy space
 in the flow and therefore contribute no margin footprint. `Flow` may be placed
 inside any other layout container.
+
+Reading order follows the `direction` prop: `"ltr"` places children left to
+right; `"rtl"` places children right to left.
 
 ### 8.7 Behavioral Edge Cases
 
 - an empty `Flow` renders nothing and must not fail
 - when `wrap = false` and children exceed available width, the overflow policy
   applies without wrapping
-- the last row of a wrapped flow aligns to the `align` value and is not
-  stretched to fill available space
+- children on the last row of a wrapped flow are placed using the `justify`
+  value for main-axis distribution; the last row is not specially stretched to
+  fill available main-axis space regardless of the `justify` value
 - negative margins may cause overlap within or between wrapped rows, but they do
   not enlarge any child's own hit or clip region
 - a single child wider than the full flow row occupies that row alone and is
@@ -590,9 +744,7 @@ or require accessibility attributes.
 `SafeAreaContainer` may contain any layout or drawable descendants.
 `SafeAreaContainer` consumes child margin with stack-like semantics. It first
 resolves the safe-area-adjusted content region, then applies its own padding,
-then consumes child margins against the resulting placement region. Multiple
-nested `SafeAreaContainer` instances each apply insets relative to the same
-environment-reported safe area, not relative to the parent container's insets.
+then consumes child margins against the resulting placement region.
 
 Trace note: `SafeAreaContainer` remains bounds-based even when an
 implementation derives per-edge inset distances from those bounds internally.
@@ -607,3 +759,7 @@ The public contract is not an insets-only environment API.
   placement region, but do not enlarge the child's own hit or clip region
 - `SafeAreaContainer` always queries the environment-reported safe area bounds
   regardless of where it appears in the tree
+- multiple nested `SafeAreaContainer` instances each apply insets relative to
+  the same environment-reported safe area bounds, not relative to the parent
+  container's already-inset placement region; nesting two
+  `SafeAreaContainer` instances does not double-apply insets
