@@ -7,6 +7,21 @@ local function assert_equal(actual, expected, message)
     end
 end
 
+local function assert_error(fn, needle, message)
+    local ok, err = pcall(fn)
+
+    if ok then
+        error(message .. ': expected an error', 2)
+    end
+
+    local text = tostring(err)
+
+    if needle and not text:find(needle, 1, true) then
+        error(message .. ': expected error containing "' .. needle ..
+            '", got "' .. text .. '"', 2)
+    end
+end
+
 local function make_box(width, height, opts)
     opts = opts or {}
     opts.width = width
@@ -235,11 +250,76 @@ local function run_margin_wrap_tests()
     stage:destroy()
 end
 
+local function run_direction_tests()
+    local stage = UI.Stage.new({
+        width = 320,
+        height = 240,
+    })
+    local ltr_flow = UI.Flow.new({
+        width = 90,
+        height = 40,
+    })
+    local rtl_flow = UI.Flow.new({
+        y = 60,
+        width = 90,
+        height = 40,
+        direction = 'rtl',
+    })
+    local ltr_first = make_box(20, 10)
+    local ltr_second = make_box(20, 10)
+    local ltr_third = make_box(20, 10)
+    local rtl_first = make_box(20, 10)
+    local rtl_second = make_box(20, 10)
+    local rtl_third = make_box(20, 10)
+
+    ltr_flow:addChild(ltr_first)
+    ltr_flow:addChild(ltr_second)
+    ltr_flow:addChild(ltr_third)
+    rtl_flow:addChild(rtl_first)
+    rtl_flow:addChild(rtl_second)
+    rtl_flow:addChild(rtl_third)
+
+    stage.baseSceneLayer:addChild(ltr_flow)
+    stage.baseSceneLayer:addChild(rtl_flow)
+    stage:update()
+
+    local ltr_first_x = get_world_origin(ltr_first)
+    local ltr_second_x = get_world_origin(ltr_second)
+    local ltr_third_x = get_world_origin(ltr_third)
+    local rtl_first_x = get_world_origin(rtl_first)
+    local rtl_second_x = get_world_origin(rtl_second)
+    local rtl_third_x = get_world_origin(rtl_third)
+
+    assert_equal(ltr_first_x, 0,
+        'Flow should keep default direction aligned with ltr placement')
+    assert_equal(ltr_second_x, 20,
+        'Flow should keep default direction advancing left to right')
+    assert_equal(ltr_third_x, 40,
+        'Flow should keep default direction behavior unchanged')
+
+    assert_equal(rtl_first_x, 70,
+        'Flow rtl should place the first child against the right edge')
+    assert_equal(rtl_second_x, 50,
+        'Flow rtl should continue placement right-to-left in insertion order')
+    assert_equal(rtl_third_x, 30,
+        'Flow rtl should place later children farther left on the same row')
+
+    stage:destroy()
+
+    assert_error(function()
+        UI.Flow.new({
+            direction = 'invalid',
+        })
+    end, 'Flow.direction must be "ltr" or "rtl"',
+        'Flow should reject invalid direction values deterministically')
+end
+
 local function run()
     run_last_row_alignment_tests()
     run_overflow_and_visibility_tests()
     run_oversized_child_tests()
     run_margin_wrap_tests()
+    run_direction_tests()
 end
 
 return {

@@ -2,8 +2,8 @@ local Schema = require('lib.ui.utils.schema')
 local LayoutNodeSchema = require('lib.ui.layout.layout_node_schema')
 local Direction = require('lib.ui.layout.direction')
 
-local ROW_SCHEMA = Schema.merge(LayoutNodeSchema, {
-    direction = Direction.schema_rule('Row')
+local FLOW_SCHEMA = Schema.merge(LayoutNodeSchema, {
+    direction = Direction.schema_rule('Flow')
 })
 
-return ROW_SCHEMA
+return FLOW_SCHEMA

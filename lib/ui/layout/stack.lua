@@ -2,6 +2,7 @@ local LayoutNode = require('lib.ui.layout.layout_node')
 local MathUtils = require('lib.ui.utils.math')
 local Rectangle = require('lib.ui.core.rectangle')
 local LayoutSpacing = require('lib.ui.layout.spacing')
+local ContentFillGuard = require('lib.ui.layout.content_fill_guard')
 
 local max = math.max
 local min = math.min
@@ -150,10 +151,22 @@ function Stack.new(opts)
 end
 
 function Stack:_apply_layout(_)
-    local content_rect = self:_refresh_layout_content_rect()
-    local children = place_children(self, content_rect)
+    local effective_values = rawget(self, '_effective_values') or {}
+    local children = rawget(self, '_children') or {}
     local width_mode = self._effective_values.width
     local height_mode = self._effective_values.height
+    local content_rect
+
+    ContentFillGuard.assert_valid(
+        'Stack',
+        effective_values,
+        children,
+        { 'width', 'height' },
+        3
+    )
+
+    content_rect = self:_refresh_layout_content_rect()
+    place_children(self, content_rect)
 
     if width_mode ~= 'content' and height_mode ~= 'content' then
         return self

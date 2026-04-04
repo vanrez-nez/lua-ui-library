@@ -47,6 +47,11 @@ local function assert_contains(values, needle, message)
     error(message .. ': missing "' .. tostring(needle) .. '"', 2)
 end
 
+local function get_world_origin(node)
+    local bounds = node:getWorldBounds()
+    return bounds.x, bounds.y
+end
+
 local function make_fake_graphics()
     local graphics = {
         calls = {},
@@ -314,6 +319,162 @@ local function run_alignment_resolution_tests()
         'Drawable should reject unsupported vertical alignment values')
 end
 
+local function run_union_alignment_tests()
+    local stage = UI.Stage.new({
+        width = 320,
+        height = 240,
+    })
+    local centered = Drawable.new({
+        width = 200,
+        height = 80,
+        alignX = 'center',
+    })
+    local ended = Drawable.new({
+        y = 100,
+        width = 120,
+        height = 100,
+        alignY = 'end',
+    })
+    local stretched = Drawable.new({
+        y = 210,
+        width = 200,
+        height = 60,
+        alignX = 'stretch',
+        alignY = 'stretch',
+    })
+    local center_first = Drawable.new({
+        x = 10,
+        width = 20,
+        height = 10,
+    })
+    local center_second = Drawable.new({
+        x = 60,
+        width = 20,
+        height = 10,
+    })
+    local end_first = Drawable.new({
+        y = 10,
+        width = 10,
+        height = 15,
+    })
+    local end_second = Drawable.new({
+        y = 35,
+        width = 10,
+        height = 15,
+    })
+    local stretch_first = Drawable.new({
+        x = 15,
+        y = 10,
+        width = 20,
+        height = 10,
+    })
+    local stretch_second = Drawable.new({
+        x = 55,
+        y = 25,
+        width = 30,
+        height = 15,
+    })
+
+    centered:addChild(center_first)
+    centered:addChild(center_second)
+    ended:addChild(end_first)
+    ended:addChild(end_second)
+    stretched:addChild(stretch_first)
+    stretched:addChild(stretch_second)
+
+    stage.baseSceneLayer:addChild(centered)
+    stage.baseSceneLayer:addChild(ended)
+    stage.baseSceneLayer:addChild(stretched)
+    stage:update()
+
+    local center_first_x = get_world_origin(center_first)
+    local center_second_x = get_world_origin(center_second)
+    local _, end_first_y = get_world_origin(end_first)
+    local _, end_second_y = get_world_origin(end_second)
+
+    assert_equal(center_first_x, 70,
+        'Drawable center alignment should shift the visible child union as one unit on x')
+    assert_equal(center_second_x, 120,
+        'Drawable center alignment should preserve relative child spacing inside the shifted union')
+    assert_equal(end_first_y, 160,
+        'Drawable end alignment should shift the visible child union as one unit on y')
+    assert_equal(end_second_y, 185,
+        'Drawable end alignment should preserve relative child spacing on y')
+    assert_equal(stretch_first:getWorldBounds().x, 0,
+        'Drawable stretch alignment should anchor stretched children at the content-box origin')
+    assert_equal(stretch_first:getWorldBounds().y, 210,
+        'Drawable stretch alignment should anchor stretched children at the content-box origin on y')
+    assert_equal(stretch_first:getWorldBounds().width, 200,
+        'Drawable stretch alignment should expand each child to the full content-box width')
+    assert_equal(stretch_first:getWorldBounds().height, 60,
+        'Drawable stretch alignment should expand each child to the full content-box height')
+    assert_equal(stretch_second:getWorldBounds().x, 0,
+        'Drawable stretch alignment should apply independently to later children on x')
+    assert_equal(stretch_second:getWorldBounds().y, 210,
+        'Drawable stretch alignment should apply independently to later children on y')
+    assert_equal(stretch_second:getWorldBounds().width, 200,
+        'Drawable stretch alignment should set every child width to the full content-box width')
+    assert_equal(stretch_second:getWorldBounds().height, 60,
+        'Drawable stretch alignment should set every child height to the full content-box height')
+
+    stage:destroy()
+end
+
+local function run_content_sizing_contract_tests()
+    local stage = UI.Stage.new({
+        width = 320,
+        height = 240,
+    })
+    local negative = Drawable.new({
+        width = 'content',
+        height = 'content',
+        padding = { 6, 8 },
+    })
+    local hidden_negative = Drawable.new({
+        x = -50,
+        y = -40,
+        width = 20,
+        height = 10,
+    })
+
+    negative:addChild(hidden_negative)
+    stage.baseSceneLayer:addChild(negative)
+    stage:update()
+
+    assert_equal(negative:getLocalBounds().width, 16,
+        'Drawable content sizing should collapse to horizontal padding when visible children stay left of the positive quadrant')
+    assert_equal(negative:getLocalBounds().height, 12,
+        'Drawable content sizing should collapse to vertical padding when visible children stay above the positive quadrant')
+    assert_equal(hidden_negative:getWorldBounds().x, -50,
+        'Drawable content sizing should still allow fully negative-offset children to overflow without error')
+    assert_equal(hidden_negative:getWorldBounds().y, -40,
+        'Drawable content sizing should preserve negative overflow on y without error')
+
+    stage:destroy()
+
+    stage = UI.Stage.new({
+        width = 320,
+        height = 240,
+    })
+
+    assert_error(function()
+        local guarded = Drawable.new({
+            width = 'content',
+            height = 20,
+        })
+
+        guarded:addChild(Drawable.new({
+            width = 'fill',
+            height = 10,
+        }))
+        stage.baseSceneLayer:addChild(guarded)
+        stage:update()
+    end, 'Drawable has a circular measurement dependency because width = "content" and a visible child has width = "fill"',
+        'Drawable content sizing should fail hard when a visible child uses fill on the same axis')
+
+    stage:destroy()
+end
+
 local function run_visual_effect_isolation_tests()
     local root = Drawable.new({
         tag = 'root',
@@ -391,6 +552,8 @@ local function run()
     run_public_surface_tests()
     run_content_box_tests()
     run_alignment_resolution_tests()
+    run_union_alignment_tests()
+    run_content_sizing_contract_tests()
     run_visual_effect_isolation_tests()
     run_multiply_blend_mode_tests()
     run_mask_failure_tests()

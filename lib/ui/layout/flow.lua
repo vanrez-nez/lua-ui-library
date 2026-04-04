@@ -4,6 +4,8 @@ local Types = require('lib.ui.utils.types')
 local MathUtils = require('lib.ui.utils.math')
 local Rectangle = require('lib.ui.core.rectangle')
 local LayoutSpacing = require('lib.ui.layout.spacing')
+local Direction = require('lib.ui.layout.direction')
+local ContentFillGuard = require('lib.ui.layout.content_fill_guard')
 
 local max = math.max
 local clamp_number = MathUtils.clamp_number
@@ -11,6 +13,7 @@ local resolve_axis_size = MathUtils.resolve_axis_size
 local is_percentage_string = MathUtils.is_percentage_string
 
 local Flow = LayoutNode:extends('Flow')
+Flow._schema = require('lib.ui.layout.flow_schema')
 
 local JUSTIFY_VALUES = {
     start = true,
@@ -112,6 +115,7 @@ local function validate_effective_props(self)
     local wrap = effective_values.wrap
     local justify = effective_values.justify
     local align = effective_values.align
+    local direction = effective_values.direction
 
     Assert.number('Flow.gap', gap, 3)
     Assert.boolean('Flow.wrap', wrap, 3)
@@ -130,7 +134,9 @@ local function validate_effective_props(self)
         )
     end
 
-    return gap, wrap, justify, align
+    Direction.validate('Flow', direction, 3)
+
+    return gap, wrap, justify, align, direction
 end
 
 local function measure_entry(entry, stage, available_width, available_height,
@@ -323,6 +329,16 @@ local function resolve_last_row_alignment(align, available_width, used_width, ga
     return 0, gap
 end
 
+local function reverse_entries(entries)
+    local reversed = {}
+
+    for index = #entries, 1, -1 do
+        reversed[#reversed + 1] = entries[index]
+    end
+
+    return reversed
+end
+
 local function apply_self_content_measurement(self, content_width, content_height)
     local effective_values = rawget(self, '_effective_values') or {}
     local padding = effective_values.padding or {
@@ -382,7 +398,10 @@ local function place_invisible_children(self, invisible_children, content_rect)
 end
 
 function Flow:constructor(opts)
-    LayoutNode.constructor(self, opts)
+    LayoutNode.constructor(self, opts, nil, {
+        allow_content_width = true,
+        allow_content_height = true,
+    })
     self._ui_layout_kind = 'Flow'
 end
 
@@ -401,14 +420,26 @@ function Flow:_apply_layout(stage)
     self._flow_layout_measurement_in_progress = true
 
     local ok, result = xpcall(function()
-        local gap, wrap, justify, align = validate_effective_props(self)
-        local content_rect = self:_refresh_layout_content_rect()
-        local available_width = content_rect.width or 0
-        local available_height = content_rect.height or 0
+        local gap, wrap, justify, align, direction = validate_effective_props(self)
         local effective_values = rawget(self, '_effective_values') or {}
         local children = rawget(self, '_children') or {}
+        local content_rect
+        local available_width
+        local available_height
         local visible_entries = {}
         local invisible_children = {}
+
+        ContentFillGuard.assert_valid(
+            'Flow',
+            effective_values,
+            children,
+            { 'width' },
+            3
+        )
+
+        content_rect = self:_refresh_layout_content_rect()
+        available_width = content_rect.width or 0
+        available_height = content_rect.height or 0
 
         if wrap and effective_values.width == 'content' then
             wrap = false
@@ -455,6 +486,7 @@ function Flow:_apply_layout(stage)
 
         for row_index = 1, #rows do
             local row = rows[row_index]
+            local placement_entries = row.entries
             local base_x
             local between_gap
 
@@ -475,22 +507,49 @@ function Flow:_apply_layout(stage)
                 )
             end
 
+            if direction == 'rtl' then
+                placement_entries = reverse_entries(row.entries)
+            end
+
             local x_cursor = base_x
 
-            for entry_index = 1, #row.entries do
-                local entry = row.entries[entry_index]
-                local child = entry.child
+            if direction == 'rtl' then
+                for entry_index = #placement_entries, 1, -1 do
+                    local entry = placement_entries[entry_index]
+                    local child = entry.child
+                    local offset_x = content_rect.x + content_rect.width -
+                        x_cursor -
+                        (entry.outer_width or 0) +
+                        entry.margin.left
 
-                child:_set_layout_offset(
-                    content_rect.x + x_cursor + entry.margin.left,
-                    content_rect.y + y_cursor + entry.margin.top
-                )
-                child:_refresh_if_dirty()
+                    child:_set_layout_offset(
+                        offset_x,
+                        content_rect.y + y_cursor + entry.margin.top
+                    )
+                    child:_refresh_if_dirty()
 
-                x_cursor = x_cursor + (entry.outer_width or 0)
+                    x_cursor = x_cursor + (entry.outer_width or 0)
 
-                if entry_index < #row.entries then
-                    x_cursor = x_cursor + between_gap
+                    if entry_index > 1 then
+                        x_cursor = x_cursor + between_gap
+                    end
+                end
+            else
+                for entry_index = 1, #placement_entries do
+                    local entry = placement_entries[entry_index]
+                    local child = entry.child
+
+                    child:_set_layout_offset(
+                        content_rect.x + x_cursor + entry.margin.left,
+                        content_rect.y + y_cursor + entry.margin.top
+                    )
+                    child:_refresh_if_dirty()
+
+                    x_cursor = x_cursor + (entry.outer_width or 0)
+
+                    if entry_index < #placement_entries then
+                        x_cursor = x_cursor + between_gap
+                    end
                 end
             end
 

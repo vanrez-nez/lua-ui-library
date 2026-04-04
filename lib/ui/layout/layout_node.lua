@@ -1,3 +1,4 @@
+local Assert = require('lib.ui.utils.assert')
 local Container = require('lib.ui.core.container')
 local Types = require('lib.ui.utils.types')
 local Rectangle = require('lib.ui.core.rectangle')
@@ -7,6 +8,15 @@ local max = math.max
 
 local LayoutNode = Container:extends('LayoutNode')
 LayoutNode._schema = Schema.merge(Container._schema, require('lib.ui.layout.layout_node_schema'))
+
+local function assert_no_dual_responsive_breakpoints(responsive, breakpoints, level)
+    if responsive ~= nil and breakpoints ~= nil then
+        Assert.fail(
+            'responsive and breakpoints cannot both be supplied on the same node',
+            level or 1
+        )
+    end
+end
 
 local function resolve_method(self, key, base_cls)
     local val = Container._walk_hierarchy(getmetatable(self), key)
@@ -34,6 +44,22 @@ end
 function LayoutNode.__newindex(self, key, value)
     local allowed_public_keys = rawget(self, '_allowed_public_keys')
     if allowed_public_keys and allowed_public_keys[key] then
+        local public_values = rawget(self, '_public_values') or {}
+
+        if key == 'responsive' then
+            assert_no_dual_responsive_breakpoints(
+                value,
+                public_values.breakpoints,
+                2
+            )
+        elseif key == 'breakpoints' then
+            assert_no_dual_responsive_breakpoints(
+                public_values.responsive,
+                value,
+                2
+            )
+        end
+
         Container._set_public_value(self, key, value, 2)
 
         local rule = allowed_public_keys[key]
@@ -47,6 +73,14 @@ function LayoutNode.__newindex(self, key, value)
 end
 
 function LayoutNode:_initialize(opts, extra_schema, extra_public_keys, config)
+    opts = opts or {}
+
+    assert_no_dual_responsive_breakpoints(
+        opts.responsive,
+        opts.breakpoints,
+        3
+    )
+
     Container._initialize(
         self,
         opts,

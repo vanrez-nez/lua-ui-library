@@ -95,14 +95,13 @@ local function set_inset(node, property, side, delta)
 end
 
 local function place_centered_in_parent(parent, child)
-    local margin = child.margin or { top = 0, right = 0, bottom = 0, left = 0 }
     local slot = parent:resolveContentRect(
-        child.width + (margin.left or 0) + (margin.right or 0),
-        child.height + (margin.top or 0) + (margin.bottom or 0)
+        child.width,
+        child.height
     )
 
-    child.x = slot.x + (margin.left or 0)
-    child.y = slot.y + (margin.top or 0)
+    child.x = slot.x
+    child.y = slot.y
 end
 
 function Setup.install(args)

@@ -4,6 +4,8 @@ local Types = require('lib.ui.utils.types')
 local MathUtils = require('lib.ui.utils.math')
 local Rectangle = require('lib.ui.core.rectangle')
 local LayoutSpacing = require('lib.ui.layout.spacing')
+local Direction = require('lib.ui.layout.direction')
+local ContentFillGuard = require('lib.ui.layout.content_fill_guard')
 
 local max = math.max
 local clamp_number = MathUtils.clamp_number
@@ -94,11 +96,7 @@ local function validate_effective_props(self, config)
     end
 
     if config.kind == 'Row' then
-        local direction = effective_values.direction
-
-        if direction ~= 'ltr' and direction ~= 'rtl' then
-            Assert.fail('Row.direction must be "ltr" or "rtl"', 3)
-        end
+        Direction.validate('Row', effective_values.direction, 3)
     end
 
     return justify, align, wrap, gap
@@ -558,14 +556,26 @@ function SequentialLayout.apply(self, stage, config)
 
     local ok, result = xpcall(function()
         local justify, align, wrap, gap = validate_effective_props(self, config)
-        local content_rect = self:_refresh_layout_content_rect()
-        local available_main = get_rect_axis_size(content_rect, config.main_size_key)
-        local available_cross = get_rect_axis_size(content_rect, config.cross_size_key)
         local effective_values = rawget(self, '_effective_values') or {}
-        local main_mode = effective_values[config.main_size_key]
         local children = rawget(self, '_children') or {}
+        local content_rect
+        local available_main
+        local available_cross
+        local main_mode = effective_values[config.main_size_key]
         local visible_entries = {}
         local invisible_children = {}
+
+        ContentFillGuard.assert_valid(
+            config.kind,
+            effective_values,
+            children,
+            { config.main_size_key },
+            3
+        )
+
+        content_rect = self:_refresh_layout_content_rect()
+        available_main = get_rect_axis_size(content_rect, config.main_size_key)
+        available_cross = get_rect_axis_size(content_rect, config.cross_size_key)
 
         if wrap and main_mode == 'content' then
             wrap = false
