@@ -56,3 +56,46 @@ lua scripts/run_unit_tests.lua
 - `test`: intentionally empty staging area for rebuilt demos
 - `spec`: headless unit tests for core math and layout behavior
 - `assets`: demo font and image dependencies
+
+## Profiling
+
+The `demos/02-drawable` demo includes three profiling modes for the retained render pipeline:
+
+- `P`: sampled `jit.p` hotspot profiling
+- `T`: wall-time profiling in milliseconds
+- `Y`: Lua heap memory profiling with `collectgarbage("count")`
+
+Reports are written to `tmp/`.
+
+Interactive use:
+
+```bash
+love demos/02-drawable
+```
+
+Then press:
+
+- `P` to start/stop the sampled profiler
+- `T` to start/stop the timing profiler
+- `Y` to start/stop the memory profiler
+
+Non-interactive capture:
+
+```bash
+UI_JIT_PROFILE=1 UI_PROFILE_SCREEN=1 UI_JIT_PROFILE_SECONDS=3 love demos/02-drawable
+UI_TIME_PROFILE=1 UI_PROFILE_SCREEN=1 UI_TIME_PROFILE_SECONDS=3 love demos/02-drawable
+UI_MEMORY_PROFILE=1 UI_PROFILE_SCREEN=1 UI_MEMORY_PROFILE_SECONDS=3 love demos/02-drawable
+```
+
+Useful environment variables:
+
+- `UI_PROFILE_SCREEN`: screen index to open before capture
+- `UI_JIT_PROFILE_OUTPUT`: explicit output path for the sampled report
+- `UI_TIME_PROFILE_OUTPUT`: explicit output path for the timing report
+- `UI_MEMORY_PROFILE_OUTPUT`: explicit output path for the memory report
+
+Output types:
+
+- `jit.p`: sampled hotspots by zone and stack
+- `timing`: `total_ms`, `self_ms`, `avg_ms`, `max_ms`, and call counts per zone
+- `memory`: Lua heap churn by zone; signed `net` columns may be negative when a zone frees more heap than it retains
