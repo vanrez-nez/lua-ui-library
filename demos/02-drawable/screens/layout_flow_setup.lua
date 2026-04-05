@@ -6,9 +6,10 @@ local NativeControls = require('demos.common.native_controls')
 local Setup = {}
 
 local ELEMENT_OPTIONS = {
-    { label = 'Header' },
-    { label = 'Body' },
-    { label = 'Footer' },
+    { label = 'Alpha' },
+    { label = 'Beta' },
+    { label = 'Gamma' },
+    { label = 'Delta' },
 }
 
 local SPACING_OPTIONS = {
@@ -31,6 +32,16 @@ local GAP_OPTIONS = {
     { label = '45', value = 45 },
 }
 
+local WRAP_OPTIONS = {
+    { label = 'Off', value = false },
+    { label = 'On', value = true },
+}
+
+local DIRECTION_OPTIONS = {
+    { label = 'LTR', value = 'ltr' },
+    { label = 'RTL', value = 'rtl' },
+}
+
 local JUSTIFY_OPTIONS = {
     { label = 'Start', value = 'start' },
     { label = 'Center', value = 'center' },
@@ -39,23 +50,18 @@ local JUSTIFY_OPTIONS = {
     { label = 'Around', value = 'space-around' },
 }
 
-local ALIGN_OPTIONS = {
-    { label = 'Start', value = 'start' },
-    { label = 'Center', value = 'center' },
-    { label = 'End', value = 'end' },
-    { label = 'Stretch', value = 'stretch' },
-}
-
-local PARENT_SIZE_OPTIONS = {
+local PARENT_WIDTH_OPTIONS = {
     { label = 'Fixed', value = 'fixed' },
+    { label = '20%', value = '20%' },
+    { label = '40%', value = '40%' },
     { label = '80%', value = '80%' },
-    { label = 'Content', value = 'content' },
 }
 
 local CHILD_SIZE_OPTIONS = {
     { label = 'Fixed', value = 'fixed' },
+    { label = '20%', value = '20%' },
+    { label = '40%', value = '40%' },
     { label = '80%', value = '80%' },
-    { label = 'Fill', value = 'fill' },
 }
 
 local function copy_spacing(value)
@@ -136,7 +142,7 @@ end
 local function find_required(root, id)
     local node = root:findById(id, -1)
     if node == nil then
-        error('layout_column_setup: missing node "' .. id .. '"', 2)
+        error('layout_flow_setup: missing node "' .. id .. '"', 2)
     end
     return node
 end
@@ -180,7 +186,7 @@ local function set_parent_hint(node, helpers)
             {
                 label = 'type',
                 badges = {
-                    helpers.badge(nil, 'Column'),
+                    helpers.badge(nil, 'Flow'),
                 },
             },
         }
@@ -191,8 +197,9 @@ local function set_parent_hint(node, helpers)
             label = 'layout',
             badges = {
                 helpers.badge('justify', current.justify or 'start'),
-                helpers.badge('align', current.align or 'start'),
                 helpers.badge('gap', helpers.format_scalar(current.gap or 0)),
+                helpers.badge('wrap', tostring(current.wrap == true)),
+                helpers.badge('direction', current.direction or 'ltr'),
             },
         }
         append_inset_row(entries, helpers, 'padding', current.padding)
@@ -236,58 +243,71 @@ function Setup.install(args)
     local stage = args.stage
     local title_font = scope:font(12)
     local label_font = scope:font(11)
-    local parent = find_required(root, 'layout-column-parent')
-    local header = find_required(root, 'layout-column-header')
-    local body = find_required(root, 'layout-column-body')
-    local footer = find_required(root, 'layout-column-footer')
+    local parent = find_required(root, 'layout-flow-parent')
+    local alpha = find_required(root, 'layout-flow-alpha')
+    local beta = find_required(root, 'layout-flow-beta')
+    local gamma = find_required(root, 'layout-flow-gamma')
+    local delta = find_required(root, 'layout-flow-delta')
     local parent_fixed_width = parent.width
     local parent_fixed_height = parent.height
     local selector_body_width = max_option_body_width(title_font, {
         ELEMENT_OPTIONS,
         SPACING_OPTIONS,
         GAP_OPTIONS,
+        WRAP_OPTIONS,
+        DIRECTION_OPTIONS,
         JUSTIFY_OPTIONS,
-        ALIGN_OPTIONS,
-        PARENT_SIZE_OPTIONS,
+        PARENT_WIDTH_OPTIONS,
         CHILD_SIZE_OPTIONS,
     })
     local parent_padding_index = 10
-    local parent_height_index = 1
+    local parent_width_index = 1
     local parent_gap_index = 2
+    local parent_wrap_index = 2
+    local parent_direction_index = 1
     local parent_justify_index = 1
-    local parent_align_index = 2
     local selected_element_index = 1
     local selector_layouts = nil
     local child_entries = {
         {
-            node = header,
-            label = 'Header',
-            padding_index = 8,
-            margin_index = 1,
-            width_index = 1,
-            height_index = 1,
-            fixed_width = header.width,
-            fixed_height = header.height,
-        },
-        {
-            node = body,
-            label = 'Body',
-            padding_index = 8,
-            margin_index = 7,
-            width_index = 1,
-            height_index = 1,
-            fixed_width = body.width,
-            fixed_height = body.height,
-        },
-        {
-            node = footer,
-            label = 'Footer',
+            node = alpha,
+            label = 'Alpha',
             padding_index = 9,
             margin_index = 1,
             width_index = 1,
             height_index = 1,
-            fixed_width = footer.width,
-            fixed_height = footer.height,
+            fixed_width = alpha.width,
+            fixed_height = alpha.height,
+        },
+        {
+            node = beta,
+            label = 'Beta',
+            padding_index = 8,
+            margin_index = 6,
+            width_index = 1,
+            height_index = 1,
+            fixed_width = beta.width,
+            fixed_height = beta.height,
+        },
+        {
+            node = gamma,
+            label = 'Gamma',
+            padding_index = 9,
+            margin_index = 1,
+            width_index = 1,
+            height_index = 1,
+            fixed_width = gamma.width,
+            fixed_height = gamma.height,
+        },
+        {
+            node = delta,
+            label = 'Delta',
+            padding_index = 9,
+            margin_index = 1,
+            width_index = 1,
+            height_index = 1,
+            fixed_width = delta.width,
+            fixed_height = delta.height,
         },
     }
 
@@ -313,58 +333,53 @@ function Setup.install(args)
         set_child_hint(entry.node, helpers)
     end
 
-    local function resolve_parent_height(fixed_value)
-        local option = PARENT_SIZE_OPTIONS[parent_height_index].value
+    local function resolve_parent_width()
+        local option = PARENT_WIDTH_OPTIONS[parent_width_index].value
 
         if option == 'fixed' then
-            return fixed_value
+            return parent_fixed_width
         end
 
         return option
     end
 
-    local function active_child_width_options()
-        return CHILD_SIZE_OPTIONS
+    local function apply_parent_constraints(viewport)
+        local side_gap = 40
+        local panel_padding = 24
+        local probe_layout = build_navigator_layout(0, 0, selector_body_width, title_font)
+        local control_width = navigator_width(probe_layout)
+        local side_column_width = control_width + panel_padding
+        local horizontal_margin = 30
+        local vertical_margin = 80
+        local max_width = math.max(
+            200,
+            viewport.width - (side_column_width * 2) - (side_gap * 2) - (horizontal_margin * 2)
+        )
+        local max_height = math.max(
+            200,
+            viewport.height - (vertical_margin * 2)
+        )
+
+        parent.maxWidth = max_width
+        parent.maxHeight = max_height
     end
 
-    local function active_child_height_options()
-        if PARENT_SIZE_OPTIONS[parent_height_index].value == 'content' then
-            return { CHILD_SIZE_OPTIONS[1] }
-        end
-
-        return CHILD_SIZE_OPTIONS
-    end
-
-    local function clamp_index(index, option_list)
-        if index > #option_list then
-            return #option_list
-        end
-
-        return index
-    end
-
-    local function apply_parent_controls()
+    local function apply_parent_controls(viewport)
+        apply_parent_constraints(viewport)
         parent.padding = copy_spacing(SPACING_OPTIONS[parent_padding_index].value)
-        parent.width = parent_fixed_width
-        parent.height = resolve_parent_height(parent_fixed_height)
+        parent.width = resolve_parent_width()
+        parent.height = parent_fixed_height
         parent.gap = GAP_OPTIONS[parent_gap_index].value
+        parent.wrap = WRAP_OPTIONS[parent_wrap_index].value
+        parent.direction = DIRECTION_OPTIONS[parent_direction_index].value
         parent.justify = JUSTIFY_OPTIONS[parent_justify_index].value
-        parent.align = ALIGN_OPTIONS[parent_align_index].value
     end
 
     local function apply_child_controls()
-        local width_options = active_child_width_options()
-        local height_options = active_child_height_options()
-
         for index = 1, #child_entries do
             local entry = child_entries[index]
-            local width_option
-            local height_option
-
-            entry.width_index = clamp_index(entry.width_index, width_options)
-            entry.height_index = clamp_index(entry.height_index, height_options)
-            width_option = width_options[entry.width_index].value
-            height_option = height_options[entry.height_index].value
+            local width_option = CHILD_SIZE_OPTIONS[entry.width_index].value
+            local height_option = CHILD_SIZE_OPTIONS[entry.height_index].value
 
             entry.node.padding = copy_spacing(SPACING_OPTIONS[entry.padding_index].value)
             entry.node.margin = copy_spacing(SPACING_OPTIONS[entry.margin_index].value)
@@ -382,16 +397,17 @@ function Setup.install(args)
         local probe_layout = build_navigator_layout(0, 0, selector_body_width, title_font)
         local control_width = navigator_width(probe_layout)
         local row_height = probe_layout.body.height
-        local parent_column_height = (row_height * 5) + ((label_font:getHeight() + field_gap) * 5) + (row_gap * 4)
+        local parent_column_height = (row_height * 6) + ((label_font:getHeight() + field_gap) * 6) + (row_gap * 5)
         local child_column_height = (row_height * 5) + ((label_font:getHeight() + field_gap) * 5) + (row_gap * 4)
         local start_y = math.floor((viewport.height - math.max(parent_column_height, child_column_height)) * 0.5)
 
         selector_layouts = {
             parent_padding = build_navigator_layout(bounds.x - control_width - side_gap, start_y, selector_body_width, title_font),
-            parent_height = build_navigator_layout(bounds.x - control_width - side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 1), selector_body_width, title_font),
+            parent_width = build_navigator_layout(bounds.x - control_width - side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 1), selector_body_width, title_font),
             parent_gap = build_navigator_layout(bounds.x - control_width - side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 2), selector_body_width, title_font),
-            parent_justify = build_navigator_layout(bounds.x - control_width - side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 3), selector_body_width, title_font),
-            parent_align = build_navigator_layout(bounds.x - control_width - side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 4), selector_body_width, title_font),
+            parent_wrap = build_navigator_layout(bounds.x - control_width - side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 3), selector_body_width, title_font),
+            parent_direction = build_navigator_layout(bounds.x - control_width - side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 4), selector_body_width, title_font),
+            parent_justify = build_navigator_layout(bounds.x - control_width - side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 5), selector_body_width, title_font),
             element = build_navigator_layout(bounds.x + bounds.width + side_gap, start_y, selector_body_width, title_font),
             child_padding = build_navigator_layout(bounds.x + bounds.width + side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 1), selector_body_width, title_font),
             child_margin = build_navigator_layout(bounds.x + bounds.width + side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 2), selector_body_width, title_font),
@@ -403,23 +419,22 @@ function Setup.install(args)
 
     local function mousepressed(x, y, button)
         local selected = child_entries[selected_element_index]
-        local width_options = active_child_width_options()
-        local height_options = active_child_height_options()
         local function consume_click()
-            LayoutDemoDebug.dump('layout_column', {
+            LayoutDemoDebug.dump('layout_flow', {
                 LayoutDemoDebug.entry('element', child_entries[selected_element_index].label),
                 LayoutDemoDebug.group('child', {
                     LayoutDemoDebug.entry('padding', SPACING_OPTIONS[child_entries[selected_element_index].padding_index].label),
                     LayoutDemoDebug.entry('margin', SPACING_OPTIONS[child_entries[selected_element_index].margin_index].label),
-                    LayoutDemoDebug.entry('width', active_child_width_options()[child_entries[selected_element_index].width_index].label),
-                    LayoutDemoDebug.entry('height', active_child_height_options()[child_entries[selected_element_index].height_index].label),
+                    LayoutDemoDebug.entry('width', CHILD_SIZE_OPTIONS[child_entries[selected_element_index].width_index].label),
+                    LayoutDemoDebug.entry('height', CHILD_SIZE_OPTIONS[child_entries[selected_element_index].height_index].label),
                 }),
                 LayoutDemoDebug.group('parent', {
                     LayoutDemoDebug.entry('padding', SPACING_OPTIONS[parent_padding_index].label),
-                    LayoutDemoDebug.entry('height', PARENT_SIZE_OPTIONS[parent_height_index].label),
+                    LayoutDemoDebug.entry('width', PARENT_WIDTH_OPTIONS[parent_width_index].label),
                     LayoutDemoDebug.entry('gap', GAP_OPTIONS[parent_gap_index].label),
+                    LayoutDemoDebug.entry('wrap', WRAP_OPTIONS[parent_wrap_index].label),
+                    LayoutDemoDebug.entry('direction', DIRECTION_OPTIONS[parent_direction_index].label),
                     LayoutDemoDebug.entry('justify', JUSTIFY_OPTIONS[parent_justify_index].label),
-                    LayoutDemoDebug.entry('align', ALIGN_OPTIONS[parent_align_index].label),
                 }),
             })
             return true
@@ -441,13 +456,13 @@ function Setup.install(args)
             return consume_click()
         end
 
-        if NativeControls.point_in_rect(selector_layouts.parent_height.left, x, y) then
-            parent_height_index = cycle_index(parent_height_index, -1, #PARENT_SIZE_OPTIONS)
+        if NativeControls.point_in_rect(selector_layouts.parent_width.left, x, y) then
+            parent_width_index = cycle_index(parent_width_index, -1, #PARENT_WIDTH_OPTIONS)
             return consume_click()
         end
 
-        if NativeControls.point_in_rect(selector_layouts.parent_height.right, x, y) then
-            parent_height_index = cycle_index(parent_height_index, 1, #PARENT_SIZE_OPTIONS)
+        if NativeControls.point_in_rect(selector_layouts.parent_width.right, x, y) then
+            parent_width_index = cycle_index(parent_width_index, 1, #PARENT_WIDTH_OPTIONS)
             return consume_click()
         end
 
@@ -461,6 +476,26 @@ function Setup.install(args)
             return consume_click()
         end
 
+        if NativeControls.point_in_rect(selector_layouts.parent_wrap.left, x, y) then
+            parent_wrap_index = cycle_index(parent_wrap_index, -1, #WRAP_OPTIONS)
+            return consume_click()
+        end
+
+        if NativeControls.point_in_rect(selector_layouts.parent_wrap.right, x, y) then
+            parent_wrap_index = cycle_index(parent_wrap_index, 1, #WRAP_OPTIONS)
+            return consume_click()
+        end
+
+        if NativeControls.point_in_rect(selector_layouts.parent_direction.left, x, y) then
+            parent_direction_index = cycle_index(parent_direction_index, -1, #DIRECTION_OPTIONS)
+            return consume_click()
+        end
+
+        if NativeControls.point_in_rect(selector_layouts.parent_direction.right, x, y) then
+            parent_direction_index = cycle_index(parent_direction_index, 1, #DIRECTION_OPTIONS)
+            return consume_click()
+        end
+
         if NativeControls.point_in_rect(selector_layouts.parent_justify.left, x, y) then
             parent_justify_index = cycle_index(parent_justify_index, -1, #JUSTIFY_OPTIONS)
             return consume_click()
@@ -468,16 +503,6 @@ function Setup.install(args)
 
         if NativeControls.point_in_rect(selector_layouts.parent_justify.right, x, y) then
             parent_justify_index = cycle_index(parent_justify_index, 1, #JUSTIFY_OPTIONS)
-            return consume_click()
-        end
-
-        if NativeControls.point_in_rect(selector_layouts.parent_align.left, x, y) then
-            parent_align_index = cycle_index(parent_align_index, -1, #ALIGN_OPTIONS)
-            return consume_click()
-        end
-
-        if NativeControls.point_in_rect(selector_layouts.parent_align.right, x, y) then
-            parent_align_index = cycle_index(parent_align_index, 1, #ALIGN_OPTIONS)
             return consume_click()
         end
 
@@ -512,22 +537,22 @@ function Setup.install(args)
         end
 
         if NativeControls.point_in_rect(selector_layouts.child_width.left, x, y) then
-            selected.width_index = cycle_index(selected.width_index, -1, #width_options)
+            selected.width_index = cycle_index(selected.width_index, -1, #CHILD_SIZE_OPTIONS)
             return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.child_width.right, x, y) then
-            selected.width_index = cycle_index(selected.width_index, 1, #width_options)
+            selected.width_index = cycle_index(selected.width_index, 1, #CHILD_SIZE_OPTIONS)
             return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.child_height.left, x, y) then
-            selected.height_index = cycle_index(selected.height_index, -1, #height_options)
+            selected.height_index = cycle_index(selected.height_index, -1, #CHILD_SIZE_OPTIONS)
             return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.child_height.right, x, y) then
-            selected.height_index = cycle_index(selected.height_index, 1, #height_options)
+            selected.height_index = cycle_index(selected.height_index, 1, #CHILD_SIZE_OPTIONS)
             return consume_click()
         end
 
@@ -540,7 +565,7 @@ function Setup.install(args)
             local bounds = parent:getLocalBounds()
             local selected = child_entries[selected_element_index]
 
-            apply_parent_controls()
+            apply_parent_controls(viewport)
             apply_child_controls()
             parent.x = math.floor((viewport.width - bounds.width) * 0.5)
             parent.y = math.floor((viewport.height - bounds.height) * 0.5)
@@ -553,12 +578,14 @@ function Setup.install(args)
                 local entry = child_entries[index]
                 if index == selected_element_index then
                     entry.node.borderColor = { 255, 255, 255, 255 }
-                elseif entry.label == 'Header' then
+                elseif entry.label == 'Alpha' then
                     entry.node.borderColor = { 117, 184, 255 }
-                elseif entry.label == 'Body' then
+                elseif entry.label == 'Beta' then
                     entry.node.borderColor = { 125, 235, 168 }
-                else
+                elseif entry.label == 'Gamma' then
                     entry.node.borderColor = { 255, 208, 117 }
+                else
+                    entry.node.borderColor = { 210, 165, 255 }
                 end
             end
         end,
@@ -568,14 +595,13 @@ function Setup.install(args)
             local hovered_node = helpers._draw_context and helpers._draw_context.hovered_node or nil
             local mouse_x, mouse_y = love.mouse.getPosition()
             local selected = child_entries[selected_element_index]
-            local child_width_options = active_child_width_options()
-            local child_height_options = active_child_height_options()
             local parent_panel = NativeControls.build_group_panel({
                 selector_layouts.parent_padding,
-                selector_layouts.parent_height,
+                selector_layouts.parent_width,
                 selector_layouts.parent_gap,
+                selector_layouts.parent_wrap,
+                selector_layouts.parent_direction,
                 selector_layouts.parent_justify,
-                selector_layouts.parent_align,
             }, title_font, label_font)
             local child_panel = NativeControls.build_group_panel({
                 selector_layouts.element,
@@ -590,8 +616,8 @@ function Setup.install(args)
 
             LayoutSpacingVisuals.draw_hovered_overlays(graphics, hovered_node, {
                 parent = parent,
-                children = { header, body, footer },
-                show_column_gap = true,
+                children = { alpha, beta, gamma, delta },
+                show_flow_gap = true,
             })
 
             graphics.setColor(0.95, 0.95, 0.95, 1)
@@ -603,10 +629,11 @@ function Setup.install(args)
             graphics.setFont(label_font)
             graphics.setColor(DemoColors.roles.text)
             draw_centered_label(graphics, label_font, selector_layouts.parent_padding, 'Padding', selector_layouts.parent_padding.body.y - label_font:getHeight() - selector_layouts.field_gap)
-            draw_centered_label(graphics, label_font, selector_layouts.parent_height, 'Height', selector_layouts.parent_height.body.y - label_font:getHeight() - selector_layouts.field_gap)
+            draw_centered_label(graphics, label_font, selector_layouts.parent_width, 'Width', selector_layouts.parent_width.body.y - label_font:getHeight() - selector_layouts.field_gap)
             draw_centered_label(graphics, label_font, selector_layouts.parent_gap, 'Gap', selector_layouts.parent_gap.body.y - label_font:getHeight() - selector_layouts.field_gap)
+            draw_centered_label(graphics, label_font, selector_layouts.parent_wrap, 'Wrap', selector_layouts.parent_wrap.body.y - label_font:getHeight() - selector_layouts.field_gap)
+            draw_centered_label(graphics, label_font, selector_layouts.parent_direction, 'Direction', selector_layouts.parent_direction.body.y - label_font:getHeight() - selector_layouts.field_gap)
             draw_centered_label(graphics, label_font, selector_layouts.parent_justify, 'Justify', selector_layouts.parent_justify.body.y - label_font:getHeight() - selector_layouts.field_gap)
-            draw_centered_label(graphics, label_font, selector_layouts.parent_align, 'Align', selector_layouts.parent_align.body.y - label_font:getHeight() - selector_layouts.field_gap)
             draw_centered_label(graphics, label_font, selector_layouts.element, 'Element', selector_layouts.element.body.y - label_font:getHeight() - selector_layouts.field_gap)
             draw_centered_label(graphics, label_font, selector_layouts.child_padding, 'Padding', selector_layouts.child_padding.body.y - label_font:getHeight() - selector_layouts.field_gap)
             draw_centered_label(graphics, label_font, selector_layouts.child_margin, 'Margin', selector_layouts.child_margin.body.y - label_font:getHeight() - selector_layouts.field_gap)
@@ -614,15 +641,16 @@ function Setup.install(args)
             draw_centered_label(graphics, label_font, selector_layouts.child_height, 'Height', selector_layouts.child_height.body.y - label_font:getHeight() - selector_layouts.field_gap)
 
             NativeControls.draw_navigator(graphics, title_font, selector_layouts.parent_padding, SPACING_OPTIONS[parent_padding_index].label, NativeControls.point_in_rect(selector_layouts.parent_padding.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.parent_padding.right, mouse_x, mouse_y), DemoColors.roles.border_light)
-            NativeControls.draw_navigator(graphics, title_font, selector_layouts.parent_height, PARENT_SIZE_OPTIONS[parent_height_index].label, NativeControls.point_in_rect(selector_layouts.parent_height.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.parent_height.right, mouse_x, mouse_y))
+            NativeControls.draw_navigator(graphics, title_font, selector_layouts.parent_width, PARENT_WIDTH_OPTIONS[parent_width_index].label, NativeControls.point_in_rect(selector_layouts.parent_width.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.parent_width.right, mouse_x, mouse_y))
             NativeControls.draw_navigator(graphics, title_font, selector_layouts.parent_gap, GAP_OPTIONS[parent_gap_index].label, NativeControls.point_in_rect(selector_layouts.parent_gap.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.parent_gap.right, mouse_x, mouse_y))
+            NativeControls.draw_navigator(graphics, title_font, selector_layouts.parent_wrap, WRAP_OPTIONS[parent_wrap_index].label, NativeControls.point_in_rect(selector_layouts.parent_wrap.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.parent_wrap.right, mouse_x, mouse_y))
+            NativeControls.draw_navigator(graphics, title_font, selector_layouts.parent_direction, DIRECTION_OPTIONS[parent_direction_index].label, NativeControls.point_in_rect(selector_layouts.parent_direction.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.parent_direction.right, mouse_x, mouse_y))
             NativeControls.draw_navigator(graphics, title_font, selector_layouts.parent_justify, JUSTIFY_OPTIONS[parent_justify_index].label, NativeControls.point_in_rect(selector_layouts.parent_justify.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.parent_justify.right, mouse_x, mouse_y))
-            NativeControls.draw_navigator(graphics, title_font, selector_layouts.parent_align, ALIGN_OPTIONS[parent_align_index].label, NativeControls.point_in_rect(selector_layouts.parent_align.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.parent_align.right, mouse_x, mouse_y))
             NativeControls.draw_navigator(graphics, title_font, selector_layouts.element, selected.label, NativeControls.point_in_rect(selector_layouts.element.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.element.right, mouse_x, mouse_y), DemoColors.roles.border_light)
             NativeControls.draw_navigator(graphics, title_font, selector_layouts.child_padding, SPACING_OPTIONS[selected.padding_index].label, NativeControls.point_in_rect(selector_layouts.child_padding.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.child_padding.right, mouse_x, mouse_y))
             NativeControls.draw_navigator(graphics, title_font, selector_layouts.child_margin, SPACING_OPTIONS[selected.margin_index].label, NativeControls.point_in_rect(selector_layouts.child_margin.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.child_margin.right, mouse_x, mouse_y))
-            NativeControls.draw_navigator(graphics, title_font, selector_layouts.child_width, child_width_options[selected.width_index].label, NativeControls.point_in_rect(selector_layouts.child_width.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.child_width.right, mouse_x, mouse_y))
-            NativeControls.draw_navigator(graphics, title_font, selector_layouts.child_height, child_height_options[selected.height_index].label, NativeControls.point_in_rect(selector_layouts.child_height.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.child_height.right, mouse_x, mouse_y))
+            NativeControls.draw_navigator(graphics, title_font, selector_layouts.child_width, CHILD_SIZE_OPTIONS[selected.width_index].label, NativeControls.point_in_rect(selector_layouts.child_width.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.child_width.right, mouse_x, mouse_y))
+            NativeControls.draw_navigator(graphics, title_font, selector_layouts.child_height, CHILD_SIZE_OPTIONS[selected.height_index].label, NativeControls.point_in_rect(selector_layouts.child_height.left, mouse_x, mouse_y), NativeControls.point_in_rect(selector_layouts.child_height.right, mouse_x, mouse_y))
         end,
     })
 end

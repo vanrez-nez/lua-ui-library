@@ -248,11 +248,108 @@ function Visuals.draw_column_gap_overlay(graphics, parent)
     end
 end
 
+function Visuals.draw_flow_gap_overlay(graphics, parent)
+    local effective_values = rawget(parent, '_effective_values') or {}
+    local gap = effective_values.gap or 0
+    local children = rawget(parent, '_children') or {}
+    local content_rect = get_world_rect(parent, parent:_get_effective_content_rect())
+    local rows = {}
+
+    if gap <= 0 then
+        return
+    end
+
+    for index = 1, #children do
+        local child = children[index]
+        local child_effective = rawget(child, '_effective_values') or {}
+
+        if child_effective.visible ~= false then
+            local margin = LayoutSpacing.get_effective_margin(child)
+            local bounds = child:getLocalBounds()
+            local left, top, right, bottom = LayoutSpacing.resolve_outer_edges(bounds, margin)
+            local outer_rect = get_world_rect(child, {
+                x = left,
+                y = top,
+                width = right - left,
+                height = bottom - top,
+            })
+            local row = rows[#rows]
+
+            if row == nil or math.abs(outer_rect.y - row.y) > 0.5 then
+                row = {
+                    y = outer_rect.y,
+                    bottom = outer_rect.y + outer_rect.height,
+                    rects = {},
+                }
+                rows[#rows + 1] = row
+            else
+                row.bottom = math.max(row.bottom, outer_rect.y + outer_rect.height)
+            end
+
+            row.rects[#row.rects + 1] = outer_rect
+        end
+    end
+
+    for row_index = 1, #rows do
+        local row = rows[row_index]
+
+        table.sort(row.rects, function(a, b)
+            return a.x < b.x
+        end)
+
+        for rect_index = 2, #row.rects do
+            local previous_rect = row.rects[rect_index - 1]
+            local current_rect = row.rects[rect_index]
+            local gap_width = current_rect.x - (previous_rect.x + previous_rect.width)
+
+            if gap_width > 0 then
+                Visuals.draw_pattern_region(
+                    graphics,
+                    {
+                        x = previous_rect.x + previous_rect.width,
+                        y = row.y,
+                        width = gap_width,
+                        height = row.bottom - row.y,
+                    },
+                    {},
+                    GAP_BACKGROUND_COLOR,
+                    function(rect)
+                        draw_stripe_fill(graphics, rect, GAP_PATTERN_COLOR, 8)
+                    end
+                )
+            end
+        end
+
+        if row_index > 1 then
+            local previous_row = rows[row_index - 1]
+            local gap_height = row.y - previous_row.bottom
+
+            if gap_height > 0 then
+                Visuals.draw_pattern_region(
+                    graphics,
+                    {
+                        x = content_rect.x,
+                        y = previous_row.bottom,
+                        width = content_rect.width,
+                        height = gap_height,
+                    },
+                    {},
+                    GAP_BACKGROUND_COLOR,
+                    function(rect)
+                        draw_stripe_fill(graphics, rect, GAP_PATTERN_COLOR, 8)
+                    end
+                )
+            end
+        end
+    end
+end
+
 function Visuals.draw_hovered_overlays(graphics, hovered_node, opts)
     local parent = opts.parent
     local children = opts.children or {}
     local show_row_gap = opts.show_row_gap == true
     local show_column_gap = opts.show_column_gap == true
+    local show_flow_gap = opts.show_flow_gap == true
 
     if hovered_node == nil then
         return
@@ -267,6 +364,10 @@ function Visuals.draw_hovered_overlays(graphics, hovered_node, opts)
 
         if show_column_gap then
             Visuals.draw_column_gap_overlay(graphics, parent)
+        end
+
+        if show_flow_gap then
+            Visuals.draw_flow_gap_overlay(graphics, parent)
         end
 
         return

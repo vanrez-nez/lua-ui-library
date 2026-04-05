@@ -1,4 +1,5 @@
 local DemoColors = require('demos.common.colors')
+local LayoutDemoDebug = require('demos.common.layout_demo_debug')
 local LayoutSpacingVisuals = require('demos.common.layout_spacing_visuals')
 local NativeControls = require('demos.common.native_controls')
 
@@ -379,17 +380,30 @@ function Setup.install(args)
         local field_gap = 4
         local control_gap = 20
         local probe_layout = build_navigator_layout(0, 0, selector_body_width, title_font)
-        local row_height = probe_layout.body.height
-        local label_height = label_font:getHeight()
-        local row_stack_height = label_height + field_gap + row_height
-        local box_gap = (label_height + row_height) * 2
-        local top_y = bounds.y - row_stack_height - box_gap
-        local bottom_y = bounds.y + bounds.height + box_gap
         local control_width = navigator_width(probe_layout)
         local parent_total_width = (control_width * 5) + (control_gap * 4)
         local child_total_width = (control_width * 5) + (control_gap * 4)
         local parent_start_x = math.floor((viewport.width - parent_total_width) / 2)
         local child_start_x = math.floor((viewport.width - child_total_width) / 2)
+        local box_gap = (label_font:getHeight() + probe_layout.body.height) * 2
+        local parent_probe_layouts = {
+            build_navigator_layout(parent_start_x, 0, selector_body_width, title_font),
+            build_navigator_layout(parent_start_x + (control_width + control_gap), 0, selector_body_width, title_font),
+            build_navigator_layout(parent_start_x + ((control_width + control_gap) * 2), 0, selector_body_width, title_font),
+            build_navigator_layout(parent_start_x + ((control_width + control_gap) * 3), 0, selector_body_width, title_font),
+            build_navigator_layout(parent_start_x + ((control_width + control_gap) * 4), 0, selector_body_width, title_font),
+        }
+        local child_probe_layouts = {
+            build_navigator_layout(child_start_x, 0, selector_body_width, title_font),
+            build_navigator_layout(child_start_x + (control_width + control_gap), 0, selector_body_width, title_font),
+            build_navigator_layout(child_start_x + ((control_width + control_gap) * 2), 0, selector_body_width, title_font),
+            build_navigator_layout(child_start_x + ((control_width + control_gap) * 3), 0, selector_body_width, title_font),
+            build_navigator_layout(child_start_x + ((control_width + control_gap) * 4), 0, selector_body_width, title_font),
+        }
+        local parent_probe_panel = NativeControls.build_group_panel(parent_probe_layouts, title_font, label_font)
+        local child_probe_panel = NativeControls.build_group_panel(child_probe_layouts, title_font, label_font)
+        local top_y = bounds.y - box_gap - (parent_probe_panel.y + parent_probe_panel.height)
+        local bottom_y = (bounds.y + bounds.height) + box_gap - child_probe_panel.y
 
         selector_layouts = {
             parent_padding = build_navigator_layout(parent_start_x, top_y, selector_body_width, title_font),
@@ -410,6 +424,35 @@ function Setup.install(args)
         local selected = child_entries[selected_element_index]
         local width_options = active_child_width_options()
         local height_options = active_child_height_options()
+        local function consume_click()
+            LayoutDemoDebug.dump('layout_row', {
+                LayoutDemoDebug.entry('element', child_entries[selected_element_index].label),
+                LayoutDemoDebug.group('child', {
+                    LayoutDemoDebug.entry('padding', SPACING_OPTIONS[child_entries[selected_element_index].padding_index].label),
+                    LayoutDemoDebug.entry('margin', SPACING_OPTIONS[child_entries[selected_element_index].margin_index].label),
+                    LayoutDemoDebug.entry('width', active_child_width_options()[child_entries[selected_element_index].width_index].label),
+                    LayoutDemoDebug.entry('height', active_child_height_options()[child_entries[selected_element_index].height_index].label),
+                }),
+                LayoutDemoDebug.group('parent', {
+                    LayoutDemoDebug.entry('padding', SPACING_OPTIONS[parent_padding_index].label),
+                    LayoutDemoDebug.entry('width', PARENT_SIZE_OPTIONS[parent_width_index].label),
+                    LayoutDemoDebug.entry('gap', GAP_OPTIONS[parent_gap_index].label),
+                    LayoutDemoDebug.entry('justify', JUSTIFY_OPTIONS[parent_justify_index].label),
+                    LayoutDemoDebug.entry('align', ALIGN_OPTIONS[parent_align_index].label),
+                }),
+            })
+            return true
+        end
+
+        local function sync_selected_sizes()
+            selected = child_entries[selected_element_index]
+            width_options = active_child_width_options()
+            height_options = active_child_height_options()
+            selected.width_index = math.min(selected.width_index, #width_options)
+            selected.height_index = math.min(selected.height_index, #height_options)
+        end
+
+        sync_selected_sizes()
 
         if button ~= 1 then
             return false
@@ -419,102 +462,112 @@ function Setup.install(args)
 
         if NativeControls.point_in_rect(selector_layouts.parent_padding.left, x, y) then
             parent_padding_index = cycle_index(parent_padding_index, -1, #SPACING_OPTIONS)
-            return true
+            sync_selected_sizes()
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.parent_padding.right, x, y) then
             parent_padding_index = cycle_index(parent_padding_index, 1, #SPACING_OPTIONS)
-            return true
+            sync_selected_sizes()
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.parent_width.left, x, y) then
             parent_width_index = cycle_index(parent_width_index, -1, #PARENT_SIZE_OPTIONS)
-            return true
+            sync_selected_sizes()
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.parent_width.right, x, y) then
             parent_width_index = cycle_index(parent_width_index, 1, #PARENT_SIZE_OPTIONS)
-            return true
+            sync_selected_sizes()
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.parent_gap.left, x, y) then
             parent_gap_index = cycle_index(parent_gap_index, -1, #GAP_OPTIONS)
-            return true
+            sync_selected_sizes()
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.parent_gap.right, x, y) then
             parent_gap_index = cycle_index(parent_gap_index, 1, #GAP_OPTIONS)
-            return true
+            sync_selected_sizes()
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.parent_justify.left, x, y) then
             parent_justify_index = cycle_index(parent_justify_index, -1, #JUSTIFY_OPTIONS)
-            return true
+            sync_selected_sizes()
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.parent_justify.right, x, y) then
             parent_justify_index = cycle_index(parent_justify_index, 1, #JUSTIFY_OPTIONS)
-            return true
+            sync_selected_sizes()
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.parent_align.left, x, y) then
             parent_align_index = cycle_index(parent_align_index, -1, #ALIGN_OPTIONS)
-            return true
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.parent_align.right, x, y) then
             parent_align_index = cycle_index(parent_align_index, 1, #ALIGN_OPTIONS)
-            return true
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.element.left, x, y) then
             selected_element_index = cycle_index(selected_element_index, -1, #child_entries)
-            return true
+            sync_selected_sizes()
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.element.right, x, y) then
             selected_element_index = cycle_index(selected_element_index, 1, #child_entries)
-            return true
+            sync_selected_sizes()
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.child_padding.left, x, y) then
             selected.padding_index = cycle_index(selected.padding_index, -1, #SPACING_OPTIONS)
-            return true
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.child_padding.right, x, y) then
             selected.padding_index = cycle_index(selected.padding_index, 1, #SPACING_OPTIONS)
-            return true
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.child_margin.left, x, y) then
             selected.margin_index = cycle_index(selected.margin_index, -1, #SPACING_OPTIONS)
-            return true
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.child_margin.right, x, y) then
             selected.margin_index = cycle_index(selected.margin_index, 1, #SPACING_OPTIONS)
-            return true
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.child_width.left, x, y) then
             selected.width_index = cycle_index(selected.width_index, -1, #width_options)
-            return true
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.child_width.right, x, y) then
             selected.width_index = cycle_index(selected.width_index, 1, #width_options)
-            return true
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.child_height.left, x, y) then
             selected.height_index = cycle_index(selected.height_index, -1, #height_options)
-            return true
+            return consume_click()
         end
 
         if NativeControls.point_in_rect(selector_layouts.child_height.right, x, y) then
             selected.height_index = cycle_index(selected.height_index, 1, #height_options)
-            return true
+            return consume_click()
         end
 
         return false

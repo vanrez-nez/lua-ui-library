@@ -1,3 +1,4 @@
+local LayoutDemoDebug = require('demos.common.layout_demo_debug')
 local LayoutSpacingVisuals = require('demos.common.layout_spacing_visuals')
 
 local Setup = {}
@@ -132,6 +133,30 @@ function Setup.install(args)
     rawset(badge, '_demo_label_inset_y', 0)
     helpers.set_hint_name(badge, 'badge')
     set_child_hint(badge, helpers)
+
+    LayoutDemoDebug.dump('layout_stack', {
+        LayoutDemoDebug.group('parent', {
+            LayoutDemoDebug.entry('padding', '15'),
+            LayoutDemoDebug.entry('width', tostring(parent.width)),
+            LayoutDemoDebug.entry('height', tostring(parent.height)),
+        }),
+        LayoutDemoDebug.group('backdrop', {
+            LayoutDemoDebug.entry('width', tostring(backdrop.width)),
+            LayoutDemoDebug.entry('height', tostring(backdrop.height)),
+        }),
+        LayoutDemoDebug.group('surface', {
+            LayoutDemoDebug.entry('margin', '30'),
+            LayoutDemoDebug.entry('padding', '15'),
+            LayoutDemoDebug.entry('width', tostring(surface.width)),
+            LayoutDemoDebug.entry('height', tostring(surface.height)),
+        }),
+        LayoutDemoDebug.group('badge', {
+            LayoutDemoDebug.entry('x', tostring(badge.x)),
+            LayoutDemoDebug.entry('y', tostring(badge.y)),
+            LayoutDemoDebug.entry('width', tostring(badge.width)),
+            LayoutDemoDebug.entry('height', tostring(badge.height)),
+        }),
+    })
 
     rawset(stage, '_demo_screen_hooks', {
         update = function()

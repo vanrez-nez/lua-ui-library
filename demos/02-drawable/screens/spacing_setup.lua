@@ -1,4 +1,5 @@
 local DemoColors = require('demos.common.colors')
+local LayoutDemoDebug = require('demos.common.layout_demo_debug')
 local DemoInstruments = require('demos.common.drawable_demo_instruments')
 local LayoutSpacingVisuals = require('demos.common.layout_spacing_visuals')
 local NativeControls = require('demos.common.native_controls')
@@ -862,21 +863,24 @@ function Setup.install(args)
             parent_align_label = parent_align_label .. ' [disabled]'
         end
 
-        print(string.format(
-            '[spacing] preset=%s child={padding=%s margin=%s width=%s height=%s} parent={type=%s padding=%s margin=%s width=%s height=%s justify=%s align=%s}',
-            PRESET_OPTIONS[preset_index].label,
-            SPACING_OPTIONS[child_padding_index].label,
-            SPACING_OPTIONS[child_margin_index].label,
-            child_width_options[resolved_child_width_index].label,
-            child_height_options[resolved_child_height_index].label,
-            option.label,
-            SPACING_OPTIONS[parent_padding_index].label,
-            parent_margin_label,
-            parent_width_options[resolved_parent_width_index].label,
-            parent_height_options[resolved_parent_height_index].label,
-            parent_justify_label,
-            parent_align_label
-        ))
+        LayoutDemoDebug.dump('spacing', {
+            LayoutDemoDebug.entry('preset', PRESET_OPTIONS[preset_index].label),
+            LayoutDemoDebug.group('child', {
+                LayoutDemoDebug.entry('padding', SPACING_OPTIONS[child_padding_index].label),
+                LayoutDemoDebug.entry('margin', SPACING_OPTIONS[child_margin_index].label),
+                LayoutDemoDebug.entry('width', child_width_options[resolved_child_width_index].label),
+                LayoutDemoDebug.entry('height', child_height_options[resolved_child_height_index].label),
+            }),
+            LayoutDemoDebug.group('parent', {
+                LayoutDemoDebug.entry('type', option.label),
+                LayoutDemoDebug.entry('padding', SPACING_OPTIONS[parent_padding_index].label),
+                LayoutDemoDebug.entry('margin', parent_margin_label),
+                LayoutDemoDebug.entry('width', parent_width_options[resolved_parent_width_index].label),
+                LayoutDemoDebug.entry('height', parent_height_options[resolved_parent_height_index].label),
+                LayoutDemoDebug.entry('justify', parent_justify_label),
+                LayoutDemoDebug.entry('align', parent_align_label),
+            }),
+        })
     end
 
     local function consume_click()
