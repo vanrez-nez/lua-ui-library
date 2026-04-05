@@ -139,6 +139,51 @@ function NativeControls.draw_group_panel(graphics, title_font, panel, title)
     graphics.print(title, panel.title_x, label_y)
 end
 
+function NativeControls.translate_navigator_layout(layout, dx, dy)
+    return {
+        left = {
+            x = layout.left.x + dx,
+            y = layout.left.y + dy,
+            width = layout.left.width,
+            height = layout.left.height,
+        },
+        body = {
+            x = layout.body.x + dx,
+            y = layout.body.y + dy,
+            width = layout.body.width,
+            height = layout.body.height,
+        },
+        right = {
+            x = layout.right.x + dx,
+            y = layout.right.y + dy,
+            width = layout.right.width,
+            height = layout.right.height,
+        },
+    }
+end
+
+function NativeControls.translate_navigator_layouts(layouts, dx, dy)
+    local shifted_layouts = {}
+
+    for index = 1, #layouts do
+        shifted_layouts[index] = NativeControls.translate_navigator_layout(layouts[index], dx, dy)
+    end
+
+    return shifted_layouts
+end
+
+function NativeControls.center_group_layouts_y(layouts, title_font, label_font, center_y)
+    local panel = NativeControls.build_group_panel(layouts, title_font, label_font)
+    local offset_y
+
+    if panel == nil then
+        return layouts
+    end
+
+    offset_y = floor(center_y - (panel.y + (panel.height * 0.5)))
+    return NativeControls.translate_navigator_layouts(layouts, 0, offset_y)
+end
+
 function NativeControls.build_centered_navigator_layout(screen_width, top_y, font, text)
     local nav_height = font:getHeight() + 12
     local arrow_width = 24

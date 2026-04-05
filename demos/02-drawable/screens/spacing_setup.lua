@@ -758,12 +758,19 @@ function Setup.install(args)
             { key = 'parent_justify', text = JUSTIFY_OPTIONS[parent_justify_index].label },
             { key = 'parent_align', text = ALIGN_OPTIONS[parent_align_index].label },
         }
+        local field_gap = 4
         local row_gap = 32
         local side_gap = 36
         local child_temp = {}
         local parent_temp = {}
         local child_max_width = 0
         local parent_max_width = 0
+        local row_step
+        local child_probe_layouts = {}
+        local parent_probe_layouts = {}
+        local child_layouts
+        local parent_layouts
+        local center_y
 
         for index = 1, #child_specs do
             child_temp[index] = build_navigator_layout(0, 0, selector_body_width, title_font)
@@ -777,8 +784,6 @@ function Setup.install(args)
 
         local child_row_height = child_temp[1].body.height
         local parent_row_height = parent_temp[1].body.height
-        local child_group_height = (child_row_height * #child_specs) + (row_gap * (#child_specs - 1))
-        local parent_group_height = (parent_row_height * #parent_specs) + (row_gap * (#parent_specs - 1))
         local side_column_width = math.max(child_max_width, parent_max_width)
         local composition_width = side_column_width + side_gap + host.width + side_gap + side_column_width
         local composition_left_x = viewport.x + math.floor((viewport.width - composition_width) / 2)
@@ -792,9 +797,41 @@ function Setup.install(args)
         description_height = (label_font:getHeight() * 4) + 18
         content_top = description_top + description_height + 28
         host.y = content_top
+        center_y = host.y + (host.height * 0.5)
+        row_step = child_row_height + label_font:getHeight() + field_gap + row_gap
 
-        local child_start_y = host.y + math.floor((host.height - child_group_height) / 2)
-        local parent_start_y = host.y + math.floor((host.height - parent_group_height) / 2)
+        for index = 1, #child_specs do
+            child_probe_layouts[index] = build_navigator_layout(
+                child_left_x,
+                (index - 1) * row_step,
+                selector_body_width,
+                title_font
+            )
+        end
+
+        row_step = parent_row_height + label_font:getHeight() + field_gap + row_gap
+
+        for index = 1, #parent_specs do
+            parent_probe_layouts[index] = build_navigator_layout(
+                parent_left_x,
+                (index - 1) * row_step,
+                selector_body_width,
+                title_font
+            )
+        end
+
+        child_layouts = NativeControls.center_group_layouts_y(
+            child_probe_layouts,
+            title_font,
+            label_font,
+            center_y
+        )
+        parent_layouts = NativeControls.center_group_layouts_y(
+            parent_probe_layouts,
+            title_font,
+            label_font,
+            center_y
+        )
 
         selector_layouts = {}
 
@@ -813,21 +850,11 @@ function Setup.install(args)
         }
 
         for index = 1, #child_specs do
-            selector_layouts[child_specs[index].key] = build_navigator_layout(
-                child_left_x,
-                child_start_y + ((index - 1) * (child_row_height + row_gap)),
-                selector_body_width,
-                title_font
-            )
+            selector_layouts[child_specs[index].key] = child_layouts[index]
         end
 
         for index = 1, #parent_specs do
-            selector_layouts[parent_specs[index].key] = build_navigator_layout(
-                parent_left_x,
-                parent_start_y + ((index - 1) * (parent_row_height + row_gap)),
-                selector_body_width,
-                title_font
-            )
+            selector_layouts[parent_specs[index].key] = parent_layouts[index]
         end
     end
 

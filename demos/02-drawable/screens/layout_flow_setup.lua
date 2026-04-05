@@ -389,30 +389,62 @@ function Setup.install(args)
     end
 
     local function build_selector_layouts()
-        local viewport = root:getWorldBounds()
         local bounds = parent:getWorldBounds()
         local field_gap = 4
         local row_gap = 30
         local side_gap = 40
         local probe_layout = build_navigator_layout(0, 0, selector_body_width, title_font)
         local control_width = navigator_width(probe_layout)
-        local row_height = probe_layout.body.height
-        local parent_column_height = (row_height * 6) + ((label_font:getHeight() + field_gap) * 6) + (row_gap * 5)
-        local child_column_height = (row_height * 5) + ((label_font:getHeight() + field_gap) * 5) + (row_gap * 4)
-        local start_y = math.floor((viewport.height - math.max(parent_column_height, child_column_height)) * 0.5)
+        local row_step = probe_layout.body.height + label_font:getHeight() + field_gap + row_gap
+        local center_y = bounds.y + (bounds.height * 0.5)
+        local parent_probe_layouts = {}
+        local child_probe_layouts = {}
+        local parent_layouts
+        local child_layouts
+
+        for index = 1, 6 do
+            parent_probe_layouts[index] = build_navigator_layout(
+                bounds.x - control_width - side_gap,
+                (index - 1) * row_step,
+                selector_body_width,
+                title_font
+            )
+        end
+
+        for index = 1, 5 do
+            child_probe_layouts[index] = build_navigator_layout(
+                bounds.x + bounds.width + side_gap,
+                (index - 1) * row_step,
+                selector_body_width,
+                title_font
+            )
+        end
+
+        parent_layouts = NativeControls.center_group_layouts_y(
+            parent_probe_layouts,
+            title_font,
+            label_font,
+            center_y
+        )
+        child_layouts = NativeControls.center_group_layouts_y(
+            child_probe_layouts,
+            title_font,
+            label_font,
+            center_y
+        )
 
         selector_layouts = {
-            parent_padding = build_navigator_layout(bounds.x - control_width - side_gap, start_y, selector_body_width, title_font),
-            parent_width = build_navigator_layout(bounds.x - control_width - side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 1), selector_body_width, title_font),
-            parent_gap = build_navigator_layout(bounds.x - control_width - side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 2), selector_body_width, title_font),
-            parent_wrap = build_navigator_layout(bounds.x - control_width - side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 3), selector_body_width, title_font),
-            parent_direction = build_navigator_layout(bounds.x - control_width - side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 4), selector_body_width, title_font),
-            parent_justify = build_navigator_layout(bounds.x - control_width - side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 5), selector_body_width, title_font),
-            element = build_navigator_layout(bounds.x + bounds.width + side_gap, start_y, selector_body_width, title_font),
-            child_padding = build_navigator_layout(bounds.x + bounds.width + side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 1), selector_body_width, title_font),
-            child_margin = build_navigator_layout(bounds.x + bounds.width + side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 2), selector_body_width, title_font),
-            child_width = build_navigator_layout(bounds.x + bounds.width + side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 3), selector_body_width, title_font),
-            child_height = build_navigator_layout(bounds.x + bounds.width + side_gap, start_y + ((row_height + label_font:getHeight() + field_gap + row_gap) * 4), selector_body_width, title_font),
+            parent_padding = parent_layouts[1],
+            parent_width = parent_layouts[2],
+            parent_gap = parent_layouts[3],
+            parent_wrap = parent_layouts[4],
+            parent_direction = parent_layouts[5],
+            parent_justify = parent_layouts[6],
+            element = child_layouts[1],
+            child_padding = child_layouts[2],
+            child_margin = child_layouts[3],
+            child_width = child_layouts[4],
+            child_height = child_layouts[5],
             field_gap = field_gap,
         }
     end
