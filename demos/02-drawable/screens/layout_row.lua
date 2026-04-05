@@ -14,7 +14,7 @@ return function(owner, helpers)
 
             local parent = Row.new({
                 id = 'layout-row-parent',
-                width = 420,
+                width = 840,
                 height = 110,
                 padding = { 15, 15, 15, 15 },
                 gap = 15,
@@ -24,7 +24,7 @@ return function(owner, helpers)
 
             local leading = Drawable.new({
                 id = 'layout-row-leading',
-                width = 65,
+                width = 130,
                 height = 65,
                 padding = 8,
                 margin = 0,
@@ -36,7 +36,7 @@ return function(owner, helpers)
 
             local content = Drawable.new({
                 id = 'layout-row-content',
-                width = 180,
+                width = 360,
                 height = 70,
                 padding = 10,
                 margin = { 0, 10, 0, 10 },
@@ -48,7 +48,7 @@ return function(owner, helpers)
 
             local action = Drawable.new({
                 id = 'layout-row-action',
-                width = 90,
+                width = 180,
                 height = 50,
                 padding = { 10, 15, 10, 15 },
                 margin = 0,

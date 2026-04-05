@@ -196,4 +196,33 @@ function Visuals.draw_row_gap_overlay(graphics, parent)
     end
 end
 
+function Visuals.draw_hovered_overlays(graphics, hovered_node, opts)
+    local parent = opts.parent
+    local children = opts.children or {}
+    local show_gap = opts.show_row_gap == true
+
+    if hovered_node == nil then
+        return
+    end
+
+    if hovered_node == parent then
+        Visuals.draw_padding_overlay(graphics, parent)
+
+        if show_gap then
+            Visuals.draw_row_gap_overlay(graphics, parent)
+        end
+
+        return
+    end
+
+    for index = 1, #children do
+        local child = children[index]
+        if hovered_node == child then
+            Visuals.draw_margin_overlay(graphics, child)
+            Visuals.draw_padding_overlay(graphics, child)
+            return
+        end
+    end
+end
+
 return Visuals

@@ -114,22 +114,22 @@ function Setup.install(args)
 
     rawset(backdrop, '_demo_label', 'Backdrop')
     rawset(backdrop, '_demo_label_rect', 'content')
-    rawset(backdrop, '_demo_label_inset_x', 10)
-    rawset(backdrop, '_demo_label_inset_y', 10)
+    rawset(backdrop, '_demo_label_inset_x', 0)
+    rawset(backdrop, '_demo_label_inset_y', 0)
     helpers.set_hint_name(backdrop, 'backdrop')
     set_child_hint(backdrop, helpers)
 
     rawset(surface, '_demo_label', 'Surface')
     rawset(surface, '_demo_label_rect', 'content')
-    rawset(surface, '_demo_label_inset_x', 10)
-    rawset(surface, '_demo_label_inset_y', 10)
+    rawset(surface, '_demo_label_inset_x', 0)
+    rawset(surface, '_demo_label_inset_y', 0)
     helpers.set_hint_name(surface, 'surface')
     set_child_hint(surface, helpers)
 
     rawset(badge, '_demo_label', 'Badge')
     rawset(badge, '_demo_label_rect', 'content')
-    rawset(badge, '_demo_label_inset_x', 10)
-    rawset(badge, '_demo_label_inset_y', 10)
+    rawset(badge, '_demo_label_inset_x', 0)
+    rawset(badge, '_demo_label_inset_y', 0)
     helpers.set_hint_name(badge, 'badge')
     set_child_hint(badge, helpers)
 
@@ -142,12 +142,12 @@ function Setup.install(args)
         end,
         draw_overlay = function(graphics)
             local bounds = parent:getWorldBounds()
+            local hovered_node = helpers._draw_context and helpers._draw_context.hovered_node or nil
 
-            LayoutSpacingVisuals.draw_padding_overlay(graphics, parent)
-            LayoutSpacingVisuals.draw_padding_overlay(graphics, backdrop)
-            LayoutSpacingVisuals.draw_padding_overlay(graphics, surface)
-            LayoutSpacingVisuals.draw_margin_overlay(graphics, surface)
-            LayoutSpacingVisuals.draw_padding_overlay(graphics, badge)
+            LayoutSpacingVisuals.draw_hovered_overlays(graphics, hovered_node, {
+                parent = parent,
+                children = { backdrop, surface, badge },
+            })
 
             graphics.setColor(0.95, 0.95, 0.95, 1)
             graphics.setFont(title_font)
