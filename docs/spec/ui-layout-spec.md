@@ -686,8 +686,13 @@ right; `"rtl"` places children right to left.
 - when `wrap = false` and children exceed available width, the overflow policy
   applies without wrapping
 - children on the last row of a wrapped flow are placed using the `justify`
-  value for main-axis distribution; the last row is not specially stretched to
-  fill available main-axis space regardless of the `justify` value
+  value for main-axis distribution; `align` does not override last-row
+  main-axis placement
+- when a wrapped last row uses `justify = "space-between"` and contains two or
+  fewer children, it degenerates to the start position instead of expanding a
+  sparse last row across the full available width
+- the last row is not specially stretched to fill available main-axis space
+  regardless of the `justify` value
 - negative margins may cause overlap within or between wrapped rows, but they do
   not enlarge any child's own hit or clip region
 - a single child wider than the full flow row occupies that row alone and is

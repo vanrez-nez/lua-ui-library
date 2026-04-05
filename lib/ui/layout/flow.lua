@@ -273,7 +273,7 @@ local function build_rows(entries, available_width, gap, wrap)
     return rows
 end
 
-local function resolve_justify(justify, available_width, used_width, gap, child_count)
+local function resolve_justify(justify, available_width, used_width, gap, child_count, is_last_wrapped_row)
     local base_x = 0
     local between_gap = gap
 
@@ -296,7 +296,10 @@ local function resolve_justify(justify, available_width, used_width, gap, child_
     end
 
     if justify == 'space-between' then
-        if child_count == 1 then
+        -- Flow keeps justify as the owner of the last wrapped row. The only
+        -- special-case is sparse last-row space-between, where one large gap
+        -- becomes visually misleading, so it degenerates to start.
+        if child_count == 1 or (is_last_wrapped_row and child_count <= 2) then
             return 0, between_gap
         end
 
@@ -310,25 +313,6 @@ local function resolve_justify(justify, available_width, used_width, gap, child_
 
     return 0, between_gap
 end
-
-local function resolve_last_row_alignment(align, available_width, used_width, gap)
-    local extra = available_width - used_width
-
-    if extra <= 0 then
-        return 0, gap
-    end
-
-    if align == 'center' then
-        return extra / 2, gap
-    end
-
-    if align == 'end' then
-        return extra, gap
-    end
-
-    return 0, gap
-end
-
 local function reverse_entries(entries)
     local reversed = {}
 
@@ -420,7 +404,7 @@ function Flow:_apply_layout(stage)
     self._flow_layout_measurement_in_progress = true
 
     local ok, result = xpcall(function()
-        local gap, wrap, justify, align, direction = validate_effective_props(self)
+        local gap, wrap, justify, _, direction = validate_effective_props(self)
         local effective_values = rawget(self, '_effective_values') or {}
         local children = rawget(self, '_children') or {}
         local content_rect
@@ -482,30 +466,22 @@ function Flow:_apply_layout(stage)
         end
 
         local y_cursor = 0
-        local use_last_row_alignment = wrap and #rows > 1
 
         for row_index = 1, #rows do
             local row = rows[row_index]
             local placement_entries = row.entries
             local base_x
             local between_gap
+            local is_last_wrapped_row = wrap and #rows > 1 and row_index == #rows
 
-            if use_last_row_alignment and row_index == #rows then
-                base_x, between_gap = resolve_last_row_alignment(
-                    align,
-                    available_width,
-                    row.pack_width or 0,
-                    gap
-                )
-            else
-                base_x, between_gap = resolve_justify(
-                    justify,
-                    available_width,
-                    row.pack_width or 0,
-                    gap,
-                    #row.entries
-                )
-            end
+            base_x, between_gap = resolve_justify(
+                justify,
+                available_width,
+                row.pack_width or 0,
+                gap,
+                #row.entries,
+                is_last_wrapped_row
+            )
 
             if direction == 'rtl' then
                 placement_entries = reverse_entries(row.entries)
