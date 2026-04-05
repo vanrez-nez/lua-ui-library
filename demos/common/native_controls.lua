@@ -1,7 +1,9 @@
 local DemoColors = require('demos.common.colors')
 
 local NativeControls = {}
-local DISABLED_ALPHA = 0.45
+local DISABLED_ALPHA = 0.25
+local GROUP_PANEL_PADDING = 12
+local GROUP_PANEL_TITLE_GAP = 10
 
 local function floor(value)
     return math.floor(value + 0.5)
@@ -66,6 +68,75 @@ function NativeControls.draw_button(graphics, font, rect, label, hovered, disabl
         rect.x + floor((rect.width - font:getWidth(label)) * 0.5),
         rect.y + floor((rect.height - font:getHeight()) * 0.5) - 1
     )
+end
+
+function NativeControls.build_group_panel(layouts, title_font, label_font)
+    local min_x = nil
+    local min_y = nil
+    local max_x = nil
+    local max_y = nil
+    local title_height = title_font:getHeight()
+    local label_height = label_font:getHeight()
+
+    for index = 1, #layouts do
+        local layout = layouts[index]
+        local top = layout.body.y - label_height - GROUP_PANEL_TITLE_GAP - title_height - GROUP_PANEL_TITLE_GAP
+        local right = layout.right.x + layout.right.width
+        local bottom = layout.body.y + layout.body.height
+
+        if min_x == nil or layout.left.x < min_x then
+            min_x = layout.left.x
+        end
+
+        if min_y == nil or top < min_y then
+            min_y = top
+        end
+
+        if max_x == nil or right > max_x then
+            max_x = right
+        end
+
+        if max_y == nil or bottom > max_y then
+            max_y = bottom
+        end
+    end
+
+    if min_x == nil then
+        return nil
+    end
+
+    return {
+        x = min_x - GROUP_PANEL_PADDING,
+        y = min_y - GROUP_PANEL_PADDING,
+        width = (max_x - min_x) + (GROUP_PANEL_PADDING * 2),
+        height = (max_y - min_y) + (GROUP_PANEL_PADDING * 2),
+        title_x = min_x - GROUP_PANEL_PADDING + 10,
+        title_y = min_y - GROUP_PANEL_PADDING + 8,
+    }
+end
+
+function NativeControls.draw_group_panel(graphics, title_font, panel, title)
+    local border_color = NativeControls.set_alpha(DemoColors.roles.border, 0.15)
+    local label_width = title_font:getWidth(title)
+    local label_gap = 8
+    local top_y = panel.y
+    local left_x = panel.x
+    local right_x = panel.x + panel.width
+    local bottom_y = panel.y + panel.height
+    local label_left = panel.title_x - label_gap
+    local label_right = panel.title_x + label_width + label_gap
+    local label_y = top_y - math.floor(title_font:getHeight() * 0.5)
+
+    graphics.setColor(border_color)
+    graphics.line(left_x, top_y, label_left, top_y)
+    graphics.line(label_right, top_y, right_x, top_y)
+    graphics.line(left_x, top_y, left_x, bottom_y)
+    graphics.line(right_x, top_y, right_x, bottom_y)
+    graphics.line(left_x, bottom_y, right_x, bottom_y)
+
+    graphics.setColor(DemoColors.roles.text_muted)
+    graphics.setFont(title_font)
+    graphics.print(title, panel.title_x, label_y)
 end
 
 function NativeControls.build_centered_navigator_layout(screen_width, top_y, font, text)

@@ -196,10 +196,63 @@ function Visuals.draw_row_gap_overlay(graphics, parent)
     end
 end
 
+function Visuals.draw_column_gap_overlay(graphics, parent)
+    local effective_values = rawget(parent, '_effective_values') or {}
+    local gap = effective_values.gap or 0
+    local children = rawget(parent, '_children') or {}
+    local content_rect = get_world_rect(parent, parent:_get_effective_content_rect())
+    local previous_outer_bottom = nil
+
+    if gap <= 0 then
+        return
+    end
+
+    for index = 1, #children do
+        local child = children[index]
+        local child_effective = rawget(child, '_effective_values') or {}
+
+        if child_effective.visible ~= false then
+            local margin = LayoutSpacing.get_effective_margin(child)
+            local bounds = child:getLocalBounds()
+            local _, top, _, bottom = LayoutSpacing.resolve_outer_edges(bounds, margin)
+            local outer_rect = get_world_rect(child, {
+                x = bounds.x - margin.left,
+                y = top,
+                width = bounds.width + margin.left + margin.right,
+                height = bottom - top,
+            })
+
+            if previous_outer_bottom ~= nil then
+                local gap_height = outer_rect.y - previous_outer_bottom
+
+                if gap_height > 0 then
+                    Visuals.draw_pattern_region(
+                        graphics,
+                        {
+                            x = content_rect.x,
+                            y = previous_outer_bottom,
+                            width = content_rect.width,
+                            height = gap_height,
+                        },
+                        {},
+                        GAP_BACKGROUND_COLOR,
+                        function(rect)
+                            draw_stripe_fill(graphics, rect, GAP_PATTERN_COLOR, 8)
+                        end
+                    )
+                end
+            end
+
+            previous_outer_bottom = outer_rect.y + outer_rect.height
+        end
+    end
+end
+
 function Visuals.draw_hovered_overlays(graphics, hovered_node, opts)
     local parent = opts.parent
     local children = opts.children or {}
-    local show_gap = opts.show_row_gap == true
+    local show_row_gap = opts.show_row_gap == true
+    local show_column_gap = opts.show_column_gap == true
 
     if hovered_node == nil then
         return
@@ -208,8 +261,12 @@ function Visuals.draw_hovered_overlays(graphics, hovered_node, opts)
     if hovered_node == parent then
         Visuals.draw_padding_overlay(graphics, parent)
 
-        if show_gap then
+        if show_row_gap then
             Visuals.draw_row_gap_overlay(graphics, parent)
+        end
+
+        if show_column_gap then
+            Visuals.draw_column_gap_overlay(graphics, parent)
         end
 
         return

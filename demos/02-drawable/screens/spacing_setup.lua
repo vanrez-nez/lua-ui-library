@@ -463,7 +463,6 @@ function Setup.install(args)
     local stage = args.stage
     local title_font = scope:font(12)
     local label_font = scope:font(11)
-    local section_font = scope:font(14)
     local selector_body_width = max_option_body_width(title_font, {
         SPACING_OPTIONS,
         PRESET_OPTIONS,
@@ -1090,8 +1089,22 @@ function Setup.install(args)
         local parent_margin_disabled = not option.parent_margin_enabled
         local parent_justify_disabled = not option.parent_justify_enabled
         local parent_align_disabled = not option.parent_align_enabled
-        local section_gap = 16
         local field_gap = 4
+        local child_panel = NativeControls.build_group_panel({
+            selector_layouts.child_padding,
+            selector_layouts.child_margin,
+            selector_layouts.child_width,
+            selector_layouts.child_height,
+        }, title_font, label_font)
+        local parent_panel = NativeControls.build_group_panel({
+            selector_layouts.parent_type,
+            selector_layouts.parent_padding,
+            selector_layouts.parent_margin,
+            selector_layouts.parent_width,
+            selector_layouts.parent_height,
+            selector_layouts.parent_justify,
+            selector_layouts.parent_align,
+        }, title_font, label_font)
 
         draw_spacing_patterns(graphics)
 
@@ -1113,15 +1126,9 @@ function Setup.install(args)
             'center'
         )
 
-        graphics.setColor(DemoColors.roles.text)
-        graphics.setFont(section_font)
-        draw_centered_label(
-            graphics,
-            section_font,
-            selector_layouts.child_padding,
-            'CHILD',
-            selector_layouts.child_padding.body.y - label_font:getHeight() - field_gap - section_gap - section_font:getHeight()
-        )
+        NativeControls.draw_group_panel(graphics, title_font, child_panel, 'Child')
+        NativeControls.draw_group_panel(graphics, title_font, parent_panel, 'Parent')
+
         graphics.setFont(label_font)
         graphics.setColor(DemoColors.roles.accent_amber_line)
         draw_centered_label(
@@ -1159,14 +1166,6 @@ function Setup.install(args)
             selector_layouts.child_height.body.y - label_font:getHeight() - field_gap
         )
 
-        graphics.setFont(section_font)
-        draw_centered_label(
-            graphics,
-            section_font,
-            selector_layouts.parent_type,
-            'PARENT',
-            selector_layouts.parent_type.body.y - label_font:getHeight() - field_gap - section_gap - section_font:getHeight()
-        )
         graphics.setFont(label_font)
         graphics.setColor(DemoColors.roles.text)
         draw_centered_label(
