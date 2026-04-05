@@ -151,6 +151,29 @@ Do not add small indirection layers such as:
 - one-off config tables that only rename obvious literals
 - helper functions that save only one or two repeated lines
 
+## Numeric Readability
+
+Demo values must optimize for fast visual understanding.
+
+Use clear, stepped whole numbers so a developer can compare spacing and sizing
+cases without mentally normalizing arbitrary values.
+
+Prefer:
+
+- `5`, `10`, `15`
+- `50`, `100`, `150`, `200`
+
+Avoid arbitrary-looking literals such as:
+
+- `3`, `6`, `12`
+- `75`, `115`, `190`
+
+The point is not mathematical purity. The point is reducing cognitive load for
+the viewer so spacing, sizing, and layout differences read immediately.
+
+When choosing between two equally valid demo values, prefer the cleaner stepped
+number.
+
 `{name}_setup.lua` is the setup file.
 
 It may contain:
