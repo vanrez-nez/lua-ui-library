@@ -38,7 +38,7 @@ local function get_world_origin(node)
     return bounds.x, bounds.y
 end
 
-local function run_last_row_alignment_tests()
+local function run_last_row_distribution_tests()
     local stage = UI.Stage.new({
         width = 320,
         height = 240,
@@ -90,8 +90,8 @@ local function run_last_row_alignment_tests()
         'Flow should place the first wrapped-row child at the content origin')
     assert_equal(second_x, 70,
         'Flow should still apply justify spacing on non-final wrapped rows')
-    assert_equal(third_x, 35,
-        'Flow should align the final wrapped row using Flow.align')
+    assert_equal(third_x, 0,
+        'Flow should degenerate a sparse space-between last row to the start position')
     assert_equal(third_y, 20,
         'Flow should advance to the next row using prior row height plus gap')
 
@@ -315,7 +315,7 @@ local function run_direction_tests()
 end
 
 local function run()
-    run_last_row_alignment_tests()
+    run_last_row_distribution_tests()
     run_overflow_and_visibility_tests()
     run_oversized_child_tests()
     run_margin_wrap_tests()

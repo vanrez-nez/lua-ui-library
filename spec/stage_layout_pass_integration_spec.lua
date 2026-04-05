@@ -1,6 +1,7 @@
 local Container = require('lib.ui.core.container')
 local LayoutNode = require('lib.ui.layout.layout_node')
 local Stage = require('lib.ui.scene.stage')
+local UI = require('lib.ui')
 
 local function assert_equal(actual, expected, message)
     if actual ~= expected then
@@ -181,6 +182,92 @@ local function run_layout_dirty_propagation_tests()
     stage:destroy()
 end
 
+local function run_ancestor_size_mutation_descendant_layout_tests()
+    local stage = UI.Stage.new({
+        width = 1400,
+        height = 900,
+    })
+    local page = UI.Column.new({
+        width = 500,
+        height = '70%',
+        padding = { 20, 20, 20, 20 },
+        gap = 20,
+        justify = 'start',
+        align = 'stretch',
+    })
+    local body = UI.Row.new({
+        width = 'fill',
+        height = 'fill',
+        gap = 20,
+        justify = 'start',
+        align = 'stretch',
+    })
+    local content = UI.Flow.new({
+        width = 'fill',
+        height = 'fill',
+        padding = { 20, 20, 20, 20 },
+        gap = 15,
+        wrap = true,
+        justify = 'start',
+        direction = 'ltr',
+    })
+    local sidebar = UI.Column.new({
+        width = '40%',
+        height = 'fill',
+        padding = { 20, 20, 20, 20 },
+        gap = 15,
+        justify = 'start',
+        align = 'stretch',
+    })
+    local header = UI.Row.new({
+        width = 'fill',
+        height = 140,
+        padding = { 20, 20, 20, 20 },
+        gap = 20,
+        justify = 'space-between',
+        align = 'center',
+    })
+    local footer = UI.Row.new({
+        width = 'fill',
+        height = 100,
+        padding = { 20, 20, 20, 20 },
+        gap = 10,
+        justify = 'center',
+        align = 'center',
+    })
+
+    body:addChild(content)
+    body:addChild(sidebar)
+    page:addChild(header)
+    page:addChild(body)
+    page:addChild(footer)
+    stage.baseSceneLayer:addChild(page)
+    stage:update()
+
+    page.width = '50%'
+
+    assert_true(body._layout_dirty,
+        'Ancestor width mutation should dirty descendant layout nodes that own child distribution')
+    stage:update()
+    assert_true(not body._layout_dirty,
+        'Stage.update should clean descendant layout nodes dirtied by ancestor size mutation')
+
+    local body_width = body:getLocalBounds().width
+    local content_width = content:getLocalBounds().width
+    local sidebar_width = sidebar:getLocalBounds().width
+
+    assert_equal(body_width, 660,
+        'Ancestor width mutation should resolve the row to the updated available width')
+    assert_equal(content_width, 376,
+        'Row should recompute fill-width children against the updated available width')
+    assert_equal(sidebar_width, 264,
+        'Row should recompute percentage-width siblings against the updated available width')
+    assert_true(content_width + sidebar_width <= body_width,
+        'Ancestor width mutation should not leave descendant row distribution stale after the next update')
+
+    stage:destroy()
+end
+
 local function run_draw_read_only_tests()
     local stage = Stage.new({ width = 320, height = 180 })
     local layout = TestLayout.new({
@@ -228,6 +315,7 @@ local M = {}
 function M.run()
     run_update_layout_order_tests()
     run_layout_dirty_propagation_tests()
+    run_ancestor_size_mutation_descendant_layout_tests()
     run_draw_read_only_tests()
 end
 

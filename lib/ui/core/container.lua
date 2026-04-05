@@ -95,6 +95,7 @@ function Container:invalidate_descendant_geometry()
         rawset(child, '_responsive_dirty', true)
         rawset(child, '_measurement_dirty', true)
         rawset(child, '_local_transform_dirty', true)
+        child:mark_layout_node_dirty()
         child:invalidate_world()
         child:invalidate_descendant_geometry()
     end
