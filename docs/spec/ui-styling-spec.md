@@ -403,6 +403,7 @@ The public border property family in this revision is:
 - `borderPattern`
 - `borderDashLength`
 - `borderGapLength`
+- `borderDashOffset`
 
 Borders are part of the styling contract for any root or named part whose owning component exposes border styling.
 
@@ -462,6 +463,7 @@ The border line contract in this revision includes:
 - `borderPattern`
 - `borderDashLength`
 - `borderGapLength`
+- `borderDashOffset`
 
 The purpose of these fields is:
 
@@ -471,6 +473,7 @@ The purpose of these fields is:
 - `borderPattern`: the border segmentation family
 - `borderDashLength`: the dash segment length in logical units when `borderPattern` is `"dashed"`
 - `borderGapLength`: the gap segment length in logical units when `borderPattern` is `"dashed"`
+- `borderDashOffset`: the dash phase offset in logical units when `borderPattern` is `"dashed"`
 
 Accepted values in this revision:
 
@@ -480,6 +483,7 @@ Accepted values in this revision:
 - `borderPattern: "solid" | "dashed"`
 - `borderDashLength: number`
 - `borderGapLength: number`
+- `borderDashOffset: number`
 
 `borderMiterLimit`:
 
@@ -510,6 +514,7 @@ Default values when not explicitly resolved:
 - `borderPattern = "solid"`
 - `borderDashLength = 8`
 - `borderGapLength = 6`
+- `borderDashOffset = 0`
 
 `borderDashLength`:
 
@@ -525,13 +530,22 @@ Default values when not explicitly resolved:
 - must be greater than or equal to zero
 - must not exceed 255
 
+`borderDashOffset`:
+
+- is numeric, expressed in logical units
+- must be finite
+
 The combined cycle (`borderDashLength + borderGapLength`) must not exceed 255 logical units. This ceiling aligns with the practical capacity of pattern-based rendering primitives and ensures consistent behavior across implementations.
 
-When `borderPattern = "solid"`, `borderDashLength` and `borderGapLength` are ignored.
+When `borderPattern = "solid"`, `borderDashLength`, `borderGapLength`, and `borderDashOffset` are ignored.
 
 When `borderPattern = "dashed"`:
 
 - the dashed border is resolved from cumulative distance along the rendered border perimeter rather than restarting the dash phase at each side boundary
+- `borderDashOffset` shifts dash phase along that same resolved perimeter
+- `borderDashOffset = 0` preserves the default dash start
+- positive `borderDashOffset` values advance the dash phase forward along the perimeter traversal used by this dashed-border contract
+- negative `borderDashOffset` values shift the dash phase in the opposite direction
 - a partial trailing dash is permitted when the perimeter length does not align with a whole cycle
 - a side with a resolved border width of zero paints nothing for that side regardless of pattern settings
 - `borderJoin` does not introduce join geometry across a dash gap
@@ -747,7 +761,7 @@ Hard-failure cases include:
 - negative width, blur, or radius where not permitted
 - invalid border line configuration
 - `borderPattern` outside the accepted enum set
-- non-finite `borderDashLength` or `borderGapLength`
+- non-finite `borderDashLength`, `borderGapLength`, or `borderDashOffset`
 - `borderDashLength <= 0`
 - `borderDashLength > 255`
 - `borderGapLength < 0`
