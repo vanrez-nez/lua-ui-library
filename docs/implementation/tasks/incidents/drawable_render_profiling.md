@@ -2,7 +2,7 @@
 
 This report profiles `demos/02-drawable/screens/alignments.lua` only.
 
-It is based on the pipeline described in `docs/implementation/drawable_render_fixed.md`, and it focuses on the render path from `Stage:draw()` downward.
+It is based on the pipeline described in `docs/implementation/tasks/incidents/drawable_render_fixed.md`, and it focuses on the render path from `Stage:draw()` downward.
 
 ## Scope
 
@@ -10,7 +10,7 @@ Profile target:
 - `demos/02-drawable/screens/alignments.lua`
 
 Pipeline reference:
-- `docs/implementation/drawable_render_fixed.md`
+- `docs/implementation/tasks/incidents/drawable_render_fixed.md`
 
 Measured report:
 - `tmp/drawable-timing-20260403-203731.txt`

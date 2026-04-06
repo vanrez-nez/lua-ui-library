@@ -531,11 +531,15 @@ When `borderPattern = "solid"`, `borderDashLength` and `borderGapLength` are ign
 
 When `borderPattern = "dashed"`:
 
-- each resolved side is patterned independently, starting with a dash at its own local origin
-- a partial trailing dash is permitted when the side length does not align with a whole cycle
+- the dashed border is resolved from cumulative distance along the rendered border perimeter rather than restarting the dash phase at each side boundary
+- a partial trailing dash is permitted when the perimeter length does not align with a whole cycle
 - a side with a resolved border width of zero paints nothing for that side regardless of pattern settings
 - `borderJoin` does not introduce join geometry across a dash gap
+- rounded corners participate in the same cumulative-distance model as straight border segments
 - rendered dash and gap lengths are the closest achievable approximation of the requested values; exact pixel-accurate fidelity is not guaranteed
+- this contract is loose enough to give implementations space to consider trade-offs between compliance to a specific visual requirement and performance; when native or pattern-based host primitives can satisfy this contract, implementations should prefer those native facilities first, and custom dashed-border construction remains a fallback when native primitives cannot satisfy the contract
+- when all resolved border widths are equal, implementations should preserve a continuous-path fast path rather than procedurally splitting geometry only to support rarer mixed-width cases
+- differing resolved border widths remain valid and may require a segmented fallback path when the continuous-path fast path cannot satisfy the full border contract
 
 `borderGapLength = 0` with `borderPattern = "dashed"` is valid and produces back-to-back dash segments with no visible gap. This is visually equivalent to `borderPattern = "solid"` and implementations may optimize this case accordingly.
 
