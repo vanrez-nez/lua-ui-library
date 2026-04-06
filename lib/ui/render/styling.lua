@@ -151,11 +151,6 @@ local function save_line_state(graphics)
     if Types.is_function(graphics.getLineStyle)   then s.style  = graphics.getLineStyle()  end
     if Types.is_function(graphics.getLineJoin)    then s.join   = graphics.getLineJoin()   end
     if Types.is_function(graphics.getMiterLimit)  then s.miter  = graphics.getMiterLimit() end
-    if Types.is_function(graphics.getLineStipple) then
-        local pat, rep = graphics.getLineStipple()
-        s.stipple_pattern = pat
-        s.stipple_repeat  = rep
-    end
     return s
 end
 
@@ -164,13 +159,6 @@ local function restore_line_state(graphics, s)
     if s.style ~= nil and Types.is_function(graphics.setLineStyle)  then graphics.setLineStyle(s.style)   end
     if s.join  ~= nil and Types.is_function(graphics.setLineJoin)   then graphics.setLineJoin(s.join)     end
     if s.miter ~= nil and Types.is_function(graphics.setMiterLimit) then graphics.setMiterLimit(s.miter)  end
-    if Types.is_function(graphics.setLineStipple) then
-        if s.stipple_pattern ~= nil then
-            graphics.setLineStipple(s.stipple_pattern, s.stipple_repeat)
-        else
-            graphics.setLineStipple()
-        end
-    end
 end
 
 -- Write the rounded rect silhouette into stencil buffer (value = 1).
@@ -431,18 +419,6 @@ end
 -- Border — center-aligned per spec §7.
 -- ---------------------------------------------------------------------------
 
--- Maps (dashLength, gapLength) to a (pattern, repeat) pair for the native
--- stipple API. Normalizes the dash ratio across 16 bits, then selects a repeat
--- factor to scale to the requested pixel lengths.
--- Pattern bits are read LSB-first, so lower bits correspond to earlier pixels.
-local function compute_stipple(dash_len, gap_len)
-    local total    = dash_len + gap_len
-    local rep      = math.max(1, math.min(255, math.ceil(total / 16)))
-    local dash_bits = math.max(1, math.min(15, math.floor(dash_len / rep + 0.5)))
-    local pat      = math.floor(2 ^ dash_bits) - 1
-    return pat, rep
-end
-
 local function draw_dashed_line(graphics, x1, y1, x2, y2, dash_len, gap_len)
     if not Types.is_function(graphics.line) then
         return
@@ -489,7 +465,7 @@ local function draw_dashed_arc(graphics, cx, cy, r, a1, a2, dash_len, gap_len)
     end
 
     if gap_len <= 0 then
-        graphics.arc('line', cx, cy, r, a1, a2)
+            graphics.arc('line', 'open', cx, cy, r, a1, a2)
         return
     end
 
@@ -501,6 +477,187 @@ local function draw_dashed_arc(graphics, cx, cy, r, a1, a2, dash_len, gap_len)
         local dash_a1 = a1 + direction * (offset / r)
         local dash_a2 = a1 + direction * (dash_end / r)
         graphics.arc('line', cx, cy, r, dash_a1, dash_a2)
+    end
+end
+
+local function draw_dashed_line_with_offset(graphics, x1, y1, x2, y2, dash_len, gap_len, offset)
+    if not Types.is_function(graphics.line) then
+        return
+    end
+
+    local dx = x2 - x1
+    local dy = y2 - y1
+    local length = math.sqrt((dx * dx) + (dy * dy))
+
+    if length <= 0 then
+        return
+    end
+
+    if gap_len <= 0 then
+        graphics.line(x1, y1, x2, y2)
+        return
+    end
+
+    local ux = dx / length
+    local uy = dy / length
+    local cycle = dash_len + gap_len
+    local distance = (offset % cycle) - cycle
+
+    while distance < length do
+        local dash_start = math.max(0, distance)
+        local dash_end = math.min(length, distance + dash_len)
+        if dash_end > dash_start then
+            graphics.line(
+                x1 + (ux * dash_start),
+                y1 + (uy * dash_start),
+                x1 + (ux * dash_end),
+                y1 + (uy * dash_end)
+            )
+        end
+        distance = distance + cycle
+    end
+end
+
+local function draw_dashed_arc_with_offset(graphics, cx, cy, r, a1, a2, dash_len, gap_len, offset)
+    if r <= 0 or not Types.is_function(graphics.arc) then
+        return
+    end
+
+    local span = a2 - a1
+    local arc_length = math.abs(span) * r
+
+    if arc_length <= 0 then
+        return
+    end
+
+    if gap_len <= 0 then
+        graphics.arc('line', 'open', cx, cy, r, a1, a2)
+        return
+    end
+
+    local direction = (span >= 0) and 1 or -1
+    local cycle = dash_len + gap_len
+    local distance = (offset % cycle) - cycle
+
+    while distance < arc_length do
+        local dash_start = math.max(0, distance)
+        local dash_end = math.min(arc_length, distance + dash_len)
+        if dash_end > dash_start then
+            local dash_a1 = a1 + direction * (dash_start / r)
+            local dash_a2 = a1 + direction * (dash_end / r)
+            graphics.arc('line', 'open', cx, cy, r, dash_a1, dash_a2)
+        end
+        distance = distance + cycle
+    end
+end
+
+local function draw_uniform_dashed_border(graphics, x, y, w, h, radii, line_width, dash_len, gap_len)
+    if line_width <= 0 then
+        return
+    end
+
+    if Types.is_function(graphics.setLineWidth) then
+        graphics.setLineWidth(line_width)
+    end
+
+    local tl = radii.tl or 0
+    local tr = radii.tr or 0
+    local br = radii.br or 0
+    local bl = radii.bl or 0
+    local pi = math.pi
+
+    local segments = {
+        {
+            kind = 'line',
+            x1 = x + tl, y1 = y,
+            x2 = x + w - tr, y2 = y,
+            length = math.max(0, w - tl - tr),
+        },
+        {
+            kind = 'arc',
+            cx = x + w - tr, cy = y + tr,
+            r = tr, a1 = -pi / 2, a2 = 0,
+            length = tr * (pi / 2),
+        },
+        {
+            kind = 'line',
+            x1 = x + w, y1 = y + tr,
+            x2 = x + w, y2 = y + h - br,
+            length = math.max(0, h - tr - br),
+        },
+        {
+            kind = 'arc',
+            cx = x + w - br, cy = y + h - br,
+            r = br, a1 = 0, a2 = pi / 2,
+            length = br * (pi / 2),
+        },
+        {
+            kind = 'line',
+            x1 = x + w - br, y1 = y + h,
+            x2 = x + bl, y2 = y + h,
+            length = math.max(0, w - br - bl),
+        },
+        {
+            kind = 'arc',
+            cx = x + bl, cy = y + h - bl,
+            r = bl, a1 = pi / 2, a2 = pi,
+            length = bl * (pi / 2),
+        },
+        {
+            kind = 'line',
+            x1 = x, y1 = y + h - bl,
+            x2 = x, y2 = y + tl,
+            length = math.max(0, h - bl - tl),
+        },
+        {
+            kind = 'arc',
+            cx = x + tl, cy = y + tl,
+            r = tl, a1 = pi, a2 = pi * 3 / 2,
+            length = tl * (pi / 2),
+        },
+    }
+
+    local perimeter = 0
+    for i = 1, #segments do
+        perimeter = perimeter + segments[i].length
+    end
+
+    if perimeter <= 0 then
+        return
+    end
+
+    local total = dash_len + gap_len
+    local adjusted_dash = dash_len
+    local adjusted_gap = gap_len
+    local dash_count = math.floor((perimeter / total) + 0.5)
+    if dash_count > 0 then
+        local adjusted_total = perimeter / dash_count
+        adjusted_dash = adjusted_total * (dash_len / total)
+        adjusted_gap = adjusted_total - adjusted_dash
+    end
+
+    local current_distance = 0
+    for i = 1, #segments do
+        local segment = segments[i]
+        if segment.length > 0 then
+            local segment_offset = -current_distance
+            if segment.kind == 'line' then
+                draw_dashed_line_with_offset(
+                    graphics,
+                    segment.x1, segment.y1,
+                    segment.x2, segment.y2,
+                    adjusted_dash, adjusted_gap, segment_offset
+                )
+            else
+                draw_dashed_arc_with_offset(
+                    graphics,
+                    segment.cx, segment.cy, segment.r,
+                    segment.a1, segment.a2,
+                    adjusted_dash, adjusted_gap, segment_offset
+                )
+            end
+            current_distance = current_distance + segment.length
+        end
     end
 end
 
@@ -517,9 +674,6 @@ local function apply_border_line_state(props, graphics)
     end
     if miter ~= nil and join == 'miter' and Types.is_function(graphics.setMiterLimit) then
         graphics.setMiterLimit(miter)
-    end
-    if Types.is_function(graphics.setLineStipple) then
-        graphics.setLineStipple()
     end
 end
 
@@ -557,8 +711,6 @@ local function paint_border(props, bounds, graphics, radii)
     local dash_len = props.borderDashLength or 8
     local gap_len = props.borderGapLength or 6
 
-    -- Dashed borders always use per-side rendering so each line() call resets
-    -- the stipple phase, satisfying the per-side dash-start contract (spec §7.4).
     if wt == wr and wr == wb and wb == wl and wt > 0
         and (not dashed or gap_len <= 0) then
         -- Uniform width — single rounded-rectangle stroke.
@@ -567,8 +719,10 @@ local function paint_border(props, bounds, graphics, radii)
         if Types.is_function(graphics.polygon) then
             graphics.polygon('line', pts)
         end
+    elseif dashed and wt == wr and wr == wb and wb == wl and wt > 0 then
+        draw_uniform_dashed_border(graphics, x, y, w, h, radii, wt, dash_len, gap_len)
     else
-        -- Per-side — draw each side and corner independently.
+        -- Mixed-width or segmented fallback path.
         local pi = math.pi
         local function draw_side_line(lw, x1, y1, x2, y2)
             if lw <= 0 then return end
@@ -585,7 +739,7 @@ local function paint_border(props, bounds, graphics, radii)
             if dashed then
                 draw_dashed_arc(graphics, cx, cy, r, a1, a2, dash_len, gap_len)
             elseif Types.is_function(graphics.arc) then
-                graphics.arc('line', cx, cy, r, a1, a2)
+                graphics.arc('line', 'open', cx, cy, r, a1, a2)
             end
         end
 
