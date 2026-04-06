@@ -1,0 +1,15 @@
+{
+  "proxyErrorLogs": true,
+  "inferLogTypes": true,
+  "autoDiscovery": true,
+  "autoDiscoverySearchDepth": 2,
+  "location": [
+    "demos/01-container",
+    "demos/02-drawable"
+  ],
+  "fileLogs": {
+    "enabled": true,
+    "outputFile": "love2d.log",
+    "logLines": 1000
+  }
+}
