@@ -225,6 +225,10 @@ local DRAWABLE_SCHEMA = {
         end
         return value
     end },
+    borderDashOffset = { validate = function(key, value, ctx, level)
+        check_finite_number(key, value, level)
+        return value
+    end },
 
     -- corner radius
     cornerRadius = { validate = function(key, value, ctx, level)

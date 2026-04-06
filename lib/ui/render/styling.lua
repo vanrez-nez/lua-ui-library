@@ -465,7 +465,7 @@ local function draw_dashed_arc(graphics, cx, cy, r, a1, a2, dash_len, gap_len)
     end
 
     if gap_len <= 0 then
-            graphics.arc('line', 'open', cx, cy, r, a1, a2)
+        graphics.arc('line', 'open', cx, cy, r, a1, a2)
         return
     end
 
@@ -476,7 +476,7 @@ local function draw_dashed_arc(graphics, cx, cy, r, a1, a2, dash_len, gap_len)
         local dash_end = math.min(offset + dash_len, arc_length)
         local dash_a1 = a1 + direction * (offset / r)
         local dash_a2 = a1 + direction * (dash_end / r)
-        graphics.arc('line', cx, cy, r, dash_a1, dash_a2)
+        graphics.arc('line', 'open', cx, cy, r, dash_a1, dash_a2)
     end
 end
 
@@ -506,6 +506,9 @@ local function draw_dashed_line_with_offset(graphics, x1, y1, x2, y2, dash_len, 
     while distance < length do
         local dash_start = math.max(0, distance)
         local dash_end = math.min(length, distance + dash_len)
+        if dash_end > dash_start and (dash_end - dash_start) < 1 then
+            dash_end = math.min(length, dash_start + 1)
+        end
         if dash_end > dash_start then
             graphics.line(
                 x1 + (ux * dash_start),
@@ -538,20 +541,24 @@ local function draw_dashed_arc_with_offset(graphics, cx, cy, r, a1, a2, dash_len
     local direction = (span >= 0) and 1 or -1
     local cycle = dash_len + gap_len
     local distance = (offset % cycle) - cycle
+    local arc_segments = math.max(32, math.ceil((arc_length / math.max(1, dash_len)) * 4))
 
     while distance < arc_length do
         local dash_start = math.max(0, distance)
         local dash_end = math.min(arc_length, distance + dash_len)
+        if dash_end > dash_start and (dash_end - dash_start) < 1 then
+            dash_end = math.min(arc_length, dash_start + 1)
+        end
         if dash_end > dash_start then
             local dash_a1 = a1 + direction * (dash_start / r)
             local dash_a2 = a1 + direction * (dash_end / r)
-            graphics.arc('line', 'open', cx, cy, r, dash_a1, dash_a2)
+            graphics.arc('line', 'open', cx, cy, r, dash_a1, dash_a2, arc_segments)
         end
         distance = distance + cycle
     end
 end
 
-local function draw_uniform_dashed_border(graphics, x, y, w, h, radii, line_width, dash_len, gap_len)
+local function draw_uniform_dashed_border(graphics, x, y, w, h, radii, line_width, dash_len, gap_len, phase_offset)
     if line_width <= 0 then
         return
     end
@@ -640,7 +647,7 @@ local function draw_uniform_dashed_border(graphics, x, y, w, h, radii, line_widt
     for i = 1, #segments do
         local segment = segments[i]
         if segment.length > 0 then
-            local segment_offset = -current_distance
+            local segment_offset = phase_offset - current_distance
             if segment.kind == 'line' then
                 draw_dashed_line_with_offset(
                     graphics,
@@ -710,6 +717,12 @@ local function paint_border(props, bounds, graphics, radii)
     local dashed = props.borderPattern == 'dashed'
     local dash_len = props.borderDashLength or 8
     local gap_len = props.borderGapLength or 6
+    local dash_offset = props.borderDashOffset or 0
+    local snap_dashed_motion = dashed and props.borderStyle == 'rough'
+
+    if snap_dashed_motion then
+        dash_offset = math.floor(dash_offset + 0.5)
+    end
 
     if wt == wr and wr == wb and wb == wl and wt > 0
         and (not dashed or gap_len <= 0) then
@@ -720,7 +733,7 @@ local function paint_border(props, bounds, graphics, radii)
             graphics.polygon('line', pts)
         end
     elseif dashed and wt == wr and wr == wb and wb == wl and wt > 0 then
-        draw_uniform_dashed_border(graphics, x, y, w, h, radii, wt, dash_len, gap_len)
+        draw_uniform_dashed_border(graphics, x, y, w, h, radii, wt, dash_len, gap_len, dash_offset)
     else
         -- Mixed-width or segmented fallback path.
         local pi = math.pi
@@ -728,7 +741,7 @@ local function paint_border(props, bounds, graphics, radii)
             if lw <= 0 then return end
             if Types.is_function(graphics.setLineWidth) then graphics.setLineWidth(lw) end
             if dashed then
-                draw_dashed_line(graphics, x1, y1, x2, y2, dash_len, gap_len)
+                draw_dashed_line_with_offset(graphics, x1, y1, x2, y2, dash_len, gap_len, dash_offset)
             elseif Types.is_function(graphics.line) then
                 graphics.line(x1, y1, x2, y2)
             end
@@ -737,7 +750,7 @@ local function paint_border(props, bounds, graphics, radii)
             if lw <= 0 or r <= 0 then return end
             if Types.is_function(graphics.setLineWidth) then graphics.setLineWidth(lw) end
             if dashed then
-                draw_dashed_arc(graphics, cx, cy, r, a1, a2, dash_len, gap_len)
+                draw_dashed_arc_with_offset(graphics, cx, cy, r, a1, a2, dash_len, gap_len, dash_offset)
             elseif Types.is_function(graphics.arc) then
                 graphics.arc('line', 'open', cx, cy, r, a1, a2)
             end
