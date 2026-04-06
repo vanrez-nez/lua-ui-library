@@ -541,7 +541,8 @@ local function draw_dashed_arc_with_offset(graphics, cx, cy, r, a1, a2, dash_len
     local direction = (span >= 0) and 1 or -1
     local cycle = dash_len + gap_len
     local distance = (offset % cycle) - cycle
-    local arc_segments = math.max(32, math.ceil((arc_length / math.max(1, dash_len)) * 4))
+    local target_step = math.max(0.5, math.min(dash_len * 0.5, 2))
+    local arc_segments = math.max(16, math.min(96, math.ceil(arc_length / target_step)))
 
     while distance < arc_length do
         local dash_start = math.max(0, distance)
