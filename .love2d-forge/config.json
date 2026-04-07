@@ -3,9 +3,14 @@
   "inferLogTypes": true,
   "autoDiscovery": true,
   "autoDiscoverySearchDepth": 2,
-  "location": [
+  "watcherScope": "project",
+  "locations": [
     "demos/01-container",
-    "demos/02-drawable"
+    "demos/02-shape",
+    "demos/03-drawable"
+  ],
+  "logFilter": [
+    "app"
   ],
   "fileLogs": {
     "enabled": true,
