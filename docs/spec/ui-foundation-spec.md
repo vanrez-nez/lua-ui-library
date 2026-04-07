@@ -162,7 +162,7 @@ The following artifacts are not components in this revision:
 
 | Tier | Qualifies when | Disqualifies when | Canonical examples |
 |------|----------------|-------------------|--------------------|
-| Primitive | The component has its own direct contract and is not defined primarily as arrangement of other named components | The component exists solely to arrange children, or solely to orchestrate runtime/context behavior without a retained visual/tree contract | `Container`, `Drawable`, `ScrollableContainer`, `Text` |
+| Primitive | The component has its own direct contract and is not defined primarily as arrangement of other named components | The component exists solely to arrange children, or solely to orchestrate runtime/context behavior without a retained visual/tree contract | `Container`, `Drawable`, `Shape`, `ScrollableContainer`, `Text` |
 | Composite | The component combines primitives or other composites into a higher-order semantic contract with named parts or slots | The component's contract is only generic layout, only runtime orchestration, or only an internal implementation detail of another component | `Button`, `Checkbox`, `Tabs`, `Modal`, `Alert` |
 | Layout | The component exists solely to measure, align, or place descendants and has no semantic control meaning of its own | The component owns activation, selection, text entry, scroll state, or runtime scene orchestration as its primary contract | `Stack`, `Row`, `Column`, `Flow`, `SafeAreaContainer` |
 | Utility | The component has no required visual output and primarily provides runtime, context, or orchestration behavior | The component's primary correctness depends on presenting semantic UI content or arranging ordinary descendants as its main job | `Stage`, `Scene`, `Composer` |
@@ -178,6 +178,7 @@ The following artifacts are not components in this revision:
 |-----------|------|---------------------|----------------------------|---------------|
 | `Container` | Primitive | tree membership, transforms, visibility, bounds, event ancestry, focus ancestry | drawing, semantic meaning, control state, product-specific behavior | fixed |
 | `Drawable` | Primitive | presentational surface, content box, alignment, render-effect participation | activation semantics, layout-family placement policy, business meaning | fixed |
+| `Shape` | Primitive | geometric retained presentation, fill rendering, and silhouette-aware containment | `Drawable` box-model semantics, styling families, render-effect participation, child-layout semantics | fixed |
 | `Stack` | Layout | layered child placement within one content box | sequential layout rules, overlay blocking, focus trapping | extensible through documented slots only |
 | `Row` | Layout | horizontal sequencing, gap resolution, cross-axis alignment | scrolling, tabular data semantics, child activation behavior | extensible through documented slots only |
 | `Column` | Layout | vertical sequencing, gap resolution, cross-axis alignment | scrolling, form semantics, child activation behavior | extensible through documented slots only |
@@ -322,6 +323,7 @@ Slot rules in this revision:
 
 - A slot exists only when the component Anatomy or grammar tables name it explicitly, or when the component family is declared to have an unnamed default descendant slot.
 - `Container`, `Drawable`, `Stack`, `Row`, `Column`, `Flow`, `SafeAreaContainer`, and `Scene` each expose an unnamed default descendant slot with ordered multiplicity.
+- `Shape` is a retained node but does not expose a consumer-fillable descendant slot in this revision.
 - `ScrollableContainer` exposes one required named `content` slot with single-fill multiplicity.
 - `Stage` exposes two runtime-owned named slots: `base scene layer` and `overlay layer`. Consumers do not fill these slots directly.
 - A slot may be filled either by direct retained-tree nesting or by a documented prop-backed structural region when the component contract names that prop as a structural surface.
@@ -597,6 +599,7 @@ Overriding propagation order is not stable public API in this revision. Consumer
 Foundation-level empty-state rules:
 
 - `Container`, `Drawable`, `Stack`, `Row`, `Column`, `Flow`, and `Scene` render nothing when they have zero eligible children; this is a valid empty state, not an error state.
+- `Shape` remains valid when detached or when sized to a degenerate area, but a zero-area shape may draw nothing and may expose no hittable silhouette.
 - `ScrollableContainer` with an empty content subtree remains valid, resolves zero content extent, and does not enter a scrolling state.
 - runtime roots such as `Stage` and `Composer` remain valid when no active scene content is present; they render no scene content and continue to maintain runtime ownership invariants.
 - the library does not inject default empty-state placeholder content for foundation components in this revision.
@@ -772,7 +775,7 @@ This document does not define the concrete control contracts in detail. Those ar
 
 This revision owns the following families:
 
-- Foundational primitives: `Container`, `Drawable`
+- Foundational primitives: `Container`, `Drawable`, `Shape`
 - Layout primitives: `Stack`, `Row`, `Column`, `Flow`, `SafeAreaContainer`
 - Scroll primitive: `ScrollableContainer`
 - Runtime primitives: `Stage`, `Scene`, `Composer`
@@ -975,7 +978,7 @@ ERRORS:
 
 **Composition rules**
 
-A `Container` may contain any number of child nodes, including other `Containers` and `Drawable`-derived components. A `Container` must not be placed inside a node that explicitly prohibits children.
+A `Container` may contain any number of child nodes, including other `Containers`, `Drawable`-derived components, and `Shape`-derived components. A `Container` must not be placed inside a node that explicitly prohibits children.
 
 Sibling draw order must resolve by:
 
@@ -1101,6 +1104,158 @@ STATE render_dirty
 - A `Drawable` with `opacity = 0` remains in the tree and retains hit-test participation unless additionally marked non-interactive.
 - A `Drawable` with a missing or invalid shader must fail deterministically.
 - A `Drawable` with a mask that references a missing asset must fail deterministically.
+
+#### 6.1.3 Shape
+
+**Purpose and contract**
+
+`Shape` is a render-capable geometric primitive. It extends `Container` with a
+fill-rendered silhouette and silhouette-aware point containment. `Shape` is
+parallel to `Drawable`, not a subtype of it.
+
+`Shape` must:
+
+- render a geometric silhouette in its own local bounds
+- participate in retained-tree targeting through the same `containsPoint`
+  vocabulary used by other interactive nodes
+- evaluate containment in inverse-transformed local space
+- remain narrow enough that its public surface is geometry and fill only in
+  this revision
+
+`Shape` must not:
+
+- inherit the `Drawable` content-box, spacing, internal alignment, styling, or
+  render-effect contract
+- expose stroke, border, shadow, skin, shader, mask, blend-mode, or
+  shape-aware clipping semantics in this revision
+- permit consumer child composition in this revision
+
+**Anatomy**
+
+- `root`: the shape node. Required.
+- `silhouette`: the local-space geometric region used for fill rendering and
+  point containment. Required.
+
+**Props and API surface**
+
+- `fillColor`
+- `fillOpacity: number`
+- `containsPoint(x, y) -> boolean`
+- `_contains_local_point(local_x, local_y) -> boolean`
+
+Approved concrete classes in this revision:
+
+- `RectShape`
+- `CircleShape`
+- `TriangleShape`
+- `DiamondShape`
+
+Default values:
+
+- `fillOpacity = 1`
+
+Public surface exclusions in this revision:
+
+- no `padding`, `padding*`, `margin`, `margin*`, `alignX`, or `alignY`
+- no `skin`, `shader`, `opacity`, `blendMode`, or `mask`
+- no `background*`, `border*`, `cornerRadius*`, or `shadow*`
+- no `strokeColor`, `strokeOpacity`, or `strokeWidth`
+
+**State model**
+
+STATE shape_clean
+
+  ENTRY:
+    1. Fill inputs and local geometry are current.
+    2. The shape's containment silhouette is current for the resolved bounds.
+
+  TRANSITIONS:
+    ON bounds, transform, or fill-input change:
+      1. Mark local geometry or draw inputs stale as required.
+      2. Reuse the ordinary `Container` dirty path for transform and bounds.
+      → shape_dirty
+
+STATE shape_dirty
+
+  ENTRY:
+    1. Fill or local-geometry data is stale.
+
+  TRANSITIONS:
+    ON next draw preparation or containment evaluation:
+      1. Resolve local geometry from the current bounds.
+      2. Resolve effective fill inputs.
+      → shape_clean
+
+**Containment contract**
+
+`Shape` uses the existing public containment method name:
+
+- `containsPoint(x, y)`
+
+`containsPoint(x, y)` accepts a world-space point. `Shape` must inverse-transform
+that point into the node's local space before evaluating the silhouette.
+
+The stable rule in this revision is:
+
+- inverse-transform first
+- local geometry test second
+
+`Shape` exposes the protected hook:
+
+- `_contains_local_point(local_x, local_y)`
+
+The base `Shape` behavior is rectangular containment against the node's local
+bounds. `RectShape` inherits that rectangular fallback unchanged.
+
+Concrete local-space geometry rules:
+
+- `RectShape` uses the full local bounds rectangle.
+- `CircleShape` uses the ellipse inscribed in the local bounds rectangle. When
+  `width == height`, the silhouette is a true circle; otherwise it is an
+  ellipse by explicit contract.
+- `TriangleShape` uses an upright isosceles triangle inscribed in local bounds
+  with vertices at top-center, bottom-right, and bottom-left.
+- `DiamondShape` uses the four edge midpoints of local bounds: top-center,
+  right-center, bottom-center, and left-center.
+
+Rotation, scale, skew, and pivot-driven transforms affect hit testing only
+through the inverse-transform step. The spec does not define world-space
+polygon hit testing as a separate path.
+
+**Accessibility contract**
+
+`Shape` inherits the accessibility contract of `Container`. It may participate
+in direct target resolution when interactive and enabled, but it does not add a
+separate accessibility naming contract in this revision.
+
+**Composition rules**
+
+`Shape` derives from `Container` for retained-tree membership, transforms,
+visibility, event ancestry, focus ancestry, clipping ancestry, and sibling
+z-order. Its layout footprint remains rectangular and matches its resolved
+local bounds, regardless of the visible silhouette.
+
+Even though `Shape` derives from `Container`, `Shape` is leaf-only in this
+revision. Attempting to attach consumer child nodes to a `Shape` is invalid
+configuration and must fail deterministically.
+
+When `clipChildren = true` is inherited from `Container`, descendant clipping
+remains rectangular and bounds-based. It does not follow the visible triangle,
+diamond, or ellipse silhouette.
+
+**Behavioral edge cases**
+
+- A `Shape` with a zero-area bounds box remains valid but may render no visible
+  pixels and may expose no hittable silhouette.
+- A `Shape` with `fillOpacity = 0` remains in the tree and retains hit-test
+  participation unless additionally marked non-interactive.
+- A `Shape` with non-rect geometry still occupies its full rectangular layout
+  footprint; transparent corners do not reduce layout size.
+- A `Shape` with `clipChildren = true` clips descendants to rectangular bounds,
+  not to the visible silhouette; authors must not rely on `Shape` as a
+  silhouette clip in this revision.
+- The drawn silhouette and the hit silhouette must match for each concrete
+  shape class in the same resolved local geometry.
 
 ### 6.2 Layout Family
 
@@ -1722,7 +1877,7 @@ Tier-specific position:
 |----------------|----------------------|-----------|
 | Runtime utilities | near headless | `Stage`, `Scene`, and `Composer` own runtime structure and orchestration, not branded appearance |
 | Structural and layout primitives | mostly headless | `Container`, layout primitives, and scroll ownership define composition and measurement; any appearance is optional and secondary |
-| Render-capable primitives | shared middle | `Drawable` defines a stable render-skin mechanism and part model while allowing consumer substitution of skins and tokens |
+| Render-capable primitives | shared middle | `Drawable` defines a stable render-skin mechanism and part model, while `Shape` defines a narrow fill-and-silhouette primitive outside the skinning system |
 | Concrete controls | shared middle leaning opinionated | controls expose stable visual parts and default skins so behavior remains legible and cross-component consistency is preserved, but consumers may replace most decorative appearance through the defined override surface |
 
 This position is not uniform across all components.
@@ -1823,7 +1978,7 @@ Per-family boundary:
 |--------|--------------------|--------------------|----------------------------------|
 | Runtime utilities | layer ownership, root boundaries, overlay separation | none by default | internal helper nodes are implementation detail |
 | Layout and structural primitives | child placement model, clip ownership, viewport ownership, content-box semantics | optional background, border, effect, and scrollbar decoration skins | internal helper layers are implementation detail |
-| Render-capable primitives | named renderable part surfaces and content-box contract | skin mode, tokens, textures, fonts, colors, border treatment, shader choice | internal draw order within a part is implementation detail unless a named part contract says otherwise |
+| Render-capable primitives | named renderable part surfaces, content-box contract for `Drawable`, and silhouette contract for `Shape` | skin mode, tokens, textures, fonts, colors, border treatment, shader choice, and `Shape` fill inputs | internal draw order within a part is implementation detail unless a named part contract says otherwise |
 | Concrete controls | required named parts, control-region separation, indicator/panel/surface roles, stable part names | all documented part skins, typography, decorative assets, and visual variants | internal wrapper hierarchy is implementation detail; consumers must not depend on undocumented helper parts |
 
 ### 8.6 Visual Inheritance Within Composition

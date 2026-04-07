@@ -27,7 +27,7 @@ This revision owns the following first-class graphics objects:
 
 The foundation contracts for render assets, token classes, failure semantics, render effects, theming, motion integration, and stability remain authoritative and are not redefined here.
 
-This document does not define styling properties such as background fill, border, corner radius, or shadow for any graphics object or retained primitive. Those visual property contracts are defined in [UI Styling Specification](./ui-styling-spec.md) and apply only to `Drawable`-based components.
+This document does not define styling properties such as background fill, border, corner radius, or shadow for any graphics object or retained primitive. Those visual property contracts are defined in [UI Styling Specification](./ui-styling-spec.md) and apply only to `Drawable`-based components. The fill-only `Shape` primitive defined by the foundation spec is outside that styling system.
 
 ## 4A. Graphics Object Classification And Identity
 
