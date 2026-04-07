@@ -1,0 +1,213 @@
+local DemoColors = require('demos.common.colors')
+
+local Setup = {}
+
+local function format_number(value)
+    if value == nil then
+        return 'nil'
+    end
+
+    if math.abs(value - math.floor(value)) < 0.001 then
+        return tostring(math.floor(value + 0.5))
+    end
+
+    return string.format('%.2f', value)
+end
+
+local function make_row(helpers, label, badges)
+    local row = {
+        label = label,
+        badges = {},
+    }
+
+    for index = 1, #badges do
+        local badge = badges[index]
+        row.badges[#row.badges + 1] = helpers.badge(badge[1], format_number(badge[2]))
+    end
+
+    return row
+end
+
+local function make_node_hint(helpers, node, base_rows, world_keys)
+    local rows = {}
+
+    for index = 1, #base_rows do
+        rows[#rows + 1] = base_rows[index]
+    end
+
+    if world_keys ~= nil then
+        local world = node:getWorldBounds()
+        local world_badges = {}
+
+        if world_keys.x then
+            world_badges[#world_badges + 1] = { 'x', world.x }
+        end
+
+        if world_keys.y then
+            world_badges[#world_badges + 1] = { 'y', world.y }
+        end
+
+        if world_keys.w then
+            world_badges[#world_badges + 1] = { 'w', world.width }
+        end
+
+        if world_keys.h then
+            world_badges[#world_badges + 1] = { 'h', world.height }
+        end
+
+        rows[#rows + 1] = make_row(helpers, 'bounds.world', world_badges)
+    end
+
+    return rows
+end
+
+local function find_required(root, id)
+    local node = root:findById(id, -1)
+    if node == nil then
+        error('anchors_setup: missing node "' .. id .. '"', 2)
+    end
+
+    return node
+end
+
+function Setup.install(args)
+    local helpers = args.helpers
+    local root = args.root
+    local stage = args.stage
+
+    local single_parent = find_required(root, 'anchors-single-parent')
+    local single_child = find_required(root, 'anchors-single-child')
+    local nested_parent = find_required(root, 'anchors-nested-parent')
+    local nested_child = find_required(root, 'anchors-nested-child')
+    local nested_grandchild = find_required(root, 'anchors-nested-grandchild')
+    local elapsed = 0
+
+    helpers.mark_box(
+        single_parent,
+        'Single',
+        DemoColors.rgba(DemoColors.roles.accent_blue_fill, 0.2),
+        DemoColors.roles.accent_blue_line
+    )
+    helpers.set_hint(single_parent, function(node)
+        local bounds = node:getLocalBounds()
+        return make_node_hint(helpers, node, {
+            make_row(helpers, 'dimensions', {
+                { 'width', bounds.width },
+                { 'height', bounds.height },
+            }),
+        }, { x = true, y = true, w = true, h = true })
+    end)
+
+    helpers.mark_box(
+        single_child,
+        'Single Child',
+        DemoColors.rgba(DemoColors.roles.accent_cyan_fill, 0.22),
+        DemoColors.roles.accent_cyan_line
+    )
+    helpers.set_markers(single_child, {
+        { type = 'anchor', color = DemoColors.roles.accent_highlight },
+        { type = 'pivot', color = DemoColors.roles.accent_red_line },
+    })
+    helpers.set_hint(single_child, function(node)
+        return make_node_hint(helpers, node, {
+            make_row(helpers, 'position', {
+                { 'x', node.x },
+                { 'y', node.y },
+            }),
+            make_row(helpers, 'anchor', {
+                { 'anchorX', node.anchorX },
+                { 'anchorY', node.anchorY },
+            }),
+        }, { x = true, y = true })
+    end)
+
+    helpers.mark_box(
+        nested_parent,
+        'Nested',
+        DemoColors.rgba(DemoColors.roles.accent_green_fill, 0.2),
+        DemoColors.roles.accent_green_line
+    )
+    helpers.set_hint(nested_parent, function(node)
+        local bounds = node:getLocalBounds()
+        return make_node_hint(helpers, node, {
+            make_row(helpers, 'dimensions', {
+                { 'width', bounds.width },
+                { 'height', bounds.height },
+            }),
+        }, { x = true, y = true, w = true, h = true })
+    end)
+
+    helpers.mark_box(
+        nested_child,
+        'Nested Child',
+        DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.24),
+        DemoColors.roles.accent_amber_line
+    )
+    helpers.set_markers(nested_child, {
+        { type = 'anchor', color = DemoColors.roles.accent_highlight },
+    })
+    helpers.set_hint(nested_child, function(node)
+        return make_node_hint(helpers, node, {
+            make_row(helpers, 'position', {
+                { 'x', node.x },
+                { 'y', node.y },
+            }),
+            make_row(helpers, 'anchor', {
+                { 'anchorX', node.anchorX },
+                { 'anchorY', node.anchorY },
+            }),
+        }, { x = true, y = true })
+    end)
+
+    helpers.mark_box(
+        nested_grandchild,
+        'Nested Grandchild',
+        DemoColors.rgba(DemoColors.roles.accent_red_fill, 0.24),
+        DemoColors.roles.accent_red_line
+    )
+    helpers.set_markers(nested_grandchild, {
+        { type = 'anchor', color = DemoColors.roles.accent_highlight },
+        { type = 'pivot', color = DemoColors.roles.accent_red_line },
+    })
+    helpers.set_hint(nested_grandchild, function(node)
+        return make_node_hint(helpers, node, {
+            make_row(helpers, 'position', {
+                { 'x', node.x },
+                { 'y', node.y },
+            }),
+            make_row(helpers, 'anchor', {
+                { 'anchorX', node.anchorX },
+                { 'anchorY', node.anchorY },
+            }),
+        }, { x = true, y = true })
+    end)
+
+    rawset(stage, '_demo_screen_hooks', {
+        update = function(dt)
+            elapsed = elapsed + dt
+
+            local screen_width = love.graphics.getWidth()
+            local screen_height = love.graphics.getHeight()
+            local gap = 70
+
+            single_parent.width = helpers.round(250 + (math.sin(elapsed * 1.1) * 50))
+            single_parent.height = helpers.round(250 + (math.cos(elapsed * 0.9) * 40))
+            nested_parent.width = helpers.round(300 + (math.cos(elapsed * 1.0) * 60))
+            nested_parent.height = helpers.round(250 + (math.sin(elapsed * 1.1) * 40))
+
+            local total_width = single_parent.width + gap + nested_parent.width
+            local base_x = helpers.round((screen_width - total_width) * 0.5)
+
+            single_parent.x = base_x
+            nested_parent.x = base_x + single_parent.width + gap
+
+            single_parent.y = helpers.round((screen_height - single_parent.height) * 0.5)
+            nested_parent.y = helpers.round((screen_height - nested_parent.height) * 0.5)
+
+            single_child.rotation = math.sin(elapsed * 1.4) * 0.3
+            nested_grandchild.rotation = math.cos(elapsed * 1.7) * 0.42
+        end,
+    })
+end
+
+return Setup
