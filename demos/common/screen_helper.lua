@@ -257,9 +257,34 @@ function ScreenHelper.set_markers(node, markers)
     return node
 end
 
+local function collect_live_demo_opts(node)
+    return {
+        x = node.x,
+        y = node.y,
+        width = node.width,
+        height = node.height,
+        minWidth = node.minWidth,
+        maxWidth = node.maxWidth,
+        minHeight = node.minHeight,
+        maxHeight = node.maxHeight,
+        anchorX = node.anchorX,
+        anchorY = node.anchorY,
+        pivotX = node.pivotX,
+        pivotY = node.pivotY,
+        scaleX = node.scaleX,
+        scaleY = node.scaleY,
+        rotation = node.rotation,
+        skewX = node.skewX,
+        skewY = node.skewY,
+        visible = node.visible,
+        clipChildren = node.clipChildren,
+        zIndex = node.zIndex,
+    }
+end
+
 function ScreenHelper.get_hint_entries(node)
     return Hint.resolve_entries(node, function(current)
-        local opts = rawget(current, '_demo_opts') or {}
+        local opts = collect_live_demo_opts(current)
         local local_bounds = current:getLocalBounds()
         local world_bounds = current:getWorldBounds()
         local hint_fields = rawget(current, '_demo_hint_fields') or {}
@@ -366,7 +391,7 @@ function ScreenHelper.draw_demo_node(graphics, node)
 end
 
 function ScreenHelper.draw_demo_markers(graphics, node)
-    if not rawget(node, '_demo_box') or not ScreenHelper.is_visible(node) then
+    if not ScreenHelper.is_visible(node) then
         return
     end
 
@@ -422,7 +447,11 @@ function ScreenHelper.screen_wrapper(owner, helpers, build)
 
     return function(index, scope)
         local stage = ScreenHelper.make_stage()
-        local state = build(scope, stage)
+        local build_state = build(scope, stage) or {}
+        local state = {
+            title = build_state.title,
+            description = build_state.description,
+        }
 
         install_companion_setup(build, {
             scope = scope,
