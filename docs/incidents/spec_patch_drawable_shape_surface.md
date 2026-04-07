@@ -2,7 +2,16 @@
 
 ## Status
 
-Draft only. No direct changes have been applied to `docs/spec`.
+Historical patch context only.
+
+The accepted implementation and current planning authority now live in:
+
+- `docs/spec/ui-foundation-spec.md`
+- `docs/implementation/phase-18-shape-primitive.md`
+- `docs/implementation/tasks/phase-18/*`
+
+This document is retained to explain why the project moved shape support out of
+`Drawable`, but it is no longer the current implementation plan.
 
 This patch draft supersedes the earlier direction that placed shape support on
 `Drawable`.

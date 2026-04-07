@@ -52,3 +52,12 @@ Task order:
 5. `04-concrete-nonrect-shapes.md`
 6. `05-acceptance-demo-and-doc-sync.md`
 
+Historical note:
+
+- Tasks `00` through `05` are retained as the implementation record for Phase
+  18.
+- Once the phase is implemented, use `docs/spec/ui-foundation-spec.md` and
+  `docs/implementation/phase-18-shape-primitive.md` as the current guidance.
+- `docs/incidents/spec_patch_drawable_shape_surface.md` remains useful as
+  historical rationale for the `Shape` boundary, not as the live implementation
+  checklist.
