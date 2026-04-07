@@ -37,7 +37,6 @@ return function(owner, helpers)
                 backgroundColor = { 107, 235, 250, 204 },
                 borderColor = { 107, 235, 250 },
                 borderWidth = 1,
-                cornerRadius = 999,
             })
 
             local right_circle = Drawable.new({
@@ -49,7 +48,6 @@ return function(owner, helpers)
                 backgroundColor = { 195, 143, 250, 204 },
                 borderColor = { 195, 143, 250 },
                 borderWidth = 1,
-                cornerRadius = 999,
             })
 
             opacity_subtree:addChild(left_circle)
