@@ -23,6 +23,7 @@ local CASES = {
         label    = 'dashed + smooth',
         pattern  = 'dashed',
         style    = 'smooth',
+        dash_offset = 5,
         x        = 280,
         y        = 440,
         fill     = DemoColors.rgba(DemoColors.roles.accent_amber_fill, 0.15),
@@ -32,6 +33,7 @@ local CASES = {
         label    = 'dashed + rough',
         pattern  = 'dashed',
         style    = 'rough',
+        dash_offset = -5,
         x        = 720,
         y        = 440,
         fill     = DemoColors.rgba(DemoColors.roles.accent_violet_fill, 0.15),
@@ -42,7 +44,6 @@ local CASES = {
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Shows the four orthogonal combinations of borderPattern (solid/dashed) and borderStyle (smooth/rough). Dash length 8, gap length 6.',
         function(scope, stage)
             local root = stage.baseSceneLayer
 
@@ -62,6 +63,7 @@ return function(owner, helpers)
                 if case.pattern == 'dashed' then
                     props.borderDashLength = 8
                     props.borderGapLength  = 6
+                    props.borderDashOffset = case.dash_offset or 0
                 end
                 local node = helpers.make_node(scope, root, props, case.label, case.fill, case.line)
                 helpers.set_hint(node, function(current)
@@ -73,6 +75,7 @@ return function(owner, helpers)
                     if current.borderPattern == 'dashed' then
                         badges[#badges + 1] = helpers.badge('borderDashLength', helpers.format_scalar(current.borderDashLength or 8))
                         badges[#badges + 1] = helpers.badge('borderGapLength',  helpers.format_scalar(current.borderGapLength  or 6))
+                        badges[#badges + 1] = helpers.badge('borderDashOffset', helpers.format_scalar(current.borderDashOffset or 0))
                     end
                     return {
                         {

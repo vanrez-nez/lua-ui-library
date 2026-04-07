@@ -62,7 +62,6 @@ end
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Shows scaleX and scaleY at direct and nested levels.',
         function(scope, stage)
             local root = stage.baseSceneLayer
             local elapsed = 0

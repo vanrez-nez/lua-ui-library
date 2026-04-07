@@ -3,7 +3,6 @@ local DemoColors = require('demos.common.colors')
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Parent / child bounds, local versus world coordinates, and retained tree structure.',
         function(scope, stage)
             local root = stage.baseSceneLayer
             local origin = helpers.random_root_position(520, 260, 120)

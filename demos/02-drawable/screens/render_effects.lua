@@ -132,7 +132,6 @@ end
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Compares the shared retained render path for subtree opacity and blendMode using the same layered drawable content in each panel.',
         function(scope, stage)
             local root = stage.baseSceneLayer
 

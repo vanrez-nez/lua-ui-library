@@ -3,7 +3,6 @@ local DemoColors = require('demos.common.colors')
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Uses a demo-local harness trigger to inspect Drawable motion descriptors because bare Drawable does not own a built-in interaction phase.',
         function(scope, stage)
             local root = stage.baseSceneLayer
             local elapsed = 0

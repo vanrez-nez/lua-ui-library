@@ -3,7 +3,6 @@ local DemoColors = require('demos.common.colors')
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Clamp behavior driven by resizing parents.',
         function(scope, stage)
             local root = stage.baseSceneLayer
             local parent_gap = 56

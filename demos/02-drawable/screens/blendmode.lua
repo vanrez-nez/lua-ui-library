@@ -9,7 +9,6 @@ local CASES = {
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Shows the configured Drawable.blendMode values while the retained render-effects screen demonstrates the visible subtree compositing result.',
         function(scope, stage)
             local root = stage.baseSceneLayer
 

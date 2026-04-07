@@ -62,7 +62,6 @@ end
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Shows anchor placement at direct and nested levels while parents resize.',
         function(scope, stage)
             local root = stage.baseSceneLayer
             local elapsed = 0

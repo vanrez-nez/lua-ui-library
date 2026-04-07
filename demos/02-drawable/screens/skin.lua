@@ -21,7 +21,6 @@ local CASES = {
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Keeps skin resolution on the Drawable surface visible as stored data without turning the demo into a theme-system showcase.',
         function(scope, stage)
             local root = stage.baseSceneLayer
 

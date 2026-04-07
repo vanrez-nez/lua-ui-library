@@ -62,7 +62,6 @@ end
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Shows pivot-driven rotation on direct and nested nodes.',
         function(scope, stage)
             local root = stage.baseSceneLayer
             local elapsed = 0

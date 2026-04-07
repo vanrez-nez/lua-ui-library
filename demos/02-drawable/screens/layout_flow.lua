@@ -8,7 +8,6 @@ return function(owner, helpers)
 
     return helpers.screen_wrapper(
         owner,
-        description,
         function(scope, stage)
             local root = stage.baseSceneLayer
 

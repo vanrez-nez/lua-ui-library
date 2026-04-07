@@ -3,7 +3,6 @@ local DemoColors = require('demos.common.colors')
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Overflow and clipping behavior on plain Container nodes.',
         function(scope, stage)
             local root = stage.baseSceneLayer
             local parent_width = 220

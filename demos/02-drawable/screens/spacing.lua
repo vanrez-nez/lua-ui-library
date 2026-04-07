@@ -10,7 +10,6 @@ local Stack = UI.Stack
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Use the selectors to compare one Drawable under different parent contracts. Padding always changes the Drawable itself. Margin only changes placement when the selected parent layout consumes it.',
         function(scope, stage)
             local root = stage.baseSceneLayer
 

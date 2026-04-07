@@ -355,8 +355,8 @@ function ScreenHelpers.draw_demo_markers(graphics, node)
     end
 end
 
-function ScreenHelpers.screen_wrapper(owner, description, build)
-    return ScreenHelper.screen_wrapper(owner, ScreenHelpers, description, build)
+function ScreenHelpers.screen_wrapper(owner, build)
+    return ScreenHelper.screen_wrapper(owner, ScreenHelpers, build)
 end
 
 return ScreenHelpers

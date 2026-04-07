@@ -36,7 +36,6 @@ end
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Shows every valid Drawable alignment combination using only the Drawable bounds and the resolved sample box.',
         function(scope, stage)
             local root = stage.baseSceneLayer
 

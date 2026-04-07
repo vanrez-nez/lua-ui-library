@@ -3,7 +3,6 @@ local DemoColors = require('demos.common.colors')
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Visibility behavior without mixing in later control systems.',
         function(scope, stage)
             local root = stage.baseSceneLayer
             local elapsed = 0

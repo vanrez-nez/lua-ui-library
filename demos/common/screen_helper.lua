@@ -410,16 +410,14 @@ function ScreenHelper.sync_stage(stage)
     stage:update(0)
 end
 
-function ScreenHelper.screen_wrapper(owner, helpers, description, build)
+function ScreenHelper.screen_wrapper(owner, helpers, build)
     if type(helpers) ~= 'table' then
-        build = description
-        description = helpers
+        build = helpers
         helpers = ScreenHelper
     end
 
-    if type(description) == 'function' and build == nil then
-        build = description
-        description = nil
+    if type(build) ~= 'function' then
+        error('screen_wrapper no longer accepts a description argument; return description from the screen state table', 2)
     end
 
     return function(index, scope)
@@ -439,10 +437,6 @@ function ScreenHelper.screen_wrapper(owner, helpers, description, build)
         local info_index = nil
         local screen_title = state.title or 'No Title'
         local header_description = state.description
-
-        if header_description == nil then
-            header_description = description
-        end
 
         if state.sidebar ~= nil then
             info_index = owner:add_info_item(state.sidebar_title or screen_title, {})

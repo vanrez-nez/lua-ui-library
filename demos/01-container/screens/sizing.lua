@@ -3,7 +3,6 @@ local DemoColors = require('demos.common.colors')
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        'Fixed sizing, stage-direct fill sizing, and percentage sizing.',
         function(scope, stage)
             local root = stage.baseSceneLayer
 
