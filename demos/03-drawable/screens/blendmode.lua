@@ -1,7 +1,7 @@
 local DemoColors = require('demos.common.colors')
 
 local CASES = {
-    { label = 'Alpha', value = 'alpha', x = 170 },
+    { label = 'Normal', value = 'normal', x = 170 },
     { label = 'Add', value = 'add', x = 480 },
     { label = 'Multiply', value = 'multiply', x = 790 },
 }

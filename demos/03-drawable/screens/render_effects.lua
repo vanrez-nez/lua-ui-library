@@ -5,17 +5,17 @@ local Drawable = UI.Drawable
 
 local CASES = {
     {
-        label = 'Alpha',
+        label = 'Normal',
         x = 120,
         opacity = 1,
-        blendMode = 'alpha',
+        blendMode = 'normal',
         line = DemoColors.roles.accent_blue_line,
     },
     {
         label = 'Soft',
         x = 430,
         opacity = 0.45,
-        blendMode = 'alpha',
+        blendMode = 'normal',
         line = DemoColors.roles.accent_cyan_line,
     },
     {
