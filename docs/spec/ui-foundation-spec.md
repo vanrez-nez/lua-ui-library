@@ -854,6 +854,30 @@ children and are outside the lookup contract.
 - `findById(id, depth?) -> Container | nil`
 - `findByTag(tag, depth?) -> Container[]`
 
+Anchor and pivot semantics:
+
+- `pivotX` and `pivotY` define the node's local transform origin. Rotation,
+  scaling, and skewing occur relative to this pivot.
+- `anchorX` and `anchorY` define the node's parent-relative attachment basis.
+  They determine how the node attaches to or is measured from its parent region.
+
+`pivotX` and `pivotY` are normalized local-space coefficients, not absolute
+offsets.
+`anchorX` and `anchorY` are normalized parent-space coefficients, not absolute
+offsets.
+
+Default pivot values:
+
+- `pivotX = 0.5`
+- `pivotY = 0.5`
+
+Default anchor values:
+
+- `anchorX = 0.0`
+- `anchorY = 0.0`
+
+These defaults are part of the stable public `Container` surface.
+
 Trace note: clarified that the accepted `width` and `height` surface is stable at first publication. Implementation phases may stage resolution-path completion, but they must not narrow the accepted prop domain.
 
 **Identity, naming, tagging, and lookup**
