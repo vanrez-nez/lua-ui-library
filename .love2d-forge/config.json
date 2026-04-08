@@ -4,13 +4,14 @@
   "autoDiscovery": true,
   "autoDiscoverySearchDepth": 2,
   "watcherScope": "project",
+  "watchExclude": ["docs/**", "spec/**"],
   "locations": [
     "demos/01-container",
     "demos/02-shape",
     "demos/03-drawable"
   ],
   "logFilter": [
-    "app"
+    "app", "error"
   ],
   "fileLogs": {
     "enabled": true,
