@@ -23,6 +23,28 @@ local function assert_contains(values, needle, message)
     error(message .. ': missing "' .. tostring(needle) .. '"', 2)
 end
 
+local function assert_not_contains(values, needle, message)
+    for index = 1, #values do
+        if values[index] == needle then
+            error(message .. ': unexpected "' .. tostring(needle) .. '"', 2)
+        end
+    end
+end
+
+local function assert_error(fn, needle, message)
+    local ok, err = pcall(fn)
+
+    if ok then
+        error(message .. ': expected an error', 2)
+    end
+
+    local text = tostring(err)
+    if needle and not text:find(needle, 1, true) then
+        error(message .. ': expected error containing "' .. needle ..
+            '", got "' .. text .. '"', 2)
+    end
+end
+
 local function make_fake_graphics()
     local graphics = {
         calls = {},
@@ -220,6 +242,70 @@ local function run_motion_shape_opacity_tests()
         'Motion-owned Shape opacity should modulate isolated subtree compositing alpha')
 end
 
+local function run_shape_root_shader_and_blend_mode_tests()
+    local shape = UI.RectShape.new({
+        tag = 'shape',
+        width = 70,
+        height = 35,
+        shader = { id = 'shape-fx' },
+        blendMode = 'screen',
+    })
+    local graphics = make_fake_graphics()
+
+    shape:_draw_subtree(graphics, function(node)
+        node:draw(graphics)
+    end)
+
+    assert_contains(graphics.calls, 'set_canvas:canvas-1',
+        'Shape root shader and blendMode should isolate subtree rendering through the shared capability surface')
+    assert_contains(graphics.calls, 'shader:shape-fx',
+        'Shape root shader should be applied during isolated subtree compositing')
+    assert_contains(graphics.calls, 'blend:screen:alphamultiply',
+        'Shape root blendMode should be applied during isolated subtree compositing')
+end
+
+local function run_shape_default_root_compositing_fast_path_tests()
+    local shape = UI.RectShape.new({
+        tag = 'shape',
+        width = 70,
+        height = 35,
+        blendMode = 'normal',
+    })
+    local graphics = make_fake_graphics()
+    local draw_order = {}
+
+    shape:_draw_subtree(graphics, function(node)
+        draw_order[#draw_order + 1] = node.tag
+    end)
+
+    assert_equal(#draw_order, 1,
+        'Shape default root compositing state should still traverse the node')
+    assert_equal(#graphics.calls, 0,
+        'Shape default root compositing state should stay on the fast path without canvas or graphics-state mutation')
+    assert_not_contains(graphics.calls, 'set_canvas:canvas-1',
+        'Shape default root compositing state should not isolate the subtree')
+end
+
+local function run_shape_shader_capability_failure_tests()
+    local shape = UI.RectShape.new({
+        tag = 'shape',
+        width = 70,
+        height = 35,
+        shader = { id = 'shape-fx' },
+    })
+    local graphics = make_fake_graphics()
+
+    graphics.setShader = nil
+    graphics.getShader = nil
+
+    assert_error(function()
+        shape:_draw_subtree(graphics, function(node)
+            node:draw(graphics)
+        end)
+    end, 'graphics adapter must support setShader for root shader compositing',
+        'Shape root shader should fail deterministically when the graphics adapter cannot install shaders')
+end
+
 local function run_zero_opacity_targeting_tests()
     local shape = UI.RectShape.new({
         width = 40,
@@ -235,6 +321,9 @@ end
 local function run()
     run_direct_shape_opacity_tests()
     run_motion_shape_opacity_tests()
+    run_shape_root_shader_and_blend_mode_tests()
+    run_shape_default_root_compositing_fast_path_tests()
+    run_shape_shader_capability_failure_tests()
     run_zero_opacity_targeting_tests()
 end
 

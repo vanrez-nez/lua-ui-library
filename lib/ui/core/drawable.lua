@@ -12,6 +12,12 @@ local min = math.min
 
 local Drawable = Container:extends('Drawable')
 
+Drawable._root_compositing_capabilities = {
+    opacity = true,
+    shader = true,
+    blendMode = true,
+}
+
 function Drawable.__index(self, key)
     local val = Container._walk_hierarchy(getmetatable(self), key)
     if val ~= nil then return val end

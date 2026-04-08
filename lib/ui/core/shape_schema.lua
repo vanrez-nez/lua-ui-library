@@ -1,17 +1,12 @@
 local Assert = require('lib.ui.utils.assert')
 local Color = require('lib.ui.render.color')
+local GraphicsValidation = require('lib.ui.render.graphics_validation')
 local SpacingSchema = require('lib.ui.core.spacing_schema')
 
 local check_finite_number = SpacingSchema.check_finite_number
 
 local function validate_opacity(key, value, _, level)
-    check_finite_number(key, value, level)
-
-    if value < 0 or value > 1 then
-        Assert.fail(key .. ' must be in [0, 1], got ' .. value, level or 1)
-    end
-
-    return value
+    return GraphicsValidation.validate_opacity(key, value, nil, level)
 end
 
 local function validate_fill_color(_, value, _, _)
@@ -76,6 +71,14 @@ end
 return {
     fillColor = { validate = validate_fill_color, default = { 1, 1, 1, 1 } },
     fillOpacity = { validate = validate_opacity, default = 1 },
+    fillGradient = { validate = GraphicsValidation.validate_gradient },
+    fillTexture = { validate = GraphicsValidation.validate_texture_or_sprite_source },
+    fillRepeatX = { type = 'boolean', default = false },
+    fillRepeatY = { type = 'boolean', default = false },
+    fillOffsetX = { validate = GraphicsValidation.validate_numeric_offset, default = 0 },
+    fillOffsetY = { validate = GraphicsValidation.validate_numeric_offset, default = 0 },
+    fillAlignX = { validate = GraphicsValidation.validate_source_align, default = 'center' },
+    fillAlignY = { validate = GraphicsValidation.validate_source_align, default = 'center' },
     strokeColor = { validate = validate_fill_color },
     strokeOpacity = { validate = validate_opacity, default = 1 },
     strokeWidth = { validate = validate_stroke_width, default = 0 },
@@ -86,5 +89,13 @@ return {
     strokeDashLength = { validate = validate_positive_finite, default = 8 },
     strokeGapLength = { validate = validate_non_negative_finite, default = 4 },
     strokeDashOffset = { validate = check_finite_number, default = 0 },
-    opacity = { validate = validate_opacity, default = 1 },
+    shader = { validate = GraphicsValidation.validate_root_shader },
+    opacity = {
+        validate = GraphicsValidation.validate_root_opacity,
+        default = GraphicsValidation.ROOT_OPACITY_DEFAULT,
+    },
+    blendMode = {
+        validate = GraphicsValidation.validate_root_blend_mode,
+        default = GraphicsValidation.ROOT_BLEND_MODE_DEFAULT,
+    },
 }

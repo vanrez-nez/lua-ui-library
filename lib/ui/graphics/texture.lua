@@ -63,6 +63,10 @@ function Texture:getHeight()
     return rawget(self, 'height')
 end
 
+function Texture:getIntrinsicDimensions()
+    return self:getWidth(), self:getHeight()
+end
+
 function Texture:getDrawable()
     return rawget(self, 'source')
 end

@@ -47,6 +47,36 @@ local function assert_contains(values, needle, message)
     error(message .. ': missing "' .. tostring(needle) .. '"', 2)
 end
 
+local function assert_not_contains(values, needle, message)
+    for index = 1, #values do
+        if values[index] == needle then
+            error(message .. ': unexpected "' .. tostring(needle) .. '"', 2)
+        end
+    end
+end
+
+local function find_index(values, needle)
+    for index = 1, #values do
+        if values[index] == needle then
+            return index
+        end
+    end
+
+    return nil
+end
+
+local function count_prefix(values, prefix)
+    local count = 0
+
+    for index = 1, #values do
+        if values[index]:sub(1, #prefix) == prefix then
+            count = count + 1
+        end
+    end
+
+    return count
+end
+
 local function get_world_origin(node)
     local bounds = node:getWorldBounds()
     return bounds.x, bounds.y
@@ -216,7 +246,7 @@ local function run_public_surface_tests()
         skin = skin,
         shader = shader,
         opacity = 0.35,
-        blendMode = 'alpha',
+        blendMode = 'normal',
         mask = mask,
     })
 
@@ -233,7 +263,7 @@ local function run_public_surface_tests()
     assert_equal(node.skin, skin, 'Drawable should preserve skin by reference')
     assert_equal(node.shader, shader, 'Drawable should preserve shader by reference')
     assert_equal(node.opacity, 0.35, 'Drawable should preserve opacity')
-    assert_equal(node.blendMode, 'alpha', 'Drawable should preserve blendMode')
+    assert_equal(node.blendMode, 'normal', 'Drawable should preserve blendMode')
     assert_equal(node.mask, mask, 'Drawable should preserve mask by reference')
     assert_equal(node.focused, nil,
         'Drawable should not expose a persistent public focused property')
@@ -518,6 +548,28 @@ local function run_visual_effect_isolation_tests()
         'Drawable visual effects should not suppress hit targeting by themselves')
 end
 
+local function run_default_root_compositing_fast_path_tests()
+    local root = Drawable.new({
+        tag = 'root',
+        width = 100,
+        height = 60,
+        blendMode = 'normal',
+    })
+    local graphics = make_fake_graphics()
+    local order = {}
+
+    root:_draw_subtree(graphics, function(node)
+        order[#order + 1] = node.tag
+    end)
+
+    assert_equal(#order, 1,
+        'Drawable default root compositing state should still traverse the node')
+    assert_equal(#graphics.calls, 0,
+        'Drawable default root compositing state should not mutate graphics state or allocate a canvas')
+    assert_not_contains(graphics.calls, 'set_canvas:canvas-1',
+        'Drawable default root compositing state should not isolate the subtree')
+end
+
 local function run_multiply_blend_mode_tests()
     local root = Drawable.new({
         tag = 'root',
@@ -532,6 +584,110 @@ local function run_multiply_blend_mode_tests()
 
     assert_contains(graphics.calls, 'blend:multiply:premultiplied',
         'Drawable multiply blendMode should use premultiplied alpha during isolated subtree compositing')
+end
+
+local function run_nested_isolation_stack_tests()
+    local root = Drawable.new({
+        tag = 'root',
+        width = 100,
+        height = 60,
+        opacity = 0.5,
+    })
+    local child = UI.RectShape.new({
+        tag = 'child',
+        width = 40,
+        height = 20,
+        blendMode = 'screen',
+    })
+    local graphics = make_fake_graphics()
+
+    root:addChild(child)
+    root:_draw_subtree(graphics, function()
+    end)
+
+    assert_contains(graphics.calls, 'set_canvas:canvas-1',
+        'Parent isolation should push the first composition target')
+    assert_contains(graphics.calls, 'set_canvas:canvas-2',
+        'Nested child isolation should push a second composition target')
+    assert_contains(graphics.calls, 'draw:canvas-2:0.00:0.00:0.00:1.00:1.00:0.00:0.00',
+        'Nested isolated children should composite back into the immediate parent target')
+    assert_contains(graphics.calls, 'draw:canvas-1:0.00:0.00:0.00:1.00:1.00:0.00:0.00',
+        'The parent isolated subtree should then composite back into its own parent target')
+    assert_true(
+        find_index(graphics.calls, 'draw:canvas-2:0.00:0.00:0.00:1.00:1.00:0.00:0.00') <
+            find_index(graphics.calls, 'draw:canvas-1:0.00:0.00:0.00:1.00:1.00:0.00:0.00'),
+        'Nested isolated composition should unwind from child target back to parent target in stack order'
+    )
+end
+
+local function run_isolated_failure_restore_tests()
+    local root = Drawable.new({
+        tag = 'root',
+        width = 100,
+        height = 60,
+        opacity = 0.5,
+        shader = { id = 'stored' },
+        blendMode = 'screen',
+    })
+    local root_canvas = { id = 'root-target' }
+    local baseline_shader = { id = 'baseline' }
+    local graphics = make_fake_graphics()
+
+    graphics.current_canvas = root_canvas
+    graphics.current_shader = baseline_shader
+    graphics.current_blend_mode = 'multiply'
+    graphics.current_alpha_mode = 'premultiplied'
+    graphics.current_color = { 0.2, 0.3, 0.4, 0.5 }
+    graphics.current_scissor = {
+        x = 1,
+        y = 2,
+        width = 3,
+        height = 4,
+    }
+    graphics.stencil_compare = 'equal'
+    graphics.stencil_value = 7
+
+    assert_error(function()
+        root:_draw_subtree(graphics, function()
+            error('draw boom')
+        end)
+    end, 'draw boom',
+        'Isolated root compositing should re-raise subtree draw failures')
+
+    assert_true(graphics.current_canvas == root_canvas,
+        'Isolated root compositing should restore the active canvas after failure')
+    assert_true(graphics.current_shader == baseline_shader,
+        'Isolated root compositing should restore the active shader after failure')
+    assert_equal(graphics.current_blend_mode, 'multiply',
+        'Isolated root compositing should restore the blend mode after failure')
+    assert_equal(graphics.current_alpha_mode, 'premultiplied',
+        'Isolated root compositing should restore the alpha mode after failure')
+    assert_equal(graphics.current_color[1], 0.2,
+        'Isolated root compositing should restore color r after failure')
+    assert_equal(graphics.current_color[2], 0.3,
+        'Isolated root compositing should restore color g after failure')
+    assert_equal(graphics.current_color[3], 0.4,
+        'Isolated root compositing should restore color b after failure')
+    assert_equal(graphics.current_color[4], 0.5,
+        'Isolated root compositing should restore color a after failure')
+    assert_equal(graphics.current_scissor.x, 1,
+        'Isolated root compositing should restore scissor x after failure')
+    assert_equal(graphics.current_scissor.y, 2,
+        'Isolated root compositing should restore scissor y after failure')
+    assert_equal(graphics.current_scissor.width, 3,
+        'Isolated root compositing should restore scissor width after failure')
+    assert_equal(graphics.current_scissor.height, 4,
+        'Isolated root compositing should restore scissor height after failure')
+    assert_equal(graphics.stencil_compare, 'equal',
+        'Isolated root compositing should restore stencil compare after failure')
+    assert_equal(graphics.stencil_value, 7,
+        'Isolated root compositing should restore stencil value after failure')
+
+    root:_draw_subtree(graphics, function()
+    end)
+
+    assert_equal(count_prefix(graphics.calls, 'new_canvas:'), 1,
+        'Isolated root compositing should release pooled canvases even when a prior draw failed')
 end
 
 local function run_mask_failure_tests()
@@ -555,7 +711,10 @@ local function run()
     run_union_alignment_tests()
     run_content_sizing_contract_tests()
     run_visual_effect_isolation_tests()
+    run_default_root_compositing_fast_path_tests()
     run_multiply_blend_mode_tests()
+    run_nested_isolation_stack_tests()
+    run_isolated_failure_restore_tests()
     run_mask_failure_tests()
 end
 

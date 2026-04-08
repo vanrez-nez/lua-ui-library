@@ -4,9 +4,10 @@ local Schema = require('lib.ui.utils.schema')
 local CanvasPool = require('lib.ui.render.canvas_pool')
 local StylingContract = require('lib.ui.render.styling_contract')
 local ThemeRuntime = require('lib.ui.themes.runtime')
+local GraphicsSource = require('lib.ui.render.graphics_source')
+local GraphicsStencil = require('lib.ui.render.graphics_stencil')
+local SourcePlacement = require('lib.ui.render.source_placement')
 local DrawableSchema = require('lib.ui.core.drawable_schema')
-local Texture = require('lib.ui.graphics.texture')
-local Sprite = require('lib.ui.graphics.sprite')
 local SideQuad = require('lib.ui.core.side_quad')
 local CornerQuad = require('lib.ui.core.corner_quad')
 
@@ -130,19 +131,11 @@ local function restore_color(graphics, saved)
 end
 
 local function save_stencil(graphics)
-    if Types.is_function(graphics.getStencilTest) then
-        return { graphics.getStencilTest() }
-    end
-    return nil
+    return GraphicsStencil.save(graphics)
 end
 
 local function restore_stencil(graphics, saved)
-    if not Types.is_function(graphics.setStencilTest) then return end
-    if saved == nil or saved[1] == nil then
-        graphics.setStencilTest()
-    else
-        graphics.setStencilTest(saved[1], saved[2])
-    end
+    GraphicsStencil.restore(graphics, saved)
 end
 
 local function save_line_state(graphics)
@@ -163,11 +156,7 @@ end
 
 -- Write the rounded rect silhouette into stencil buffer (value = 1).
 local function write_rounded_stencil(graphics, pts)
-    if Types.is_function(graphics.stencil) and Types.is_function(graphics.polygon) then
-        graphics.stencil(function()
-            graphics.polygon('fill', pts)
-        end, 'replace', 1)
-    end
+    GraphicsStencil.write_polygon(graphics, pts)
 end
 
 -- ---------------------------------------------------------------------------
@@ -271,67 +260,12 @@ end
 -- Background — image-backed.
 -- ---------------------------------------------------------------------------
 
-local function get_source_dims(img)
-    local iw, ih = 0, 0
-    if Types.is_function(img.getWidth)  then
-        local ok, v = pcall(img.getWidth, img)
-        if ok and Types.is_number(v) then iw = v end
-    end
-    if Types.is_function(img.getHeight) then
-        local ok, v = pcall(img.getHeight, img)
-        if ok and Types.is_number(v) then ih = v end
-    end
-    if iw == 0 and Types.is_number(rawget(img, 'width'))  then iw = img.width  end
-    if ih == 0 and Types.is_number(rawget(img, 'height')) then ih = img.height end
-    return iw, ih
-end
-
-local function resolve_background_draw_source(img)
-    local src_w, src_h = get_source_dims(img)
-    if src_w <= 0 or src_h <= 0 then
-        return nil, nil, 0, 0
-    end
-
-    if Types.is_instance(img, Texture) then
-        local drawable = img:getDrawable()
-        if drawable == nil then
-            return nil, nil, 0, 0
-        end
-        return drawable, nil, src_w, src_h
-    end
-
-    if Types.is_instance(img, Sprite) then
-        local texture = img:getTexture()
-        local region = img:getRegion()
-        local drawable = texture and texture:getDrawable() or nil
-        if drawable == nil or region == nil then
-            return nil, nil, 0, 0
-        end
-
-        local quad = nil
-        if love ~= nil and love.graphics ~= nil and Types.is_function(love.graphics.newQuad) then
-            quad = love.graphics.newQuad(
-                region.x,
-                region.y,
-                region.width,
-                region.height,
-                texture:getWidth(),
-                texture:getHeight()
-            )
-        end
-
-        return drawable, quad, src_w, src_h
-    end
-
-    return img, nil, src_w, src_h
-end
-
 local function paint_background_image(props, bounds, graphics, radii)
     local img = props.backgroundImage
     local opacity = props.backgroundOpacity or 1
     if opacity <= 0 then return end
 
-    local drawable, quad, src_w, src_h = resolve_background_draw_source(img)
+    local drawable, quad, src_w, src_h = GraphicsSource.resolve_draw_source(img)
     if src_w <= 0 or src_h <= 0 then return end
     if drawable == nil then return end
     if not Types.is_function(graphics.draw) then return end
@@ -343,26 +277,20 @@ local function paint_background_image(props, bounds, graphics, radii)
     local rep_x   = props.backgroundRepeatX or false
     local rep_y   = props.backgroundRepeatY or false
 
-    local base_x
-    if align_x == 'center' then
-        base_x = bounds.x + (bounds.width - src_w) / 2
-    elseif align_x == 'end' then
-        base_x = bounds.x + bounds.width - src_w
-    else
-        base_x = bounds.x
-    end
-
-    local base_y
-    if align_y == 'center' then
-        base_y = bounds.y + (bounds.height - src_h) / 2
-    elseif align_y == 'end' then
-        base_y = bounds.y + bounds.height - src_h
-    else
-        base_y = bounds.y
-    end
-
-    base_x = base_x + off_x
-    base_y = base_y + off_y
+    local base_x = SourcePlacement.resolve_aligned_origin(
+        bounds.x,
+        bounds.width,
+        src_w,
+        align_x,
+        off_x
+    )
+    local base_y = SourcePlacement.resolve_aligned_origin(
+        bounds.y,
+        bounds.height,
+        src_h,
+        align_y,
+        off_y
+    )
 
     local pts = rounded_rect_points(bounds.x, bounds.y, bounds.width, bounds.height, radii)
     local saved_stencil = save_stencil(graphics)

@@ -2,8 +2,18 @@ local Container = require('lib.ui.core.container')
 local Schema = require('lib.ui.utils.schema')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
+local DrawHelpers = require('lib.ui.shapes.draw_helpers')
+local ShapeFillSource = require('lib.ui.shapes.fill_source')
+local ShapeFillPlacement = require('lib.ui.shapes.fill_placement')
+local ShapeFillRenderer = require('lib.ui.shapes.fill_renderer')
 
 local Shape = Container:extends('Shape')
+
+Shape._root_compositing_capabilities = {
+    opacity = true,
+    shader = true,
+    blendMode = true,
+}
 
 Shape._schema = Schema.merge(Container._schema, require('lib.ui.core.shape_schema'))
 
@@ -91,8 +101,58 @@ function Shape:_get_world_bounds_points()
     return world_points
 end
 
+function Shape:_resolve_fill_surface()
+    return ShapeFillSource.resolve_surface(self)
+end
+
+function Shape:_resolve_active_fill_source()
+    return ShapeFillSource.resolve_active_descriptor(self:_resolve_fill_surface())
+end
+
+function Shape:_resolve_active_fill_placement(local_bounds)
+    return ShapeFillPlacement.resolve(
+        local_bounds or self:getLocalBounds(),
+        self:_resolve_active_fill_source()
+    )
+end
+
+function Shape:_resolve_polygon_stroke_options()
+    return {
+        color = self.strokeColor,
+        opacity = self.strokeOpacity or 1,
+        width = self.strokeWidth or 0,
+        style = self.strokeStyle or 'smooth',
+        join = self.strokeJoin or 'miter',
+        miter_limit = self.strokeMiterLimit or 10,
+        pattern = self.strokePattern or 'solid',
+        dash_length = self.strokeDashLength or 8,
+        gap_length = self.strokeGapLength or 4,
+        dash_offset = self.strokeDashOffset or 0,
+    }
+end
+
+function Shape:_render_active_fill(graphics, local_points, world_points, active_fill)
+    active_fill = active_fill or self:_resolve_active_fill_source()
+
+    if active_fill.kind == 'color' then
+        return DrawHelpers.draw_polygon_fill(
+            graphics,
+            world_points,
+            active_fill.color,
+            active_fill.opacity
+        )
+    end
+
+    return ShapeFillRenderer.draw(
+        self,
+        graphics,
+        local_points,
+        self:_resolve_active_fill_placement()
+    )
+end
+
 function Shape:draw(graphics)
-    if not Types.is_table(graphics) or not Types.is_function(graphics.rectangle) then
+    if not Types.is_table(graphics) then
         return
     end
 
@@ -101,9 +161,21 @@ function Shape:draw(graphics)
         return
     end
 
-    local fill_color = self.fillColor or { 1, 1, 1, 1 }
-    local fill_opacity = self.fillOpacity or 1
-    local alpha = (fill_color[4] or 1) * fill_opacity
+    local active_fill = self:_resolve_active_fill_source()
+
+    if active_fill.kind ~= 'color' or Types.is_function(graphics.polygon) then
+        local local_points = self:_get_local_points()
+        local world_points = DrawHelpers.transform_local_points(self, local_points)
+
+        return self:_render_active_fill(graphics, local_points, world_points, active_fill)
+    end
+
+    if not Types.is_function(graphics.rectangle) then
+        return
+    end
+
+    local fill_color = active_fill.color or { 1, 1, 1, 1 }
+    local alpha = (fill_color[4] or 1) * (active_fill.opacity or 1)
 
     if alpha <= 0 then
         return

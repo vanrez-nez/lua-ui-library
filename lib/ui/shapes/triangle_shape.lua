@@ -48,7 +48,7 @@ function TriangleShape:get_local_centroid()
 end
 
 function TriangleShape:draw(graphics)
-    if type(graphics) ~= 'table' or type(graphics.polygon) ~= 'function' then
+    if type(graphics) ~= 'table' then
         return
     end
 
@@ -57,23 +57,16 @@ function TriangleShape:draw(graphics)
         return
     end
 
-    local fill_color = self.fillColor or { 1, 1, 1, 1 }
-    local fill_opacity = self.fillOpacity or 1
-    local world_points = DrawHelpers.transform_local_points(self, self:_get_local_points())
+    local local_points = self:_get_local_points()
+    local world_points = DrawHelpers.transform_local_points(self, local_points)
+    local active_fill = self:_resolve_active_fill_source()
 
-    DrawHelpers.draw_polygon_fill(graphics, world_points, fill_color, fill_opacity)
-    DrawHelpers.draw_polygon_stroke(graphics, world_points, {
-        color = self.strokeColor,
-        opacity = self.strokeOpacity or 1,
-        width = self.strokeWidth or 0,
-        style = self.strokeStyle or 'smooth',
-        join = self.strokeJoin or 'miter',
-        miter_limit = self.strokeMiterLimit or 10,
-        pattern = self.strokePattern or 'solid',
-        dash_length = self.strokeDashLength or 8,
-        gap_length = self.strokeGapLength or 4,
-        dash_offset = self.strokeDashOffset or 0,
-    })
+    if active_fill.kind == 'color' and type(graphics.polygon) ~= 'function' then
+        return
+    end
+
+    self:_render_active_fill(graphics, local_points, world_points, active_fill)
+    DrawHelpers.draw_polygon_stroke(graphics, world_points, self:_resolve_polygon_stroke_options())
 end
 
 function TriangleShape:_contains_local_point(local_x, local_y)

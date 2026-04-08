@@ -4,8 +4,7 @@ local SideQuad = require('lib.ui.core.side_quad')
 local CornerQuad = require('lib.ui.core.corner_quad')
 local Motion = require('lib.ui.motion')
 local Color = require('lib.ui.render.color')
-local Texture = require('lib.ui.graphics.texture')
-local Sprite = require('lib.ui.graphics.sprite')
+local GraphicsValidation = require('lib.ui.render.graphics_validation')
 local SpacingSchema = require('lib.ui.core.spacing_schema')
 
 local ALIGNMENT_VALUES = {
@@ -35,11 +34,7 @@ end
 local check_finite_number = SpacingSchema.check_finite_number
 
 local function check_opacity(key, value, level)
-    check_finite_number(key, value, level)
-    if value < 0 or value > 1 then
-        Assert.fail(key .. ' must be in [0, 1], got ' .. value, level or 1)
-    end
-    return value
+    return GraphicsValidation.validate_opacity(key, value, nil, level)
 end
 
 local function check_non_negative(key, value, level)
@@ -51,7 +46,7 @@ local function check_non_negative(key, value, level)
 end
 
 local function check_numeric(key, value, level)
-    return check_finite_number(key, value, level)
+    return GraphicsValidation.validate_numeric_offset(key, value, nil, level)
 end
 
 local function check_enum(key, value, allowed, level)
@@ -99,9 +94,15 @@ local DRAWABLE_SCHEMA = {
     alignX = { validate = validate_alignment, default = 'start' },
     alignY = { validate = validate_alignment, default = 'start' },
     skin = { type = 'table' },
-    shader = { type = 'any' },
-    opacity = { type = 'number', default = 1 },
-    blendMode = { type = 'string' },
+    shader = { validate = GraphicsValidation.validate_root_shader },
+    opacity = {
+        validate = GraphicsValidation.validate_root_opacity,
+        default = GraphicsValidation.ROOT_OPACITY_DEFAULT,
+    },
+    blendMode = {
+        validate = GraphicsValidation.validate_root_blend_mode,
+        default = GraphicsValidation.ROOT_BLEND_MODE_DEFAULT,
+    },
     mask = { type = 'table' },
     motionPreset = { validate = Motion.validate_motion_preset },
     motion = { validate = Motion.validate_motion },
@@ -113,56 +114,14 @@ local DRAWABLE_SCHEMA = {
     backgroundOpacity = { validate = function(key, value, ctx, level)
         return check_opacity(key, value, level)
     end },
-    backgroundGradient = { validate = function(key, value, ctx, level)
-        if not Types.is_table(value) then
-            Assert.fail(key .. ' must be a table', level or 1)
-        end
-        if value.kind ~= 'linear' then
-            Assert.fail(key .. '.kind must be "linear"', level or 1)
-        end
-        if value.direction ~= 'horizontal' and value.direction ~= 'vertical' then
-            Assert.fail(key .. '.direction must be "horizontal" or "vertical"', level or 1)
-        end
-        if not Types.is_table(value.colors) then
-            Assert.fail(key .. '.colors must be a table', level or 1)
-        end
-        if #value.colors < 2 then
-            Assert.fail(key .. '.colors must contain at least two color inputs', level or 1)
-        end
-        local resolved_colors = {}
-        for i, c in ipairs(value.colors) do
-            resolved_colors[i] = Color.resolve(c)
-        end
-        return { kind = value.kind, direction = value.direction, colors = resolved_colors }
-    end },
-    backgroundImage = { validate = function(key, value, ctx, level)
-        -- Lazy-require Image to avoid circular dependency (Image → Drawable → drawable_schema)
-        local Image = require('lib.ui.graphics.image')
-        if Types.is_instance(value, Image) then
-            Assert.fail(
-                'backgroundImage: Image component is not a valid source — use Texture or Sprite',
-                level or 1
-            )
-        end
-        if not (Types.is_instance(value, Texture) or Types.is_instance(value, Sprite)) then
-            Assert.fail(key .. ' must be a Texture or Sprite instance', level or 1)
-        end
-        return value
-    end },
+    backgroundGradient = { validate = GraphicsValidation.validate_gradient },
+    backgroundImage = { validate = GraphicsValidation.validate_texture_or_sprite_source },
     backgroundRepeatX = { type = 'boolean' },
     backgroundRepeatY = { type = 'boolean' },
-    backgroundOffsetX = { validate = function(key, value, ctx, level)
-        return check_numeric(key, value, level)
-    end },
-    backgroundOffsetY = { validate = function(key, value, ctx, level)
-        return check_numeric(key, value, level)
-    end },
-    backgroundAlignX = { validate = function(key, value, ctx, level)
-        return check_enum(key, value, { 'start', 'center', 'end' }, level)
-    end },
-    backgroundAlignY = { validate = function(key, value, ctx, level)
-        return check_enum(key, value, { 'start', 'center', 'end' }, level)
-    end },
+    backgroundOffsetX = { validate = GraphicsValidation.validate_numeric_offset },
+    backgroundOffsetY = { validate = GraphicsValidation.validate_numeric_offset },
+    backgroundAlignX = { validate = GraphicsValidation.validate_source_align },
+    backgroundAlignY = { validate = GraphicsValidation.validate_source_align },
 
     -- border
     borderColor = { validate = function(key, value, ctx, level)

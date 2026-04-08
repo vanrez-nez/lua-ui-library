@@ -100,6 +100,10 @@ function Sprite:getHeight()
     return rawget(self, 'height')
 end
 
+function Sprite:getIntrinsicDimensions()
+    return self:getWidth(), self:getHeight()
+end
+
 function Sprite:getTexture()
     return rawget(self, 'texture')
 end

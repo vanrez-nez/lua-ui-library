@@ -76,7 +76,7 @@ function CircleShape:_get_local_points()
 end
 
 function CircleShape:draw(graphics)
-    if type(graphics) ~= 'table' or type(graphics.polygon) ~= 'function' then
+    if type(graphics) ~= 'table' then
         return Shape.draw(self, graphics)
     end
 
@@ -85,15 +85,19 @@ function CircleShape:draw(graphics)
         return
     end
 
-    local fill_color = self.fillColor or { 1, 1, 1, 1 }
-    local fill_opacity = self.fillOpacity or 1
-    local world_points = DrawHelpers.transform_local_points(self, self:_get_local_points())
+    local local_points = self:_get_local_points()
+    local world_points = DrawHelpers.transform_local_points(self, local_points)
+    local active_fill = self:_resolve_active_fill_source()
     local dash_length = self.strokeDashLength or 8
     local gap_length = self.strokeGapLength or 4
     local dash_offset = self.strokeDashOffset or 0
     local stroke_pattern = self.strokePattern or 'solid'
 
-    DrawHelpers.draw_polygon_fill(graphics, world_points, fill_color, fill_opacity)
+    if active_fill.kind == 'color' and type(graphics.polygon) ~= 'function' then
+        return Shape.draw(self, graphics)
+    end
+
+    self:_render_active_fill(graphics, local_points, world_points, active_fill)
 
     if stroke_pattern == 'dashed' and gap_length > 0 then
         local perimeter = estimate_ellipse_perimeter(bounds.width, bounds.height)

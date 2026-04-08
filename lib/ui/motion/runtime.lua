@@ -1,11 +1,23 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Easing = require('lib.ui.core.easing')
+local Color = require('lib.ui.render.color')
+local GraphicsValidation = require('lib.ui.render.graphics_validation')
 
 local Runtime = {}
 
 local SHARED_PROPERTIES = {
     opacity = true,
+    blendMode = true,
+    shader = true,
+    fillColor = true,
+    fillOpacity = true,
+    fillGradient = true,
+    fillTexture = true,
+    fillOffsetX = true,
+    fillOffsetY = true,
+    fillAlignX = true,
+    fillAlignY = true,
     translationX = true,
     translationY = true,
     scaleX = true,
@@ -13,6 +25,14 @@ local SHARED_PROPERTIES = {
     rotation = true,
     color = true,
     shaderParameter = true,
+}
+
+local DISCRETE_STEP_PROPERTIES = {
+    blendMode = true,
+    shader = true,
+    fillTexture = true,
+    fillAlignX = true,
+    fillAlignY = true,
 }
 
 local function fail(message, level)
@@ -151,8 +171,8 @@ function Runtime.validate_motion(_, value, _, level)
 end
 
 local function normalize_descriptors(instance, phase, payload)
-    local motion = rawget(instance, 'motion')
-    local preset = rawget(instance, 'motionPreset')
+    local motion = instance.motion
+    local preset = instance.motionPreset
     local descriptors = {}
 
     if Types.is_table(motion) then
@@ -208,6 +228,50 @@ local function resolve_easing(rule)
     return nil
 end
 
+local function validate_motion_property_value(property_name, value, level)
+    if value == nil then
+        return value
+    end
+
+    if property_name == 'opacity' then
+        return GraphicsValidation.validate_root_opacity(property_name, value, nil, level or 1)
+    end
+
+    if property_name == 'blendMode' then
+        return GraphicsValidation.validate_root_blend_mode(property_name, value, nil, level or 1)
+    end
+
+    if property_name == 'shader' then
+        return GraphicsValidation.validate_root_shader(property_name, value, nil, level or 1)
+    end
+
+    if property_name == 'fillColor' then
+        return Color.resolve(value)
+    end
+
+    if property_name == 'fillOpacity' then
+        return GraphicsValidation.validate_opacity(property_name, value, nil, level or 1)
+    end
+
+    if property_name == 'fillGradient' then
+        return GraphicsValidation.validate_gradient(property_name, value, nil, level or 1)
+    end
+
+    if property_name == 'fillTexture' then
+        return GraphicsValidation.validate_texture_or_sprite_source(property_name, value, nil, level or 1)
+    end
+
+    if property_name == 'fillOffsetX' or property_name == 'fillOffsetY' then
+        return GraphicsValidation.validate_numeric_offset(property_name, value, nil, level or 1)
+    end
+
+    if property_name == 'fillAlignX' or property_name == 'fillAlignY' then
+        return GraphicsValidation.validate_source_align(property_name, value, nil, level or 1)
+    end
+
+    return value
+end
+
 local function apply_descriptor(instance, phase, descriptor, payload)
     local target_name = descriptor.target or payload.defaultTarget or 'root'
     local target = instance:_get_motion_surface(target_name)
@@ -218,14 +282,29 @@ local function apply_descriptor(instance, phase, descriptor, payload)
 
     if descriptor.properties ~= nil then
         for property_name, rule in pairs(descriptor.properties) do
-            local next_value = rule.to
-            if next_value == nil then
-                next_value = rule.from
-            end
-            instance:_apply_motion_value(target_name, property_name, next_value)
-            local easing = resolve_easing(rule)
-            if easing ~= nil then
-                easing(1)
+            if DISCRETE_STEP_PROPERTIES[property_name] then
+                local next_value = validate_motion_property_value(
+                    property_name,
+                    rule.to,
+                    3
+                )
+
+                if next_value ~= nil then
+                    instance:_apply_motion_value(target_name, property_name, next_value)
+                end
+            else
+                local next_value = rule.to
+                if next_value == nil then
+                    next_value = rule.from
+                end
+
+                next_value = validate_motion_property_value(property_name, next_value, 3)
+                instance:_apply_motion_value(target_name, property_name, next_value)
+
+                local easing = resolve_easing(rule)
+                if easing ~= nil then
+                    easing(1)
+                end
             end
         end
     end

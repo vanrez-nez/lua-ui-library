@@ -2,6 +2,7 @@ local Container = require('lib.ui.core.container')
 local Drawable = require('lib.ui.core.drawable')
 local Shape = require('lib.ui.core.shape')
 local RectShape = require('lib.ui.shapes.rect_shape')
+local ShapeFillSource = require('lib.ui.shapes.fill_source')
 local UI = require('lib.ui')
 
 local function assert_equal(actual, expected, message)
@@ -14,6 +15,12 @@ end
 local function assert_true(value, message)
     if not value then
         error(message, 2)
+    end
+end
+
+local function assert_same(actual, expected, message)
+    if actual ~= expected then
+        error(message .. ': expected same reference', 2)
     end
 end
 
@@ -47,7 +54,29 @@ local function assert_error(fn, needle, message)
     end
 end
 
+local function make_texture(width, height)
+    return UI.Texture.new({
+        source = {
+            width = width,
+            height = height,
+        },
+        width = width,
+        height = height,
+    })
+end
+
 local function run_public_surface_tests()
+    local shader = { id = 'shape-fx' }
+    local texture = make_texture(64, 32)
+    local sprite = UI.Sprite.new({
+        texture = texture,
+        region = {
+            x = 8,
+            y = 4,
+            width = 16,
+            height = 12,
+        },
+    })
     local node = Shape.new({
         tag = 'shape',
         width = 80,
@@ -55,6 +84,21 @@ local function run_public_surface_tests()
         interactive = true,
         fillColor = '#336699cc',
         fillOpacity = 0.25,
+        fillGradient = {
+            kind = 'linear',
+            direction = 'vertical',
+            colors = {
+                '#112233',
+                '#445566',
+            },
+        },
+        fillTexture = sprite,
+        fillRepeatX = true,
+        fillRepeatY = false,
+        fillOffsetX = -3.5,
+        fillOffsetY = 2.25,
+        fillAlignX = 'start',
+        fillAlignY = 'end',
         strokeColor = '#ff8800cc',
         strokeOpacity = 0.5,
         strokeWidth = 3,
@@ -65,7 +109,9 @@ local function run_public_surface_tests()
         strokeDashLength = 12,
         strokeGapLength = 5,
         strokeDashOffset = -2.5,
+        shader = shader,
         opacity = 0.75,
+        blendMode = 'screen',
     })
 
     assert_equal(UI.Shape, Shape,
@@ -91,6 +137,26 @@ local function run_public_surface_tests()
         'Shape should resolve fillColor through the shared color parser')
     assert_equal(node.fillOpacity, 0.25,
         'Shape should preserve fillOpacity')
+    assert_equal(node.fillGradient.kind, 'linear',
+        'Shape should preserve validated fillGradient.kind')
+    assert_equal(node.fillGradient.direction, 'vertical',
+        'Shape should preserve validated fillGradient.direction')
+    assert_equal(#node.fillGradient.colors, 2,
+        'Shape should preserve validated fillGradient colors')
+    assert_same(node.fillTexture, sprite,
+        'Shape should preserve fillTexture by reference')
+    assert_equal(node.fillRepeatX, true,
+        'Shape should preserve fillRepeatX')
+    assert_equal(node.fillRepeatY, false,
+        'Shape should preserve fillRepeatY')
+    assert_equal(node.fillOffsetX, -3.5,
+        'Shape should preserve fillOffsetX')
+    assert_equal(node.fillOffsetY, 2.25,
+        'Shape should preserve fillOffsetY')
+    assert_equal(node.fillAlignX, 'start',
+        'Shape should preserve fillAlignX')
+    assert_equal(node.fillAlignY, 'end',
+        'Shape should preserve fillAlignY')
     assert_true(node.strokeColor[1] == 1 and
         node.strokeColor[2] == 0x88 / 255 and
         node.strokeColor[3] == 0 and
@@ -114,8 +180,12 @@ local function run_public_surface_tests()
         'Shape should preserve strokeGapLength')
     assert_equal(node.strokeDashOffset, -2.5,
         'Shape should preserve strokeDashOffset')
+    assert_equal(node.shader, shader,
+        'Shape should preserve shader by reference')
     assert_equal(node.opacity, 0.75,
         'Shape should preserve opacity')
+    assert_equal(node.blendMode, 'screen',
+        'Shape should preserve blendMode')
 
     local default_opacity = Shape.new({
         width = 10,
@@ -129,6 +199,22 @@ local function run_public_surface_tests()
         'Shape should default fillColor to white')
     assert_equal(default_opacity.fillOpacity, 1,
         'Shape should default fillOpacity to 1')
+    assert_nil(default_opacity.fillGradient,
+        'Shape should not default fillGradient')
+    assert_nil(default_opacity.fillTexture,
+        'Shape should not default fillTexture')
+    assert_equal(default_opacity.fillRepeatX, false,
+        'Shape should default fillRepeatX to false')
+    assert_equal(default_opacity.fillRepeatY, false,
+        'Shape should default fillRepeatY to false')
+    assert_equal(default_opacity.fillOffsetX, 0,
+        'Shape should default fillOffsetX to 0')
+    assert_equal(default_opacity.fillOffsetY, 0,
+        'Shape should default fillOffsetY to 0')
+    assert_equal(default_opacity.fillAlignX, 'center',
+        'Shape should default fillAlignX to center')
+    assert_equal(default_opacity.fillAlignY, 'center',
+        'Shape should default fillAlignY to center')
     assert_equal(default_opacity.strokeOpacity, 1,
         'Shape should default strokeOpacity to 1')
     assert_equal(default_opacity.strokeWidth, 0,
@@ -147,15 +233,142 @@ local function run_public_surface_tests()
         'Shape should default strokeGapLength to 4')
     assert_equal(default_opacity.strokeDashOffset, 0,
         'Shape should default strokeDashOffset to 0')
+    assert_nil(default_opacity.shader,
+        'Shape should not default shader')
     assert_equal(default_opacity.opacity, 1,
         'Shape should default opacity to 1')
+    assert_equal(default_opacity.blendMode, 'normal',
+        'Shape should default blendMode to normal')
     assert_nil(default_opacity.strokeColor,
         'Shape should not default strokeColor')
     assert_equal(UI.RectShape, RectShape,
         'lib.ui should expose the RectShape module')
 end
 
+local function run_fill_source_priority_tests()
+    local texture = make_texture(64, 32)
+    local sprite = UI.Sprite.new({
+        texture = texture,
+        region = {
+            x = 8,
+            y = 4,
+            width = 16,
+            height = 12,
+        },
+    })
+    local shape = Shape.new({
+        width = 80,
+        height = 40,
+        fillColor = '#224466',
+        fillOpacity = 0.6,
+        fillGradient = {
+            kind = 'linear',
+            direction = 'horizontal',
+            colors = {
+                '#ff0000',
+                '#00ff00',
+            },
+        },
+        fillTexture = sprite,
+        fillRepeatX = true,
+        fillOffsetX = 5,
+        fillOffsetY = -3,
+        fillAlignX = 'start',
+        fillAlignY = 'end',
+    })
+
+    local fill_surface = shape:_resolve_fill_surface()
+    local active_fill = shape:_resolve_active_fill_source()
+    local direct_active_fill = ShapeFillSource.resolve_active_descriptor(fill_surface)
+
+    assert_same(fill_surface.fillTexture, sprite,
+        'Shape fill surface should preserve fillTexture when multiple fill sources coexist')
+    assert_equal(fill_surface.fillAlignX, 'start',
+        'Shape fill surface should expose fill alignment state')
+    assert_equal(fill_surface.fillAlignY, 'end',
+        'Shape fill surface should expose fill alignment state on y')
+    assert_equal(active_fill.kind, 'texture',
+        'Shape active fill priority should prefer fillTexture over other fill sources')
+    assert_equal(active_fill.source_prop, 'fillTexture',
+        'Shape active fill priority should identify the active source prop')
+    assert_same(active_fill.source, sprite,
+        'Shape active fill priority should preserve the active texture source by reference')
+    assert_same(active_fill.texture, sprite,
+        'Shape active fill texture descriptors should expose the selected texture source')
+    assert_equal(active_fill.opacity, 0.6,
+        'Shape active fill descriptors should preserve fillOpacity')
+    assert_equal(active_fill.repeatX, true,
+        'Shape active fill descriptors should preserve fillRepeatX')
+    assert_equal(active_fill.repeatY, false,
+        'Shape active fill descriptors should preserve fillRepeatY')
+    assert_equal(active_fill.offsetX, 5,
+        'Shape active fill descriptors should preserve fillOffsetX')
+    assert_equal(active_fill.offsetY, -3,
+        'Shape active fill descriptors should preserve fillOffsetY')
+    assert_equal(active_fill.alignX, 'start',
+        'Shape active fill descriptors should preserve fillAlignX')
+    assert_equal(active_fill.alignY, 'end',
+        'Shape active fill descriptors should preserve fillAlignY')
+    assert_equal(direct_active_fill.kind, 'texture',
+        'The shared fill resolver module should agree with the Shape helper on active-source priority')
+
+    shape.fillTexture = nil
+    active_fill = shape:_resolve_active_fill_source()
+
+    assert_equal(active_fill.kind, 'gradient',
+        'Shape active fill priority should prefer fillGradient when no fillTexture is present')
+    assert_equal(active_fill.source_prop, 'fillGradient',
+        'Shape active fill gradient descriptors should identify fillGradient as the active prop')
+    assert_same(active_fill.source, shape.fillGradient,
+        'Shape active fill gradient descriptors should preserve the gradient by reference')
+    assert_same(active_fill.gradient, shape.fillGradient,
+        'Shape active fill gradient descriptors should expose the selected gradient')
+
+    shape.fillGradient = nil
+    active_fill = shape:_resolve_active_fill_source()
+
+    assert_equal(active_fill.kind, 'color',
+        'Shape active fill priority should fall back to fillColor when no higher-priority source is set')
+    assert_equal(active_fill.source_prop, 'fillColor',
+        'Shape active fill color descriptors should identify fillColor as the active prop')
+    assert_true(active_fill.color[1] == shape.fillColor[1] and
+        active_fill.color[2] == shape.fillColor[2] and
+        active_fill.color[3] == shape.fillColor[3] and
+        active_fill.color[4] == shape.fillColor[4],
+        'Shape active fill color descriptors should preserve the resolved fillColor')
+end
+
+local function run_root_compositing_capability_tests()
+    local shape_capabilities = rawget(Shape, '_root_compositing_capabilities')
+    local drawable_capabilities = rawget(Drawable, '_root_compositing_capabilities')
+
+    assert_true(shape_capabilities ~= nil,
+        'Shape should declare a class-level root compositing capability record')
+    assert_true(shape_capabilities.opacity == true and
+        shape_capabilities.shader == true and
+        shape_capabilities.blendMode == true,
+        'Shape should declare support for the shared root compositing surface')
+    assert_nil(shape_capabilities.mask,
+        'Shape root compositing capability record should not declare mask')
+
+    assert_true(drawable_capabilities ~= nil,
+        'Drawable should declare a class-level root compositing capability record')
+    assert_true(drawable_capabilities.opacity == true and
+        drawable_capabilities.shader == true and
+        drawable_capabilities.blendMode == true,
+        'Drawable should declare support for the shared root compositing surface')
+    assert_nil(drawable_capabilities.mask,
+        'Drawable root compositing capability record should keep mask out of the shared surface')
+end
+
 local function run_validation_tests()
+    local texture = make_texture(64, 32)
+    local image_component = UI.Image.new({
+        source = texture,
+        width = 16,
+        height = 12,
+    })
+
     assert_error(function()
         Shape.new({
             fillOpacity = -0.01,
@@ -183,6 +396,40 @@ local function run_validation_tests()
         })
     end, 'expected a table or string',
     'Shape should reject invalid fillColor input')
+
+    assert_error(function()
+        Shape.new({
+            fillGradient = {
+                kind = 'linear',
+                direction = 'vertical',
+                colors = {
+                    '#ff0000',
+                },
+            },
+        })
+    end, '.colors must contain at least two color inputs',
+    'Shape should reject invalid fillGradient inputs')
+
+    assert_error(function()
+        Shape.new({
+            fillTexture = image_component,
+        })
+    end, 'fillTexture: Image component is not a valid source — use Texture or Sprite',
+    'Shape should reject Image components as fillTexture sources')
+
+    assert_error(function()
+        Shape.new({
+            fillOffsetX = 'left',
+        })
+    end, 'fillOffsetX must be a number',
+    'Shape should reject non-numeric fillOffsetX')
+
+    assert_error(function()
+        Shape.new({
+            fillAlignY = 'stretch',
+        })
+    end, "fillAlignY: 'stretch' is not a valid value",
+    'Shape should reject invalid fillAlignY values')
 
     assert_error(function()
         Shape.new({
@@ -225,6 +472,13 @@ local function run_validation_tests()
         })
     end, 'opacity must be in [0, 1]',
     'Shape should reject opacity above 1')
+
+    assert_error(function()
+        Shape.new({
+            blendMode = 'alpha',
+        })
+    end, "blendMode: 'alpha' is not a valid value",
+    'Shape should reject non-normalized blendMode values')
 end
 
 local function run_surface_exclusion_tests()
@@ -232,9 +486,7 @@ local function run_surface_exclusion_tests()
         'padding',
         'alignX',
         'skin',
-        'shader',
         'mask',
-        'blendMode',
         'backgroundColor',
         'borderWidth',
         'borderPattern',
@@ -522,6 +774,8 @@ end
 
 local function run()
     run_public_surface_tests()
+    run_fill_source_priority_tests()
+    run_root_compositing_capability_tests()
     run_validation_tests()
     run_surface_exclusion_tests()
     run_leaf_only_tests()
