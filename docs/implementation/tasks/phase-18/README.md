@@ -7,6 +7,7 @@ Source implementation document for this phase:
 Related incident / spec-patch context:
 
 - `docs/incidents/spec_patch_drawable_shape_surface.md`
+- `docs/incidents/spec_patch_shape_pivot_centroid_contract.md`
 
 Authority rules for this phase:
 
@@ -51,11 +52,14 @@ Task order:
 4. `03-containment-and-stage-targeting.md`
 5. `04-concrete-nonrect-shapes.md`
 6. `05-acceptance-demo-and-doc-sync.md`
+7. `06-shape-centroid-pivot-alignment.md`
 
 Historical note:
 
 - Tasks `00` through `05` are retained as the implementation record for Phase
   18.
+- Task `06` is the follow-up alignment task for the centroid-pivot contract
+  added after the initial shape rollout.
 - Once the phase is implemented, use `docs/spec/ui-foundation-spec.md` and
   `docs/implementation/phase-18-shape-primitive.md` as the current guidance.
 - `docs/incidents/spec_patch_drawable_shape_surface.md` remains useful as

@@ -866,6 +866,9 @@ offsets.
 `anchorX` and `anchorY` are normalized parent-space coefficients, not absolute
 offsets.
 
+`Shape` and all `Shape` subclasses inherit this same bounds-relative pivot
+meaning. No shape remaps default pivot coefficients through its geometry.
+
 Default pivot values:
 
 - `pivotX = 0.5`
@@ -1184,6 +1187,25 @@ Public surface exclusions in this revision:
 - no `skin`, `shader`, `opacity`, `blendMode`, or `mask`
 - no `background*`, `border*`, `cornerRadius*`, or `shadow*`
 - no `strokeColor`, `strokeOpacity`, or `strokeWidth`
+
+**Centroid helper support**
+
+`Shape` supports an explicit centroid-based pivot helper path.
+
+That helper path has this contract:
+
+- it resolves the current shape centroid in local pixel space from the shape's
+  canonical geometry under the current resolved bounds
+- the base `Shape` centroid resolves to the local bounds center
+- built-in shapes keep the inherited `Container` pivot meaning by default
+- when the helper is used, it assigns `pivotX` and `pivotY` from the resolved
+  centroid as normalized bounds-relative coefficients
+- the assignment is one-time, not a live binding
+- if the resolved width or height is zero, the helper performs no pivot
+  assignment
+
+Custom shapes whose canonical geometry does not share the local bounds center
+may provide a geometry-derived centroid through this helper path.
 
 **State model**
 
