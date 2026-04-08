@@ -67,7 +67,7 @@ local function make_effect_panel(scope, root, helpers, case)
         opacity = case.opacity,
         blendMode = case.blendMode,
     }, case.label, DemoColors.rgba(DemoColors.roles.surface_emphasis, 0.18), case.line)
-    helpers.show_outline_only(panel)
+    helpers.show_bounds(panel)
 
     function panel:draw(graphics)
         local bounds = self:getWorldBounds()
