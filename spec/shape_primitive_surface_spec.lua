@@ -55,6 +55,17 @@ local function run_public_surface_tests()
         interactive = true,
         fillColor = '#336699cc',
         fillOpacity = 0.25,
+        strokeColor = '#ff8800cc',
+        strokeOpacity = 0.5,
+        strokeWidth = 3,
+        strokeStyle = 'rough',
+        strokeJoin = 'bevel',
+        strokeMiterLimit = 7,
+        strokePattern = 'dashed',
+        strokeDashLength = 12,
+        strokeGapLength = 5,
+        strokeDashOffset = -2.5,
+        opacity = 0.75,
     })
 
     assert_equal(UI.Shape, Shape,
@@ -80,6 +91,31 @@ local function run_public_surface_tests()
         'Shape should resolve fillColor through the shared color parser')
     assert_equal(node.fillOpacity, 0.25,
         'Shape should preserve fillOpacity')
+    assert_true(node.strokeColor[1] == 1 and
+        node.strokeColor[2] == 0x88 / 255 and
+        node.strokeColor[3] == 0 and
+        node.strokeColor[4] == 0xcc / 255,
+        'Shape should resolve strokeColor through the shared color parser')
+    assert_equal(node.strokeOpacity, 0.5,
+        'Shape should preserve strokeOpacity')
+    assert_equal(node.strokeWidth, 3,
+        'Shape should preserve strokeWidth')
+    assert_equal(node.strokeStyle, 'rough',
+        'Shape should preserve strokeStyle')
+    assert_equal(node.strokeJoin, 'bevel',
+        'Shape should preserve strokeJoin')
+    assert_equal(node.strokeMiterLimit, 7,
+        'Shape should preserve strokeMiterLimit')
+    assert_equal(node.strokePattern, 'dashed',
+        'Shape should preserve strokePattern')
+    assert_equal(node.strokeDashLength, 12,
+        'Shape should preserve strokeDashLength')
+    assert_equal(node.strokeGapLength, 5,
+        'Shape should preserve strokeGapLength')
+    assert_equal(node.strokeDashOffset, -2.5,
+        'Shape should preserve strokeDashOffset')
+    assert_equal(node.opacity, 0.75,
+        'Shape should preserve opacity')
 
     local default_opacity = Shape.new({
         width = 10,
@@ -93,6 +129,28 @@ local function run_public_surface_tests()
         'Shape should default fillColor to white')
     assert_equal(default_opacity.fillOpacity, 1,
         'Shape should default fillOpacity to 1')
+    assert_equal(default_opacity.strokeOpacity, 1,
+        'Shape should default strokeOpacity to 1')
+    assert_equal(default_opacity.strokeWidth, 0,
+        'Shape should default strokeWidth to 0')
+    assert_equal(default_opacity.strokeStyle, 'smooth',
+        'Shape should default strokeStyle to smooth')
+    assert_equal(default_opacity.strokeJoin, 'miter',
+        'Shape should default strokeJoin to miter')
+    assert_equal(default_opacity.strokeMiterLimit, 10,
+        'Shape should default strokeMiterLimit to 10')
+    assert_equal(default_opacity.strokePattern, 'solid',
+        'Shape should default strokePattern to solid')
+    assert_equal(default_opacity.strokeDashLength, 8,
+        'Shape should default strokeDashLength to 8')
+    assert_equal(default_opacity.strokeGapLength, 4,
+        'Shape should default strokeGapLength to 4')
+    assert_equal(default_opacity.strokeDashOffset, 0,
+        'Shape should default strokeDashOffset to 0')
+    assert_equal(default_opacity.opacity, 1,
+        'Shape should default opacity to 1')
+    assert_nil(default_opacity.strokeColor,
+        'Shape should not default strokeColor')
     assert_equal(UI.RectShape, RectShape,
         'lib.ui should expose the RectShape module')
 end
@@ -125,6 +183,48 @@ local function run_validation_tests()
         })
     end, 'expected a table or string',
     'Shape should reject invalid fillColor input')
+
+    assert_error(function()
+        Shape.new({
+            strokeWidth = { 1, 2, 3, 4 },
+        })
+    end, 'strokeWidth must be a number',
+    'Shape should reject non-scalar strokeWidth')
+
+    assert_error(function()
+        Shape.new({
+            strokeStyle = 'dashed',
+        })
+    end, "strokeStyle: 'dashed' is not a valid value",
+    'Shape should reject invalid strokeStyle values')
+
+    assert_error(function()
+        Shape.new({
+            strokePattern = 'rough',
+        })
+    end, "strokePattern: 'rough' is not a valid value",
+    'Shape should reject invalid strokePattern values')
+
+    assert_error(function()
+        Shape.new({
+            strokeDashLength = 0,
+        })
+    end, 'strokeDashLength must be > 0',
+    'Shape should reject non-positive strokeDashLength')
+
+    assert_error(function()
+        Shape.new({
+            strokeGapLength = -1,
+        })
+    end, 'strokeGapLength must be >= 0',
+    'Shape should reject negative strokeGapLength')
+
+    assert_error(function()
+        Shape.new({
+            opacity = 2,
+        })
+    end, 'opacity must be in [0, 1]',
+    'Shape should reject opacity above 1')
 end
 
 local function run_surface_exclusion_tests()
@@ -137,6 +237,7 @@ local function run_surface_exclusion_tests()
         'blendMode',
         'backgroundColor',
         'borderWidth',
+        'borderPattern',
         'cornerRadius',
         'shadowColor',
     }

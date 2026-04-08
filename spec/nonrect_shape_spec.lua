@@ -14,6 +14,16 @@ local function assert_true(value, message)
     end
 end
 
+local function find_call(calls, predicate)
+    for index = 1, #calls do
+        if predicate(calls[index]) then
+            return calls[index], index
+        end
+    end
+
+    return nil, nil
+end
+
 local function assert_nil(value, message)
     if value ~= nil then
         error(message .. ': expected nil, got ' .. tostring(value), 2)
@@ -33,6 +43,10 @@ local function make_fake_graphics()
     local graphics = {
         calls = {},
         color = { 0.25, 0.5, 0.75, 0.9 },
+        line_width = 1,
+        line_style = 'smooth',
+        line_join = 'none',
+        miter_limit = 4,
     }
 
     function graphics.getColor()
@@ -61,6 +75,64 @@ local function make_fake_graphics()
             kind = 'polygon',
             mode = tostring(mode),
             points = copy,
+        }
+    end
+
+    function graphics.getLineWidth()
+        return graphics.line_width
+    end
+
+    function graphics.setLineWidth(value)
+        graphics.line_width = value
+        graphics.calls[#graphics.calls + 1] = {
+            kind = 'line_width',
+            value = value,
+        }
+    end
+
+    function graphics.getLineStyle()
+        return graphics.line_style
+    end
+
+    function graphics.setLineStyle(value)
+        graphics.line_style = value
+        graphics.calls[#graphics.calls + 1] = {
+            kind = 'line_style',
+            value = value,
+        }
+    end
+
+    function graphics.getLineJoin()
+        return graphics.line_join
+    end
+
+    function graphics.setLineJoin(value)
+        graphics.line_join = value
+        graphics.calls[#graphics.calls + 1] = {
+            kind = 'line_join',
+            value = value,
+        }
+    end
+
+    function graphics.getMiterLimit()
+        return graphics.miter_limit
+    end
+
+    function graphics.setMiterLimit(value)
+        graphics.miter_limit = value
+        graphics.calls[#graphics.calls + 1] = {
+            kind = 'miter_limit',
+            value = value,
+        }
+    end
+
+    function graphics.line(x1, y1, x2, y2)
+        graphics.calls[#graphics.calls + 1] = {
+            kind = 'line',
+            x1 = x1,
+            y1 = y1,
+            x2 = x2,
+            y2 = y2,
         }
     end
 
@@ -95,7 +167,7 @@ local function build_expected_circle_points(shape, segments)
     local center_y = bounds.y + radius_y
 
     for index = 0, segments - 1 do
-        local angle = (index / segments) * (math.pi * 2)
+        local angle = (-math.pi / 2) + ((index / segments) * (math.pi * 2))
         local world_x, world_y = shape:localToWorld(
             center_x + math.cos(angle) * radius_x,
             center_y + math.sin(angle) * radius_y
@@ -155,6 +227,73 @@ local function run_circle_tests()
         'CircleShape should include its top edge')
     assert_true(not shape:_contains_local_point(0, 0),
         'CircleShape should exclude a rectangular corner outside the ellipse')
+end
+
+local function run_circle_stroke_tests()
+    local solid = UI.CircleShape.new({
+        x = 10,
+        y = 20,
+        width = 40,
+        height = 20,
+        strokeColor = { 1, 0, 0, 1 },
+        strokeWidth = 2,
+        strokeJoin = 'bevel',
+        strokeMiterLimit = 9,
+    })
+    local solid_graphics = make_fake_graphics()
+
+    solid:draw(solid_graphics)
+
+    local solid_fill, solid_fill_index = find_call(solid_graphics.calls, function(call)
+        return call.kind == 'polygon' and call.mode == 'fill'
+    end)
+    local solid_stroke, solid_stroke_index = find_call(solid_graphics.calls, function(call)
+        return call.kind == 'line'
+    end)
+    local solid_polygon_stroke = find_call(solid_graphics.calls, function(call)
+        return call.kind == 'polygon' and call.mode == 'line'
+    end)
+
+    assert_true(solid_fill ~= nil,
+        'CircleShape should still render fill when stroke is enabled')
+    assert_true(solid_stroke ~= nil,
+        'CircleShape solid stroke should emit line segments')
+    assert_nil(solid_polygon_stroke,
+        'CircleShape solid stroke should avoid closed polygon line seam rendering')
+    assert_true(solid_fill_index < solid_stroke_index,
+        'CircleShape solid stroke should render after fill')
+
+    local dashed = UI.CircleShape.new({
+        x = 10,
+        y = 20,
+        width = 40,
+        height = 20,
+        strokeColor = { 0, 1, 0, 1 },
+        strokeWidth = 2,
+        strokePattern = 'dashed',
+        strokeDashLength = 6,
+        strokeGapLength = 4,
+        strokeDashOffset = 0,
+        strokeJoin = 'miter',
+    })
+    local dashed_graphics = make_fake_graphics()
+
+    dashed:draw(dashed_graphics)
+
+    local dash_call = find_call(dashed_graphics.calls, function(call)
+        return call.kind == 'line'
+    end)
+    local seam_call = find_call(dashed_graphics.calls, function(call)
+        return call.kind == 'line' and (
+            (math.abs(call.x1 - 30) <= 0.01 and math.abs(call.y1 - 20) <= 0.01) or
+            (math.abs(call.x2 - 30) <= 0.01 and math.abs(call.y2 - 20) <= 0.01)
+        )
+    end)
+
+    assert_true(dash_call ~= nil,
+        'CircleShape dashed stroke should emit line segments')
+    assert_nil(seam_call,
+        'CircleShape dashed stroke should avoid emitting a dash cap at the top-center seam')
 end
 
 local function run_triangle_tests()
@@ -222,6 +361,71 @@ local function run_diamond_tests()
         'DiamondShape should include its top midpoint')
     assert_true(not shape:_contains_local_point(0, 0),
         'DiamondShape should exclude the corner outside the silhouette')
+end
+
+local function run_polygon_stroke_tests()
+    local triangle = UI.TriangleShape.new({
+        x = 5,
+        y = 7,
+        width = 20,
+        height = 18,
+        strokeColor = { 1, 0, 0, 1 },
+        strokeWidth = 2,
+        strokeJoin = 'miter',
+        strokeMiterLimit = 9,
+    })
+    local triangle_graphics = make_fake_graphics()
+
+    triangle:draw(triangle_graphics)
+
+    local triangle_stroke, triangle_stroke_index = find_call(triangle_graphics.calls, function(call)
+        return call.kind == 'polygon' and call.mode == 'line'
+    end)
+    local triangle_fill, triangle_fill_index = find_call(triangle_graphics.calls, function(call)
+        return call.kind == 'polygon' and call.mode == 'fill'
+    end)
+
+    assert_true(triangle_fill ~= nil,
+        'TriangleShape should still render fill when stroke is enabled')
+    assert_true(triangle_stroke ~= nil,
+        'TriangleShape solid stroke should use polygon line rendering')
+    assert_true(triangle_fill_index < triangle_stroke_index,
+        'TriangleShape stroke should render after fill')
+    assert_equal(triangle_graphics.line_width, 1,
+        'TriangleShape stroke should restore line width')
+    assert_equal(triangle_graphics.line_style, 'smooth',
+        'TriangleShape stroke should restore line style')
+    assert_equal(triangle_graphics.line_join, 'none',
+        'TriangleShape stroke should restore line join')
+    assert_equal(triangle_graphics.miter_limit, 4,
+        'TriangleShape stroke should restore miter limit')
+
+    local diamond = UI.DiamondShape.new({
+        x = 3,
+        y = 4,
+        width = 24,
+        height = 12,
+        strokeColor = { 0, 1, 0, 1 },
+        strokeWidth = 2,
+        strokePattern = 'dashed',
+        strokeDashLength = 6,
+        strokeGapLength = 4,
+        strokeDashOffset = 0,
+    })
+    local diamond_graphics = make_fake_graphics()
+
+    diamond:draw(diamond_graphics)
+
+    local diamond_dash = find_call(diamond_graphics.calls, function(call)
+        return call.kind == 'line'
+    end)
+
+    assert_true(diamond_dash ~= nil,
+        'DiamondShape dashed stroke should emit line segments')
+    assert_near(diamond_dash.x1, 15, 0.01,
+        'DiamondShape dashed stroke should start at the top vertex world x')
+    assert_near(diamond_dash.y1, 4, 0.01,
+        'DiamondShape dashed stroke should start at the top vertex world y')
 end
 
 local function run_centroid_helper_behavior_tests()
@@ -466,8 +670,10 @@ end
 local function run()
     run_public_surface_tests()
     run_circle_tests()
+    run_circle_stroke_tests()
     run_triangle_tests()
     run_diamond_tests()
+    run_polygon_stroke_tests()
     run_centroid_helper_behavior_tests()
     run_transformed_targeting_tests()
     run_stage_draw_tests()
