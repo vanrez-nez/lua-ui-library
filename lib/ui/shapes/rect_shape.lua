@@ -32,9 +32,19 @@ function RectShape:draw(graphics)
     local fill_opacity = self.fillOpacity or 1
     local world_points = DrawHelpers.transform_local_points(self, self:_get_local_points())
 
-    DrawHelpers.with_fill_color(graphics, fill_color, fill_opacity, function()
-        graphics.polygon('fill', DrawHelpers.flatten_points(world_points))
-    end)
+    DrawHelpers.draw_polygon_fill(graphics, world_points, fill_color, fill_opacity)
+    DrawHelpers.draw_polygon_stroke(graphics, world_points, {
+        color = self.strokeColor,
+        opacity = self.strokeOpacity or 1,
+        width = self.strokeWidth or 0,
+        style = self.strokeStyle or 'smooth',
+        join = self.strokeJoin or 'miter',
+        miter_limit = self.strokeMiterLimit or 10,
+        pattern = self.strokePattern or 'solid',
+        dash_length = self.strokeDashLength or 8,
+        gap_length = self.strokeGapLength or 4,
+        dash_offset = self.strokeDashOffset or 0,
+    })
 end
 
 function RectShape.new(opts)

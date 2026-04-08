@@ -1134,8 +1134,13 @@ local function get_motion_surface_value(surface, key)
     return state[key]
 end
 
-local function resolve_drawable_effects(self)
-    if rawget(self, '_ui_drawable_instance') ~= true then
+local function node_supports_root_opacity(self)
+    return rawget(self, '_ui_drawable_instance') == true or
+        rawget(self, '_ui_shape_instance') == true
+end
+
+local function resolve_node_effects(self)
+    if not node_supports_root_opacity(self) then
         return nil
     end
 
@@ -1147,34 +1152,42 @@ local function resolve_drawable_effects(self)
         opacity = 1
     end
 
-    local translation_x = get_motion_surface_value(self, 'translationX') or 0
-    local translation_y = get_motion_surface_value(self, 'translationY') or 0
-    local scale_x = get_motion_surface_value(self, 'scaleX')
-    local scale_y = get_motion_surface_value(self, 'scaleY')
-    local rotation = get_motion_surface_value(self, 'rotation') or 0
-
-    if scale_x == nil then
-        scale_x = 1
-    end
-
-    if scale_y == nil then
-        scale_y = 1
-    end
-
-    return {
-        shader = get_effective_value(self, 'shader'),
+    local effects = {
+        shader = nil,
         opacity = opacity,
-        blendMode = get_effective_value(self, 'blendMode'),
-        mask = get_effective_value(self, 'mask'),
-        translationX = translation_x,
-        translationY = translation_y,
-        scaleX = scale_x,
-        scaleY = scale_y,
-        rotation = rotation,
+        blendMode = nil,
+        mask = nil,
+        translationX = 0,
+        translationY = 0,
+        scaleX = 1,
+        scaleY = 1,
+        rotation = 0,
     }
+
+    if rawget(self, '_ui_drawable_instance') == true then
+        effects.shader = get_effective_value(self, 'shader')
+        effects.blendMode = get_effective_value(self, 'blendMode')
+        effects.mask = get_effective_value(self, 'mask')
+        effects.translationX = get_motion_surface_value(self, 'translationX') or 0
+        effects.translationY = get_motion_surface_value(self, 'translationY') or 0
+        effects.rotation = get_motion_surface_value(self, 'rotation') or 0
+
+        local scale_x = get_motion_surface_value(self, 'scaleX')
+        local scale_y = get_motion_surface_value(self, 'scaleY')
+
+        if scale_x ~= nil then
+            effects.scaleX = scale_x
+        end
+
+        if scale_y ~= nil then
+            effects.scaleY = scale_y
+        end
+    end
+
+    return effects
 end
 
-local function drawable_requires_isolation(effects)
+local function node_requires_isolation(effects)
     if effects == nil then
         return false
     end
@@ -1282,7 +1295,7 @@ local function draw_isolated_subtree(self, graphics, draw_callback, clip_state, 
         not Types.is_function(graphics.setCanvas) or
         not Types.is_function(graphics.draw) then
         Assert.fail(
-            'graphics adapter must support canvas isolation for Drawable render effects',
+            'graphics adapter must support canvas isolation for retained node render effects',
             3
         )
     end
@@ -1348,9 +1361,9 @@ draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
     render_state = render_state or {}
 
     if render_state.suppress_effects_for ~= self then
-        local effects = resolve_drawable_effects(self)
+        local effects = resolve_node_effects(self)
 
-        if drawable_requires_isolation(effects) then
+        if node_requires_isolation(effects) then
             return draw_isolated_subtree(
                 self,
                 graphics,
