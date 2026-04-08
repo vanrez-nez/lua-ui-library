@@ -77,6 +77,11 @@ This document does not reduce styling to the broader term `surface`. A surface m
 
 The root styling carrier in the inheritance hierarchy is `Drawable`. `Drawable` is defined in [UI Foundation Specification](./ui-foundation-spec.md). This document does not redefine the `Drawable` component contract; it defines only what styling properties `Drawable` carries.
 
+`Shape.stroke*` props are not styling properties in this revision. They are
+defined by [UI Foundation Specification](./ui-foundation-spec.md) as a
+shape-owned geometric stroke contract separate from the `border*` styling
+family.
+
 Implications:
 
 - a component that inherits from `Drawable` may expose styling on its root
@@ -559,6 +564,22 @@ When `borderPattern = "dashed"`:
 
 Invalid border line configuration fails deterministically.
 
+## 7.5 Shape-Owned Stroke Boundary
+
+`Shape.stroke*` is not part of the border styling family defined in this
+document.
+
+When the foundation contract exposes shape-owned stroke props, the semantic
+split mirrors the border vocabulary:
+
+- `strokeStyle` controls line quality
+- `strokePattern` controls solid versus dashed segmentation
+
+`Shape.strokeWidth` remains scalar-only and does not use `SideQuad input`.
+
+This document does not define the full `Shape.stroke*` contract. It defines the
+shared `border*` styling family only.
+
 ## 8. Corner Radius Contract
 
 The public corner-radius property family in this revision is:
@@ -678,7 +699,9 @@ This document defines styling-family opacity properties such as:
 - `borderOpacity`
 - `shadowOpacity`
 
-Whole-node opacity remains the `Drawable.opacity` contract owned by [UI Foundation Specification](./ui-foundation-spec.md).
+Whole-node opacity is a foundation-owned contract. Any render-capable node that
+documents node opacity in its component contract participates in that contract,
+including `Drawable` and `Shape`.
 
 This document does not redefine node-level opacity. It defines only styling-family opacity inputs and how they combine with the alpha contribution of their corresponding styling source.
 

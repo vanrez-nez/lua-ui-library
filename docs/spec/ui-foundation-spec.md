@@ -178,7 +178,7 @@ The following artifacts are not components in this revision:
 |-----------|------|---------------------|----------------------------|---------------|
 | `Container` | Primitive | tree membership, transforms, visibility, bounds, event ancestry, focus ancestry | drawing, semantic meaning, control state, product-specific behavior | fixed |
 | `Drawable` | Primitive | presentational surface, content box, alignment, render-effect participation | activation semantics, layout-family placement policy, business meaning | fixed |
-| `Shape` | Primitive | geometric retained presentation, fill rendering, and silhouette-aware containment | `Drawable` box-model semantics, styling families, render-effect participation, child-layout semantics | fixed |
+| `Shape` | Primitive | geometric retained presentation, fill and shape-stroke rendering, silhouette-aware containment, and documented node opacity | `Drawable` box-model semantics, styling families, named-part skinning, shader or mask participation, blend-mode participation, child-layout semantics | fixed |
 | `Stack` | Layout | layered child placement within one content box | sequential layout rules, overlay blocking, focus trapping | extensible through documented slots only |
 | `Row` | Layout | horizontal sequencing, gap resolution, cross-axis alignment | scrolling, tabular data semantics, child activation behavior | extensible through documented slots only |
 | `Column` | Layout | vertical sequencing, gap resolution, cross-axis alignment | scrolling, form semantics, child activation behavior | extensible through documented slots only |
@@ -1146,15 +1146,15 @@ parallel to `Drawable`, not a subtype of it.
 - participate in retained-tree targeting through the same `containsPoint`
   vocabulary used by other interactive nodes
 - evaluate containment in inverse-transformed local space
-- remain narrow enough that its public surface is geometry and fill only in
-  this revision
+- remain narrow enough that its public surface is geometry, fill, shape-owned
+  stroke, and node opacity only in this revision
 
 `Shape` must not:
 
 - inherit the `Drawable` content-box, spacing, internal alignment, styling, or
-  render-effect contract
-- expose stroke, border, shadow, skin, shader, mask, blend-mode, or
-  shape-aware clipping semantics in this revision
+  named-part render-skin contract
+- expose `Drawable` border styling, shadow styling, skin, shader, mask,
+  blend-mode, or shape-aware clipping semantics in this revision
 - permit consumer child composition in this revision
 
 **Anatomy**
@@ -1167,6 +1167,17 @@ parallel to `Drawable`, not a subtype of it.
 
 - `fillColor`
 - `fillOpacity: number`
+- `strokeColor`
+- `strokeOpacity: number`
+- `strokeWidth: number`
+- `strokeStyle: "smooth" | "rough"`
+- `strokeJoin: "miter" | "bevel" | "none"`
+- `strokeMiterLimit: number`
+- `strokePattern: "solid" | "dashed"`
+- `strokeDashLength: number`
+- `strokeGapLength: number`
+- `strokeDashOffset: number`
+- `opacity: number`
 - `containsPoint(x, y) -> boolean`
 - `_contains_local_point(local_x, local_y) -> boolean`
 
@@ -1180,13 +1191,59 @@ Approved concrete classes in this revision:
 Default values:
 
 - `fillOpacity = 1`
+- `strokeOpacity = 1`
+- `strokeWidth = 0`
+- `strokeStyle = "smooth"`
+- `strokeJoin = "miter"`
+- `strokeMiterLimit = 10`
+- `strokePattern = "solid"`
+- `strokeDashLength = 8`
+- `strokeGapLength = 4`
+- `strokeDashOffset = 0`
+- `opacity = 1`
 
 Public surface exclusions in this revision:
 
 - no `padding`, `padding*`, `margin`, `margin*`, `alignX`, or `alignY`
-- no `skin`, `shader`, `opacity`, `blendMode`, or `mask`
+- no `skin`, `shader`, `blendMode`, or `mask`
 - no `background*`, `border*`, `cornerRadius*`, or `shadow*`
-- no `strokeColor`, `strokeOpacity`, or `strokeWidth`
+
+**Shape-owned stroke and opacity contract**
+
+`Shape.stroke*` is a shape-owned geometric stroke surface. It does not alias,
+inherit, or accept the `Drawable.border*` contract.
+
+The stable rules in this revision are:
+
+- `strokeWidth` is scalar-only, must be finite, and must not be negative
+- `strokeWidth` does not use `SideQuad input`
+- `strokeStyle` controls line quality and accepts `"smooth"` or `"rough"`
+- `strokePattern` controls segmentation and accepts `"solid"` or `"dashed"`
+- `strokeJoin` accepts `"miter"`, `"bevel"`, or `"none"`
+- `strokeMiterLimit` must be finite and greater than zero
+- `strokeDashLength` must be finite and greater than zero
+- `strokeGapLength` must be finite and greater than or equal to zero
+- `strokeDashOffset` must be finite
+- the stroke is center-aligned on the canonical shape silhouette
+- stroke paint does not alter layout footprint
+- stroke paint does not alter `containsPoint`
+- no stroke paints unless `strokeColor` is present and `strokeWidth > 0`
+- final stroke alpha is `strokeColor.alpha * strokeOpacity * opacity`
+- when `strokePattern = "solid"`, `strokeDashLength`, `strokeGapLength`, and
+  `strokeDashOffset` are ignored
+
+Canonical dashed-stroke traversal starts in local clockwise perimeter order:
+
+- `RectShape`: top-left corner
+- `CircleShape`: top-center of the inscribed ellipse
+- `TriangleShape`: top vertex
+- `DiamondShape`: top vertex
+
+`strokeJoin` and `strokeMiterLimit` are accepted on every concrete shape.
+They are inert on `CircleShape`, which has no discrete corners.
+
+`opacity` is a whole-node alpha control on the fully composited shape result.
+It does not alter layout or hit testing.
 
 **Centroid helper support**
 
@@ -1212,11 +1269,11 @@ may provide a geometry-derived centroid through this helper path.
 STATE shape_clean
 
   ENTRY:
-    1. Fill inputs and local geometry are current.
+    1. Fill inputs, stroke inputs, opacity, and local geometry are current.
     2. The shape's containment silhouette is current for the resolved bounds.
 
   TRANSITIONS:
-    ON bounds, transform, or fill-input change:
+    ON bounds, transform, fill-input, stroke-input, or opacity change:
       1. Mark local geometry or draw inputs stale as required.
       2. Reuse the ordinary `Container` dirty path for transform and bounds.
       → shape_dirty
@@ -1224,12 +1281,12 @@ STATE shape_clean
 STATE shape_dirty
 
   ENTRY:
-    1. Fill or local-geometry data is stale.
+    1. Fill, stroke, opacity, or local-geometry data is stale.
 
   TRANSITIONS:
     ON next draw preparation or containment evaluation:
       1. Resolve local geometry from the current bounds.
-      2. Resolve effective fill inputs.
+      2. Resolve effective fill, stroke, and opacity inputs.
       → shape_clean
 
 **Containment contract**
@@ -1295,8 +1352,13 @@ diamond, or ellipse silhouette.
   pixels and may expose no hittable silhouette.
 - A `Shape` with `fillOpacity = 0` remains in the tree and retains hit-test
   participation unless additionally marked non-interactive.
+- A `Shape` with `opacity = 0` remains in the tree and retains hit-test
+  participation unless additionally marked non-interactive.
+- A `Shape` with `strokeWidth > 0` but no `strokeColor` paints no stroke.
 - A `Shape` with non-rect geometry still occupies its full rectangular layout
   footprint; transparent corners do not reduce layout size.
+- A `Shape` stroke may paint outward from the silhouette, but that outward
+  extent does not expand the interactive region.
 - A `Shape` with `clipChildren = true` clips descendants to rectangular bounds,
   not to the visible silhouette; authors must not rely on `Shape` as a
   silhouette clip in this revision.
