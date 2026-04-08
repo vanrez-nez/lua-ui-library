@@ -105,7 +105,7 @@ function DemoBase:set_title(value)
 end
 
 function DemoBase:set_description(value)
-    self.description = value
+    self.description = value or ''
 end
 
 function DemoBase:get_screen_count()
