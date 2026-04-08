@@ -803,6 +803,16 @@ local function refresh_world_transform(self)
 end
 
 local function refresh_bounds(self)
+    local resolve_world_bounds_points = walk_hierarchy(getmetatable(self), '_get_world_bounds_points')
+    if Types.is_function(resolve_world_bounds_points) then
+        local points = resolve_world_bounds_points(self)
+        if Types.is_table(points) and #points > 0 then
+            rawset(self, '_world_bounds_cache', Rectangle.bounding_box(points))
+            rawset(self, '_bounds_dirty', false)
+            return
+        end
+    end
+
     local width = rawget(self, '_resolved_width') or 0
     local height = rawget(self, '_resolved_height') or 0
     local matrix = rawget(self, '_world_transform_cache')

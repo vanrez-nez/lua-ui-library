@@ -17,6 +17,15 @@ local function assert_true(value, message)
     end
 end
 
+local function assert_near(actual, expected, tolerance, message)
+    tolerance = tolerance or 0.01
+
+    if math.abs(actual - expected) > tolerance then
+        error(message .. ': expected ' .. tostring(expected) ..
+            ', got ' .. tostring(actual), 2)
+    end
+end
+
 local function assert_nil(value, message)
     if value ~= nil then
         error(message .. ': expected nil, got ' .. tostring(value), 2)
@@ -206,6 +215,114 @@ local function run_stage_compatibility_tests()
     stage:destroy()
 end
 
+local function run_centroid_helper_tests()
+    local shape = Shape.new({
+        width = 80,
+        height = 40,
+    })
+    local centroid_x, centroid_y = shape:get_local_centroid()
+
+    assert_equal(centroid_x, 40,
+        'Base Shape centroid helper should return the local horizontal center')
+    assert_equal(centroid_y, 20,
+        'Base Shape centroid helper should return the local vertical center')
+
+    shape.pivotX = 0
+    shape.pivotY = 0
+    shape:set_centroid_pivot()
+
+    assert_equal(shape.pivotX, 0.5,
+        'Base Shape centroid helper should assign centered pivotX')
+    assert_equal(shape.pivotY, 0.5,
+        'Base Shape centroid helper should assign centered pivotY')
+
+    local zero_width = Shape.new({
+        width = 0,
+        height = 20,
+        pivotX = 0.2,
+        pivotY = 0.8,
+    })
+
+    zero_width:set_centroid_pivot()
+
+    assert_equal(zero_width.pivotX, 0.2,
+        'Shape centroid helper should not mutate pivotX when width is zero')
+    assert_equal(zero_width.pivotY, 0.8,
+        'Shape centroid helper should not mutate pivotY when width is zero')
+
+    local zero_height = Shape.new({
+        width = 20,
+        height = 0,
+        pivotX = 0.3,
+        pivotY = 0.7,
+    })
+
+    zero_height:set_centroid_pivot()
+
+    assert_equal(zero_height.pivotX, 0.3,
+        'Shape centroid helper should not mutate pivotX when height is zero')
+    assert_equal(zero_height.pivotY, 0.7,
+        'Shape centroid helper should not mutate pivotY when height is zero')
+
+    local VertexCentroidShape = Shape:extends('VertexCentroidShapeSpec')
+
+    function VertexCentroidShape:constructor(opts)
+        Shape.constructor(self, opts)
+    end
+
+    function VertexCentroidShape.new(opts)
+        return VertexCentroidShape(opts)
+    end
+
+    function VertexCentroidShape:get_local_vertices()
+        local bounds = self:getLocalBounds()
+
+        return {
+            { bounds.x, bounds.y },
+            { bounds.x + bounds.width, bounds.y },
+            { bounds.x, bounds.y + bounds.height },
+        }
+    end
+
+    function VertexCentroidShape:get_local_centroid()
+        local vertices = self:get_local_vertices()
+        local sum_x = 0
+        local sum_y = 0
+
+        for index = 1, #vertices do
+            sum_x = sum_x + vertices[index][1]
+            sum_y = sum_y + vertices[index][2]
+        end
+
+        return sum_x / #vertices, sum_y / #vertices
+    end
+
+    local custom_shape = VertexCentroidShape.new({
+        width = 12,
+        height = 18,
+    })
+    local custom_x, custom_y = custom_shape:get_local_centroid()
+
+    assert_equal(custom_x, 4,
+        'Custom shapes should be able to derive centroid x from local vertices')
+    assert_equal(custom_y, 6,
+        'Custom shapes should be able to derive centroid y from local vertices')
+
+    custom_shape:set_centroid_pivot()
+
+    assert_near(custom_shape.pivotX, 1 / 3, 0.0001,
+        'Custom centroid helper should assign normalized pivotX from local geometry')
+    assert_near(custom_shape.pivotY, 1 / 3, 0.0001,
+        'Custom centroid helper should assign normalized pivotY from local geometry')
+
+    custom_shape.width = 24
+
+    assert_near(custom_shape.pivotX, 1 / 3, 0.0001,
+        'Shape centroid helper should remain one-time after later width changes')
+    assert_near(custom_shape.pivotY, 1 / 3, 0.0001,
+        'Shape centroid helper should remain one-time after later size changes')
+end
+
 local function run_transformed_rect_shape_targeting_tests()
     local stage = UI.Stage.new({
         width = 240,
@@ -308,6 +425,7 @@ local function run()
     run_surface_exclusion_tests()
     run_leaf_only_tests()
     run_stage_compatibility_tests()
+    run_centroid_helper_tests()
     run_transformed_rect_shape_targeting_tests()
     run_mixed_sibling_targeting_tests()
 end

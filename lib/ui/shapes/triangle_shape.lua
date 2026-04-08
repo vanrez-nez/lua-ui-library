@@ -18,18 +18,33 @@ local function contains_triangle(px, py, ax, ay, bx, by, cx, cy)
     return not (has_negative and has_positive)
 end
 
+local function resolve_local_points(bounds)
+    local top_x = bounds.x + (bounds.width / 2)
+    local top_y = bounds.y
+    local base_y = bounds.y + bounds.height
+
+    return {
+        { top_x, top_y },
+        { bounds.x + bounds.width, base_y },
+        { bounds.x, base_y },
+    }
+end
+
 function TriangleShape:constructor(opts)
     Shape.constructor(self, opts)
 end
 
 function TriangleShape:_get_local_points()
-    local bounds = self:getLocalBounds()
+    local bounds = self:_get_shape_local_bounds()
+    return resolve_local_points(bounds)
+end
 
-    return {
-        { bounds.x + (bounds.width / 2), bounds.y },
-        { bounds.x + bounds.width, bounds.y + bounds.height },
-        { bounds.x, bounds.y + bounds.height },
-    }
+function TriangleShape:get_local_centroid()
+    local points = self:_get_local_points()
+
+    return
+        (points[1][1] + points[2][1] + points[3][1]) / 3,
+        (points[1][2] + points[2][2] + points[3][2]) / 3
 end
 
 function TriangleShape:draw(graphics)
@@ -57,15 +72,17 @@ function TriangleShape:_contains_local_point(local_x, local_y)
         return false
     end
 
+    local points = resolve_local_points(bounds)
+
     return contains_triangle(
         local_x,
         local_y,
-        bounds.x + (bounds.width / 2),
-        bounds.y,
-        bounds.x + bounds.width,
-        bounds.y + bounds.height,
-        bounds.x,
-        bounds.y + bounds.height
+        points[1][1],
+        points[1][2],
+        points[2][1],
+        points[2][2],
+        points[3][1],
+        points[3][2]
     )
 end
 

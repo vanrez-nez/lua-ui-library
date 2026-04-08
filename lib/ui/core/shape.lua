@@ -58,6 +58,39 @@ function Shape:removeChild()
     Assert.fail('Shape may not contain child nodes', 2)
 end
 
+function Shape:_get_shape_local_bounds()
+    return rawget(self, '_local_bounds_cache') or self:getLocalBounds()
+end
+
+function Shape:_get_local_points()
+    local bounds = self:_get_shape_local_bounds()
+
+    return {
+        { bounds.x, bounds.y },
+        { bounds.x + bounds.width, bounds.y },
+        { bounds.x + bounds.width, bounds.y + bounds.height },
+        { bounds.x, bounds.y + bounds.height },
+    }
+end
+
+function Shape:_get_world_bounds_points()
+    local matrix = rawget(self, '_world_transform_cache')
+    local local_points = self:_get_local_points()
+    local world_points = {}
+
+    if matrix == nil then
+        return world_points
+    end
+
+    for index = 1, #local_points do
+        local point = local_points[index]
+        local world_x, world_y = matrix:transform_point(point[1], point[2])
+        world_points[#world_points + 1] = { x = world_x, y = world_y }
+    end
+
+    return world_points
+end
+
 function Shape:draw(graphics)
     if not Types.is_table(graphics) or not Types.is_function(graphics.rectangle) then
         return
@@ -116,6 +149,28 @@ function Shape:_contains_local_point(local_x, local_y)
     local bounds = self:getLocalBounds()
 
     return bounds:contains_point(local_x, local_y)
+end
+
+function Shape:get_local_centroid()
+    local bounds = self:getLocalBounds()
+
+    return bounds.x + (bounds.width / 2), bounds.y + (bounds.height / 2)
+end
+
+function Shape:set_centroid_pivot()
+    local bounds = self:getLocalBounds()
+
+    if bounds.width == 0 or bounds.height == 0 then
+        return
+    end
+
+    local centroid_x, centroid_y = self:get_local_centroid()
+
+    Assert.number('centroid_x', centroid_x, 2)
+    Assert.number('centroid_y', centroid_y, 2)
+
+    self.pivotX = centroid_x / bounds.width
+    self.pivotY = centroid_y / bounds.height
 end
 
 function Shape:containsPoint(x, y)

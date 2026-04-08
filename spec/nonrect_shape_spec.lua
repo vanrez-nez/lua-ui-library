@@ -176,16 +176,20 @@ local function run_triangle_tests()
         { 10, 0 },
         { 20, 18 },
         { 0, 18 },
-    }), 'TriangleShape should draw the upright canonical triangle')
+    }), 'TriangleShape should draw the full-bounds canonical triangle')
     assert_color_call(graphics.calls[3], 0.25, 0.5, 0.75, 0.9,
         'TriangleShape should restore the previous color')
 
-    assert_true(shape:_contains_local_point(10, 12),
+    assert_true(shape:_contains_local_point(10, 9),
         'TriangleShape should contain an interior point')
     assert_true(shape:_contains_local_point(10, 0),
         'TriangleShape should include its top vertex')
     assert_true(not shape:_contains_local_point(0, 0),
         'TriangleShape should exclude the top-left corner outside the silhouette')
+    assert_true(shape:_contains_local_point(10, 9),
+        'TriangleShape should contain the local bounds center when pivotX/Y are 0.5')
+    assert_true(shape:_contains_local_point(10, 16),
+        'TriangleShape should use the full local height for its base')
 end
 
 local function run_diamond_tests()
@@ -218,6 +222,64 @@ local function run_diamond_tests()
         'DiamondShape should include its top midpoint')
     assert_true(not shape:_contains_local_point(0, 0),
         'DiamondShape should exclude the corner outside the silhouette')
+end
+
+local function run_centroid_helper_behavior_tests()
+    local shapes = {
+        {
+            label = 'RectShape',
+            node = UI.RectShape.new({
+                width = 40,
+                height = 20,
+                pivotX = 0,
+                pivotY = 0,
+            }),
+        },
+        {
+            label = 'CircleShape',
+            node = UI.CircleShape.new({
+                width = 40,
+                height = 20,
+                pivotX = 0,
+                pivotY = 0,
+            }),
+        },
+        {
+            label = 'TriangleShape',
+            node = UI.TriangleShape.new({
+                width = 40,
+                height = 20,
+                pivotX = 0,
+                pivotY = 0,
+            }),
+        },
+        {
+            label = 'DiamondShape',
+            node = UI.DiamondShape.new({
+                width = 40,
+                height = 20,
+                pivotX = 0,
+                pivotY = 0,
+            }),
+        },
+    }
+
+    for index = 1, #shapes do
+        local entry = shapes[index]
+        local centroid_x, centroid_y = entry.node:get_local_centroid()
+
+        assert_equal(centroid_x, 20,
+            entry.label .. ' should keep bounds-center centroid helper x')
+        assert_equal(centroid_y, 10,
+            entry.label .. ' should keep bounds-center centroid helper y')
+
+        entry.node:set_centroid_pivot()
+
+        assert_equal(entry.node.pivotX, 0.5,
+            entry.label .. ' should keep bounds-center pivotX when using centroid helper')
+        assert_equal(entry.node.pivotY, 0.5,
+            entry.label .. ' should keep bounds-center pivotY when using centroid helper')
+    end
 end
 
 local function run_transformed_targeting_tests()
@@ -353,7 +415,7 @@ local function run_stage_draw_tests()
         { 25, 0 },
         { 50, 40 },
         { 0, 40 },
-    }), 'Stage draw should render TriangleShape from transformed local triangle points')
+    }), 'Stage draw should render TriangleShape from transformed full-bounds local triangle points')
     assert_polygon_call(graphics.calls[8], build_expected_world_points(diamond, {
         { 24, 0 },
         { 48, 14 },
@@ -406,6 +468,7 @@ local function run()
     run_circle_tests()
     run_triangle_tests()
     run_diamond_tests()
+    run_centroid_helper_behavior_tests()
     run_transformed_targeting_tests()
     run_stage_draw_tests()
     run_rectangular_clip_behavior_tests()

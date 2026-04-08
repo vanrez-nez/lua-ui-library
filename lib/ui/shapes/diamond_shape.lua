@@ -8,7 +8,7 @@ function DiamondShape:constructor(opts)
 end
 
 function DiamondShape:_get_local_points()
-    local bounds = self:getLocalBounds()
+    local bounds = self:_get_shape_local_bounds()
 
     return {
         { bounds.x + (bounds.width / 2), bounds.y },
