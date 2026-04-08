@@ -13,6 +13,12 @@ exists as a `Container` subclass with fill rendering, concrete non-rect shape
 classes, and silhouette-aware containment, but still lacks stroke support and
 still depends on a `Drawable`-only isolation path for node opacity.
 
+Current-surface note: this document records the phase-19 extension scope only.
+The shipped `Shape` surface is broader after phase 20, which adds shared root
+compositing props plus shape-owned gradient and texture fill sources. For the
+current implementation-facing graphics surface, see
+[`docs/implementation/phase-20-shape-graphics-capability-normalization.md`](./phase-20-shape-graphics-capability-normalization.md).
+
 ## Authority
 
 - `docs/spec/ui-foundation-spec.md`

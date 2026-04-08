@@ -14,6 +14,11 @@ This phase implements the new primitive boundary defined by the accepted shape
 spec patch. It is not a `Drawable` extension, not a graphics-object feature,
 and not a styling-system retrofit.
 
+Current-surface note: this document records the phase-18 introduction scope.
+The shipped `Shape` surface is broader after phase 19 and phase 20. For the
+current implementation-facing graphics surface, see
+[`docs/implementation/phase-20-shape-graphics-capability-normalization.md`](./phase-20-shape-graphics-capability-normalization.md).
+
 ## Authority
 
 - `docs/spec/ui-foundation-spec.md`
@@ -152,4 +157,3 @@ Minimum verification after implementation:
 - `DiamondShape` uses the midpoint-based canonical vertices
 - `clipChildren` on `Shape` stays rectangular
 - child composition on `Shape` fails deterministically
-
