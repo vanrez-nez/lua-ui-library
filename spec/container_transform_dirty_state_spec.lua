@@ -179,6 +179,55 @@ local function run_parent_measurement_invalidation_tests()
         'Anchor-based y placement should remain tied to the parent size')
 end
 
+local function run_default_anchor_and_pivot_semantics_tests()
+    local root = Container.new({
+        width = 200,
+        height = 100,
+    })
+    local anchored = Container.new({
+        width = 40,
+        height = 20,
+    })
+    local rotated_default = Container.new({
+        x = 100,
+        y = 50,
+        width = 40,
+        height = 20,
+        rotation = math.pi,
+    })
+    local rotated_origin = Container.new({
+        x = 100,
+        y = 50,
+        width = 40,
+        height = 20,
+        pivotX = 0,
+        pivotY = 0,
+        rotation = math.pi,
+    })
+
+    root:addChild(anchored)
+    root:addChild(rotated_default)
+    root:addChild(rotated_origin)
+    root:update()
+
+    local anchored_world_x, anchored_world_y = anchored:localToWorld(0, 0)
+    local default_world_x, default_world_y = rotated_default:localToWorld(20, 10)
+    local origin_world_x, origin_world_y = rotated_origin:localToWorld(0, 0)
+
+    assert_almost_equal(anchored_world_x, 0, 1e-9,
+        'Omitted anchorX should keep parent-relative attachment at the parent origin')
+    assert_almost_equal(anchored_world_y, 0, 1e-9,
+        'Omitted anchorY should keep parent-relative attachment at the parent origin')
+    assert_almost_equal(default_world_x, 120, 1e-9,
+        'Omitted pivotX should rotate around the local horizontal center')
+    assert_almost_equal(default_world_y, 60, 1e-9,
+        'Omitted pivotY should rotate around the local vertical center')
+    assert_almost_equal(origin_world_x, 100, 1e-9,
+        'Explicit pivotX=0 should keep the local origin fixed during rotation')
+    assert_almost_equal(origin_world_y, 50, 1e-9,
+        'Explicit pivotY=0 should keep the local origin fixed during rotation')
+end
+
 local function run_breakpoint_placeholder_tests()
     local root = Container.new({
         width = 300,
@@ -274,6 +323,7 @@ local function run()
     run_hidden_node_resolution_tests()
     run_parent_transform_invalidation_tests()
     run_parent_measurement_invalidation_tests()
+    run_default_anchor_and_pivot_semantics_tests()
     run_breakpoint_placeholder_tests()
     run_clean_pass_stability_tests()
 end

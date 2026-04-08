@@ -93,10 +93,10 @@ local function run_content_box_placement_tests()
         'Stack should place children relative to the content-box origin without overwriting x')
     assert_equal(percent_y, 9,
         'Stack should place children relative to the content-box origin without overwriting y')
-    assert_equal(anchor_right, 110,
-        'Stack should let child anchor and pivot resolve independently on the horizontal axis')
-    assert_equal(anchor_bottom, 75,
-        'Stack should let child anchor and pivot resolve independently on the vertical axis')
+    assert_equal(anchor_right, 140,
+        'Stack should keep anchor-based placement independent from the child pivot on the horizontal axis')
+    assert_equal(anchor_bottom, 95,
+        'Stack should keep anchor-based placement independent from the child pivot on the vertical axis')
 
     stage:destroy()
 end

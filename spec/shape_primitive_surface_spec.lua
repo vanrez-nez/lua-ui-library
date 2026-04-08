@@ -58,9 +58,9 @@ local function run_public_surface_tests()
         'Shape should preserve inherited height')
     assert_equal(node.interactive, true,
         'Shape should preserve inherited interactive')
-    assert_equal(node.pivotX, 0,
+    assert_equal(node.pivotX, 0.5,
         'Shape should preserve inherited default pivotX')
-    assert_equal(node.pivotY, 0,
+    assert_equal(node.pivotY, 0.5,
         'Shape should preserve inherited default pivotY')
     assert_true(rawget(node, '_ui_shape_instance') == true,
         'Shape should mark shape-family instances internally')

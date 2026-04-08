@@ -754,16 +754,19 @@ local function refresh_local_transform(self)
 
     local width = rawget(self, '_resolved_width') or 0
     local height = rawget(self, '_resolved_height') or 0
-    local pivot_x = (get_effective_value(self, 'pivotX') or 0) * width
-    local pivot_y = (get_effective_value(self, 'pivotY') or 0) * height
+    local pivot_x = (get_effective_value(self, 'pivotX') or 0.5) * width
+    local pivot_y = (get_effective_value(self, 'pivotY') or 0.5) * height
     local anchor_x = (get_effective_value(self, 'anchorX') or 0) * parent_width
     local anchor_y = (get_effective_value(self, 'anchorY') or 0) * parent_height
     local layout_offset_x = rawget(self, '_layout_offset_x') or 0
     local layout_offset_y = rawget(self, '_layout_offset_y') or 0
 
+    local position_x = layout_offset_x + anchor_x + (get_effective_value(self, 'x') or 0)
+    local position_y = layout_offset_y + anchor_y + (get_effective_value(self, 'y') or 0)
+
     rawset(self, '_local_transform_cache', Matrix.from_transform(
-        layout_offset_x + anchor_x + (get_effective_value(self, 'x') or 0),
-        layout_offset_y + anchor_y + (get_effective_value(self, 'y') or 0),
+        position_x + pivot_x,
+        position_y + pivot_y,
         pivot_x,
         pivot_y,
         (get_effective_value(self, 'scaleX') or 1),
@@ -1241,8 +1244,8 @@ local function composite_isolated_subtree(self, graphics, canvas, effects, clip_
 
     if draw_x ~= 0 or draw_y ~= 0 or rotation ~= 0 or scale_x ~= 1 or scale_y ~= 1 then
         local bounds = rawget(self, '_local_bounds_cache') or self:getLocalBounds()
-        local pivot_x = (get_effective_value(self, 'pivotX') or 0) * bounds.width
-        local pivot_y = (get_effective_value(self, 'pivotY') or 0) * bounds.height
+        local pivot_x = (get_effective_value(self, 'pivotX') or 0.5) * bounds.width
+        local pivot_y = (get_effective_value(self, 'pivotY') or 0.5) * bounds.height
         local world_pivot_x, world_pivot_y = self:localToWorld(pivot_x, pivot_y)
 
         graphics.draw(

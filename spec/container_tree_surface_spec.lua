@@ -124,6 +124,21 @@ local function run_public_surface_tests()
     'Container should reject unsupported trapFocus props')
 end
 
+local function run_default_anchor_and_pivot_tests()
+    local node = Container.new({
+        tag = 'defaults',
+    })
+
+    assert_equal(node.anchorX, 0,
+        'Container should default anchorX to origin-based parent attachment')
+    assert_equal(node.anchorY, 0,
+        'Container should default anchorY to origin-based parent attachment')
+    assert_equal(node.pivotX, 0.5,
+        'Container should default pivotX to centered local transforms')
+    assert_equal(node.pivotY, 0.5,
+        'Container should default pivotY to centered local transforms')
+end
+
 local function run_tree_management_tests()
     local parent_a = Container.new({ tag = 'parent-a' })
     local parent_b = Container.new({ tag = 'parent-b' })
@@ -226,6 +241,7 @@ end
 
 local function run()
     run_public_surface_tests()
+    run_default_anchor_and_pivot_tests()
     run_tree_management_tests()
     run_cycle_and_destroy_tests()
     run_fill_contract_tests()
