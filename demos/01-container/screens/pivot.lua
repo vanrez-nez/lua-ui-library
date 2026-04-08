@@ -51,12 +51,12 @@ return function(owner, helpers)
 
         local nested_grandchild = Container.new({
             id = 'pivot-nested-grandchild',
-            x = 90,
-            y = 60,
             width = 80,
             height = 60,
-            pivotX = 1,
-            pivotY = 1,
+            x = 140,
+            y = 100,
+            pivotX = 0,
+            pivotY = 0,
             rotation = 0,
         })
         nested_child:addChild(nested_grandchild)
