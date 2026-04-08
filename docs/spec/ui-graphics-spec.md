@@ -100,6 +100,8 @@ Additional identity rules:
 
 - own animation playback
 - own layout or interaction semantics
+- surface the underlying `Texture` dimensions directly; the effective source
+  dimensions of a `Sprite` are always its sub-region dimensions
 
 ### 4B.4 Region Contract
 

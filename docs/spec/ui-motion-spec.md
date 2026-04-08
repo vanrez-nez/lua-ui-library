@@ -112,6 +112,27 @@ This revision additionally allows a component family to define component-specifi
 - tab-indicator offset for `Tabs`
 - popup placement offset for anchored or overlay surfaces
 - shader-bound visual parameters for a documented part that already exposes shader behavior through the visual contract
+- fill-source visual properties for `Shape` as documented in the
+  capability-normalization patch
+
+`Shape` fill-source motion-capable properties:
+
+| Property | Motion-capable | Interpolation |
+|---|---|---|
+| `fillColor` | Yes | Continuous color, same contract as `backgroundColor` |
+| `fillOpacity` | Yes | Continuous numeric `[0, 1]`, same contract as `backgroundOpacity` |
+| `fillGradient` color stops | Yes | Continuous color per stop, same contract as styling spec §12 |
+| `fillTexture` | Yes | Discrete step, whole-object replacement only |
+| `fillOffsetX` | Yes | Continuous numeric, same contract as `backgroundOffsetX` |
+| `fillOffsetY` | Yes | Continuous numeric, same contract as `backgroundOffsetY` |
+| `fillAlignX` | Yes | Discrete step only |
+| `fillAlignY` | Yes | Discrete step only |
+| `fillRepeatX` | No | Boolean, not motion-capable |
+| `fillRepeatY` | No | Boolean, not motion-capable |
+
+Motion capability applies to the property value only. The fill source priority
+rule is not motion-driven — transitions animate the active source's property
+values, not the priority resolution itself.
 
 Motion properties are visual-only in this revision.
 
@@ -287,6 +308,8 @@ The following families are directly motion-relevant in this revision:
 | `ProgressBar` | `value`, `indeterminate` | `indicator` |
 | `Button`, `Checkbox`, `Switch`, `Slider` | `state-change`, `value` | documented indicator or thumb surfaces |
 | `Image` | consumer-defined visual motion only | retained image surface |
+| `Drawable` | consumer-defined visual motion | root compositing surface (`opacity`, `blendMode`, `shader`) |
+| `Shape` | consumer-defined visual motion | root compositing surface (`opacity`, `blendMode`, `shader`) |
 
 The following are explicitly not motion owners in this revision:
 

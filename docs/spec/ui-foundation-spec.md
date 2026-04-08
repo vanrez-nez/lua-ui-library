@@ -178,7 +178,7 @@ The following artifacts are not components in this revision:
 |-----------|------|---------------------|----------------------------|---------------|
 | `Container` | Primitive | tree membership, transforms, visibility, bounds, event ancestry, focus ancestry | drawing, semantic meaning, control state, product-specific behavior | fixed |
 | `Drawable` | Primitive | presentational surface, content box, alignment, render-effect participation | activation semantics, layout-family placement policy, business meaning | fixed |
-| `Shape` | Primitive | geometric retained presentation, fill and shape-stroke rendering, silhouette-aware containment, and documented node opacity | `Drawable` box-model semantics, styling families, named-part skinning, shader or mask participation, blend-mode participation, child-layout semantics | fixed |
+| `Shape` | Primitive | geometric retained presentation, fill and shape-stroke rendering, silhouette-aware containment, and documented node opacity | `Drawable` box-model semantics, styling families, named-part skinning, mask participation, child-layout semantics | fixed |
 | `Stack` | Layout | layered child placement within one content box | sequential layout rules, overlay blocking, focus trapping | extensible through documented slots only |
 | `Row` | Layout | horizontal sequencing, gap resolution, cross-axis alignment | scrolling, tabular data semantics, child activation behavior | extensible through documented slots only |
 | `Column` | Layout | vertical sequencing, gap resolution, cross-axis alignment | scrolling, form semantics, child activation behavior | extensible through documented slots only |
@@ -1153,8 +1153,8 @@ parallel to `Drawable`, not a subtype of it.
 
 - inherit the `Drawable` content-box, spacing, internal alignment, styling, or
   named-part render-skin contract
-- expose `Drawable` border styling, shadow styling, skin, shader, mask,
-  blend-mode, or shape-aware clipping semantics in this revision
+- expose `Drawable` border styling, shadow styling, skin, or shape-aware
+  clipping semantics in this revision; expose `mask` semantics in this revision
 - permit consumer child composition in this revision
 
 **Anatomy**
@@ -1178,6 +1178,16 @@ parallel to `Drawable`, not a subtype of it.
 - `strokeGapLength: number`
 - `strokeDashOffset: number`
 - `opacity: number`
+- `shader`
+- `blendMode`
+- `fillGradient`
+- `fillTexture`
+- `fillRepeatX: boolean`
+- `fillRepeatY: boolean`
+- `fillOffsetX: number`
+- `fillOffsetY: number`
+- `fillAlignX: "start" | "center" | "end"`
+- `fillAlignY: "start" | "center" | "end"`
 - `containsPoint(x, y) -> boolean`
 - `_contains_local_point(local_x, local_y) -> boolean`
 
@@ -1191,6 +1201,14 @@ Approved concrete classes in this revision:
 Default values:
 
 - `fillOpacity = 1`
+- `fillGradient = absent`
+- `fillTexture = absent`
+- `fillRepeatX = false`
+- `fillRepeatY = false`
+- `fillOffsetX = 0`
+- `fillOffsetY = 0`
+- `fillAlignX = "center"`
+- `fillAlignY = "center"`
 - `strokeOpacity = 1`
 - `strokeWidth = 0`
 - `strokeStyle = "smooth"`
@@ -1205,7 +1223,7 @@ Default values:
 Public surface exclusions in this revision:
 
 - no `padding`, `padding*`, `margin`, `margin*`, `alignX`, or `alignY`
-- no `skin`, `shader`, `blendMode`, or `mask`
+- no `skin` or `mask`
 - no `background*`, `border*`, `cornerRadius*`, or `shadow*`
 
 **Shape-owned stroke and opacity contract**
@@ -1228,9 +1246,53 @@ The stable rules in this revision are:
 - stroke paint does not alter layout footprint
 - stroke paint does not alter `containsPoint`
 - no stroke paints unless `strokeColor` is present and `strokeWidth > 0`
-- final stroke alpha is `strokeColor.alpha * strokeOpacity * opacity`
+- final stroke alpha is `strokeColor.alpha * strokeOpacity`
+- node `opacity` is applied once to the fully composited fill-and-stroke
+  result, not per-draw; bundling `opacity` into the per-draw formula produces
+  incorrect results when fill and stroke overlap at the silhouette boundary
 - when `strokePattern = "solid"`, `strokeDashLength`, `strokeGapLength`, and
   `strokeDashOffset` are ignored
+- stroke is drawn on top of fill within the shape-local paint result; fill is
+  silhouette-clipped first; stroke is not separately clipped to the silhouette;
+  both fill and stroke are combined into the shape-local result before root
+  shader, root opacity, and root blend mode are applied
+
+**Shape-owned fill placement contract**
+
+The placement basis for all fill sources is the shape's local bounds AABB.
+No placement mode references parent geometry or any coordinate space outside
+the shape's own local space.
+
+Stretch mode is active when both `fillRepeatX` and `fillRepeatY` are `false`:
+
+- the fill source is scaled to exactly fill the local bounds AABB
+- `fillAlignX`, `fillAlignY`, `fillOffsetX`, and `fillOffsetY` have no effect
+  in this mode
+- for `Sprite` sources, the sub-region is scaled to fill local bounds
+
+Tiling mode is active when `fillRepeatX` or `fillRepeatY` is `true`:
+
+- the source is placed at its intrinsic dimensions; for `Sprite` sources,
+  intrinsic dimensions are the sub-region dimensions
+- `fillAlignX` and `fillAlignY` position the initial tile within local bounds
+- `fillOffsetX` and `fillOffsetY` shift the tiling origin in local-space units
+- the source repeats along each enabled axis; axes with repetition disabled
+  are treated as a single tile without repetition on that axis, still
+  positioned by alignment and offset
+
+Gradient fill always spans the full local bounds AABB in the resolved
+direction:
+
+- `"horizontal"`: `colors[0]` at the left edge, `colors[last]` at the right
+  edge
+- `"vertical"`: `colors[0]` at the top edge, `colors[last]` at the bottom
+  edge
+
+Gradient fill does not participate in `fillAlignX`, `fillAlignY`,
+`fillOffsetX`, `fillOffsetY`, `fillRepeatX`, or `fillRepeatY`.
+
+All fill pixels outside the shape silhouette are discarded. Fill pixel
+silhouette clipping is applied before stroke is drawn.
 
 Canonical dashed-stroke traversal starts in local clockwise perimeter order:
 
@@ -1362,6 +1424,10 @@ diamond, or ellipse silhouette.
 - A `Shape` with `clipChildren = true` clips descendants to rectangular bounds,
   not to the visible silhouette; authors must not rely on `Shape` as a
   silhouette clip in this revision.
+- This applies to child-node layout clipping only. Fill-pixel silhouette
+  clipping is a paint-stage operation resolved during fill rendering and always
+  clips to the shape's resolved silhouette regardless of the `clipChildren`
+  setting. The two mechanisms are independent.
 - The drawn silhouette and the hit silhouette must match for each concrete
   shape class in the same resolved local geometry.
 
@@ -2094,7 +2160,7 @@ Per-family boundary:
 Visual propagation rules:
 
 - the inherited render-effect chain defined in Section 7.4 propagates from parent to child in tree order
-- node-level opacity, blend mode, masking, and shader behavior propagate only through the inherited effect chain and may trigger isolation according to Section 8.14
+- node-level `opacity`, `blendMode`, and `shader` defined by the shared root-compositing surface do not propagate through the inherited effect chain; they are resolved exclusively from each node's own compositing state record; the inherited effect chain remains authoritative for transform, clipping, and mask behaviors; `mask` is not part of the shared root-compositing surface; nodes whose compositing state requires isolation do so per the isolation derivation rule in Section 8.14
 - token values do not cascade by ordinary parent-child containment; components resolve visual inputs from the active theme and their own explicit overrides
 - component part skins, border radii, textures, fonts, and state variants are isolated per component instance unless a component contract explicitly delegates appearance of a named slot to consumer content
 - consumer content placed into a slot keeps its own visual resolution rules; the slot owner does not automatically recolor, re-font, or re-skin arbitrary descendants unless the component contract explicitly defines that part as a presentational surface owned by the root
@@ -2188,7 +2254,7 @@ When no base variant skin is defined, the component must apply any available def
 
 ### 8.13 Shader Contract
 
-A shader applied at the node level executes over the node's rendered output, after the node draws and before its descendants draw, unless the composition requires isolation.
+A root shader defined by the shared root-compositing surface executes after the node's full subtree is composited, at step 3 of the canonical compositing order established in the capability-normalization patch. It operates on the fully composited subtree result, not on the node's pre-descendant output.
 
 A shader applied at the part level executes only for that part's draw operation and does not affect sibling parts or descendants.
 
