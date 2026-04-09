@@ -5,20 +5,16 @@ local Setup = {}
 
 local PRESET_OPTIONS = {
     {
-        label = 'Opaque',
-        opacities = { 1, 1, 1 },
+        label = 'Normal',
+        blendMode = 'normal',
     },
     {
-        label = 'Uniform 0.333',
-        opacities = { 0.333, 0.333, 0.333 },
+        label = 'Add',
+        blendMode = 'add',
     },
     {
-        label = 'Staggered',
-        opacities = { 1, 0.666, 0.333 },
-    },
-    {
-        label = 'Center Focus',
-        opacities = { 0.333, 1, 0.333 },
+        label = 'Multiply',
+        blendMode = 'multiply',
     },
 }
 
@@ -26,7 +22,7 @@ local FOOTER_RESERVED_HEIGHT = 44
 local FOOTER_NOTE_WIDTH_FRACTION = 0.6
 local FOOTER_NOTE_BOTTOM_PADDING = 8
 local FOOTER_NOTE_BOTTOM_OFFSET_MULTIPLIER = 1.15
-local FOOTER_NOTE_TEXT = 'Click on each item to send it to the front. Inspect the actual overlap in each frame as you switch opacity presets and stacking order.'
+local FOOTER_NOTE_TEXT = 'Click on each item to send it to the front. Inspect the actual overlap in each frame as you switch blend presets and stacking order.'
 
 local function cycle_index(index, delta, total)
     local next_index = index + delta
@@ -45,7 +41,7 @@ end
 local function find_required(root, id)
     local node = root:findById(id, -1)
     if node == nil then
-        error('opacity_setup: missing node "' .. id .. '"', 2)
+        error('blendmode_setup: missing node "' .. id .. '"', 2)
     end
     return node
 end
@@ -55,9 +51,9 @@ local function set_simple_hint(helpers, node, name)
     helpers.set_hint(node, function(current)
         return {
             {
-                label = 'opacity',
+                label = 'blendMode',
                 badges = {
-                    helpers.badge(nil, helpers.format_scalar(current.opacity)),
+                    helpers.badge(nil, tostring(current.blendMode or 'nil')),
                 },
             },
         }
@@ -71,19 +67,19 @@ function Setup.install(args)
     local stage = args.stage
     local title_font = scope:font(12)
     local note_font = scope:font(11)
-    local drawable_frame = find_required(root, 'opacity-drawable-frame')
-    local shape_frame = find_required(root, 'opacity-shape-frame')
-    local drawable_group = find_required(root, 'opacity-drawable-group')
-    local shape_group = find_required(root, 'opacity-shape-group')
+    local drawable_frame = find_required(root, 'blendmode-drawable-frame')
+    local shape_frame = find_required(root, 'blendmode-shape-frame')
+    local drawable_group = find_required(root, 'blendmode-drawable-group')
+    local shape_group = find_required(root, 'blendmode-shape-group')
     local drawable_nodes = {
-        find_required(root, 'opacity-drawable-a'),
-        find_required(root, 'opacity-drawable-b'),
-        find_required(root, 'opacity-drawable-c'),
+        find_required(root, 'blendmode-drawable-a'),
+        find_required(root, 'blendmode-drawable-b'),
+        find_required(root, 'blendmode-drawable-c'),
     }
     local shape_nodes = {
-        find_required(root, 'opacity-shape-a'),
-        find_required(root, 'opacity-shape-b'),
-        find_required(root, 'opacity-shape-c'),
+        find_required(root, 'blendmode-shape-a'),
+        find_required(root, 'blendmode-shape-b'),
+        find_required(root, 'blendmode-shape-c'),
     }
     local active_preset_index = 1
     local preset_layout = nil
@@ -125,7 +121,7 @@ function Setup.install(args)
 
     local function apply_preset(nodes, preset)
         for index = 1, #nodes do
-            nodes[index].opacity = preset.opacities[index]
+            nodes[index].blendMode = preset.blendMode
         end
     end
 

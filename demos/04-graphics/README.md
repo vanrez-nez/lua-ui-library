@@ -37,5 +37,5 @@ Those remain in the component-focused demos.
 ## Demo Notes
 
 - The opacity screen compares overlapping `Drawable` and `CircleShape` nodes under the same opacity presets.
-- The blend-mode screen keeps configured blend values directly inspectable on simple retained content.
+- The blend-mode screen uses the same paired Drawable and CircleShape overlap fixture as opacity, with a shared blend-mode preset and no demo-local compositing simulation.
 - The retained render-effects screen demonstrates the visible subtree compositing differences for normal, alpha-reduced, add, and multiply output.
