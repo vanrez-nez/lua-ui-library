@@ -980,6 +980,10 @@ function Container:_resolve_root_compositing_extras()
     return nil
 end
 
+function Container:_resolve_root_compositing_result_clip()
+    return nil
+end
+
 local ROOT_COMPOSITOR_RUNTIME = {
     get_effective_value = function(node, key)
         return get_effective_value(node, key)

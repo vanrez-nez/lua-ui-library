@@ -116,7 +116,7 @@ function GraphicsState.set_blend_mode(graphics, mode, alpha_mode)
         mode = 'alpha'
     end
 
-    if alpha_mode == nil and mode == 'multiply' then
+    if alpha_mode == nil and (mode == 'multiply' or mode == 'lighten' or mode == 'darken') then
         alpha_mode = 'premultiplied'
     end
 

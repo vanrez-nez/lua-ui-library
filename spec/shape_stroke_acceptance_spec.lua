@@ -125,13 +125,15 @@ local function make_fake_graphics()
         }
     end
 
-    function graphics.line(x1, y1, x2, y2)
+    function graphics.line(...)
+        local points = { ... }
         graphics.calls[#graphics.calls + 1] = {
             kind = 'line',
-            x1 = x1,
-            y1 = y1,
-            x2 = x2,
-            y2 = y2,
+            points = points,
+            x1 = points[1],
+            y1 = points[2],
+            x2 = points[3],
+            y2 = points[4],
         }
     end
 
@@ -295,7 +297,48 @@ local function run_circle_solid_stroke_seam_regression_tests()
     assert_nil(polygon_stroke,
         'CircleShape solid stroke should not use closed polygon line rendering at the seam')
     assert_true(line_stroke ~= nil,
-        'CircleShape solid stroke should use perimeter line segments')
+        'CircleShape solid stroke should use line rendering')
+    assert_true(line_stroke.points ~= nil and #line_stroke.points > 4,
+        'CircleShape solid stroke should render as one continuous polyline rather than independent segments')
+end
+
+local function run_circle_solid_stroke_prefers_ellipse_when_available_tests()
+    local circle = UI.CircleShape.new({
+        x = 10,
+        y = 20,
+        width = 40,
+        height = 20,
+        strokeColor = { 1, 0, 0, 1 },
+        strokeWidth = 2,
+        strokePattern = 'solid',
+    })
+    local graphics = make_fake_graphics()
+
+    function graphics.ellipse(mode, x, y, radius_x, radius_y, segments)
+        graphics.calls[#graphics.calls + 1] = {
+            kind = 'ellipse',
+            mode = mode,
+            x = x,
+            y = y,
+            radius_x = radius_x,
+            radius_y = radius_y,
+            segments = segments,
+        }
+    end
+
+    circle:draw(graphics)
+
+    local ellipse_stroke = find_call(graphics.calls, function(call)
+        return call.kind == 'ellipse' and call.mode == 'line'
+    end)
+    local line_stroke = find_call(graphics.calls, function(call)
+        return call.kind == 'line'
+    end)
+
+    assert_true(ellipse_stroke ~= nil,
+        'CircleShape solid stroke should prefer ellipse rendering when the graphics adapter supports it')
+    assert_nil(line_stroke,
+        'CircleShape solid stroke should bypass the polyline fallback when ellipse rendering is available')
 end
 
 local function run_outward_stroke_hit_testing_tests()
@@ -335,6 +378,7 @@ local function run()
     run_stroke_color_absent_noop_tests()
     run_circle_join_inert_tests()
     run_circle_solid_stroke_seam_regression_tests()
+    run_circle_solid_stroke_prefers_ellipse_when_available_tests()
     run_outward_stroke_hit_testing_tests()
 end
 

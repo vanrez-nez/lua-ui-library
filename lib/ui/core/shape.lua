@@ -131,6 +131,27 @@ function Shape:_resolve_polygon_stroke_options()
     }
 end
 
+local function active_fill_is_visible(active_fill)
+    if active_fill == nil then
+        return false
+    end
+
+    if (active_fill.opacity or 1) <= 0 then
+        return false
+    end
+
+    if active_fill.kind ~= 'color' then
+        return true
+    end
+
+    local color = active_fill.color or { 1, 1, 1, 1 }
+    return (color[4] or 1) > 0
+end
+
+function Shape:_is_active_fill_visible(active_fill)
+    return active_fill_is_visible(active_fill or self:_resolve_active_fill_source())
+end
+
 function Shape:_render_active_fill(graphics, local_points, world_points, active_fill)
     active_fill = active_fill or self:_resolve_active_fill_source()
 
@@ -214,6 +235,55 @@ function Shape:draw(graphics)
             restore_blue,
             restore_alpha
         )
+    end
+end
+
+function Shape:_requires_shape_result_clip()
+    return false
+end
+
+function Shape:_has_visible_root_result_stroke()
+    local stroke_color = self.strokeColor
+
+    return Types.is_table(stroke_color) and
+        (self.strokeWidth or 0) > 0 and
+        ((stroke_color[4] or 1) * (self.strokeOpacity or 1)) > 0
+end
+
+function Shape:_resolve_root_compositing_result_clip()
+    if not self:_requires_shape_result_clip() and not self:_has_visible_root_result_stroke() then
+        return nil
+    end
+
+    return {
+        kind = 'stencil_mask',
+    }
+end
+
+function Shape:_draw_root_compositing_result_stroke_mask(graphics, world_points)
+    local stroke = self:_resolve_polygon_stroke_options()
+    stroke.color = { 1, 1, 1, 1 }
+    stroke.opacity = 1
+    stroke.node_opacity = 1
+
+    return DrawHelpers.draw_polygon_stroke(graphics, world_points, stroke)
+end
+
+function Shape:_draw_root_compositing_result_clip(graphics)
+    if not Types.is_table(graphics) then
+        return
+    end
+
+    local local_points = self:_get_local_points()
+    local world_points = DrawHelpers.transform_local_points(self, local_points)
+    local active_fill = self:_resolve_active_fill_source()
+
+    if active_fill_is_visible(active_fill) and Types.is_function(graphics.polygon) then
+        graphics.polygon('fill', DrawHelpers.flatten_points(world_points))
+    end
+
+    if self:_has_visible_root_result_stroke() then
+        self:_draw_root_compositing_result_stroke_mask(graphics, world_points)
     end
 end
 

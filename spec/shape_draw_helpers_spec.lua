@@ -95,13 +95,15 @@ local function make_fake_graphics()
         }
     end
 
-    function graphics.line(x1, y1, x2, y2)
+    function graphics.line(...)
+        local points = { ... }
         graphics.calls[#graphics.calls + 1] = {
             kind = 'line',
-            x1 = x1,
-            y1 = y1,
-            x2 = x2,
-            y2 = y2,
+            points = points,
+            x1 = points[1],
+            y1 = points[2],
+            x2 = points[3],
+            y2 = points[4],
         }
     end
 
@@ -303,6 +305,44 @@ local function run_dashed_polyline_tests()
 
 end
 
+local function run_polyline_segment_path_tests()
+    local graphics = make_fake_graphics()
+    local emitted, total_length = DrawHelpers.draw_polyline_segments(graphics, {
+        { 0, 0 },
+        { 10, 0 },
+        { 10, 10 },
+    }, false)
+
+    assert_equal(emitted, 1,
+        'draw_polyline_segments should emit one continuous line call for open solid polylines')
+    assert_near(total_length, 20, 0.001,
+        'draw_polyline_segments should preserve the total path length for open polylines')
+    assert_equal(#graphics.calls, 1,
+        'draw_polyline_segments should emit exactly one line draw for open solid polylines')
+    assert_equal(#graphics.calls[1].points, 6,
+        'draw_polyline_segments should pass one coordinate pair per open-path vertex')
+
+    local closed_graphics = make_fake_graphics()
+    local closed_emitted, closed_length = DrawHelpers.draw_polyline_segments(closed_graphics, {
+        { 0, 0 },
+        { 10, 0 },
+        { 10, 10 },
+    }, true)
+
+    assert_equal(closed_emitted, 1,
+        'draw_polyline_segments should emit one continuous line call for closed solid polylines')
+    assert_near(closed_length, 34.142, 0.01,
+        'draw_polyline_segments should preserve the total path length for closed polylines')
+    assert_equal(#closed_graphics.calls, 1,
+        'draw_polyline_segments should emit exactly one line draw for closed solid polylines')
+    assert_equal(#closed_graphics.calls[1].points, 8,
+        'draw_polyline_segments should append the starting point when closing the path')
+    assert_near(closed_graphics.calls[1].points[7], 0, 0.001,
+        'draw_polyline_segments should repeat the starting x coordinate when closing the path')
+    assert_near(closed_graphics.calls[1].points[8], 0, 0.001,
+        'draw_polyline_segments should repeat the starting y coordinate when closing the path')
+end
+
 local function run()
     run_with_fill_color_tests()
     run_with_stroke_color_tests()
@@ -310,6 +350,7 @@ local function run()
     run_path_segment_tests()
     run_rotate_closed_path_tests()
     run_dashed_polyline_tests()
+    run_polyline_segment_path_tests()
 end
 
 return {

@@ -17,6 +17,9 @@ GraphicsValidation.ROOT_BLEND_MODE_VALUES = {
     'subtract',
     'multiply',
     'screen',
+    'lighten',
+    'darken',
+    'replace',
 }
 
 GraphicsValidation.SOURCE_ALIGN_VALUES = {

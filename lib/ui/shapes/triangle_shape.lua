@@ -39,6 +39,10 @@ function TriangleShape:_get_local_points()
     return resolve_local_points(bounds)
 end
 
+function TriangleShape:_requires_shape_result_clip()
+    return true
+end
+
 function TriangleShape:get_local_centroid()
     local points = self:_get_local_points()
 

@@ -444,13 +444,23 @@ function DrawHelpers.draw_polyline_segments(graphics, points, closed)
     end
 
     local segments, total_length = DrawHelpers.build_path_segments(points, closed)
+    local polyline_points = {}
 
-    for index = 1, #segments do
-        local segment = segments[index]
-        graphics.line(segment.x1, segment.y1, segment.x2, segment.y2)
+    if #segments == 0 then
+        return 0, total_length
     end
 
-    return #segments, total_length
+    for index = 1, #points do
+        append_point(polyline_points, points[index][1], points[index][2])
+    end
+
+    if closed == true and #points > 0 then
+        append_point(polyline_points, points[1][1], points[1][2])
+    end
+
+    graphics.line(DrawHelpers.flatten_points(polyline_points))
+
+    return 1, total_length
 end
 
 function DrawHelpers.draw_polygon_fill(graphics, world_points, fill_color, fill_opacity)

@@ -18,6 +18,10 @@ function DiamondShape:_get_local_points()
     }
 end
 
+function DiamondShape:_requires_shape_result_clip()
+    return true
+end
+
 function DiamondShape:draw(graphics)
     if type(graphics) ~= 'table' then
         return

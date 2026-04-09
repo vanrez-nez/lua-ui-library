@@ -572,10 +572,10 @@ local function run_visual_effect_isolation_tests()
         'Drawable visual effects should isolate subtree rendering to a canvas')
     assert_contains(graphics.calls, 'shader:stored',
         'Drawable shaders should be applied during isolated subtree compositing')
-    assert_contains(graphics.calls, 'blend:add:alphamultiply',
-        'Drawable blendMode should be applied during isolated subtree compositing')
-    assert_contains(graphics.calls, 'color:1.00:1.00:1.00:0.50',
-        'Drawable opacity should modulate isolated subtree compositing alpha')
+    assert_contains(graphics.calls, 'blend:add:premultiplied',
+        'Drawable blendMode should use premultiplied alpha during isolated subtree compositing')
+    assert_contains(graphics.calls, 'color:0.50:0.50:0.50:0.50',
+        'Drawable opacity should preserve premultiplied alpha when modulating isolated subtree compositing opacity')
     assert_contains(graphics.calls, 'draw_quad:canvas-1:0.00:0.00:100.00:60.00:0.00:0.00:0.00:1.00:1.00:0.00:0.00',
         'Isolated Drawable subtrees should be composited back into the parent target')
     assert_equal(root:_hit_test(5, 5), root,

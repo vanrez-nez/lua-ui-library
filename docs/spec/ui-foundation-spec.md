@@ -1256,6 +1256,12 @@ The stable rules in this revision are:
   silhouette-clipped first; stroke is not separately clipped to the silhouette;
   both fill and stroke are combined into the shape-local result before root
   shader, root opacity, and root blend mode are applied
+- when root compositing isolates a non-rect `Shape`, the isolated result must
+  composite back through the resolved shape-result coverage boundary, not
+  through the shape's local-bounds rectangle; transparent bounds corners or
+  other pixels outside the resolved fill-and-stroke result must not participate
+  in root `blendMode`, root `shader`, or root `opacity` evaluation; this is an
+  internal result-clip rule, not public `mask` participation
 
 **Shape-owned fill placement contract**
 
@@ -2271,6 +2277,11 @@ Isolation is required when:
 - a node applies opacity or a blend mode that would produce incorrect results if applied individually to each descendant during inline drawing
 - a node applies a shader that requires the fully composited subtree as its input
 - a node applies a mask whose correct appearance depends on the composited result of the entire subtree rather than the masked sum of individual draw calls
+
+When isolation is used for `Shape`, the renderer must preserve the resolved
+shape-result coverage boundary during composite-back. For non-rect shapes, this
+means the isolated result cannot be re-applied as an unconstrained rectangular
+canvas sample over the shape's local bounds AABB.
 
 Isolation carries a performance cost and must not be applied speculatively when inline drawing satisfies the contract.
 

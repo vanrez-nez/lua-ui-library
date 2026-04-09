@@ -531,6 +531,13 @@ compositing surface first, producing a fully composited node result. The parent
 unit. The parent's `shader`, `opacity`, and `blendMode` do not penetrate into
 `Shape`'s internal fill and stroke draw calls.
 
+For non-rect `Shape`, that resolved node result retains the concrete
+shape-result coverage boundary during composite-back. Transparent pixels inside
+the local-bounds AABB but outside the resolved fill-and-stroke result are not
+allowed to participate in the parent's blend evaluation merely because the
+isolated storage target is rectangular. This is an internal result-clip rule
+for `Shape`, not public `mask` participation.
+
 ### Isolation Rule
 
 Subtree isolation is not renderer discretion when isolation changes visible

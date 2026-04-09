@@ -201,9 +201,20 @@ local function resolve_node_compositing_extras(node)
     return node:_resolve_root_compositing_extras()
 end
 
+local function resolve_node_result_clip(node)
+    local resolve_result_clip = node._resolve_root_compositing_result_clip
+
+    if not Types.is_function(resolve_result_clip) then
+        return nil
+    end
+
+    return node:_resolve_root_compositing_result_clip()
+end
+
 function RootCompositor.resolve_node_plan(node, runtime)
     local root_compositing_state = resolve_root_compositing_state(node, runtime)
     local compositing_extras = resolve_node_compositing_extras(node)
+    local result_clip = resolve_node_result_clip(node)
 
     if root_compositing_state == nil and compositing_extras == nil then
         return nil
@@ -213,6 +224,7 @@ function RootCompositor.resolve_node_plan(node, runtime)
         root_compositing_state = root_compositing_state or
             GraphicsValidation.normalize_root_compositing_state(),
         compositing_extras = compositing_extras,
+        result_clip = result_clip,
     }
 end
 
@@ -364,9 +376,126 @@ local function resolve_transformed_rect(rect, pivot_x, pivot_y, translation_x, t
     })
 end
 
+local function draw_result_clip_outer(node, graphics, result_clip)
+    if result_clip == nil then
+        return
+    end
+
+    if result_clip.kind == 'stencil_mask' then
+        if not Types.is_function(node._draw_root_compositing_result_clip) then
+            Assert.fail('node result clip is missing its draw hook', 3)
+        end
+
+        node:_draw_root_compositing_result_clip(graphics)
+        return
+    end
+
+    if result_clip.kind == 'stencil_region' then
+        if not Types.is_function(node._draw_root_compositing_result_clip_outer) then
+            Assert.fail('node result clip is missing its outer draw hook', 3)
+        end
+
+        node:_draw_root_compositing_result_clip_outer(graphics)
+        return
+    end
+
+    Assert.fail('unsupported root compositing result clip kind: ' .. tostring(result_clip.kind), 3)
+end
+
+local function draw_result_clip_inner(node, graphics, result_clip)
+    if result_clip == nil or result_clip.kind ~= 'stencil_region' or result_clip.exclude_inner ~= true then
+        return
+    end
+
+    if not Types.is_function(node._draw_root_compositing_result_clip_inner) then
+        Assert.fail('node result clip is missing its inner draw hook', 3)
+    end
+
+    node:_draw_root_compositing_result_clip_inner(graphics)
+end
+
+local function push_result_clip(node, graphics, result_clip, clip_state)
+    if result_clip == nil then
+        return nil
+    end
+
+    if not Types.is_function(graphics.stencil) then
+        Assert.fail('graphics adapter must support stencil for root result clipping', 3)
+    end
+
+    local previous_compare = clip_state.stencil_compare
+    local previous_value = clip_state.stencil_value
+    local next_value = (previous_value or 0) + 1
+
+    GraphicsState.set_stencil_test(graphics, previous_compare, previous_value)
+    graphics.stencil(function()
+        draw_result_clip_outer(node, graphics, result_clip)
+    end, 'replace', next_value, true)
+
+    if result_clip.kind == 'stencil_region' and result_clip.exclude_inner == true then
+        GraphicsState.set_stencil_test(graphics, 'equal', next_value)
+        graphics.stencil(function()
+            draw_result_clip_inner(node, graphics, result_clip)
+        end, 'replace', previous_value or 0, true)
+    end
+
+    GraphicsState.set_stencil_test(graphics, 'equal', next_value)
+
+    return {
+        previous_compare = previous_compare,
+        previous_value = previous_value,
+        restore_value = previous_value or 0,
+        value = next_value,
+    }
+end
+
+local function pop_result_clip(node, graphics, result_clip, result_clip_state)
+    if result_clip == nil or result_clip_state == nil then
+        return
+    end
+
+    GraphicsState.set_stencil_test(graphics, 'equal', result_clip_state.value)
+    graphics.stencil(function()
+        draw_result_clip_outer(node, graphics, result_clip)
+    end, 'replace', result_clip_state.restore_value, true)
+    GraphicsState.set_stencil_test(
+        graphics,
+        result_clip_state.previous_compare,
+        result_clip_state.previous_value
+    )
+end
+
+local function apply_canvas_composite_color(graphics, opacity)
+    if not Types.is_function(graphics.setColor) then
+        return
+    end
+
+    opacity = opacity ~= nil and opacity or GraphicsValidation.ROOT_OPACITY_DEFAULT
+    graphics.setColor(opacity, opacity, opacity, opacity)
+end
+
+local function apply_canvas_composite_blend_mode(graphics, root_compositing_state, previous_blend_mode)
+    if not Types.is_function(graphics.setBlendMode) then
+        return
+    end
+
+    local blend_mode = root_compositing_state.blendMode
+
+    if blend_mode == GraphicsValidation.ROOT_BLEND_MODE_DEFAULT then
+        if previous_blend_mode == nil then
+            return
+        end
+
+        blend_mode = previous_blend_mode[1]
+    end
+
+    GraphicsState.set_blend_mode(graphics, blend_mode, 'premultiplied')
+end
+
 local function composite_isolated_subtree(node, graphics, canvas, compositing_plan, clip_state, runtime)
     local root_compositing_state = compositing_plan.root_compositing_state
     local compositing_extras = compositing_plan.compositing_extras or EMPTY_COMPOSITING_EXTRAS
+    local result_clip = compositing_plan.result_clip
 
     if compositing_extras.mask ~= nil then
         Assert.fail(
@@ -397,30 +526,54 @@ local function composite_isolated_subtree(node, graphics, canvas, compositing_pl
     GraphicsState.set_scissor_rect(graphics, clip_state.scissor)
     GraphicsState.set_stencil_test(graphics, clip_state.stencil_compare, clip_state.stencil_value)
 
-    if Types.is_function(graphics.setColor) and
-        root_compositing_state.opacity ~= GraphicsValidation.ROOT_OPACITY_DEFAULT then
-        graphics.setColor(1, 1, 1, root_compositing_state.opacity)
-    end
-
-    if root_compositing_state.shader ~= nil then
-        graphics.setShader(root_compositing_state.shader)
-    end
-
-    if root_compositing_state.blendMode ~= GraphicsValidation.ROOT_BLEND_MODE_DEFAULT then
-        GraphicsState.set_blend_mode(graphics, root_compositing_state.blendMode)
-    end
-
     local draw_x = compositing_extras.translationX
     local draw_y = compositing_extras.translationY
     local rotation = compositing_extras.rotation
     local scale_x = compositing_extras.scaleX
     local scale_y = compositing_extras.scaleY
     local source_bounds = resolve_subtree_world_bounds(node, runtime)
+    local result_clip_state = nil
 
     if source_bounds:is_empty() then
         GraphicsState.restore_blend_mode(graphics, previous_blend_mode)
         GraphicsState.restore_shader(graphics, previous_shader)
         GraphicsState.restore_color(graphics, previous_color)
+        return nil
+    end
+
+    if result_clip ~= nil and (
+        draw_x ~= 0 or draw_y ~= 0 or rotation ~= 0 or scale_x ~= 1 or scale_y ~= 1
+    ) then
+        Assert.fail('root result clipping does not support compositing motion transforms', 3)
+    end
+
+    if result_clip ~= nil then
+        if Types.is_function(graphics.setShader) then
+            graphics.setShader()
+        end
+
+        if Types.is_function(graphics.setColor) then
+            graphics.setColor(1, 1, 1, 1)
+        end
+
+        result_clip_state = push_result_clip(node, graphics, result_clip, clip_state)
+    end
+
+    apply_canvas_composite_color(graphics, root_compositing_state.opacity)
+
+    if root_compositing_state.shader ~= nil then
+        graphics.setShader(root_compositing_state.shader)
+    end
+
+    apply_canvas_composite_blend_mode(graphics, root_compositing_state, previous_blend_mode)
+
+    if result_clip ~= nil then
+        GraphicsState.set_scissor_rect(graphics, clip_state.scissor)
+        graphics.draw(canvas, 0, 0)
+        GraphicsState.restore_blend_mode(graphics, previous_blend_mode)
+        GraphicsState.restore_shader(graphics, previous_shader)
+        GraphicsState.restore_color(graphics, previous_color)
+        pop_result_clip(node, graphics, result_clip, result_clip_state)
         return nil
     end
 
