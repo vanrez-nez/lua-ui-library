@@ -34,11 +34,15 @@ The rebuilt demos under `demos/` are component-centered and follow the shared de
 
 ```bash
 love demos/01-container
-love demos/02-drawable
+love demos/02-shape
+love demos/03-drawable
+love demos/03-graphics
 ```
 
 `01-container` covers retained tree, bounds, sizing, clamp, and visibility behavior.
-`02-drawable` only covers the `Drawable` surface not already proven by `01-container`: alignments, padding, margin, opacity, skin, blend mode, retained render effects, and motion inspection. The demo does not currently include a dedicated shader screen, and mask rendering still fails deterministically until a concrete mask asset contract is implemented.
+`02-shape` covers `CircleShape` fill and stroke behavior.
+`03-drawable` covers the `Drawable` layout and styling surface not already proven by `01-container`: alignments, padding, margin, retained child layout, skin, and borders.
+`03-graphics` covers retained opacity, blend mode, and render-effect compositing across `Drawable` and shape content. The demo does not currently include a dedicated shader screen, and mask rendering still fails deterministically until a concrete mask asset contract is implemented.
 
 ## Unit Tests
 
@@ -59,7 +63,7 @@ lua scripts/run_unit_tests.lua
 
 ## Profiling
 
-The `demos/02-drawable` demo includes three profiling modes for the retained render pipeline:
+The `demos/03-graphics` demo includes three profiling modes for the retained render pipeline:
 
 - `P`: sampled `jit.p` hotspot profiling
 - `T`: wall-time profiling in milliseconds
@@ -70,7 +74,7 @@ Reports are written to `tmp/`.
 Interactive use:
 
 ```bash
-love demos/02-drawable
+love demos/03-graphics
 ```
 
 Then press:
@@ -82,9 +86,9 @@ Then press:
 Non-interactive capture:
 
 ```bash
-UI_JIT_PROFILE=1 UI_PROFILE_SCREEN=1 UI_JIT_PROFILE_SECONDS=3 love demos/02-drawable
-UI_TIME_PROFILE=1 UI_PROFILE_SCREEN=1 UI_TIME_PROFILE_SECONDS=3 love demos/02-drawable
-UI_MEMORY_PROFILE=1 UI_PROFILE_SCREEN=1 UI_MEMORY_PROFILE_SECONDS=3 love demos/02-drawable
+UI_JIT_PROFILE=1 UI_PROFILE_SCREEN=1 UI_JIT_PROFILE_SECONDS=3 love demos/03-graphics
+UI_TIME_PROFILE=1 UI_PROFILE_SCREEN=1 UI_TIME_PROFILE_SECONDS=3 love demos/03-graphics
+UI_MEMORY_PROFILE=1 UI_PROFILE_SCREEN=1 UI_TIME_PROFILE_SECONDS=3 love demos/03-graphics
 ```
 
 Useful environment variables:

@@ -6,11 +6,7 @@ local screen_modules = {
     require('demos.03-drawable.screens.layout_column'),
     require('demos.03-drawable.screens.layout_flow'),
     require('demos.03-drawable.screens.layout_page'),
-    require('demos.03-drawable.screens.opacity'),
     require('demos.03-drawable.screens.skin'),
-    require('demos.03-drawable.screens.blendmode'),
-    require('demos.03-drawable.screens.render_effects'),
-    require('demos.03-drawable.screens.motion'),
     require('demos.03-drawable.screens.borders'),
 }
 

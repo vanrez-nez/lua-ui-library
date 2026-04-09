@@ -8,7 +8,8 @@
   "locations": [
     "demos/01-container",
     "demos/02-shape",
-    "demos/03-drawable"
+    "demos/03-drawable",
+    "demos/04-graphics"
   ],
   "logFilter": [
     "app", "error"
