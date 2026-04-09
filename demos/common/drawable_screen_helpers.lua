@@ -242,6 +242,8 @@ function ScreenHelpers.draw_demo_node(graphics, node)
     local label_rect_mode = rawget(node, '_demo_label_rect') or 'bounds'
     local label_inset_x = rawget(node, '_demo_label_inset_x') or 8
     local label_inset_y = rawget(node, '_demo_label_inset_y') or 8
+    local label_align = rawget(node, '_demo_label_align') or 'start'
+    local label_valign = rawget(node, '_demo_label_valign') or 'start'
     local is_hovered = false
 
     if draw_context ~= nil and node:containsPoint(draw_context.mouse_x, draw_context.mouse_y) then
@@ -258,10 +260,33 @@ function ScreenHelpers.draw_demo_node(graphics, node)
     if label_rect_mode == 'content' then
         label_rect = get_effective_content_rect(node)
     end
-    local label_x, label_y = node:localToWorld(
-        label_rect.x + label_inset_x,
-        label_rect.y + label_inset_y
-    )
+    local label_local_x = label_rect.x + label_inset_x
+    local label_local_y = label_rect.y + label_inset_y
+    local font = nil
+
+    if type(graphics.getFont) == 'function' then
+        font = graphics.getFont()
+    end
+
+    if font ~= nil then
+        if label_align == 'center' then
+            label_local_x = label_rect.x +
+                math.floor((label_rect.width - font:getWidth(label)) * 0.5 + 0.5)
+        elseif label_align == 'end' then
+            label_local_x = label_rect.x + label_rect.width -
+                font:getWidth(label) - label_inset_x
+        end
+
+        if label_valign == 'center' then
+            label_local_y = label_rect.y +
+                math.floor((label_rect.height - font:getHeight()) * 0.5 + 0.5)
+        elseif label_valign == 'end' then
+            label_local_y = label_rect.y + label_rect.height -
+                font:getHeight() - label_inset_y
+        end
+    end
+
+    local label_x, label_y = node:localToWorld(label_local_x, label_local_y)
     graphics.print(label, label_x, label_y)
 end
 
