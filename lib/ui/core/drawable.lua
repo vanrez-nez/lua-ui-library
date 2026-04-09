@@ -84,6 +84,15 @@ local function get_effective_insets(self, key)
     return (effective_values and effective_values[key]) or Insets.zero()
 end
 
+local function get_motion_surface_value(self, key)
+    local motion_state = rawget(self, '_motion_visual_state')
+    if motion_state == nil then
+        return nil
+    end
+
+    return motion_state[key]
+end
+
 local function child_is_visible(child)
     local effective_values = rawget(child, '_effective_values')
 
@@ -453,6 +462,30 @@ end
 function Drawable:getContentRect()
     local bounds = self:getLocalBounds()
     return bounds:inset(get_effective_insets(self, 'padding'))
+end
+
+function Drawable:_resolve_root_compositing_extras()
+    local compositing_extras = {
+        mask = get_effective_value(self, 'mask'),
+        translationX = get_motion_surface_value(self, 'translationX') or 0,
+        translationY = get_motion_surface_value(self, 'translationY') or 0,
+        scaleX = 1,
+        scaleY = 1,
+        rotation = get_motion_surface_value(self, 'rotation') or 0,
+    }
+
+    local scale_x = get_motion_surface_value(self, 'scaleX')
+    local scale_y = get_motion_surface_value(self, 'scaleY')
+
+    if scale_x ~= nil then
+        compositing_extras.scaleX = scale_x
+    end
+
+    if scale_y ~= nil then
+        compositing_extras.scaleY = scale_y
+    end
+
+    return compositing_extras
 end
 
 get_effective_value = function(self, key)

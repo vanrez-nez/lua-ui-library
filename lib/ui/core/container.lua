@@ -11,8 +11,8 @@ local CornerQuad = require('lib.ui.core.corner_quad')
 local Schema = require('lib.ui.utils.schema')
 local Utils = require('lib.ui.utils.common')
 local Motion = require('lib.ui.motion')
-local CanvasPool = require('lib.ui.render.canvas_pool')
-local GraphicsValidation = require('lib.ui.render.graphics_validation')
+local GraphicsState = require('lib.ui.render.graphics_state')
+local RootCompositor = require('lib.ui.render.root_compositor')
 
 local abs = math.abs
 
@@ -47,8 +47,10 @@ local EFFECTIVE_QUAD_KEYS = {
     cornerRadiusBottomRight = true, cornerRadiusBottomLeft = true,
 }
 
-local canvas_pools = setmetatable({}, { __mode = 'k' })
-
+local get_scissor_rect = GraphicsState.get_scissor_rect
+local set_scissor_rect = GraphicsState.set_scissor_rect
+local get_stencil_test = GraphicsState.get_stencil_test
+local set_stencil_test = GraphicsState.set_stencil_test
 
 local function is_layout_node(node)
     return (Object.is(node, "LayoutNode") or rawget(node, '_ui_layout_instance') == true) and not rawget(node, '_destroyed')
@@ -481,54 +483,6 @@ local function walk_hierarchy(cls, key)
 end
 
 Container._walk_hierarchy = walk_hierarchy
-
-local EMPTY_ROOT_COMPOSITING_CAPABILITIES = {
-    opacity = false,
-    shader = false,
-    blendMode = false,
-}
-
-local root_compositing_capability_cache = setmetatable({}, { __mode = 'k' })
-
-local function normalize_root_compositing_capabilities(declared)
-    if declared == nil then
-        return EMPTY_ROOT_COMPOSITING_CAPABILITIES
-    end
-
-    local capabilities = {
-        opacity = declared.opacity == true,
-        shader = declared.shader == true,
-        blendMode = declared.blendMode == true,
-    }
-
-    if not capabilities.opacity and not capabilities.shader and not capabilities.blendMode then
-        return EMPTY_ROOT_COMPOSITING_CAPABILITIES
-    end
-
-    return capabilities
-end
-
-local function get_class_root_compositing_capabilities(class)
-    if not Types.is_table(class) then
-        return EMPTY_ROOT_COMPOSITING_CAPABILITIES
-    end
-
-    local cached = root_compositing_capability_cache[class]
-    if cached ~= nil then
-        return cached
-    end
-
-    cached = normalize_root_compositing_capabilities(
-        walk_hierarchy(class, '_root_compositing_capabilities')
-    )
-    root_compositing_capability_cache[class] = cached
-
-    return cached
-end
-
-local function get_node_root_compositing_capabilities(self)
-    return get_class_root_compositing_capabilities(getmetatable(self))
-end
 
 local function ensure_current(node)
     local root = get_root(node)
@@ -1005,54 +959,6 @@ local function has_degenerate_clip(self)
     return not matrix:is_invertible()
 end
 
-local function get_scissor_rect(graphics)
-    if not Types.is_function(graphics.getScissor) then
-        return nil
-    end
-
-    local x, y, width, height = graphics.getScissor()
-
-    if x == nil or y == nil or width == nil or height == nil then
-        return nil
-    end
-
-    return Rectangle(x, y, width, height)
-end
-
-local function set_scissor_rect(graphics, rect)
-    if not Types.is_function(graphics.setScissor) then
-        return
-    end
-
-    if rect == nil then
-        graphics.setScissor()
-        return
-    end
-
-    graphics.setScissor(rect.x, rect.y, rect.width, rect.height)
-end
-
-local function get_stencil_test(graphics)
-    if not Types.is_function(graphics.getStencilTest) then
-        return nil, nil
-    end
-
-    return graphics.getStencilTest()
-end
-
-local function set_stencil_test(graphics, compare, value)
-    if not Types.is_function(graphics.setStencilTest) then
-        return
-    end
-
-    if compare == nil then
-        graphics.setStencilTest()
-        return
-    end
-
-    graphics.setStencilTest(compare, value)
-end
-
 local function draw_clip_polygon(graphics, self)
     local points = get_world_clip_points(self)
     local flattened = {}
@@ -1070,449 +976,44 @@ end
 
 local draw_subtree
 
-local function get_canvas_pool(graphics)
-    local pool = canvas_pools[graphics]
-
-    if pool == nil then
-        pool = CanvasPool.new({
-            graphics = graphics,
-        })
-        canvas_pools[graphics] = pool
-    end
-
-    return pool
-end
-
-local function get_current_canvas(graphics)
-    if not Types.is_function(graphics.getCanvas) then
-        return nil
-    end
-
-    return graphics.getCanvas()
-end
-
-local function set_current_canvas(graphics, canvas)
-    if not Types.is_function(graphics.setCanvas) then
-        return
-    end
-
-    graphics.setCanvas(canvas)
-end
-
-local function get_current_color(graphics)
-    if not Types.is_function(graphics.getColor) then
-        return nil
-    end
-
-    return { graphics.getColor() }
-end
-
-local function restore_color(graphics, color)
-    if color == nil or not Types.is_function(graphics.setColor) then
-        return
-    end
-
-    graphics.setColor(color[1], color[2], color[3], color[4])
-end
-
-local function get_current_shader(graphics)
-    if not Types.is_function(graphics.getShader) then
-        return nil
-    end
-
-    return graphics.getShader()
-end
-
-local function restore_shader(graphics, shader)
-    if not Types.is_function(graphics.setShader) then
-        return
-    end
-
-    graphics.setShader(shader)
-end
-
-local function get_current_blend_mode(graphics)
-    if not Types.is_function(graphics.getBlendMode) then
-        return nil
-    end
-
-    return { graphics.getBlendMode() }
-end
-
-local function set_blend_mode(graphics, mode, alpha_mode)
-    if not Types.is_function(graphics.setBlendMode) then
-        return
-    end
-
-    if mode == 'normal' then
-        mode = 'alpha'
-    end
-
-    if alpha_mode == nil and mode == 'multiply' then
-        alpha_mode = 'premultiplied'
-    end
-
-    if alpha_mode ~= nil then
-        graphics.setBlendMode(mode, alpha_mode)
-        return
-    end
-
-    graphics.setBlendMode(mode)
-end
-
-local function restore_blend_mode(graphics, blend_mode)
-    if blend_mode == nil or not Types.is_function(graphics.setBlendMode) then
-        return
-    end
-
-    set_blend_mode(graphics, blend_mode[1], blend_mode[2])
-end
-
-local function clear_isolation_target(graphics)
-    if Types.is_function(graphics.clear) then
-        graphics.clear(0, 0, 0, 0)
-    end
-end
-
-local function get_motion_surface_value(surface, key)
-    if not Types.is_table(surface) then
-        return nil
-    end
-
-    local state = rawget(surface, '_motion_visual_state')
-    if state == nil then
-        return nil
-    end
-
-    return state[key]
-end
-
-local EMPTY_DRAWABLE_COMPOSITING_EXTRAS = {
-    mask = nil,
-    translationX = 0,
-    translationY = 0,
-    scaleX = 1,
-    scaleY = 1,
-    rotation = 0,
-}
-
-local function ensure_composition_target_stack(render_state, graphics)
-    local composition_target_stack = render_state.composition_target_stack
-
-    if composition_target_stack == nil then
-        composition_target_stack = { get_current_canvas(graphics) }
-        render_state.composition_target_stack = composition_target_stack
-    end
-
-    return composition_target_stack
-end
-
-local function peek_composition_target(render_state, graphics)
-    local composition_target_stack = ensure_composition_target_stack(render_state, graphics)
-    return composition_target_stack[#composition_target_stack]
-end
-
-local function push_composition_target(render_state, graphics, target)
-    local composition_target_stack = ensure_composition_target_stack(render_state, graphics)
-    composition_target_stack[#composition_target_stack + 1] = target
-    return composition_target_stack
-end
-
-local function pop_composition_target(render_state, graphics)
-    local composition_target_stack = ensure_composition_target_stack(render_state, graphics)
-    local target = composition_target_stack[#composition_target_stack]
-    composition_target_stack[#composition_target_stack] = nil
-    return target
-end
-
-local function resolve_root_compositing_state(self)
-    local capabilities = get_node_root_compositing_capabilities(self)
-
-    if not (capabilities.opacity or capabilities.shader or capabilities.blendMode) then
-        return nil
-    end
-
-    local opacity = nil
-
-    if capabilities.opacity then
-        opacity = get_motion_surface_value(self, 'opacity')
-        if opacity == nil then
-            opacity = get_effective_value(self, 'opacity')
-        end
-    end
-
-    return GraphicsValidation.normalize_root_compositing_state({
-        opacity = opacity,
-        shader = capabilities.shader and get_effective_value(self, 'shader') or nil,
-        blendMode = capabilities.blendMode and get_effective_value(self, 'blendMode') or nil,
-    })
-end
-
-local function resolve_drawable_compositing_extras(self)
-    if rawget(self, '_ui_drawable_instance') ~= true then
-        return nil
-    end
-
-    local drawable_compositing_extras = {
-        mask = get_effective_value(self, 'mask'),
-        translationX = get_motion_surface_value(self, 'translationX') or 0,
-        translationY = get_motion_surface_value(self, 'translationY') or 0,
-        scaleX = 1,
-        scaleY = 1,
-        rotation = get_motion_surface_value(self, 'rotation') or 0,
-    }
-
-    local scale_x = get_motion_surface_value(self, 'scaleX')
-    local scale_y = get_motion_surface_value(self, 'scaleY')
-
-    if scale_x ~= nil then
-        drawable_compositing_extras.scaleX = scale_x
-    end
-
-    if scale_y ~= nil then
-        drawable_compositing_extras.scaleY = scale_y
-    end
-
-    return drawable_compositing_extras
-end
-
-local function resolve_node_compositing_plan(self)
-    local root_compositing_state = resolve_root_compositing_state(self)
-    local drawable_compositing_extras = resolve_drawable_compositing_extras(self)
-
-    if root_compositing_state == nil and drawable_compositing_extras == nil then
-        return nil
-    end
-
-    return {
-        root_compositing_state = root_compositing_state or
-            GraphicsValidation.normalize_root_compositing_state(),
-        drawable_compositing_extras = drawable_compositing_extras,
-    }
-end
-
-local function drawable_compositing_extras_require_isolation(drawable_compositing_extras)
-    if drawable_compositing_extras == nil then
-        return false
-    end
-
-    return drawable_compositing_extras.mask ~= nil or
-        drawable_compositing_extras.translationX ~= 0 or
-        drawable_compositing_extras.translationY ~= 0 or
-        drawable_compositing_extras.scaleX ~= 1 or
-        drawable_compositing_extras.scaleY ~= 1 or
-        drawable_compositing_extras.rotation ~= 0
-end
-
-local function node_requires_isolation(compositing_plan)
-    if compositing_plan == nil then
-        return false
-    end
-
-    return not GraphicsValidation.is_default_root_compositing_state(
-            compositing_plan.root_compositing_state
-        ) or
-        drawable_compositing_extras_require_isolation(
-            compositing_plan.drawable_compositing_extras
-        )
-end
-
-local function get_isolation_canvas_size(self)
-    local root = get_root(self)
-
-    if rawget(root, '_ui_stage_instance') == true then
-        return math.max(1, math.ceil(root.width or 0)),
-            math.max(1, math.ceil(root.height or 0))
-    end
-
-    local bounds = self:getWorldBounds()
-
-    return math.max(1, math.ceil(math.max(bounds.width, bounds.x + bounds.width))),
-        math.max(1, math.ceil(math.max(bounds.height, bounds.y + bounds.height)))
-end
-
-local function composite_isolated_subtree(self, graphics, canvas, compositing_plan, clip_state)
-    local root_compositing_state = compositing_plan.root_compositing_state
-    local drawable_compositing_extras = compositing_plan.drawable_compositing_extras or
-        EMPTY_DRAWABLE_COMPOSITING_EXTRAS
-
-    if drawable_compositing_extras.mask ~= nil then
-        Assert.fail(
-            'Drawable mask rendering is not implemented by the current retained render path',
-            3
-        )
-    end
-
-    if root_compositing_state.shader ~= nil and not Types.is_function(graphics.setShader) then
-        Assert.fail('graphics adapter must support setShader for root shader compositing', 3)
-    end
-
-    if root_compositing_state.blendMode ~= GraphicsValidation.ROOT_BLEND_MODE_DEFAULT and (
-        not Types.is_function(graphics.setBlendMode) or
-        not Types.is_function(graphics.getBlendMode)
-    ) then
-        Assert.fail('graphics adapter must support blend-mode save/restore for root compositing', 3)
-    end
-
-    if not Types.is_function(graphics.draw) then
-        Assert.fail('graphics adapter must support draw for isolated root compositing', 3)
-    end
-
-    local previous_color = get_current_color(graphics)
-    local previous_shader = get_current_shader(graphics)
-    local previous_blend_mode = get_current_blend_mode(graphics)
-
-    set_scissor_rect(graphics, clip_state.scissor)
-    set_stencil_test(graphics, clip_state.stencil_compare, clip_state.stencil_value)
-
-    if Types.is_function(graphics.setColor) and
-        root_compositing_state.opacity ~= GraphicsValidation.ROOT_OPACITY_DEFAULT then
-        graphics.setColor(1, 1, 1, root_compositing_state.opacity)
-    end
-
-    if root_compositing_state.shader ~= nil then
-        graphics.setShader(root_compositing_state.shader)
-    end
-
-    if root_compositing_state.blendMode ~= GraphicsValidation.ROOT_BLEND_MODE_DEFAULT then
-        set_blend_mode(graphics, root_compositing_state.blendMode)
-    end
-
-    local draw_x = drawable_compositing_extras.translationX
-    local draw_y = drawable_compositing_extras.translationY
-    local rotation = drawable_compositing_extras.rotation
-    local scale_x = drawable_compositing_extras.scaleX
-    local scale_y = drawable_compositing_extras.scaleY
-
-    if draw_x ~= 0 or draw_y ~= 0 or rotation ~= 0 or scale_x ~= 1 or scale_y ~= 1 then
-        local bounds = rawget(self, '_local_bounds_cache') or self:getLocalBounds()
-        local pivot_x = (get_effective_value(self, 'pivotX') or 0.5) * bounds.width
-        local pivot_y = (get_effective_value(self, 'pivotY') or 0.5) * bounds.height
-        local world_pivot_x, world_pivot_y = self:localToWorld(pivot_x, pivot_y)
-
-        graphics.draw(
-            canvas,
-            world_pivot_x + draw_x,
-            world_pivot_y + draw_y,
-            rotation,
-            scale_x,
-            scale_y,
-            world_pivot_x,
-            world_pivot_y
-        )
-    else
-        graphics.draw(canvas, 0, 0)
-    end
-
-    restore_blend_mode(graphics, previous_blend_mode)
-    restore_shader(graphics, previous_shader)
-    restore_color(graphics, previous_color)
-end
-
-local function draw_isolated_subtree(self, graphics, draw_callback, clip_state, render_state, compositing_plan)
-    if not Types.is_function(graphics.newCanvas) or
-        not Types.is_function(graphics.setCanvas) or
-        not Types.is_function(graphics.draw) then
-        Assert.fail(
-            'graphics adapter must support canvas isolation for retained root compositing',
-            3
-        )
-    end
-
-    local pool = get_canvas_pool(graphics)
-    local canvas_width, canvas_height = get_isolation_canvas_size(self)
-    local canvas = pool:acquire(canvas_width, canvas_height)
-    local previous_canvas = peek_composition_target(render_state, graphics)
-    local previous_color = get_current_color(graphics)
-    local previous_shader = get_current_shader(graphics)
-    local previous_blend_mode = get_current_blend_mode(graphics)
-    local previous_scissor = get_scissor_rect(graphics)
-    local previous_stencil_compare, previous_stencil_value = get_stencil_test(graphics)
-
-    local composition_target_pushed = false
-    local ok, err = xpcall(function()
-        set_current_canvas(graphics, canvas)
-        push_composition_target(render_state, graphics, canvas)
-        composition_target_pushed = true
-
-        if Types.is_function(graphics.origin) then
-            graphics.origin()
-        end
-
-        clear_isolation_target(graphics)
-        set_scissor_rect(graphics, nil)
-        set_stencil_test(graphics, nil, nil)
-
-        if Types.is_function(graphics.setColor) then
-            graphics.setColor(1, 1, 1, 1)
-        end
-
-        if Types.is_function(graphics.setShader) then
-            graphics.setShader()
-        end
-
-        if previous_blend_mode ~= nil then
-            set_blend_mode(graphics, previous_blend_mode[1], previous_blend_mode[2])
-        end
-
-        draw_subtree(self, graphics, draw_callback, {
-            active_clips = {},
-            scissor = nil,
-            stencil_compare = nil,
-            stencil_value = nil,
-        }, {
-            suppress_root_compositing_for = self,
-            composition_target_stack = render_state.composition_target_stack,
-        })
-
-        if composition_target_pushed and peek_composition_target(render_state, graphics) == canvas then
-            pop_composition_target(render_state, graphics)
-            composition_target_pushed = false
-        end
-
-        set_current_canvas(graphics, previous_canvas)
-        set_scissor_rect(graphics, previous_scissor)
-        set_stencil_test(graphics, previous_stencil_compare, previous_stencil_value)
-        composite_isolated_subtree(self, graphics, canvas, compositing_plan, clip_state)
-    end, debug.traceback)
-
-    if composition_target_pushed and peek_composition_target(render_state, graphics) == canvas then
-        pop_composition_target(render_state, graphics)
-    end
-
-    set_current_canvas(graphics, previous_canvas)
-    set_scissor_rect(graphics, previous_scissor)
-    set_stencil_test(graphics, previous_stencil_compare, previous_stencil_value)
-    restore_blend_mode(graphics, previous_blend_mode)
-    restore_shader(graphics, previous_shader)
-    restore_color(graphics, previous_color)
-    pool:release(canvas)
-
-    if not ok then
-        error(err, 0)
-    end
-
+function Container:_resolve_root_compositing_extras()
     return nil
 end
+
+local ROOT_COMPOSITOR_RUNTIME = {
+    get_effective_value = function(node, key)
+        return get_effective_value(node, key)
+    end,
+    get_root = function(node)
+        return get_root(node)
+    end,
+    get_world_clip_rect = function(node)
+        return get_world_clip_rect(node)
+    end,
+    draw_subtree = function(node, graphics, draw_callback, clip_state, render_state)
+        return draw_subtree(node, graphics, draw_callback, clip_state, render_state)
+    end,
+}
 
 draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
     if not get_effective_value(self, 'visible') then
         return nil
     end
 
-    render_state = render_state or {}
+    render_state = RootCompositor.initialize_render_state(graphics, render_state)
 
     if render_state.suppress_root_compositing_for ~= self then
-        local effects = resolve_node_compositing_plan(self)
+        local effects = RootCompositor.resolve_node_plan(self, ROOT_COMPOSITOR_RUNTIME)
 
-        if node_requires_isolation(effects) then
-            return draw_isolated_subtree(
+        if RootCompositor.plan_requires_isolation(effects) then
+            return RootCompositor.draw_isolated_subtree(
                 self,
                 graphics,
                 draw_callback,
                 clip_state,
                 render_state,
-                effects
+                effects,
+                ROOT_COMPOSITOR_RUNTIME
             )
         end
     end
@@ -2305,15 +1806,14 @@ function Container:_draw_subtree_resolved(graphics, draw_callback)
     end
 
     local stencil_compare, stencil_value = get_stencil_test(graphics)
+    local render_state = RootCompositor.initialize_render_state(graphics, {})
 
     draw_subtree(self, graphics, draw_callback, {
         active_clips = {},
         scissor = get_scissor_rect(graphics),
         stencil_compare = stencil_compare,
         stencil_value = stencil_value,
-    }, {
-        composition_target_stack = { get_current_canvas(graphics) },
-    })
+    }, render_state)
 
     return self
 end
