@@ -22,11 +22,15 @@ local PRESET_OPTIONS = {
     },
 }
 
+local PREVIEW_RECT_WIDTH = 120
+local PREVIEW_RECT_HEIGHT = 28
+local PREVIEW_RECT_OFFSET_Y = 14
 local FOOTER_RESERVED_HEIGHT = 44
 local FOOTER_NOTE_WIDTH_FRACTION = 0.6
 local FOOTER_NOTE_BOTTOM_PADDING = 8
 local FOOTER_NOTE_BOTTOM_OFFSET_MULTIPLIER = 1.15
-local FOOTER_NOTE_TEXT = 'Click on each item to send it to the front. Inspect the actual overlap in each frame as you switch opacity presets and stacking order.'
+local FOOTER_NOTE_TEXT = 'Click on each item to send it to the front. The swatch above each frame shows the expected center-overlap composition for the current stacking order.'
+local FRAME_CONTENT_INSET = 1
 
 local function cycle_index(index, delta, total)
     local next_index = index + delta
@@ -64,6 +68,123 @@ local function set_simple_hint(helpers, node, name)
     end)
 end
 
+local function resolve_preview_source_color(node)
+    local color = node.fillColor or node.backgroundColor or DemoColors.roles.background
+
+    return {
+        color[1] or 0,
+        color[2] or 0,
+        color[3] or 0,
+    }
+end
+
+local function resolve_preview_order(nodes)
+    local ordered = {}
+
+    for index = 1, #nodes do
+        ordered[index] = {
+            node = nodes[index],
+            index = index,
+        }
+    end
+
+    table.sort(ordered, function(left, right)
+        local left_z_index = left.node.zIndex or 0
+        local right_z_index = right.node.zIndex or 0
+
+        if left_z_index == right_z_index then
+            return left.index < right.index
+        end
+
+        return left_z_index < right_z_index
+    end)
+
+    return ordered
+end
+
+local function copy_rgb(color)
+    return {
+        color[1] or 0,
+        color[2] or 0,
+        color[3] or 0,
+    }
+end
+
+local function resolve_preview_background_color(background_node)
+    if background_node == nil then
+        return copy_rgb(DemoColors.roles.background)
+    end
+
+    local primary = rawget(background_node, '_grid_primary_color') or DemoColors.roles.background
+    local secondary = rawget(background_node, '_grid_secondary_color') or primary
+    local cell_size = rawget(background_node, '_grid_cell_size') or 18
+    local sample_x = math.floor((background_node.width or 0) * 0.5)
+    local sample_y = math.floor((background_node.height or 0) * 0.5)
+
+    if cell_size <= 0 then
+        return copy_rgb(primary)
+    end
+
+    local column = math.floor(sample_x / cell_size)
+    local row = math.floor(sample_y / cell_size)
+
+    if (row + column) % 2 == 1 then
+        return copy_rgb(secondary)
+    end
+
+    return copy_rgb(primary)
+end
+
+local function resolve_overlap_preview(nodes, background_node)
+    local ordered = resolve_preview_order(nodes)
+    local color = resolve_preview_background_color(background_node)
+    local labels = {}
+
+    for index = 1, #ordered do
+        local node = ordered[index].node
+        local alpha = node.opacity or 1
+        local source = resolve_preview_source_color(node)
+
+        color[1] = (source[1] * alpha) + (color[1] * (1 - alpha))
+        color[2] = (source[2] * alpha) + (color[2] * (1 - alpha))
+        color[3] = (source[3] * alpha) + (color[3] * (1 - alpha))
+        labels[index] = rawget(node, '_demo_label') or tostring(index)
+    end
+
+    return color, table.concat(labels, ' > ')
+end
+
+local function resolve_preview_text_color(fill_color)
+    local luminance = (fill_color[1] * 0.2126) +
+        (fill_color[2] * 0.7152) +
+        (fill_color[3] * 0.0722)
+
+    if luminance >= 0.45 then
+        return DemoColors.names.black
+    end
+
+    return DemoColors.roles.text
+end
+
+local function draw_overlap_preview(graphics, font, frame, background_node, nodes)
+    local fill_color, label = resolve_overlap_preview(nodes, background_node)
+    local x = frame.x + math.floor((frame.width - PREVIEW_RECT_WIDTH) * 0.5 + 0.5)
+    local y = frame.y - PREVIEW_RECT_HEIGHT - PREVIEW_RECT_OFFSET_Y
+    local text_color = resolve_preview_text_color(fill_color)
+
+    graphics.setColor(fill_color)
+    graphics.rectangle('fill', x, y, PREVIEW_RECT_WIDTH, PREVIEW_RECT_HEIGHT)
+    graphics.setColor(DemoColors.roles.border_light)
+    graphics.rectangle('line', x, y, PREVIEW_RECT_WIDTH, PREVIEW_RECT_HEIGHT)
+    graphics.setColor(text_color)
+    graphics.setFont(font)
+    graphics.print(
+        label,
+        x + math.floor((PREVIEW_RECT_WIDTH - font:getWidth(label)) * 0.5 + 0.5),
+        y + math.floor((PREVIEW_RECT_HEIGHT - font:getHeight()) * 0.5 + 0.5)
+    )
+end
+
 function Setup.install(args)
     local helpers = args.helpers
     local root = args.root
@@ -75,6 +196,8 @@ function Setup.install(args)
     local shape_frame = find_required(root, 'opacity-shape-frame')
     local drawable_group = find_required(root, 'opacity-drawable-group')
     local shape_group = find_required(root, 'opacity-shape-group')
+    local drawable_background = find_required(root, 'opacity-drawable-background')
+    local shape_background = find_required(root, 'opacity-shape-background')
     local drawable_nodes = {
         find_required(root, 'opacity-drawable-a'),
         find_required(root, 'opacity-drawable-b'),
@@ -117,10 +240,10 @@ function Setup.install(args)
         drawable_frame.y = frame_y
         shape_frame.x = base_x + drawable_frame.width + frame_gap
         shape_frame.y = frame_y
-        drawable_group.x = 0
-        drawable_group.y = 0
-        shape_group.x = 0
-        shape_group.y = 0
+        drawable_group.x = FRAME_CONTENT_INSET
+        drawable_group.y = FRAME_CONTENT_INSET
+        shape_group.x = FRAME_CONTENT_INSET
+        shape_group.y = FRAME_CONTENT_INSET
     end
 
     local function apply_preset(nodes, preset)
@@ -217,6 +340,9 @@ function Setup.install(args)
                 hovered_preset_right,
                 DemoColors.roles.border_light
             )
+
+            draw_overlap_preview(graphics, title_font, drawable_frame, drawable_background, drawable_nodes)
+            draw_overlap_preview(graphics, title_font, shape_frame, shape_background, shape_nodes)
 
             graphics.setColor(DemoColors.roles.text_muted)
             graphics.print(

@@ -3,18 +3,69 @@ local NativeControls = require('demos.common.native_controls')
 
 local Setup = {}
 
+local DARK_GRID_PRIMARY = DemoColors.names.slate_900
+local DARK_GRID_SECONDARY = DemoColors.names.slate_800
+local LIGHT_GRID_PRIMARY = DemoColors.names.slate_100
+local LIGHT_GRID_SECONDARY = DemoColors.names.slate_400
+local MID_GRID_PRIMARY = DemoColors.names.slate_500
+local MID_GRID_SECONDARY = DemoColors.names.slate_400
+
 local PRESET_OPTIONS = {
     {
         label = 'Normal',
         blendMode = 'normal',
+        nodeOpacity = 1,
+        gridPrimary = MID_GRID_PRIMARY,
+        gridSecondary = MID_GRID_SECONDARY,
     },
     {
         label = 'Add',
         blendMode = 'add',
+        nodeOpacity = 0.6,
+        gridPrimary = DARK_GRID_PRIMARY,
+        gridSecondary = DARK_GRID_SECONDARY,
+    },
+    {
+        label = 'Subtract',
+        blendMode = 'subtract',
+        nodeOpacity = 0.6,
+        gridPrimary = LIGHT_GRID_PRIMARY,
+        gridSecondary = LIGHT_GRID_SECONDARY,
     },
     {
         label = 'Multiply',
         blendMode = 'multiply',
+        nodeOpacity = 1,
+        gridPrimary = LIGHT_GRID_PRIMARY,
+        gridSecondary = DemoColors.names.slate_400,
+    },
+    {
+        label = 'Screen',
+        blendMode = 'screen',
+        nodeOpacity = 1,
+        gridPrimary = DARK_GRID_PRIMARY,
+        gridSecondary = DARK_GRID_SECONDARY,
+    },
+    {
+        label = 'Lighten',
+        blendMode = 'lighten',
+        nodeOpacity = 1,
+        gridPrimary = DARK_GRID_PRIMARY,
+        gridSecondary = DARK_GRID_SECONDARY,
+    },
+    {
+        label = 'Darken',
+        blendMode = 'darken',
+        nodeOpacity = 1,
+        gridPrimary = LIGHT_GRID_PRIMARY,
+        gridSecondary = DemoColors.names.slate_400,
+    },
+    {
+        label = 'Replace',
+        blendMode = 'replace',
+        nodeOpacity = 1,
+        gridPrimary = MID_GRID_PRIMARY,
+        gridSecondary = MID_GRID_SECONDARY,
     },
 }
 
@@ -23,6 +74,7 @@ local FOOTER_NOTE_WIDTH_FRACTION = 0.6
 local FOOTER_NOTE_BOTTOM_PADDING = 8
 local FOOTER_NOTE_BOTTOM_OFFSET_MULTIPLIER = 1.15
 local FOOTER_NOTE_TEXT = 'Click on each item to send it to the front. Inspect the actual overlap in each frame as you switch blend presets and stacking order.'
+local FRAME_CONTENT_INSET = 1
 
 local function cycle_index(index, delta, total)
     local next_index = index + delta
@@ -56,8 +108,19 @@ local function set_simple_hint(helpers, node, name)
                     helpers.badge(nil, tostring(current.blendMode or 'nil')),
                 },
             },
+            {
+                label = 'opacity',
+                badges = {
+                    helpers.badge(nil, helpers.format_scalar(current.opacity)),
+                },
+            },
         }
     end)
+end
+
+local function apply_grid_preset(background_node, preset)
+    rawset(background_node, '_grid_primary_color', preset.gridPrimary or DARK_GRID_PRIMARY)
+    rawset(background_node, '_grid_secondary_color', preset.gridSecondary or DARK_GRID_SECONDARY)
 end
 
 function Setup.install(args)
@@ -71,6 +134,8 @@ function Setup.install(args)
     local shape_frame = find_required(root, 'blendmode-shape-frame')
     local drawable_group = find_required(root, 'blendmode-drawable-group')
     local shape_group = find_required(root, 'blendmode-shape-group')
+    local drawable_background = find_required(root, 'blendmode-drawable-background')
+    local shape_background = find_required(root, 'blendmode-shape-background')
     local drawable_nodes = {
         find_required(root, 'blendmode-drawable-a'),
         find_required(root, 'blendmode-drawable-b'),
@@ -113,15 +178,16 @@ function Setup.install(args)
         drawable_frame.y = frame_y
         shape_frame.x = base_x + drawable_frame.width + frame_gap
         shape_frame.y = frame_y
-        drawable_group.x = 0
-        drawable_group.y = 0
-        shape_group.x = 0
-        shape_group.y = 0
+        drawable_group.x = FRAME_CONTENT_INSET
+        drawable_group.y = FRAME_CONTENT_INSET
+        shape_group.x = FRAME_CONTENT_INSET
+        shape_group.y = FRAME_CONTENT_INSET
     end
 
     local function apply_preset(nodes, preset)
         for index = 1, #nodes do
             nodes[index].blendMode = preset.blendMode
+            nodes[index].opacity = preset.nodeOpacity or 1
         end
     end
 
@@ -129,6 +195,8 @@ function Setup.install(args)
         active_preset_index = index
         apply_preset(drawable_nodes, active_preset())
         apply_preset(shape_nodes, active_preset())
+        apply_grid_preset(drawable_background, active_preset())
+        apply_grid_preset(shape_background, active_preset())
         sync_layout()
     end
 
