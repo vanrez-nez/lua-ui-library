@@ -168,6 +168,18 @@ local function make_fake_graphics()
         return canvas
     end
 
+    function graphics.newQuad(x, y, width, height, sw, sh)
+        return {
+            id = 'quad',
+            x = x,
+            y = y,
+            width = width,
+            height = height,
+            sw = sw,
+            sh = sh,
+        }
+    end
+
     function graphics.getCanvas()
         return graphics.current_canvas
     end
@@ -214,17 +226,39 @@ local function make_fake_graphics()
             'blend:' .. tostring(mode) .. ':' .. tostring(graphics.current_alpha_mode)
     end
 
-    function graphics.draw(drawable, x, y, rotation, sx, sy, ox, oy)
+    function graphics.draw(drawable, ...)
+        local args = { ... }
+
+        if type(args[1]) == 'table' and args[1].id == 'quad' then
+            local quad = args[1]
+            graphics.calls[#graphics.calls + 1] = string.format(
+                'draw_quad:%s:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f',
+                tostring(drawable and drawable.id or drawable),
+                quad.x,
+                quad.y,
+                quad.width,
+                quad.height,
+                args[2] or 0,
+                args[3] or 0,
+                args[4] or 0,
+                args[5] or 1,
+                args[6] or 1,
+                args[7] or 0,
+                args[8] or 0
+            )
+            return
+        end
+
         graphics.calls[#graphics.calls + 1] = string.format(
             'draw:%s:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f',
             tostring(drawable and drawable.id or drawable),
-            x or 0,
-            y or 0,
-            rotation or 0,
-            sx or 1,
-            sy or 1,
-            ox or 0,
-            oy or 0
+            args[1] or 0,
+            args[2] or 0,
+            args[3] or 0,
+            args[4] or 1,
+            args[5] or 1,
+            args[6] or 0,
+            args[7] or 0
         )
     end
 
@@ -542,7 +576,7 @@ local function run_visual_effect_isolation_tests()
         'Drawable blendMode should be applied during isolated subtree compositing')
     assert_contains(graphics.calls, 'color:1.00:1.00:1.00:0.50',
         'Drawable opacity should modulate isolated subtree compositing alpha')
-    assert_contains(graphics.calls, 'draw:canvas-1:0.00:0.00:0.00:1.00:1.00:0.00:0.00',
+    assert_contains(graphics.calls, 'draw_quad:canvas-1:0.00:0.00:100.00:60.00:0.00:0.00:0.00:1.00:1.00:0.00:0.00',
         'Isolated Drawable subtrees should be composited back into the parent target')
     assert_equal(root:_hit_test(5, 5), root,
         'Drawable visual effects should not suppress hit targeting by themselves')
@@ -586,6 +620,35 @@ local function run_multiply_blend_mode_tests()
         'Drawable multiply blendMode should use premultiplied alpha during isolated subtree compositing')
 end
 
+local function run_stage_attached_blend_mode_bounds_tests()
+    local stage = UI.Stage.new({
+        width = 320,
+        height = 180,
+    })
+    local root = Drawable.new({
+        tag = 'root',
+        x = 40,
+        y = 30,
+        width = 100,
+        height = 60,
+        blendMode = 'multiply',
+    })
+    local graphics = make_fake_graphics()
+
+    stage.baseSceneLayer:addChild(root)
+    stage:update()
+
+    root:_draw_subtree(graphics, function()
+    end)
+
+    assert_contains(graphics.calls, 'new_canvas:canvas-1:320:192',
+        'Stage-attached isolated blendMode should still allocate against the stage-sized composition target')
+    assert_contains(graphics.calls, 'draw_quad:canvas-1:40.00:30.00:100.00:60.00:40.00:30.00:0.00:1.00:1.00:0.00:0.00',
+        'Stage-attached isolated blendMode should composite only the resolved node result instead of the full isolation canvas')
+    assert_contains(graphics.calls, 'scissor:40.00:30.00:100.00:60.00',
+        'Stage-attached isolated blendMode should restrict composite-back to the node result bounds')
+end
+
 local function run_nested_isolation_stack_tests()
     local root = Drawable.new({
         tag = 'root',
@@ -609,13 +672,13 @@ local function run_nested_isolation_stack_tests()
         'Parent isolation should push the first composition target')
     assert_contains(graphics.calls, 'set_canvas:canvas-2',
         'Nested child isolation should push a second composition target')
-    assert_contains(graphics.calls, 'draw:canvas-2:0.00:0.00:0.00:1.00:1.00:0.00:0.00',
+    assert_contains(graphics.calls, 'draw_quad:canvas-2:0.00:0.00:40.00:20.00:0.00:0.00:0.00:1.00:1.00:0.00:0.00',
         'Nested isolated children should composite back into the immediate parent target')
-    assert_contains(graphics.calls, 'draw:canvas-1:0.00:0.00:0.00:1.00:1.00:0.00:0.00',
+    assert_contains(graphics.calls, 'draw_quad:canvas-1:0.00:0.00:100.00:60.00:0.00:0.00:0.00:1.00:1.00:0.00:0.00',
         'The parent isolated subtree should then composite back into its own parent target')
     assert_true(
-        find_index(graphics.calls, 'draw:canvas-2:0.00:0.00:0.00:1.00:1.00:0.00:0.00') <
-            find_index(graphics.calls, 'draw:canvas-1:0.00:0.00:0.00:1.00:1.00:0.00:0.00'),
+        find_index(graphics.calls, 'draw_quad:canvas-2:0.00:0.00:40.00:20.00:0.00:0.00:0.00:1.00:1.00:0.00:0.00') <
+            find_index(graphics.calls, 'draw_quad:canvas-1:0.00:0.00:100.00:60.00:0.00:0.00:0.00:1.00:1.00:0.00:0.00'),
         'Nested isolated composition should unwind from child target back to parent target in stack order'
     )
 end
@@ -713,6 +776,7 @@ local function run()
     run_visual_effect_isolation_tests()
     run_default_root_compositing_fast_path_tests()
     run_multiply_blend_mode_tests()
+    run_stage_attached_blend_mode_bounds_tests()
     run_nested_isolation_stack_tests()
     run_isolated_failure_restore_tests()
     run_mask_failure_tests()

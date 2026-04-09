@@ -119,6 +119,18 @@ local function make_fake_graphics()
         return canvas
     end
 
+    function graphics.newQuad(x, y, width, height, sw, sh)
+        return {
+            id = 'quad',
+            x = x,
+            y = y,
+            width = width,
+            height = height,
+            sw = sw,
+            sh = sh,
+        }
+    end
+
     function graphics.getCanvas()
         return graphics.current_canvas
     end
@@ -174,17 +186,39 @@ local function make_fake_graphics()
             'polygon:' .. tostring(mode) .. ':' .. tostring(#points)
     end
 
-    function graphics.draw(drawable, x, y, rotation, sx, sy, ox, oy)
+    function graphics.draw(drawable, ...)
+        local args = { ... }
+
+        if type(args[1]) == 'table' and args[1].id == 'quad' then
+            local quad = args[1]
+            graphics.calls[#graphics.calls + 1] = string.format(
+                'draw_quad:%s:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f',
+                tostring(drawable and drawable.id or drawable),
+                quad.x,
+                quad.y,
+                quad.width,
+                quad.height,
+                args[2] or 0,
+                args[3] or 0,
+                args[4] or 0,
+                args[5] or 1,
+                args[6] or 1,
+                args[7] or 0,
+                args[8] or 0
+            )
+            return
+        end
+
         graphics.calls[#graphics.calls + 1] = string.format(
             'draw:%s:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f:%.2f',
             tostring(drawable and drawable.id or drawable),
-            x or 0,
-            y or 0,
-            rotation or 0,
-            sx or 1,
-            sy or 1,
-            ox or 0,
-            oy or 0
+            args[1] or 0,
+            args[2] or 0,
+            args[3] or 0,
+            args[4] or 1,
+            args[5] or 1,
+            args[6] or 0,
+            args[7] or 0
         )
     end
 
@@ -215,7 +249,7 @@ local function run_direct_shape_opacity_tests()
         'Shape opacity should isolate subtree rendering to a canvas')
     assert_contains(graphics.calls, 'color:1.00:1.00:1.00:0.50',
         'Shape opacity should modulate isolated subtree compositing alpha')
-    assert_contains(graphics.calls, 'draw:canvas-1:0.00:0.00:0.00:1.00:1.00:0.00:0.00',
+    assert_contains(graphics.calls, 'draw_quad:canvas-1:0.00:0.00:80.00:40.00:0.00:0.00:0.00:1.00:1.00:0.00:0.00',
         'Isolated Shape subtrees should be composited back into the parent target')
     assert_equal(shape:_hit_test(5, 5), shape,
         'Shape opacity should not suppress hit targeting by itself')
@@ -318,6 +352,36 @@ local function run_zero_opacity_targeting_tests()
         'Shape with opacity = 0 should remain targetable')
 end
 
+local function run_stage_attached_shape_blend_mode_bounds_tests()
+    local stage = UI.Stage.new({
+        width = 320,
+        height = 180,
+    })
+    local shape = UI.RectShape.new({
+        tag = 'shape',
+        x = 24,
+        y = 18,
+        width = 70,
+        height = 35,
+        blendMode = 'screen',
+    })
+    local graphics = make_fake_graphics()
+
+    stage.baseSceneLayer:addChild(shape)
+    stage:update()
+
+    shape:_draw_subtree(graphics, function(node)
+        node:draw(graphics)
+    end)
+
+    assert_contains(graphics.calls, 'new_canvas:canvas-1:320:192',
+        'Stage-attached Shape blendMode should still allocate against the stage-sized composition target')
+    assert_contains(graphics.calls, 'draw_quad:canvas-1:24.00:18.00:70.00:35.00:24.00:18.00:0.00:1.00:1.00:0.00:0.00',
+        'Stage-attached Shape blendMode should composite only the resolved node result instead of the full isolation canvas')
+    assert_contains(graphics.calls, 'scissor:24.00:18.00:70.00:35.00',
+        'Stage-attached Shape blendMode should restrict composite-back to the node result bounds')
+end
+
 local function run()
     run_direct_shape_opacity_tests()
     run_motion_shape_opacity_tests()
@@ -325,6 +389,7 @@ local function run()
     run_shape_default_root_compositing_fast_path_tests()
     run_shape_shader_capability_failure_tests()
     run_zero_opacity_targeting_tests()
+    run_stage_attached_shape_blend_mode_bounds_tests()
 end
 
 return {
