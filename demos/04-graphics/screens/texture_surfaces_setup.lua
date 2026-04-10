@@ -4,20 +4,20 @@ local TextureCommon = require('demos.04-graphics.screens.texture_common')
 
 local Setup = {}
 
-local PREVIEW_FRAME_WIDTH = 240
-local PREVIEW_FRAME_HEIGHT = 240
 local FRAME_CONTENT_INSET = 1
-local FRAME_GAP = 40
-local CONTROL_GAP = 20
+local FRAME_GAP_X = 36
+local FRAME_GAP_Y = 28
+local CONTROL_COLUMN_GAP = 36
 local LABEL_GAP = 10
-local ROW_GAP = 20
+local CONTROL_ROW_GAP = 20
+local GRID_BOTTOM_GAP = 24
 
 local function floor(value)
     return math.floor(value + 0.5)
 end
 
 local function build_navigator_layout(x, y, font, body_width)
-    local arrow_width = 24
+    local arrow_width = 42
     local nav_height = font:getHeight() + 12
 
     return {
@@ -56,35 +56,39 @@ local function resolve_body_width(font, options)
     return width
 end
 
-local function build_row_layouts(screen_width, y, font, selectors)
-    local total_width = 0
-    local body_widths = {}
+local function resolve_selectors_body_width(font, selectors)
+    local width = 0
+
+    for index = 1, #selectors do
+        width = math.max(width, resolve_body_width(font, selectors[index].options))
+    end
+
+    return width
+end
+
+local function selector_step_height(font)
+    local nav_height = font:getHeight() + 12
+    return font:getHeight() + LABEL_GAP + nav_height
+end
+
+local function build_column_layouts(x, y, font, selectors)
     local layouts = {}
+    local body_width = resolve_selectors_body_width(font, selectors)
+    local current_y = y
+    local step_height = selector_step_height(font)
 
     for index = 1, #selectors do
         local selector = selectors[index]
-        local body_width = resolve_body_width(font, selector.options)
-        local layout = build_navigator_layout(0, y, font, body_width)
 
-        body_widths[index] = body_width
-        layouts[selector.id] = layout
-        total_width = total_width + layout_width(layout)
+        layouts[selector.id] = build_navigator_layout(x, current_y, font, body_width)
+        current_y = current_y + step_height
 
         if index < #selectors then
-            total_width = total_width + CONTROL_GAP
+            current_y = current_y + CONTROL_ROW_GAP
         end
     end
 
-    local x = floor((screen_width - total_width) * 0.5)
-
-    for index = 1, #selectors do
-        local selector = selectors[index]
-
-        layouts[selector.id] = build_navigator_layout(x, y, font, body_widths[index])
-        x = x + layout_width(layouts[selector.id]) + CONTROL_GAP
-    end
-
-    return layouts
+    return layouts, layout_width(build_navigator_layout(x, y, font, body_width)), current_y - y
 end
 
 local function draw_selector(graphics, font, selector, layout, hovered_left, hovered_right, disabled)
@@ -110,7 +114,30 @@ local function draw_selector(graphics, font, selector, layout, hovered_left, hov
     )
 end
 
-local function set_hint(helpers, node, name, source_selector, region_selector, repeat_selector, align_x_selector, align_y_selector, offset_x_selector, offset_y_selector)
+local function set_center_label(node, label)
+    rawset(node, '_demo_label', label)
+    rawset(node, '_demo_label_align', 'center')
+    rawset(node, '_demo_label_valign', 'center')
+end
+
+local function set_preview_hint(helpers, node, source_selector, region_selector)
+    helpers.set_hint_name(node, 'Source Preview')
+    helpers.set_hint(node, function()
+        return {
+            {
+                label = 'source',
+                badges = {
+                    helpers.badge(nil, source_selector.options[source_selector.index].label),
+                    helpers.badge('region', source_selector.options[source_selector.index].kind == 'texture'
+                        and 'full'
+                        or region_selector.options[region_selector.index].label),
+                },
+            },
+        }
+    end)
+end
+
+local function set_surface_hint(helpers, node, name, source_selector, region_selector, repeat_selector, align_x_selector, align_y_selector, offset_x_selector, offset_y_selector)
     helpers.set_hint_name(node, name)
     helpers.set_hint(node, function()
         return {
@@ -152,18 +179,21 @@ function Setup.install(args)
     local root = args.root
     local stage = args.stage
     local font = love.graphics.newFont(12)
-    local rect_frame = TextureCommon.find_required(root, 'texture-fill-rect-frame', 'texture_fill_setup')
-    local rect_group = TextureCommon.find_required(root, 'texture-fill-rect-group', 'texture_fill_setup')
-    local rect_target = TextureCommon.find_required(root, 'texture-fill-rect-target', 'texture_fill_setup')
-    local circle_frame = TextureCommon.find_required(root, 'texture-fill-circle-frame', 'texture_fill_setup')
-    local circle_group = TextureCommon.find_required(root, 'texture-fill-circle-group', 'texture_fill_setup')
-    local circle_target = TextureCommon.find_required(root, 'texture-fill-circle-target', 'texture_fill_setup')
-    local base_texture = rect_target.fillTexture
+    local drawable_frame = TextureCommon.find_required(root, 'texture-surfaces-drawable-frame', 'texture_surfaces_setup')
+    local drawable_group = TextureCommon.find_required(root, 'texture-surfaces-drawable-group', 'texture_surfaces_setup')
+    local drawable_target = TextureCommon.find_required(root, 'texture-surfaces-drawable-target', 'texture_surfaces_setup')
+    local rect_frame = TextureCommon.find_required(root, 'texture-surfaces-rect-frame', 'texture_surfaces_setup')
+    local rect_group = TextureCommon.find_required(root, 'texture-surfaces-rect-group', 'texture_surfaces_setup')
+    local rect_target = TextureCommon.find_required(root, 'texture-surfaces-rect-target', 'texture_surfaces_setup')
+    local circle_frame = TextureCommon.find_required(root, 'texture-surfaces-circle-frame', 'texture_surfaces_setup')
+    local circle_group = TextureCommon.find_required(root, 'texture-surfaces-circle-group', 'texture_surfaces_setup')
+    local circle_target = TextureCommon.find_required(root, 'texture-surfaces-circle-target', 'texture_surfaces_setup')
+    local base_texture = drawable_target.backgroundImage
     local preview_frame, preview = TextureCommon.add_source_preview(
         root,
-        'texture-fill-preview',
-        PREVIEW_FRAME_WIDTH,
-        PREVIEW_FRAME_HEIGHT
+        'texture-surfaces-preview',
+        drawable_frame.width,
+        drawable_frame.height
     )
     local layouts = nil
     local source_selector = {
@@ -208,20 +238,35 @@ function Setup.install(args)
         options = TextureCommon.OFFSET_OPTIONS,
         index = 3,
     }
-    local rows = {
-        { source_selector, region_selector, repeat_selector },
-        { align_x_selector, align_y_selector },
-        { offset_x_selector, offset_y_selector },
+    local selectors = {
+        source_selector,
+        region_selector,
+        repeat_selector,
+        align_x_selector,
+        align_y_selector,
+        offset_x_selector,
+        offset_y_selector,
     }
 
-    rawset(rect_target, '_demo_label', 'Rect')
-    rawset(rect_target, '_demo_label_align', 'center')
-    rawset(rect_target, '_demo_label_valign', 'center')
-    rawset(circle_target, '_demo_label', 'Circle')
-    rawset(circle_target, '_demo_label_align', 'center')
-    rawset(circle_target, '_demo_label_valign', 'center')
+    set_center_label(preview, 'Source')
+    set_preview_hint(helpers, preview, source_selector, region_selector)
+    set_center_label(drawable_target, 'Drawable')
+    set_center_label(rect_target, 'Rect')
+    set_center_label(circle_target, 'Circle')
 
-    set_hint(
+    set_surface_hint(
+        helpers,
+        drawable_target,
+        'Drawable Background',
+        source_selector,
+        region_selector,
+        repeat_selector,
+        align_x_selector,
+        align_y_selector,
+        offset_x_selector,
+        offset_y_selector
+    )
+    set_surface_hint(
         helpers,
         rect_target,
         'RectShape Fill',
@@ -233,7 +278,7 @@ function Setup.install(args)
         offset_x_selector,
         offset_y_selector
     )
-    set_hint(
+    set_surface_hint(
         helpers,
         circle_target,
         'CircleShape Fill',
@@ -257,6 +302,14 @@ function Setup.install(args)
         local align_y = align_y_selector.options[align_y_selector.index].value
         local offset_x = offset_x_selector.options[offset_x_selector.index].value
         local offset_y = offset_y_selector.options[offset_y_selector.index].value
+
+        drawable_target.backgroundImage = source
+        drawable_target.backgroundRepeatX = repeat_mode.repeatX
+        drawable_target.backgroundRepeatY = repeat_mode.repeatY
+        drawable_target.backgroundAlignX = align_x
+        drawable_target.backgroundAlignY = align_y
+        drawable_target.backgroundOffsetX = offset_x
+        drawable_target.backgroundOffsetY = offset_y
 
         rect_target.fillTexture = source
         rect_target.fillRepeatX = repeat_mode.repeatX
@@ -285,57 +338,48 @@ function Setup.install(args)
     local function sync_layout()
         local screen_width = stage.width
         local screen_height = stage.height
-        local total_width = preview_frame.width + FRAME_GAP + rect_frame.width + FRAME_GAP + circle_frame.width
+        local grid_width = preview_frame.width + FRAME_GAP_X + drawable_frame.width
+        local grid_height = preview_frame.height + FRAME_GAP_Y + rect_frame.height
+        local selector_probe_width = layout_width(build_navigator_layout(0, 0, font, resolve_selectors_body_width(font, selectors)))
+        local selector_probe_height = (#selectors * selector_step_height(font)) + ((#selectors - 1) * CONTROL_ROW_GAP)
+        local total_width = grid_width + CONTROL_COLUMN_GAP + selector_probe_width
+        local total_height = math.max(grid_height, selector_probe_height)
         local base_x = floor((screen_width - total_width) * 0.5)
-        local center_y = floor((screen_height * 0.5) + 55)
-        local preview_y = floor(center_y - (preview_frame.height * 0.5))
-        local frame_y = floor(center_y - (rect_frame.height * 0.5))
-        local top_y = 96
+        local base_y = floor((screen_height - total_height - GRID_BOTTOM_GAP) * 0.5)
+        local grid_y = base_y + floor((total_height - grid_height) * 0.5)
+        local selector_x = base_x + grid_width + CONTROL_COLUMN_GAP
+        local selector_y = base_y + floor((total_height - selector_probe_height) * 0.5)
+
+        layouts = build_column_layouts(selector_x, selector_y, font, selectors)
 
         preview_frame.x = base_x
-        preview_frame.y = preview_y
-        rect_frame.x = base_x + preview_frame.width + FRAME_GAP
-        rect_frame.y = frame_y
-        circle_frame.x = rect_frame.x + rect_frame.width + FRAME_GAP
-        circle_frame.y = frame_y
+        preview_frame.y = grid_y
 
+        drawable_frame.x = base_x + preview_frame.width + FRAME_GAP_X
+        drawable_frame.y = grid_y
+        drawable_group.x = FRAME_CONTENT_INSET
+        drawable_group.y = FRAME_CONTENT_INSET
+        drawable_target.x = floor((drawable_group.width - drawable_target.width) * 0.5)
+        drawable_target.y = floor((drawable_group.height - drawable_target.height) * 0.5)
+
+        rect_frame.x = base_x
+        rect_frame.y = grid_y + preview_frame.height + FRAME_GAP_Y
         rect_group.x = FRAME_CONTENT_INSET
         rect_group.y = FRAME_CONTENT_INSET
-        circle_group.x = FRAME_CONTENT_INSET
-        circle_group.y = FRAME_CONTENT_INSET
         rect_target.x = floor((rect_group.width - rect_target.width) * 0.5)
         rect_target.y = floor((rect_group.height - rect_target.height) * 0.5)
+
+        circle_frame.x = drawable_frame.x
+        circle_frame.y = rect_frame.y
+        circle_group.x = FRAME_CONTENT_INSET
+        circle_group.y = FRAME_CONTENT_INSET
         circle_target.x = floor((circle_group.width - circle_target.width) * 0.5)
         circle_target.y = floor((circle_group.height - circle_target.height) * 0.5)
-
-        layouts = {}
-        local y = top_y
-
-        for index = 1, #rows do
-            local row_layouts = build_row_layouts(screen_width, y, font, rows[index])
-
-            for key, layout in pairs(row_layouts) do
-                layouts[key] = layout
-            end
-
-            y = y + font:getHeight() + LABEL_GAP + font:getHeight() + 12 + ROW_GAP
-        end
     end
 
     local function selector_disabled(selector)
-        if selector.id == 'region' and
-            source_selector.options[source_selector.index].kind == 'texture' then
-            return true
-        end
-
-        if (selector.id == 'align_x' or selector.id == 'align_y' or
-                selector.id == 'offset_x' or selector.id == 'offset_y') and
-            repeat_selector.options[repeat_selector.index].repeatX ~= true and
-            repeat_selector.options[repeat_selector.index].repeatY ~= true then
-            return true
-        end
-
-        return false
+        return selector.id == 'region' and
+            source_selector.options[source_selector.index].kind == 'texture'
     end
 
     local function handle_selector_click(selector, x, y)

@@ -36,13 +36,11 @@ Those remain in the component-focused demos.
 1. opacity inspection
 2. blend-mode inspection
 3. retained render effects
-4. Drawable texture background
-5. Shape texture fill
+4. unified texture surfaces
 
 ## Demo Notes
 
 - The opacity screen compares overlapping `Drawable` and `CircleShape` nodes under the same opacity presets.
 - The blend-mode screen uses the same paired Drawable and CircleShape overlap fixture as opacity, with a shared blend-mode preset and no demo-local compositing simulation.
 - The retained render-effects screen demonstrates the visible subtree compositing differences for normal, alpha-reduced, add, and multiply output.
-- The Drawable texture-background screen demonstrates `backgroundImage` using the labeled grid texture, with source switching between `Texture` and `Sprite` plus alignment and offset controls.
-- The Shape texture-fill screen demonstrates `fillTexture` on `RectShape` and `CircleShape`, including source subregions, repeat mode, alignment, and offsets.
+- The unified texture-surfaces screen shows one raw source preview beside `Drawable.backgroundImage`, `RectShape.fillTexture`, and `CircleShape.fillTexture`, with shared controls for source type, subregion, repeat, alignment, and offsets.

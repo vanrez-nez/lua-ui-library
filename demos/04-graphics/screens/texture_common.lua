@@ -9,7 +9,24 @@ local TextureCommon = {}
 local floor = math.floor
 
 TextureCommon.IMAGE_PATH = 'assets/images/image.png'
-TextureCommon.CELL_SIZE = 96
+TextureCommon.CELL_SIZE = 128
+
+local function resolve_row_index(label)
+    return string.byte(label) - string.byte('A')
+end
+
+local function make_region(row_start, column_start, row_end, column_end)
+    local cell_size = TextureCommon.CELL_SIZE
+    local start_row_index = resolve_row_index(row_start)
+    local end_row_index = resolve_row_index(row_end)
+
+    return {
+        x = (column_start - 1) * cell_size,
+        y = start_row_index * cell_size,
+        width = ((column_end - column_start) + 1) * cell_size,
+        height = ((end_row_index - start_row_index) + 1) * cell_size,
+    }
+end
 
 TextureCommon.SOURCE_OPTIONS = {
     {
@@ -25,48 +42,23 @@ TextureCommon.SOURCE_OPTIONS = {
 TextureCommon.REGION_OPTIONS = {
     {
         label = 'A1',
-        region = {
-            x = 0,
-            y = 0,
-            width = 96,
-            height = 96,
-        },
+        region = make_region('A', 1, 'A', 1),
     },
     {
         label = 'B2',
-        region = {
-            x = 96,
-            y = 96,
-            width = 96,
-            height = 96,
-        },
+        region = make_region('B', 2, 'B', 2),
     },
     {
         label = 'D4:E5',
-        region = {
-            x = 288,
-            y = 288,
-            width = 192,
-            height = 192,
-        },
+        region = make_region('D', 4, 'E', 5),
     },
     {
         label = 'E1:H2',
-        region = {
-            x = 384,
-            y = 0,
-            width = 384,
-            height = 192,
-        },
+        region = make_region('E', 1, 'H', 2),
     },
     {
         label = 'C3:F6',
-        region = {
-            x = 192,
-            y = 192,
-            width = 384,
-            height = 384,
-        },
+        region = make_region('C', 3, 'F', 6),
     },
 }
 
