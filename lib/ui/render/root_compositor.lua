@@ -201,6 +201,26 @@ local function resolve_node_compositing_extras(node)
     return node:_resolve_root_compositing_extras()
 end
 
+local function resolve_node_world_paint_bounds(node)
+    local resolve_paint_bounds = node._resolve_root_compositing_world_paint_bounds
+
+    if not Types.is_function(resolve_paint_bounds) then
+        return node:getWorldBounds()
+    end
+
+    local bounds = node:_resolve_root_compositing_world_paint_bounds()
+
+    if bounds == nil then
+        return node:getWorldBounds()
+    end
+
+    if not Rectangle.is_rectangle(bounds) then
+        Assert.fail('node root-compositing world paint bounds must resolve to a Rectangle', 3)
+    end
+
+    return bounds
+end
+
 local function resolve_node_result_clip(node)
     local resolve_result_clip = node._resolve_root_compositing_result_clip
 
@@ -302,7 +322,7 @@ local function get_isolation_canvas_size(node, render_state, runtime, graphics)
             max(1, ceil(root.height or 0))
     end
 
-    local bounds = node:getWorldBounds()
+    local bounds = resolve_node_world_paint_bounds(node)
 
     return max(1, ceil(max(bounds.width, bounds.x + bounds.width))),
         max(1, ceil(max(bounds.height, bounds.y + bounds.height)))
@@ -313,7 +333,7 @@ local function resolve_subtree_world_bounds(node, runtime)
         return Rectangle(0, 0, 0, 0)
     end
 
-    local bounds = node:getWorldBounds()
+    local bounds = resolve_node_world_paint_bounds(node)
     local clip_rect = nil
 
     if runtime.get_effective_value(node, 'clipChildren') then

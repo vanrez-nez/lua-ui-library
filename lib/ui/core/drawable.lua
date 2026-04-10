@@ -493,6 +493,92 @@ get_effective_value = function(self, key)
     return effective_values and effective_values[key]
 end
 
+local function color_input_is_visible(color, opacity)
+    return Types.is_table(color) and ((color[4] or 1) * (opacity or 1)) > 0
+end
+
+local function resolve_local_border_paint_bounds(self, local_bounds)
+    if not color_input_is_visible(
+            get_effective_value(self, 'borderColor'),
+            get_effective_value(self, 'borderOpacity')
+        ) then
+        return nil
+    end
+
+    local top = (get_effective_value(self, 'borderWidthTop') or 0) * 0.5
+    local right = (get_effective_value(self, 'borderWidthRight') or 0) * 0.5
+    local bottom = (get_effective_value(self, 'borderWidthBottom') or 0) * 0.5
+    local left = (get_effective_value(self, 'borderWidthLeft') or 0) * 0.5
+
+    if top == 0 and right == 0 and bottom == 0 and left == 0 then
+        return nil
+    end
+
+    return Rectangle.from_edges(
+        local_bounds.x - left,
+        local_bounds.y - top,
+        local_bounds.x + local_bounds.width + right,
+        local_bounds.y + local_bounds.height + bottom
+    )
+end
+
+local function resolve_local_outer_shadow_bounds(self, local_bounds)
+    if get_effective_value(self, 'shadowInset') == true or
+        not color_input_is_visible(
+            get_effective_value(self, 'shadowColor'),
+            get_effective_value(self, 'shadowOpacity')
+        ) then
+        return nil
+    end
+
+    local blur = get_effective_value(self, 'shadowBlur') or 0
+    local margin = blur > 0 and math.ceil(blur) or 0
+    local offset_x = get_effective_value(self, 'shadowOffsetX') or 0
+    local offset_y = get_effective_value(self, 'shadowOffsetY') or 0
+
+    return Rectangle.from_edges(
+        local_bounds.x + offset_x - margin,
+        local_bounds.y + offset_y - margin,
+        local_bounds.x + local_bounds.width + offset_x + margin,
+        local_bounds.y + local_bounds.height + offset_y + margin
+    )
+end
+
+local function resolve_world_rect(self, local_rect)
+    if local_rect == nil or local_rect:is_empty() then
+        return Rectangle(0, 0, 0, 0)
+    end
+
+    local x1, y1 = self:localToWorld(local_rect.x, local_rect.y)
+    local x2, y2 = self:localToWorld(local_rect.x + local_rect.width, local_rect.y)
+    local x3, y3 = self:localToWorld(local_rect.x + local_rect.width, local_rect.y + local_rect.height)
+    local x4, y4 = self:localToWorld(local_rect.x, local_rect.y + local_rect.height)
+
+    return Rectangle.bounding_box({
+        { x = x1, y = y1 },
+        { x = x2, y = y2 },
+        { x = x3, y = y3 },
+        { x = x4, y = y4 },
+    })
+end
+
+function Drawable:_resolve_root_compositing_world_paint_bounds()
+    local local_bounds = rawget(self, '_local_bounds_cache') or self:getLocalBounds()
+    local paint_bounds = local_bounds:clone()
+    local border_bounds = resolve_local_border_paint_bounds(self, local_bounds)
+    local shadow_bounds = resolve_local_outer_shadow_bounds(self, local_bounds)
+
+    if border_bounds ~= nil then
+        paint_bounds = paint_bounds:union(border_bounds)
+    end
+
+    if shadow_bounds ~= nil then
+        paint_bounds = paint_bounds:union(shadow_bounds)
+    end
+
+    return resolve_world_rect(self, paint_bounds)
+end
+
 function Drawable:resolveContentRect(content_width, content_height)
     Assert.number('content_width', content_width, 2)
     Assert.number('content_height', content_height, 2)

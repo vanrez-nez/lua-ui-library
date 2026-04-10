@@ -647,6 +647,71 @@ local function run_stage_attached_blend_mode_bounds_tests()
         'Stage-attached isolated blendMode should composite only the resolved node result instead of the full isolation canvas')
     assert_contains(graphics.calls, 'scissor:40.00:30.00:100.00:60.00',
         'Stage-attached isolated blendMode should restrict composite-back to the node result bounds')
+
+    stage:destroy()
+end
+
+local function run_stage_attached_blend_mode_paint_bounds_tests()
+    local stage = UI.Stage.new({
+        width = 320,
+        height = 180,
+    })
+    local bordered = Drawable.new({
+        x = 40,
+        y = 30,
+        width = 100,
+        height = 60,
+        borderColor = { 1, 1, 1, 1 },
+        borderWidth = { 8, 10, 12, 14 },
+        blendMode = 'multiply',
+    })
+    local graphics = make_fake_graphics()
+
+    stage.baseSceneLayer:addChild(bordered)
+    stage:update()
+
+    bordered:_draw_subtree(graphics, function()
+    end)
+
+    assert_contains(graphics.calls, 'draw_quad:canvas-1:33.00:26.00:112.00:70.00:33.00:26.00:0.00:1.00:1.00:0.00:0.00',
+        'Stage-attached isolated Drawable border should composite back over the full styled paint bounds')
+    assert_contains(graphics.calls, 'scissor:33.00:26.00:112.00:70.00',
+        'Stage-attached isolated Drawable border should expand composite-back clipping to the outward half-stroke extent')
+
+    stage:destroy()
+
+    stage = UI.Stage.new({
+        width = 320,
+        height = 180,
+    })
+
+    local shadowed = Drawable.new({
+        x = 40,
+        y = 30,
+        width = 100,
+        height = 60,
+        shadowColor = { 0, 0, 0, 1 },
+        shadowOpacity = 1,
+        shadowOffsetX = 12,
+        shadowOffsetY = -8,
+        shadowBlur = 4,
+        blendMode = 'multiply',
+    })
+
+    graphics = make_fake_graphics()
+
+    stage.baseSceneLayer:addChild(shadowed)
+    stage:update()
+
+    shadowed:_draw_subtree(graphics, function()
+    end)
+
+    assert_contains(graphics.calls, 'draw_quad:canvas-1:40.00:18.00:116.00:72.00:40.00:18.00:0.00:1.00:1.00:0.00:0.00',
+        'Stage-attached isolated Drawable outer shadow should composite back over the full shadow coverage bounds')
+    assert_contains(graphics.calls, 'scissor:40.00:18.00:116.00:72.00',
+        'Stage-attached isolated Drawable outer shadow should expand composite-back clipping to the resolved shadow coverage')
+
+    stage:destroy()
 end
 
 local function run_nested_isolation_stack_tests()
@@ -777,6 +842,7 @@ local function run()
     run_default_root_compositing_fast_path_tests()
     run_multiply_blend_mode_tests()
     run_stage_attached_blend_mode_bounds_tests()
+    run_stage_attached_blend_mode_paint_bounds_tests()
     run_nested_isolation_stack_tests()
     run_isolated_failure_restore_tests()
     run_mask_failure_tests()

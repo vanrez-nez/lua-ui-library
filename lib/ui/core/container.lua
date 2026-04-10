@@ -980,6 +980,10 @@ function Container:_resolve_root_compositing_extras()
     return nil
 end
 
+function Container:_resolve_root_compositing_world_paint_bounds()
+    return nil
+end
+
 function Container:_resolve_root_compositing_result_clip()
     return nil
 end
