@@ -44,7 +44,7 @@ local CASES = {
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        function(scope, stage)
+        function(stage)
             local root = stage.baseSceneLayer
 
             for i = 1, #CASES do
@@ -65,7 +65,7 @@ return function(owner, helpers)
                     props.borderGapLength  = 6
                     props.borderDashOffset = case.dash_offset or 0
                 end
-                local node = helpers.make_node(scope, root, props, case.label, case.fill, case.line)
+                local node = helpers.make_node(root, props, case.label, case.fill, case.line)
                 helpers.set_hint(node, function(current)
                     local badges = {
                         helpers.badge('borderPattern', current.borderPattern or 'solid'),

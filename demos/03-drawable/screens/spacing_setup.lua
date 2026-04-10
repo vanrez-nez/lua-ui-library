@@ -458,12 +458,11 @@ local function set_parent_hint(node, helpers, type_label)
 end
 
 function Setup.install(args)
-    local scope = args.scope
     local helpers = args.helpers
     local root = args.root
     local stage = args.stage
-    local title_font = scope:font(12)
-    local label_font = scope:font(11)
+    local title_font = love.graphics.newFont(12)
+    local label_font = love.graphics.newFont(11)
     local selector_body_width = max_option_body_width(title_font, {
         SPACING_OPTIONS,
         PRESET_OPTIONS,

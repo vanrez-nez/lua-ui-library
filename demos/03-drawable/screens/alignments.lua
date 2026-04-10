@@ -36,7 +36,7 @@ end
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        function(scope, stage)
+        function(stage)
             local root = stage.baseSceneLayer
 
             for index = 1, #CASES do

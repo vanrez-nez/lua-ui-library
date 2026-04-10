@@ -8,7 +8,7 @@ return function(owner, helpers)
 
     return helpers.screen_wrapper(
         owner,
-        function(scope, stage)
+        function(stage)
             local root = stage.baseSceneLayer
 
             local parent = Column.new({

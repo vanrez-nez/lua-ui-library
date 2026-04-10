@@ -422,7 +422,7 @@ function ScreenHelper.mark_box(node, label, fill_color, line_color)
     return node
 end
 
-function ScreenHelper.make_node(scope, parent, opts, label, fill_color, line_color)
+function ScreenHelper.make_node(parent, opts, label, fill_color, line_color)
     local node = ScreenHelper.mark_box(Container.new(opts), label, fill_color, line_color)
     rawset(node, '_demo_opts', opts)
     parent:addChild(node)
@@ -445,16 +445,15 @@ function ScreenHelper.screen_wrapper(owner, helpers, build)
         error('screen_wrapper no longer accepts a description argument; return description from the screen state table', 2)
     end
 
-    return function(index, scope)
+    return function(index)
         local stage = ScreenHelper.make_stage()
-        local build_state = build(scope, stage) or {}
+        local build_state = build(stage) or {}
         local state = {
             title = build_state.title,
             description = build_state.description,
         }
 
         install_companion_setup(build, {
-            scope = scope,
             owner = owner,
             helpers = helpers,
             stage = stage,

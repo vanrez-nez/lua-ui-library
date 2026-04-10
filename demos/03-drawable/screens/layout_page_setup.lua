@@ -19,14 +19,13 @@ end
 
 function Setup.install(args)
     local root = args.root
-    local scope = args.scope
     local stage = args.stage
     local page = find_required(root, 'layout-page-root')
     local header = find_required(root, 'layout-page-header')
     local content = find_required(root, 'layout-page-content')
     local sidebar = find_required(root, 'layout-page-sidebar')
     local footer = find_required(root, 'layout-page-footer')
-    local title_font = scope:font(12)
+    local title_font = love.graphics.newFont(12)
     local width_index = 1
     local width_layout = nil
     local guides = {

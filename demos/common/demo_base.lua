@@ -3,52 +3,6 @@ local InfoSidebar = require('demos.common.info_sidebar')
 local DemoColors = require('demos.common.colors')
 local DemoProfiling = require('demos.common.demo_profiling')
 
-local function call_release(value)
-    if value == nil then
-        return
-    end
-
-    local release = value.release
-    if type(release) == 'function' then
-        pcall(release, value)
-    end
-end
-
-local function make_screen_scope()
-    local scope = {
-        resources = {},
-        released = false,
-    }
-
-    function scope:track(value)
-        if value ~= nil then
-            self.resources[#self.resources + 1] = value
-        end
-        return value
-    end
-
-    function scope:font(...)
-        return self:track(love.graphics.newFont(...))
-    end
-
-    function scope:cleanup()
-        if self.released then
-            return
-        end
-
-        for index = #self.resources, 1, -1 do
-            call_release(self.resources[index])
-            self.resources[index] = nil
-        end
-
-        self.resources = {}
-        self.released = true
-        collectgarbage('collect')
-    end
-
-    return scope
-end
-
 local DemoBase = {}
 DemoBase.__index = DemoBase
 
@@ -64,7 +18,6 @@ function DemoBase.new(opts)
     self.visible = opts.visible ~= false
     self.screens = {}
     self.active_index = 0
-    self.active_scope = nil
     self.active_screen = nil
     self.memory_monitor = MemoryMonitor.new()
     self.profiling = nil
@@ -164,11 +117,6 @@ function DemoBase:_cleanup_active_screen()
         pcall(self.active_screen.release, self.active_screen)
     end
 
-    if self.active_scope ~= nil then
-        self.active_scope:cleanup()
-    end
-
-    self.active_scope = nil
     self.active_screen = nil
     self:clear_info_items()
     self:_reset_global_state()
@@ -191,11 +139,9 @@ function DemoBase:_activate_screen(index)
 
     self:_cleanup_active_screen()
 
-    local scope = make_screen_scope()
-    local screen = self.screens[index](index, scope, self) or {}
+    local screen = self.screens[index](index) or {}
 
     self.active_index = index
-    self.active_scope = scope
     self.active_screen = screen
 end
 

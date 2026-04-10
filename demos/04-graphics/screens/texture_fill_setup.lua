@@ -150,9 +150,8 @@ end
 function Setup.install(args)
     local helpers = args.helpers
     local root = args.root
-    local scope = args.scope
     local stage = args.stage
-    local font = scope:font(12)
+    local font = love.graphics.newFont(12)
     local rect_frame = TextureCommon.find_required(root, 'texture-fill-rect-frame', 'texture_fill_setup')
     local rect_group = TextureCommon.find_required(root, 'texture-fill-rect-group', 'texture_fill_setup')
     local rect_target = TextureCommon.find_required(root, 'texture-fill-rect-target', 'texture_fill_setup')

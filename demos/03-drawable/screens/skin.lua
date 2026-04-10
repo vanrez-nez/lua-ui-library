@@ -21,12 +21,12 @@ local CASES = {
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        function(scope, stage)
+        function(stage)
             local root = stage.baseSceneLayer
 
             for index = 1, #CASES do
                 local case = CASES[index]
-                local node = helpers.make_node(scope, root, {
+                local node = helpers.make_node(root, {
                     x = case.x,
                     y = 220,
                     width = 220,

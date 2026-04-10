@@ -10,9 +10,9 @@ local FRAME_CONTENT_INSET = 1
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        function(scope, stage)
+        function(stage)
             local root = stage.baseSceneLayer
-            local image = scope:track(love.graphics.newImage('assets/images/image.png'))
+            local image = love.graphics.newImage('assets/images/image.png')
             local texture = Texture.new({
                 source = image,
             })

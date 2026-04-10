@@ -320,11 +320,10 @@ end
 function Setup.install(args)
     local helpers = args.helpers
     local root = args.root
-    local scope = args.scope
     local stage = args.stage
     local state = args.state
-    local title_font = scope:font(12)
-    local label_font = scope:font(12)
+    local title_font = love.graphics.newFont(12)
+    local label_font = love.graphics.newFont(12)
     local nodes = {}
     local selector_layouts = nil
 

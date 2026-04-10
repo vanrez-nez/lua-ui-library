@@ -4,7 +4,7 @@ local UI = require('lib.ui')
 local Container = UI.Container
 
 return function(owner, helpers)
-    return helpers.screen_wrapper(owner, function(scope, stage)
+    return helpers.screen_wrapper(owner, function(stage)
         local root = stage.baseSceneLayer
 
         local single_parent = Container.new({

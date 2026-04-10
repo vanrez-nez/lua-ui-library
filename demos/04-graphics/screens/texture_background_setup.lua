@@ -144,9 +144,8 @@ end
 function Setup.install(args)
     local helpers = args.helpers
     local root = args.root
-    local scope = args.scope
     local stage = args.stage
-    local font = scope:font(12)
+    local font = love.graphics.newFont(12)
     local frame = TextureCommon.find_required(root, 'texture-background-frame', 'texture_background_setup')
     local group = TextureCommon.find_required(root, 'texture-background-group', 'texture_background_setup')
     local target = TextureCommon.find_required(root, 'texture-background-target', 'texture_background_setup')

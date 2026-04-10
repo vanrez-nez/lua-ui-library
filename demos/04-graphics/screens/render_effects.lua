@@ -57,8 +57,8 @@ local function draw_world_rect(node, graphics, x, y, width, height, color)
     graphics.polygon('fill', world_rect(node, x, y, width, height))
 end
 
-local function make_effect_panel(scope, root, helpers, case)
-    local panel = helpers.make_node(scope, root, {
+local function make_effect_panel(root, helpers, case)
+    local panel = helpers.make_node(root, {
         x = case.x,
         y = 170,
         width = 220,
@@ -132,11 +132,11 @@ end
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        function(scope, stage)
+        function(stage)
             local root = stage.baseSceneLayer
 
             for index = 1, #CASES do
-                make_effect_panel(scope, root, helpers, CASES[index])
+                make_effect_panel(root, helpers, CASES[index])
             end
 
             return {

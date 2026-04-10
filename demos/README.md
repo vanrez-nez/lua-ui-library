@@ -240,16 +240,13 @@ Every screen must be a factory registered through `DemoBase:push_screen(...)`.
 Each screen factory receives:
 
 - `index`
-- `scope`
-- `owner`
-
-Use `scope` only for temporary tracked Love resources such as fonts.
-
-`scope` is not a cleanup-callback API.
 
 Do not rely on manual teardown inside demo code.
 
 Every reset must rebuild the screen from scratch.
+
+When using `demos/common/screen_helper.lua`, the execution-file build callback is
+called with `stage` only.
 
 ## Sidebar
 
@@ -288,8 +285,7 @@ Shared sidebar helpers:
 - `toggle_info_item(index)`
 - `clear_info_items()`
 
-Sidebar state is screen-scoped and is cleared automatically on screen switch and
-screen reset.
+Sidebar state is cleared automatically on screen switch and screen reset.
 
 ## Hover Hints
 

@@ -7,7 +7,7 @@ local TriangleShape = UI.TriangleShape
 local DiamondShape = UI.DiamondShape
 
 return function(owner)
-    return ScreenHelper.screen_wrapper(owner, function(scope, stage)
+    return ScreenHelper.screen_wrapper(owner, function(stage)
         local root = stage.baseSceneLayer
 
         root:addChild(RectShape.new({

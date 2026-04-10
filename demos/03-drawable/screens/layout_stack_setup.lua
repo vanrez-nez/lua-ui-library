@@ -94,9 +94,8 @@ end
 function Setup.install(args)
     local helpers = args.helpers
     local root = args.root
-    local scope = args.scope
     local stage = args.stage
-    local title_font = scope:font(12)
+    local title_font = love.graphics.newFont(12)
     local parent = find_required(root, 'layout-stack-parent')
     local backdrop = find_required(root, 'layout-stack-backdrop')
     local surface = find_required(root, 'layout-stack-surface')

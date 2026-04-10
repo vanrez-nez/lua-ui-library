@@ -126,10 +126,9 @@ end
 function Setup.install(args)
     local helpers = args.helpers
     local root = args.root
-    local scope = args.scope
     local stage = args.stage
-    local title_font = scope:font(12)
-    local note_font = scope:font(11)
+    local title_font = love.graphics.newFont(12)
+    local note_font = love.graphics.newFont(11)
     local drawable_frame = find_required(root, 'blendmode-drawable-frame')
     local shape_frame = find_required(root, 'blendmode-shape-frame')
     local drawable_group = find_required(root, 'blendmode-drawable-group')

@@ -34,7 +34,7 @@ end
 return function(owner, helpers)
     return helpers.screen_wrapper(
         owner,
-        function(scope, stage)
+        function(stage)
             local root = stage.baseSceneLayer
 
             local drawable_frame = Drawable.new({

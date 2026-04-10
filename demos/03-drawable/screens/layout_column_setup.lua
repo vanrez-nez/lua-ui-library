@@ -232,10 +232,9 @@ end
 function Setup.install(args)
     local helpers = args.helpers
     local root = args.root
-    local scope = args.scope
     local stage = args.stage
-    local title_font = scope:font(12)
-    local label_font = scope:font(11)
+    local title_font = love.graphics.newFont(12)
+    local label_font = love.graphics.newFont(11)
     local parent = find_required(root, 'layout-column-parent')
     local header = find_required(root, 'layout-column-header')
     local body = find_required(root, 'layout-column-body')
