@@ -2,7 +2,6 @@ local Assert = require('lib.ui.utils.assert')
 local LayoutNode = require('lib.ui.layout.layout_node')
 local Types = require('lib.ui.utils.types')
 local MathUtils = require('lib.ui.utils.math')
-local Rectangle = require('lib.ui.core.rectangle')
 local LayoutSpacing = require('lib.ui.layout.spacing')
 local Direction = require('lib.ui.layout.direction')
 local ContentFillGuard = require('lib.ui.layout.content_fill_guard')
@@ -13,6 +12,14 @@ local resolve_axis_size = MathUtils.resolve_axis_size
 local is_percentage_string = MathUtils.is_percentage_string
 
 local SequentialLayout = {}
+
+local function effective_values(node)
+    return setmetatable({}, {
+        __index = function(_, key)
+            return node[key]
+        end,
+    })
+end
 
 local JUSTIFY_VALUES = {
     start = true,
@@ -30,13 +37,7 @@ local ALIGN_VALUES = {
 }
 
 local function child_is_visible(child)
-    local effective_values = rawget(child, '_effective_values')
-
-    if effective_values == nil then
-        return true
-    end
-
-    return effective_values.visible ~= false
+    return child.visible ~= false
 end
 
 local function get_axis_keys(config)
@@ -70,7 +71,7 @@ local function depends_on_parent_axis(value)
 end
 
 local function validate_effective_props(self, config)
-    local effective_values = rawget(self, '_effective_values') or {}
+    local effective_values = effective_values(self)
     local justify = effective_values.justify
     local align = effective_values.align
     local wrap = effective_values.wrap
@@ -100,47 +101,6 @@ local function validate_effective_props(self, config)
     end
 
     return justify, align, wrap, gap
-end
-
-local function apply_resolved_size(node, width, height)
-    local resolved_width = width
-    local resolved_height = height
-
-    if resolved_width == nil then
-        resolved_width = node._resolved_width or 0
-    end
-
-    if resolved_height == nil then
-        resolved_height = node._resolved_height or 0
-    end
-
-    if node._resolved_width == resolved_width and
-        node._resolved_height == resolved_height then
-        node._measurement_dirty = false
-        return false
-    end
-
-    node._resolved_width = resolved_width
-    node._resolved_height = resolved_height
-    node._measurement_dirty = false
-    node._local_bounds_cache = Rectangle.new(0, 0, resolved_width, resolved_height)
-    node._local_transform_dirty = true
-    node._world_transform_dirty = true
-    node._bounds_dirty = true
-    node._world_inverse_dirty = true
-
-    if node._ui_layout_instance == true and
-        Types.is_function(node._refresh_layout_content_rect) then
-        node:_refresh_layout_content_rect()
-    end
-
-    local children = rawget(node, '_children') or {}
-
-    for index = 1, #children do
-        children[index]:_mark_parent_layout_dependency_dirty()
-    end
-
-    return true
 end
 
 local function resolve_axis(value, available, min_value, max_value, config, axis_key)
@@ -238,9 +198,9 @@ local function measure_entry(entry, stage, config, available_main, available_cro
     end
 
     if config.main_size_key == 'width' then
-        apply_resolved_size(child, resolved_main, resolved_cross)
+        child:_apply_resolved_size(resolved_main, resolved_cross)
     else
-        apply_resolved_size(child, resolved_cross, resolved_main)
+        child:_apply_resolved_size(resolved_cross, resolved_main)
     end
 
     if LayoutNode.is_layout_node(child) then
@@ -257,8 +217,8 @@ local function measure_entry(entry, stage, config, available_main, available_cro
 end
 
 local function assert_no_circular_dependency(self, child, config, align)
-    local self_values = rawget(self, '_effective_values') or {}
-    local child_values = rawget(child, '_effective_values') or {}
+    local self_values = effective_values(self)
+    local child_values = effective_values(child)
 
     if self_values[config.main_size_key] == 'content' and
         depends_on_parent_axis(child_values[config.main_size_key]) then
@@ -293,7 +253,7 @@ local function make_entry(child, config)
 
     return {
         child = child,
-        values = rawget(child, '_effective_values') or {},
+        values = effective_values(child),
         margin = margin,
         main_leading = main_leading,
         main_trailing = main_trailing,
@@ -466,9 +426,9 @@ local function resolve_justify(justify, available_main, used_main, gap, child_co
     return 0, between_gap
 end
 
-local function apply_self_content_measurement(self, main_content_size, cross_content_size,
+local function resize_to_sequential_content(self, main_content_size, cross_content_size,
         config)
-    local effective_values = rawget(self, '_effective_values') or {}
+    local effective_values = effective_values(self)
     local resolved_width = self._resolved_width or 0
     local resolved_height = self._resolved_height or 0
     local padding = effective_values.padding or {
@@ -512,27 +472,7 @@ local function apply_self_content_measurement(self, main_content_size, cross_con
         end
     end
 
-    if self._resolved_width == resolved_width and
-        self._resolved_height == resolved_height then
-        return false
-    end
-
-    self._resolved_width = resolved_width
-    self._resolved_height = resolved_height
-    self._local_bounds_cache = Rectangle.new(0, 0, resolved_width, resolved_height)
-    self._local_transform_dirty = true
-    self._world_transform_dirty = true
-    self._bounds_dirty = true
-    self._world_inverse_dirty = true
-    self:_refresh_layout_content_rect()
-
-    local children = rawget(self, '_children') or {}
-
-    for index = 1, #children do
-        children[index]:_mark_parent_layout_dependency_dirty()
-    end
-
-    return true
+    return self:_apply_resolved_size(resolved_width, resolved_height)
 end
 
 local function place_invisible_children(self, invisible_children, content_rect)
@@ -556,7 +496,7 @@ function SequentialLayout.apply(self, stage, config)
 
     local ok, result = xpcall(function()
         local justify, align, wrap, gap = validate_effective_props(self, config)
-        local effective_values = rawget(self, '_effective_values') or {}
+        local effective_values = effective_values(self)
         local children = rawget(self, '_children') or {}
         local content_rect
         local available_main
@@ -674,7 +614,7 @@ function SequentialLayout.apply(self, stage, config)
             end
         end
 
-        if apply_self_content_measurement(
+        if resize_to_sequential_content(
                 self,
                 main_content_size,
                 cross_content_size,

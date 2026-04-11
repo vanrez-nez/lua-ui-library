@@ -3,6 +3,7 @@ local Drawable = require('lib.ui.core.drawable')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
+local Rule = require('lib.ui.utils.rule')
 
 local Tooltip = Container:extends('Tooltip')
 
@@ -10,9 +11,22 @@ local PLACEMENTS = { top = true, bottom = true, left = true, right = true }
 local ALIGNS = { start = true, center = true, ['end'] = true }
 local TRIGGER_MODES = { hover = true, focus = true, ['hover-focus'] = true, manual = true }
 
+local TooltipSchema = {
+    open = Rule.boolean(),
+    onOpenChange = Rule.any(),
+    placement = Rule.any({ default = 'top' }),
+    align = Rule.any({ default = 'center' }),
+    offset = Rule.number({ default = 8 }),
+    triggerMode = Rule.any({ default = 'hover-focus' }),
+    safeAreaAware = Rule.boolean(true),
+}
+
+Tooltip._schema = ControlUtils.extend_schema(Container._schema, TooltipSchema)
+Tooltip:implements(ControlUtils.overlay_mixin)
+
 local function effective_open(self)
     if rawget(self, '_open_controlled') then
-        return rawget(self, 'open') == true
+        return self.open == true
     end
     return rawget(self, '_open_uncontrolled') == true
 end
@@ -22,30 +36,7 @@ local function request_open_change(self, next_value)
     if not rawget(self, '_open_controlled') then
         rawset(self, '_open_uncontrolled', next_value)
     end
-    ControlUtils.call_if_function(rawget(self, 'onOpenChange'), next_value)
-end
-
-local function detach_overlay_root(self)
-    local stage = rawget(self, '_mounted_stage')
-    if stage ~= nil then
-        stage:_set_focus_contract_internal(rawget(self, '_overlay_root'), nil)
-    end
-
-    local overlay_root = rawget(self, '_overlay_root')
-    if overlay_root.parent ~= nil then
-        overlay_root.parent:removeChild(overlay_root)
-    end
-
-    rawset(self, '_mounted_stage', nil)
-end
-
-local function attach_overlay_root(self, stage)
-    local overlay_root = rawget(self, '_overlay_root')
-    if overlay_root.parent ~= stage.overlayLayer then
-        stage.overlayLayer:addChild(overlay_root)
-    end
-    stage:_set_focus_contract_internal(overlay_root, { scope = true })
-    rawset(self, '_mounted_stage', stage)
+    ControlUtils.call_if_function(self.onOpenChange, next_value)
 end
 
 local function hovered(self)
@@ -71,7 +62,7 @@ local function focused(self)
 end
 
 local function desired_open(self)
-    local mode = rawget(self, 'triggerMode')
+    local mode = self.triggerMode
     if mode == 'manual' then
         return effective_open(self)
     end
@@ -139,9 +130,9 @@ end
 local function resolve_placement(self, stage)
     local surface = rawget(self, 'surface')
     local bounds = rawget(self, 'trigger'):getWorldBounds()
-    local viewport = rawget(self, 'safeAreaAware') and stage:getSafeAreaBounds() or stage:getViewport()
+    local viewport = self.safeAreaAware and stage:getSafeAreaBounds() or stage:getViewport()
     local placements = {
-        rawget(self, 'placement'),
+        self.placement,
         'top',
         'bottom',
         'left',
@@ -155,7 +146,7 @@ local function resolve_placement(self, stage)
 
     for index = 1, #placements do
         local placement = placements[index]
-        local rect = candidate_rect(bounds, width, height, placement, rawget(self, 'align'), rawget(self, 'offset'))
+        local rect = candidate_rect(bounds, width, height, placement, self.align, self.offset)
         local area = visible_area(rect, viewport)
         if area > best_area then
             best = {
@@ -181,20 +172,21 @@ function Tooltip:constructor(opts)
         focusable = false,
     })
     Container.constructor(self, base_opts)
+    self.schema:define(TooltipSchema)
+    self.open = opts.open
+    self.onOpenChange = opts.onOpenChange
+    self.placement = opts.placement or 'top'
+    self.align = opts.align or 'center'
+    self.offset = opts.offset or 8
+    self.triggerMode = opts.triggerMode or 'hover-focus'
+    self.safeAreaAware = opts.safeAreaAware ~= false
 
     rawset(self, '_ui_tooltip_control', true)
-    rawset(self, 'open', opts.open)
-    rawset(self, 'onOpenChange', opts.onOpenChange)
-    rawset(self, 'placement', opts.placement or 'top')
-    rawset(self, 'align', opts.align or 'center')
-    rawset(self, 'offset', opts.offset or 8)
-    rawset(self, 'triggerMode', opts.triggerMode or 'hover-focus')
-    rawset(self, 'safeAreaAware', opts.safeAreaAware ~= false)
     rawset(self, '_open_controlled', opts.open ~= nil)
     rawset(self, '_open_uncontrolled', opts.open == true)
     rawset(self, '_mounted_stage', nil)
     rawset(self, '_last_open_state', effective_open(self))
-    rawset(self, '_resolved_placement', rawget(self, 'placement'))
+    rawset(self, '_resolved_placement', self.placement)
 
     ControlUtils.assert_controlled_pair('open', opts.open, 'onOpenChange', opts.onOpenChange, 2)
 
@@ -268,7 +260,7 @@ function Tooltip:constructor(opts)
         content:addChild(opts.content)
     end
 
-    overlay_root:_add_event_listener('ui.dismiss', function(event)
+    ControlUtils.add_control_listener(self, overlay_root, 'ui.dismiss', function(event)
         request_open_change(self, false)
         event:stopPropagation()
     end)
@@ -281,7 +273,7 @@ end
 function Tooltip:update(dt)
     Container.update(self, dt)
 
-    if rawget(self, 'triggerMode') ~= 'manual' and rawget(self, '_open_controlled') == false then
+    if self.triggerMode ~= 'manual' and rawget(self, '_open_controlled') == false then
         request_open_change(self, desired_open(self))
     end
 
@@ -290,7 +282,7 @@ function Tooltip:update(dt)
     local was_open = rawget(self, '_last_open_state')
 
     if wants_open and stage ~= nil then
-        attach_overlay_root(self, stage)
+        self:_attach_overlay(stage)
         resolve_placement(self, stage)
         if not was_open then
             self:_raise_motion('open', {
@@ -305,7 +297,7 @@ function Tooltip:update(dt)
         end
     else
         if rawget(self, '_mounted_stage') ~= nil then
-            detach_overlay_root(self)
+            self:_detach_overlay()
         end
         if was_open and not wants_open then
             self:_raise_motion('close', { defaultTarget = 'surface' })
@@ -316,14 +308,23 @@ function Tooltip:update(dt)
     return self
 end
 
+function Tooltip:_overlay_focus_contract()
+    return {
+        scope = true,
+    }
+end
+
 function Tooltip:destroy()
     if rawget(self, '_destroyed') then
         return
     end
-    detach_overlay_root(self)
+    rawset(self, '_destroyed', true)
+    ControlUtils.remove_control_listeners(self)
+    self:_detach_overlay()
     if not rawget(rawget(self, '_overlay_root'), '_destroyed') then
         rawget(self, '_overlay_root'):destroy()
     end
+    rawset(self, '_destroyed', false)
     Container.destroy(self)
 end
 

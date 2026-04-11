@@ -1,14 +1,14 @@
-local Assert = require('lib.ui.utils.assert')
+local Rule = require('lib.ui.utils.rule')
 
 local COMPOSER_SCHEMA = {
-    defaultTransition = { type = 'any' },
-    defaultTransitionDuration = { type = 'number', default = 0 },
+    defaultTransition = Rule.any(),
+    defaultTransitionDuration = Rule.number({ default = 0 }),
 }
 
 local NAVIGATION_SCHEMA = {
-    transition = { type = 'any' },
-    duration = { type = 'number' },
-    params = { type = 'table' },
+    transition = Rule.any(),
+    duration = Rule.number(),
+    params = Rule.table(),
 }
 
 return {

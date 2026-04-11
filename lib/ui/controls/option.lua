@@ -3,8 +3,21 @@ local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
+local Rule = require('lib.ui.utils.rule')
 
 local Option = Drawable:extends('Option')
+
+local OptionSchema = {
+    value = Rule.custom(function(_, value, _, level)
+        if not Types.is_string(value) or value == '' then
+            Assert.fail('Option.value is required', level or 1)
+        end
+        return value
+    end, { required = true }),
+    disabled = Rule.boolean(false),
+}
+
+Option._schema = ControlUtils.extend_schema(Drawable._schema, OptionSchema)
 
 local function assert_string_or_node(name, value, level)
     if value == nil or Types.is_string(value) or Types.is_table(value) then
@@ -21,6 +34,7 @@ function Option:constructor(opts)
         focusable = true,
     })
     Drawable.constructor(self, drawable_opts)
+    self.schema:define(OptionSchema)
     rawset(self, 'pointerFocusCoupling', 'before')
 
     if not Types.is_string(opts.value) or opts.value == '' then
@@ -31,8 +45,8 @@ function Option:constructor(opts)
     assert_string_or_node('Option.description', opts.description, 2)
 
     rawset(self, '_ui_option_control', true)
-    rawset(self, 'value', opts.value)
-    rawset(self, 'disabled', opts.disabled == true)
+    self.value = opts.value
+    self.disabled = opts.disabled == true
 
     local label_slot = Container.new({
         tag = (self.tag and (self.tag .. '.label')) or 'option.label',
@@ -71,8 +85,8 @@ function Option:constructor(opts)
         rawset(description_slot, 'text', opts.description)
     end
 
-    self:_add_event_listener('ui.activate', function(event)
-        if rawget(self, '_destroyed') or rawget(self, 'disabled') == true then
+    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
+        if self.disabled == true then
             return
         end
 
@@ -104,13 +118,13 @@ end
 
 function Option:_is_selected()
     local select = self:_find_select()
-    return select ~= nil and select:_is_option_selected(rawget(self, 'value'))
+    return select ~= nil and select:_is_option_selected(self.value)
 end
 
 function Option:_is_effectively_disabled()
     local select = self:_find_select()
     if select == nil then
-        return rawget(self, 'disabled') == true
+        return self.disabled == true
     end
     return select:_is_option_disabled(self)
 end
@@ -135,18 +149,7 @@ function Option:update(dt)
     Drawable.update(self, dt)
 
     local disabled = self:_is_effectively_disabled()
-    local pv = rawget(self, '_public_values')
-    local ev = rawget(self, '_effective_values')
-    if pv then
-        pv.enabled = not disabled
-        pv.interactive = not disabled
-        pv.focusable = not disabled
-    end
-    if ev then
-        ev.enabled = not disabled
-        ev.interactive = not disabled
-        ev.focusable = not disabled
-    end
+    ControlUtils.set_interaction_state(self, not disabled)
 
     return self
 end

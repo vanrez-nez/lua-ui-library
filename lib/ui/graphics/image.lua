@@ -1,11 +1,11 @@
 local Drawable = require('lib.ui.core.drawable')
-local Schema = require('lib.ui.utils.schema')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Rectangle = require('lib.ui.core.rectangle')
 local Texture = require('lib.ui.graphics.texture')
 local Sprite = require('lib.ui.graphics.sprite')
 local ControlUtils = require('lib.ui.controls.control_utils')
+local Utils = require('lib.ui.utils.common')
 
 local Image = Drawable:extends('Image')
 
@@ -26,7 +26,7 @@ local function validate_enum(name, allowed)
     end
 end
 
-Image._schema = Schema.merge(Drawable._schema, {
+Image._schema = Utils.merge_tables(Utils.copy_table(Drawable._schema), {
     source = { validate = validate_source, required = true },
     fit = {
         validate = validate_enum('Image.fit', {

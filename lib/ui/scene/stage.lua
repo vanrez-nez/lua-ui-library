@@ -1,20 +1,21 @@
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local Drawable = require('lib.ui.core.drawable')
-local Schema = require('lib.ui.utils.schema')
 local Event = require('lib.ui.event.event')
 local Insets = require('lib.ui.core.insets')
 local Rectangle = require('lib.ui.core.rectangle')
 local Responsive = require('lib.ui.layout.responsive')
 local Object = require('lib.cls')
 local Types = require('lib.ui.utils.types')
+local Proxy = require('lib.ui.utils.proxy')
 local RuntimeProfiler = require('profiler.runtime_profiler')
 
 local max = math.max
 local huge = math.huge
 
 local Stage = Container:extends('Stage')
-Stage._schema = require('lib.ui.scene.stage_schema')
+local StageSchema = require('lib.ui.scene.stage_schema')
+Stage._schema = StageSchema
 
 local DRAG_THRESHOLD = 4
 local DRAG_THRESHOLD_SQUARED = DRAG_THRESHOLD * DRAG_THRESHOLD
@@ -55,13 +56,7 @@ local function assert_container_node(name, value, level)
 end
 
 local function get_public_value(self, key)
-    local public_values = rawget(self, '_public_values')
-
-    if public_values == nil then
-        return nil
-    end
-
-    return public_values[key]
+    return Proxy.raw_get(self, key)
 end
 
 
@@ -112,19 +107,7 @@ local function is_descendant_or_same(root, node)
 end
 
 local function get_runtime_value(node, key)
-    local effective_values = rawget(node, '_effective_values')
-
-    if effective_values ~= nil and effective_values[key] ~= nil then
-        return effective_values[key]
-    end
-
-    local public_values = rawget(node, '_public_values')
-
-    if public_values ~= nil then
-        return public_values[key]
-    end
-
-    return nil
+    return node[key]
 end
 
 local function is_attached_visible_to_stage(self, node)
@@ -444,10 +427,7 @@ local function refresh_environment_bounds(self)
         end
 
         -- Keep stored safe-area in sync so direct reads are correct too.
-        local public_values = rawget(self, '_public_values')
-        if public_values then public_values.safeAreaInsets = safe_area_insets end
-        local effective_values = rawget(self, '_effective_values')
-        if effective_values then effective_values.safeAreaInsets = safe_area_insets end
+        Proxy.raw_set(self, 'safeAreaInsets', safe_area_insets)
     else
         w = max(0, get_public_value(self, 'width') or 0)
         h = max(0, get_public_value(self, 'height') or 0)
@@ -459,33 +439,15 @@ local function refresh_environment_bounds(self)
     rawset(self, '_safe_area_bounds_cache', viewport:inset(safe_area_insets))
 end
 
-local function set_initial_safe_area_insets(self, value)
-    local normalized = normalize_safe_area_insets(value, 3)
-
-    local public_values = rawget(self, '_public_values')
-    if public_values then
-        public_values.safeAreaInsets = normalized
-    end
-    local effective_values = rawget(self, '_effective_values')
-    if effective_values then
-        effective_values.safeAreaInsets = normalized
-    end
-end
-
 local function set_safe_area_insets(self, value, level)
     local normalized = normalize_safe_area_insets(value, level or 1)
-    local public_values = rawget(self, '_public_values') or {}
-    local current = public_values.safeAreaInsets
+    local current = get_public_value(self, 'safeAreaInsets')
 
     if current ~= nil and current == normalized then
         return normalized, false
     end
 
-    public_values.safeAreaInsets = normalized
-    local effective_values = rawget(self, '_effective_values')
-    if effective_values then
-        effective_values.safeAreaInsets = normalized
-    end
+    Proxy.raw_set(self, 'safeAreaInsets', normalized)
     refresh_environment_bounds(self)
     Container.markDirty(self)
     return normalized, true
@@ -1487,19 +1449,13 @@ local function apply_environment(self, width, height, safe_area_insets)
 
     if width ~= nil and get_public_value(self, 'width') ~= width then
         Assert.number('Stage.width', width, 3)
-        local public_values = rawget(self, '_public_values')
-        if public_values then
-            public_values.width = width
-        end
+        Proxy.raw_set(self, 'width', width)
         viewport_changed = true
     end
 
     if height ~= nil and get_public_value(self, 'height') ~= height then
         Assert.number('Stage.height', height, 3)
-        local public_values = rawget(self, '_public_values')
-        if public_values then
-            public_values.height = height
-        end
+        Proxy.raw_set(self, 'height', height)
         viewport_changed = true
     end
 
@@ -1561,33 +1517,12 @@ local function refresh_geometry_subtree(node)
 end
 
 function Stage:__index(key)
-    local allowed_public_keys = rawget(self, '_allowed_public_keys')
-
-    if allowed_public_keys and allowed_public_keys[key] then
-        if rawget(self, '_ui_stage_instance') == true and not rawget(self, '_destroyed') then
-            if not rawget(self, '_updating') and not rawget(self, '_synchronizing') then
-                -- Call the static version to avoid method lookup recursion
-                Stage._synchronize_for_read(self)
-            end
-        end
-
-        local val = get_public_value(self, key)
-        if (key == 'width' or key == 'height') and (val == nil or val <= 0) then
-            local cache = rawget(self, '_viewport_bounds_cache')
-            if cache then
-                return key == 'width' and cache.width or cache.height
-            end
-        end
-
-        return val
-    end
-
     if key == 'baseSceneLayer' or key == 'overlayLayer' then
         return rawget(self, key)
     end
 
     -- Walk the class hierarchy for methods
-    local current = getmetatable(self)
+    local current = rawget(self, '_pclass') or getmetatable(self)
     while current ~= nil do
         local val = rawget(current, key)
         if val ~= nil then return val end
@@ -1612,16 +1547,6 @@ function Stage:__newindex(key, value)
         fail('Stage layer ownership is runtime-managed', 2)
     end
 
-    if allowed_public_keys and allowed_public_keys[key] then
-        Container._set_public_value(self, key, value, 2)
-        
-        local rule = allowed_public_keys[key]
-        if Types.is_table(rule) and Types.is_function(rule.set) then
-            rule.set(self, value)
-        end
-        return
-    end
-
     fail('Stage does not support prop "' .. key .. '"', 2)
 end
 
@@ -1631,7 +1556,7 @@ function Stage:constructor(opts)
     else
         Assert.table('opts', opts, 3)
         for k in pairs(opts) do
-            if not self._schema[k] then
+            if not StageSchema[k] then
                 fail('Stage does not support prop "' .. k .. '"', 3)
             end
         end
@@ -1663,7 +1588,46 @@ function Stage:constructor(opts)
         items = {},
     })
 
-    Container.constructor(self, opts)
+    Container.constructor(self, {}, StageSchema)
+    self.schema:define(StageSchema)
+
+    Proxy.on_read(self, 'width', function(value, _, target)
+        if rawget(target, '_ui_stage_instance') == true and not rawget(target, '_destroyed') then
+            if not rawget(target, '_updating') and not rawget(target, '_synchronizing') then
+                Stage._synchronize_for_read(target)
+            end
+        end
+
+        if value == nil or value <= 0 then
+            local cache = rawget(target, '_viewport_bounds_cache')
+            if cache ~= nil then
+                return cache.width
+            end
+        end
+
+        return value
+    end)
+
+    Proxy.on_read(self, 'height', function(value, _, target)
+        if rawget(target, '_ui_stage_instance') == true and not rawget(target, '_destroyed') then
+            if not rawget(target, '_updating') and not rawget(target, '_synchronizing') then
+                Stage._synchronize_for_read(target)
+            end
+        end
+
+        if value == nil or value <= 0 then
+            local cache = rawget(target, '_viewport_bounds_cache')
+            if cache ~= nil then
+                return cache.height
+            end
+        end
+
+        return value
+    end)
+
+    for key, value in pairs(opts) do
+        self[key] = value
+    end
 
     -- Enforce singleton contract with "self-healing" for cross-file cascades.
     if active_stage ~= nil and not rawget(active_stage, '_destroyed') then
@@ -2162,6 +2126,10 @@ function Stage:_refresh_focus_runtime_state(previous_owner_override)
 end
 
 local function dirty_subtree(node)
+    if node == nil then
+        return
+    end
+
     node:markDirty()
     local children = rawget(node, '_children') or {}
     for i = 1, #children do

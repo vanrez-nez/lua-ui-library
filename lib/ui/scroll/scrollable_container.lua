@@ -1,10 +1,9 @@
 local Container = require('lib.ui.core.container')
 local Drawable = require('lib.ui.core.drawable')
 local Assert = require('lib.ui.utils.assert')
-local Types = require('lib.ui.utils.types')
-local Schema = require('lib.ui.utils.schema')
-local Rectangle = require('lib.ui.core.rectangle')
-local Object = require('lib.cls')
+local MathUtils = require('lib.ui.utils.math')
+local Proxy = require('lib.ui.utils.proxy')
+local ScrollableContainerSchema = require('lib.ui.scroll.scrollable_container_schema')
 
 local max = math.max
 local min = math.min
@@ -24,7 +23,7 @@ local abs = math.abs
 -- ────────────────────────────────────────────────────────────────────────────
 
 local ScrollableContainer = Container:extends('ScrollableContainer')
-ScrollableContainer._schema = require('lib.ui.scroll.scrollable_container_schema')
+ScrollableContainer._schema = ScrollableContainerSchema
 
 -- ── Constants ───────────────────────────────────────────────────────────────
 
@@ -43,21 +42,8 @@ local STATE_INERTIAL = 'inertial'
 
 -- ── Helpers ─────────────────────────────────────────────────────────────────
 
-local function get_effective(self, key)
-    local ev = rawget(self, '_effective_values')
-    return ev and ev[key]
-end
-
 local function get_public(self, key)
-    local pv = rawget(self, '_public_values')
-    return pv and pv[key]
-end
-
-local function clamp(value, lo, hi)
-    if lo > hi then return lo end
-    if value < lo then return lo end
-    if value > hi then return hi end
-    return value
+    return self[key]
 end
 
 -- ── Content extent measurement ──────────────────────────────────────────────
@@ -69,15 +55,14 @@ local function measure_content_extent(content_node)
 
     for i = 1, #children do
         local child = children[i]
-        local ev = rawget(child, '_effective_values')
-        if ev == nil or ev.visible ~= false then
+        if child.visible ~= false then
             local w = child._resolved_width  or 0
             local h = child._resolved_height or 0
             local cx = child._layout_offset_x or 0
             local cy = child._layout_offset_y or 0
             -- Also consider raw x/y for non-layout children
-            local px = (ev and ev.x) or 0
-            local py = (ev and ev.y) or 0
+            local px = child.x or 0
+            local py = child.y or 0
             max_right  = max(max_right,  cx + px + w)
             max_bottom = max(max_bottom, cy + py + h)
         end
@@ -122,8 +107,8 @@ local function clamp_offsets(self, allow_overscroll)
     local sy = rawget(self, '_scroll_y') or 0
 
     if not allow_overscroll or not get_public(self, 'overscroll') then
-        sx = clamp(sx, 0, max_x)
-        sy = clamp(sy, 0, max_y)
+        sx = MathUtils.clamp(sx, 0, max_x)
+        sy = MathUtils.clamp(sy, 0, max_y)
     end
 
     rawset(self, '_scroll_x', sx)
@@ -139,18 +124,13 @@ local function apply_content_offset(self)
     local sx = rawget(self, '_scroll_x') or 0
     local sy = rawget(self, '_scroll_y') or 0
 
-    -- Move content in the opposite direction of scroll offset
-    local pv = rawget(content_node, '_public_values')
-    if pv then
-        pv.x = -sx
-        pv.y = -sy
-    end
-    local ev = rawget(content_node, '_effective_values')
-    if ev then
-        ev.x = -sx
-        ev.y = -sy
-    end
+    -- Move content in the opposite direction of scroll offset.
+    Proxy.raw_set(content_node, 'x', -sx)
+    Proxy.raw_set(content_node, 'y', -sy)
     rawset(content_node, '_local_transform_dirty', true)
+    if rawget(content_node, 'dirty') ~= nil then
+        rawget(content_node, 'dirty'):mark('local_transform')
+    end
     content_node:invalidate_world()
     content_node:invalidate_descendant_world()
 end
@@ -163,6 +143,9 @@ local function update_scrollbar_geometry(self)
         rawset(node, '_measurement_dirty', true)
         rawset(node, '_local_transform_dirty', true)
         rawset(node, '_bounds_dirty', true)
+        if rawget(node, 'dirty') ~= nil then
+            rawget(node, 'dirty'):mark('measurement', 'local_transform', 'bounds')
+        end
         node:invalidate_world()
         node:invalidate_descendant_world()
     end
@@ -171,32 +154,40 @@ local function update_scrollbar_geometry(self)
         if not node then return end
 
         local changed = false
-        local pv = rawget(node, '_public_values')
-        local ev = rawget(node, '_effective_values')
 
         if x ~= nil then
-            if pv and pv.x ~= x then pv.x = x; changed = true end
-            if ev and ev.x ~= x then ev.x = x; changed = true end
+            if Proxy.raw_get(node, 'x') ~= x then
+                Proxy.raw_set(node, 'x', x)
+                changed = true
+            end
         end
 
         if y ~= nil then
-            if pv and pv.y ~= y then pv.y = y; changed = true end
-            if ev and ev.y ~= y then ev.y = y; changed = true end
+            if Proxy.raw_get(node, 'y') ~= y then
+                Proxy.raw_set(node, 'y', y)
+                changed = true
+            end
         end
 
         if width ~= nil then
-            if pv and pv.width ~= width then pv.width = width; changed = true end
-            if ev and ev.width ~= width then ev.width = width; changed = true end
+            if Proxy.raw_get(node, 'width') ~= width then
+                Proxy.raw_set(node, 'width', width)
+                changed = true
+            end
         end
 
         if height ~= nil then
-            if pv and pv.height ~= height then pv.height = height; changed = true end
-            if ev and ev.height ~= height then ev.height = height; changed = true end
+            if Proxy.raw_get(node, 'height') ~= height then
+                Proxy.raw_set(node, 'height', height)
+                changed = true
+            end
         end
 
         if visible ~= nil then
-            if pv and pv.visible ~= visible then pv.visible = visible; changed = true end
-            if ev and ev.visible ~= visible then ev.visible = visible; changed = true end
+            if Proxy.raw_get(node, 'visible') ~= visible then
+                Proxy.raw_set(node, 'visible', visible)
+                changed = true
+            end
         end
 
         if changed then
@@ -216,7 +207,7 @@ local function update_scrollbar_geometry(self)
 
         local min_thumb = min(SCROLLBAR_MIN_THUMB, track_len)
         local base_thumb = max(min_thumb, (viewport_len / max(content_len, 1)) * track_len)
-        base_thumb = clamp(base_thumb, min_thumb, track_len)
+        base_thumb = MathUtils.clamp(base_thumb, min_thumb, track_len)
 
         -- Keep thumb inside track while reflecting overscroll by compressing
         -- thumb size at the active edge. Use a continuous proportion instead
@@ -225,7 +216,7 @@ local function update_scrollbar_geometry(self)
             local mapped_overshoot = overshoot * (track_len / max(viewport_len, 1))
             local compressed = base_thumb / (1 + (mapped_overshoot / max(base_thumb, 1)))
             local min_overshoot_thumb = min(SCROLLBAR_MIN_OVERSHOOT_THUMB, track_len)
-            return clamp(compressed, min_overshoot_thumb, track_len)
+            return MathUtils.clamp(compressed, min_overshoot_thumb, track_len)
         end
 
         if scroll < 0 then
@@ -241,7 +232,7 @@ local function update_scrollbar_geometry(self)
         end
 
         local thumb_pos = max_scroll > 0 and (scroll / max_scroll) * (track_len - base_thumb) or 0
-        thumb_pos = clamp(thumb_pos, 0, max(0, track_len - base_thumb))
+        thumb_pos = MathUtils.clamp(thumb_pos, 0, max(0, track_len - base_thumb))
         return thumb_pos, base_thumb
     end
 
@@ -327,8 +318,8 @@ local function apply_scroll(self, dx, dy, allow_overscroll)
     local new_sy = sy + dy
 
     if not allow_overscroll or not get_public(self, 'overscroll') then
-        new_sx = clamp(new_sx, 0, max_x)
-        new_sy = clamp(new_sy, 0, max_y)
+        new_sx = MathUtils.clamp(new_sx, 0, max_x)
+        new_sy = MathUtils.clamp(new_sy, 0, max_y)
     end
 
     local consumed_x = new_sx - sx
@@ -428,17 +419,8 @@ function ScrollableContainer.__index(self, key)
         return rawget(self, '_viewport')
     end
 
-    local val = Container._walk_hierarchy(getmetatable(self), key)
+    local val = Container._walk_hierarchy(rawget(self, '_pclass') or getmetatable(self), key)
     if val ~= nil then return val end
-
-    val = Container._walk_hierarchy(ScrollableContainer, key)
-    if val ~= nil then return val end
-
-    local allowed_public_keys = rawget(self, '_allowed_public_keys')
-    if allowed_public_keys and allowed_public_keys[key] then
-        local public_values = rawget(self, '_public_values')
-        return public_values and public_values[key]
-    end
 
     return nil
 end
@@ -448,24 +430,18 @@ function ScrollableContainer.__newindex(self, key, value)
         Assert.fail('ScrollableContainer.' .. key .. ' is read-only', 2)
     end
 
-    local allowed_public_keys = rawget(self, '_allowed_public_keys')
-    if allowed_public_keys and allowed_public_keys[key] then
-        Container._set_public_value(self, key, value, 2)
-
-        local rule = allowed_public_keys[key]
-        if Types.is_table(rule) and Types.is_function(rule.set) then
-            rule.set(self, value)
-        end
-        return
-    end
-
     rawset(self, key, value)
 end
 
 -- ── Constructor ─────────────────────────────────────────────────────────────
 
 function ScrollableContainer:constructor(opts)
-    self:_initialize(opts, ScrollableContainer._schema)
+    Container.constructor(self, opts, ScrollableContainerSchema)
+    self.schema:define(ScrollableContainerSchema)
+
+    for key, value in pairs(opts or {}) do
+        self[key] = value
+    end
 
     rawset(self, '_ui_scrollable_instance', true)
 
@@ -727,30 +703,16 @@ local function sync_viewport_size(self)
     local w = self._resolved_width  or 0
     local h = self._resolved_height or 0
 
-    local vpv = rawget(viewport_node, '_public_values')
-    local vev = rawget(viewport_node, '_effective_values')
     local changed = false
 
-    if vpv then
-        if vpv.width ~= w then
-            vpv.width = w
-            changed = true
-        end
-        if vpv.height ~= h then
-            vpv.height = h
-            changed = true
-        end
+    if Proxy.raw_get(viewport_node, 'width') ~= w then
+        Proxy.raw_set(viewport_node, 'width', w)
+        changed = true
     end
 
-    if vev then
-        if vev.width ~= w then
-            vev.width = w
-            changed = true
-        end
-        if vev.height ~= h then
-            vev.height = h
-            changed = true
-        end
+    if Proxy.raw_get(viewport_node, 'height') ~= h then
+        Proxy.raw_set(viewport_node, 'height', h)
+        changed = true
     end
 
     if rawget(viewport_node, '_measurement_context_width') ~= w then
@@ -770,6 +732,10 @@ local function sync_viewport_size(self)
     rawset(viewport_node, '_measurement_dirty', true)
     rawset(viewport_node, '_local_transform_dirty', true)
     rawset(viewport_node, '_bounds_dirty', true)
+    if rawget(viewport_node, 'dirty') ~= nil then
+        rawget(viewport_node, 'dirty'):mark('measurement', 'local_transform', 'bounds')
+    end
+    viewport_node:_apply_resolved_size(w, h)
     viewport_node:invalidate_world()
     viewport_node:invalidate_descendant_geometry()
 

@@ -1,11 +1,12 @@
 local LayoutNode = require('lib.ui.layout.layout_node')
 local SequentialLayout = require('lib.ui.layout.sequential_layout')
+local ColumnSchema = require('lib.ui.layout.column_schema')
 
 local Column = LayoutNode:extends('Column')
-Column._schema = require('lib.ui.layout.column_schema')
+Column._schema = ColumnSchema
 
 function Column:constructor(opts)
-    LayoutNode.constructor(self, opts, nil, {
+    LayoutNode.constructor(self, opts, ColumnSchema, {
         allow_content_width = true,
         allow_content_height = true,
     })

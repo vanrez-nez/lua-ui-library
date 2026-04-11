@@ -1,7 +1,9 @@
 local Drawable = require('lib.ui.core.drawable')
+local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
+local Rule = require('lib.ui.utils.rule')
 
 local RadioGroup = Drawable:extends('RadioGroup')
 
@@ -45,7 +47,7 @@ local function order_and_validate(self)
     local by_value = {}
     for index = 1, #radios do
         local radio = radios[index]
-        local value = rawget(radio, 'value')
+        local value = radio.value
         if by_value[value] ~= nil then
             Assert.fail('duplicate radio values within one RadioGroup root are invalid', 3)
         end
@@ -62,21 +64,20 @@ local function is_disabled_value(self, value)
 end
 
 local function is_radio_enabled(self, radio)
-    return rawget(radio, 'disabled') ~= true and not is_disabled_value(self, rawget(radio, 'value'))
+    return radio.disabled ~= true and not is_disabled_value(self, radio.value)
 end
 
 local function first_enabled_value(self)
     local radios = rawget(self, '_radio_order') or {}
     for index = 1, #radios do
         if is_radio_enabled(self, radios[index]) then
-            return rawget(radios[index], 'value')
+            return radios[index].value
         end
     end
     return nil
 end
 
-local function effective_value(self)
-    local current = rawget(self, '_value_controlled') and rawget(self, 'value') or rawget(self, '_value_uncontrolled')
+local function normalize_value(self, current)
     local by_value = rawget(self, '_radio_by_value') or {}
     local radio = by_value[current]
     if radio ~= nil and is_radio_enabled(self, radio) then
@@ -85,15 +86,28 @@ local function effective_value(self)
     return first_enabled_value(self)
 end
 
-local function request_value(self, value)
-    if rawget(self, '_value_controlled') then
-        ControlUtils.call_if_function(rawget(self, 'onValueChange'), value)
-        return
-    end
+local effective_value, request_value =
+    ControlUtils.controlled_value('value', nil, {
+        normalize = normalize_value,
+    })
 
-    rawset(self, '_value_uncontrolled', value)
-    ControlUtils.call_if_function(rawget(self, 'onValueChange'), value)
-end
+RadioGroup._control_schema = {
+    value = Rule.any(),
+    onValueChange = Rule.any(),
+    orientation = Rule.custom(function(_, value, _, level)
+        value = value or 'vertical'
+        if value ~= 'horizontal' and value ~= 'vertical' then
+            Assert.fail('RadioGroup.orientation must be "horizontal" or "vertical"', level or 1)
+        end
+        return value
+    end, { default = 'vertical' }),
+    disabledValues = Rule.custom(function(_, value)
+        normalize_disabled_values(value)
+        return value
+    end),
+}
+
+RadioGroup._schema = ControlUtils.extend_schema(Drawable._schema, RadioGroup._control_schema)
 
 local function focused_radio(self)
     local focus_owner = ControlUtils.stage_focus_owner(self)
@@ -114,12 +128,14 @@ function RadioGroup:constructor(opts)
         focusable = false,
     })
     Drawable.constructor(self, drawable_opts)
+    self.schema:define(RadioGroup._control_schema)
+    self.value = opts.value
+    self.onValueChange = opts.onValueChange
+    self.orientation = opts.orientation or 'vertical'
+    self.disabledValues = opts.disabledValues
+    ControlUtils.validate_control_schema(self, opts, RadioGroup._control_schema, 2)
 
     rawset(self, '_ui_radio_group_control', true)
-    rawset(self, 'value', opts.value)
-    rawset(self, 'onValueChange', opts.onValueChange)
-    rawset(self, 'orientation', opts.orientation or 'vertical')
-    rawset(self, 'disabledValues', opts.disabledValues)
 
     if self.orientation ~= 'horizontal' and self.orientation ~= 'vertical' then
         Assert.fail('RadioGroup.orientation must be "horizontal" or "vertical"', 2)
@@ -133,7 +149,7 @@ function RadioGroup:constructor(opts)
     rawset(self, '_radio_order', {})
     rawset(self, '_radio_by_value', {})
 
-    self:_add_event_listener('ui.navigate', function(event)
+    ControlUtils.add_control_listener(self, self, 'ui.navigate', function(event)
         if event.navigationMode ~= 'directional' then
             return
         end
@@ -190,7 +206,7 @@ function RadioGroup:_activate_radio(radio)
         return
     end
 
-    local value = rawget(radio, 'value')
+    local value = radio.value
     if effective_value(self) == value then
         return
     end
@@ -202,17 +218,27 @@ end
 function RadioGroup:update(dt)
     Drawable.update(self, dt)
 
-    rawset(self, '_disabled_value_map', normalize_disabled_values(rawget(self, 'disabledValues')))
+    rawset(self, '_disabled_value_map', normalize_disabled_values(self.disabledValues))
     order_and_validate(self)
 
     local resolved = effective_value(self)
     if rawget(self, '_value_controlled') == false then
         rawset(self, '_value_uncontrolled', resolved)
-    elseif rawget(self, 'value') ~= resolved and resolved ~= nil then
-        ControlUtils.call_if_function(rawget(self, 'onValueChange'), resolved)
+    elseif self.value ~= resolved and resolved ~= nil then
+        ControlUtils.call_if_function(self.onValueChange, resolved)
     end
 
     return self
+end
+
+function RadioGroup:destroy()
+    if rawget(self, '_destroyed') then
+        return
+    end
+    rawset(self, '_destroyed', true)
+    ControlUtils.remove_control_listeners(self)
+    rawset(self, '_destroyed', false)
+    Container.destroy(self)
 end
 
 return RadioGroup

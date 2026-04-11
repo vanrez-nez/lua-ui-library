@@ -2,12 +2,17 @@ local Assert = require('lib.ui.utils.assert')
 local Container = require('lib.ui.core.container')
 local Types = require('lib.ui.utils.types')
 local Rectangle = require('lib.ui.core.rectangle')
-local Schema = require('lib.ui.utils.schema')
+local Utils = require('lib.ui.utils.common')
+local LayoutNodeSchema = require('lib.ui.layout.layout_node_schema')
+local Proxy = require('lib.ui.utils.proxy')
 
 local max = math.max
 
 local LayoutNode = Container:extends('LayoutNode')
-LayoutNode._schema = Schema.merge(Container._schema, require('lib.ui.layout.layout_node_schema'))
+LayoutNode._schema = Utils.merge_tables(
+    Utils.copy_table(Container._schema),
+    LayoutNodeSchema
+)
 
 local function assert_no_dual_responsive_breakpoints(responsive, breakpoints, level)
     if responsive ~= nil and breakpoints ~= nil then
@@ -18,62 +23,36 @@ local function assert_no_dual_responsive_breakpoints(responsive, breakpoints, le
     end
 end
 
-local function resolve_method(self, key, base_cls)
-    local val = Container._walk_hierarchy(getmetatable(self), key)
-    if val ~= nil then
-        return val
-    end
-
-    return Container._walk_hierarchy(base_cls, key)
-end
-
 function LayoutNode.__index(self, key)
-    local val = resolve_method(self, key, LayoutNode)
-    if val ~= nil then
-        return val
+    local handled, value = Proxy.read(self, key)
+    if handled then
+        return value
     end
 
-    local allowed_public_keys = rawget(self, '_allowed_public_keys')
-    if allowed_public_keys and allowed_public_keys[key] then
-        return Container._get_public_read_value(self, key)
+    local current = rawget(self, '_pclass') or getmetatable(self)
+    while current ~= nil do
+        local method = rawget(current, key)
+        if method ~= nil then
+            return method
+        end
+        current = rawget(current, 'super')
+    end
+
+    local method = Container._walk_hierarchy(LayoutNode, key)
+    if method ~= nil then
+        return method
     end
 
     return nil
 end
 
-function LayoutNode.__newindex(self, key, value)
-    local allowed_public_keys = rawget(self, '_allowed_public_keys')
-    if allowed_public_keys and allowed_public_keys[key] then
-        local public_values = rawget(self, '_public_values') or {}
-
-        if key == 'responsive' then
-            assert_no_dual_responsive_breakpoints(
-                value,
-                public_values.breakpoints,
-                2
-            )
-        elseif key == 'breakpoints' then
-            assert_no_dual_responsive_breakpoints(
-                public_values.responsive,
-                value,
-                2
-            )
-        end
-
-        Container._set_public_value(self, key, value, 2)
-
-        local rule = allowed_public_keys[key]
-        if Types.is_table(rule) and Types.is_function(rule.set) then
-            rule.set(self, value)
-        end
-        return
-    end
-
-    rawset(self, key, value)
-end
-
-function LayoutNode:_initialize(opts, extra_schema, extra_public_keys, config)
+function LayoutNode:constructor(opts, schema, config)
     opts = opts or {}
+    schema = schema or LayoutNodeSchema
+    local declared_schema = Utils.merge_tables(
+        Utils.copy_table(LayoutNode._schema),
+        schema
+    )
 
     assert_no_dual_responsive_breakpoints(
         opts.responsive,
@@ -81,20 +60,28 @@ function LayoutNode:_initialize(opts, extra_schema, extra_public_keys, config)
         3
     )
 
-    Container._initialize(
-        self,
-        opts,
-        Schema.merge(extra_schema or LayoutNode._schema, extra_public_keys),
-        config
-    )
+    Container._initialize(self, opts, declared_schema, config)
+    self.schema:define(LayoutNodeSchema)
+
+    if schema ~= LayoutNodeSchema then
+        self.schema:define(schema)
+    end
+
+    for key, value in pairs(opts) do
+        self[key] = value
+    end
+
     rawset(self, '_ui_layout_kind', 'LayoutNode')
     rawset(self, '_ui_layout_instance', true)
     rawset(self, '_layout_dirty', true)
+    if rawget(self, 'dirty') ~= nil then
+        rawget(self, 'dirty'):mark('layout')
+    end
     rawset(self, '_layout_content_rect_cache', Rectangle(0, 0, 0, 0))
 end
 
-function LayoutNode:constructor(opts, extra_public_keys, config)
-    self:_initialize(opts, LayoutNode._schema, extra_public_keys, config)
+function LayoutNode:_initialize(opts, schema, config)
+    return LayoutNode.constructor(self, opts, schema, config)
 end
 
 function LayoutNode.is_layout_node(value)
@@ -103,12 +90,18 @@ end
 
 function LayoutNode:markDirty()
     self._layout_dirty = true
+    if self.dirty ~= nil then
+        self.dirty:mark('layout')
+    end
 
     local current = self.parent
 
     while current ~= nil do
         if current._ui_layout_instance == true then
             current._layout_dirty = true
+            if current.dirty ~= nil then
+                current.dirty:mark('layout')
+            end
         end
 
         current = current.parent
@@ -128,8 +121,7 @@ function LayoutNode:_get_effective_content_rect()
 end
 
 function LayoutNode:_refresh_layout_content_rect()
-    local effective_values = rawget(self, '_effective_values') or {}
-    local padding = effective_values.padding or {
+    local padding = self.padding or {
         left = 0,
         right = 0,
         top = 0,
@@ -159,6 +151,9 @@ function LayoutNode:_run_layout_pass(stage)
     if self._layout_dirty then
         self:_apply_layout(stage)
         self._layout_dirty = false
+        if self.dirty ~= nil then
+            self.dirty:clear('layout')
+        end
     end
 
     return self

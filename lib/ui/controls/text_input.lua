@@ -3,42 +3,47 @@ local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local FontCache = require('lib.ui.text.font_cache')
 local ControlUtils = require('lib.ui.controls.control_utils')
+local MathUtils = require('lib.ui.utils.math')
+local Rule = require('lib.ui.utils.rule')
 
 local TextInput = Drawable:extends('TextInput')
-
-local function clamp(n, lo, hi)
-    if n < lo then return lo end
-    if n > hi then return hi end
-    return n
-end
 
 local function strlen(value)
     return #value
 end
 
-local function get_effective_value(self)
-    if rawget(self, '_value_controlled') then
-        return rawget(self, 'value') or ''
-    end
-    return rawget(self, '_value_uncontrolled') or ''
-end
+local get_effective_value, set_value_request =
+    ControlUtils.controlled_value('value', '', {
+        normalize = function(_, value)
+            return tostring(value or '')
+        end,
+    })
 
-local function set_value_request(self, next_value)
-    if rawget(self, '_value_controlled') then
-        ControlUtils.call_if_function(rawget(self, 'onValueChange'), next_value)
-        return
-    end
+local TextInputSchema = {
+    value = Rule.any(),
+    onValueChange = Rule.any(),
+    selectionStart = Rule.number(),
+    selectionEnd = Rule.number(),
+    onSelectionChange = Rule.any(),
+    placeholder = Rule.any(),
+    disabled = Rule.boolean(false),
+    readOnly = Rule.boolean(false),
+    maxLength = Rule.number(),
+    inputMode = Rule.any({ default = 'text' }),
+    submitBehavior = Rule.any({ default = 'blur' }),
+    onSubmit = Rule.any(),
+    font = Rule.any(),
+    fontSize = Rule.number({ default = 16 }),
+}
 
-    rawset(self, '_value_uncontrolled', next_value)
-    ControlUtils.call_if_function(rawget(self, 'onValueChange'), next_value)
-end
+TextInput._schema = ControlUtils.extend_schema(Drawable._schema, TextInputSchema)
 
 local function get_selection_pair(self)
     if rawget(self, '_selection_controlled') then
         local value = get_effective_value(self)
         local len = strlen(value)
-        local s = clamp(rawget(self, 'selectionStart') or len, 0, len)
-        local e = clamp(rawget(self, 'selectionEnd') or s, 0, len)
+        local s = MathUtils.clamp(self.selectionStart or len, 0, len)
+        local e = MathUtils.clamp(self.selectionEnd or s, 0, len)
         if e < s then s, e = e, s end
         return s, e
     end
@@ -49,18 +54,18 @@ end
 local function set_selection_request(self, s, e)
     local value = get_effective_value(self)
     local len = strlen(value)
-    s = clamp(s or 0, 0, len)
-    e = clamp(e or s, 0, len)
+    s = MathUtils.clamp(s or 0, 0, len)
+    e = MathUtils.clamp(e or s, 0, len)
     if e < s then s, e = e, s end
 
     if rawget(self, '_selection_controlled') then
-        ControlUtils.call_if_function(rawget(self, 'onSelectionChange'), s, e)
+        ControlUtils.call_if_function(self.onSelectionChange, s, e)
         return
     end
 
     rawset(self, '_selection_start', s)
     rawset(self, '_selection_end', e)
-    ControlUtils.call_if_function(rawget(self, 'onSelectionChange'), s, e)
+    ControlUtils.call_if_function(self.onSelectionChange, s, e)
 end
 
 local function caret_pos(self)
@@ -78,7 +83,7 @@ local function has_focus(self)
 end
 
 local function apply_max_length(self, value)
-    local max_length = rawget(self, 'maxLength')
+    local max_length = self.maxLength
     if max_length == nil then
         return value
     end
@@ -133,24 +138,24 @@ function TextInput:constructor(opts)
     })
 
     Drawable.constructor(self, drawable_opts)
+    self.schema:define(TextInputSchema)
+    self.value = opts.value
+    self.onValueChange = opts.onValueChange
+    self.selectionStart = opts.selectionStart
+    self.selectionEnd = opts.selectionEnd
+    self.onSelectionChange = opts.onSelectionChange
+    self.placeholder = opts.placeholder
+    self.disabled = opts.disabled == true
+    self.readOnly = opts.readOnly == true
+    self.maxLength = opts.maxLength
+    self.inputMode = opts.inputMode or 'text'
+    self.submitBehavior = opts.submitBehavior or 'blur'
+    self.onSubmit = opts.onSubmit
+    self.font = opts.font
+    self.fontSize = opts.fontSize or 16
     rawset(self, 'pointerFocusCoupling', 'before')
 
     rawset(self, '_ui_text_input_control', true)
-
-    rawset(self, 'value', opts.value)
-    rawset(self, 'onValueChange', opts.onValueChange)
-    rawset(self, 'selectionStart', opts.selectionStart)
-    rawset(self, 'selectionEnd', opts.selectionEnd)
-    rawset(self, 'onSelectionChange', opts.onSelectionChange)
-    rawset(self, 'placeholder', opts.placeholder)
-    rawset(self, 'disabled', opts.disabled == true)
-    rawset(self, 'readOnly', opts.readOnly == true)
-    rawset(self, 'maxLength', opts.maxLength)
-    rawset(self, 'inputMode', opts.inputMode or 'text')
-    rawset(self, 'submitBehavior', opts.submitBehavior or 'blur')
-    rawset(self, 'onSubmit', opts.onSubmit)
-    rawset(self, 'font', opts.font)
-    rawset(self, 'fontSize', opts.fontSize or 16)
 
     if self.maxLength ~= nil then
         Assert.number('TextInput.maxLength', self.maxLength, 2)
@@ -195,9 +200,8 @@ function TextInput:constructor(opts)
         part = 'field',
     })
 
-    self:_add_event_listener('ui.activate', function(event)
-        if rawget(self, '_destroyed') then return end
-        if rawget(self, 'disabled') then return end
+    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
+        if self.disabled then return end
 
         ControlUtils.request_focus(self)
 
@@ -207,9 +211,8 @@ function TextInput:constructor(opts)
         reset_blink(self)
     end)
 
-    self:_add_event_listener('ui.text.input', function(event)
-        if rawget(self, '_destroyed') then return end
-        if rawget(self, 'disabled') or rawget(self, 'readOnly') then return end
+    ControlUtils.add_control_listener(self, self, 'ui.text.input', function(event)
+        if self.disabled or self.readOnly then return end
         if not has_focus(self) then return end
 
         local text = event.text or ''
@@ -223,9 +226,8 @@ function TextInput:constructor(opts)
         event:stopPropagation()
     end)
 
-    self:_add_event_listener('ui.text.compose', function(event)
-        if rawget(self, '_destroyed') then return end
-        if rawget(self, 'disabled') or rawget(self, 'readOnly') then return end
+    ControlUtils.add_control_listener(self, self, 'ui.text.compose', function(event)
+        if self.disabled or self.readOnly then return end
         if not has_focus(self) then return end
 
         rawset(self, '_composing', true)
@@ -233,9 +235,8 @@ function TextInput:constructor(opts)
         event:stopPropagation()
     end)
 
-    self:_add_event_listener('ui.navigate', function(event)
-        if rawget(self, '_destroyed') then return end
-        if rawget(self, 'disabled') then return end
+    ControlUtils.add_control_listener(self, self, 'ui.navigate', function(event)
+        if self.disabled then return end
         if not has_focus(self) then return end
 
         if event.navigationMode ~= 'directional' then
@@ -247,7 +248,7 @@ function TextInput:constructor(opts)
         local value_len = strlen(get_effective_value(self))
 
         if event.direction == 'left' then
-            c = clamp(c - 1, 0, value_len)
+            c = MathUtils.clamp(c - 1, 0, value_len)
             set_selection_request(self, c, c)
             reset_blink(self)
             event:preventDefault()
@@ -256,7 +257,7 @@ function TextInput:constructor(opts)
         end
 
         if event.direction == 'right' then
-            c = clamp(c + 1, 0, value_len)
+            c = MathUtils.clamp(c + 1, 0, value_len)
             set_selection_request(self, c, c)
             reset_blink(self)
             event:preventDefault()
@@ -265,19 +266,18 @@ function TextInput:constructor(opts)
         end
     end)
 
-    self:_add_event_listener('ui.submit', function(event)
-        if rawget(self, '_destroyed') then return end
-        if rawget(self, 'disabled') then return end
+    ControlUtils.add_control_listener(self, self, 'ui.submit', function(event)
+        if self.disabled then return end
         if not has_focus(self) then return end
 
-        local behavior = rawget(self, 'submitBehavior') or 'blur'
+        local behavior = self.submitBehavior or 'blur'
         if behavior == 'none' then
             event:preventDefault()
             return
         end
 
         if behavior == 'submit' then
-            ControlUtils.call_if_function(rawget(self, 'onSubmit'), get_effective_value(self), self, event)
+            ControlUtils.call_if_function(self.onSubmit, get_effective_value(self), self, event)
             event:preventDefault()
             return
         end
@@ -323,11 +323,11 @@ function TextInput:_composition_text_value()
 end
 
 function TextInput:_resolve_visual_variant()
-    if rawget(self, 'disabled') == true then
+    if self.disabled == true then
         return 'disabled'
     end
 
-    if rawget(self, 'readOnly') == true then
+    if self.readOnly == true then
         return 'readOnly'
     end
 
@@ -343,7 +343,7 @@ function TextInput:_resolve_visual_variant()
 end
 
 function TextInput:_delete_backward()
-    if rawget(self, 'disabled') or rawget(self, 'readOnly') then
+    if self.disabled or self.readOnly then
         return self
     end
     delete_backward(self)
@@ -352,7 +352,7 @@ end
 
 function TextInput:_replace_selection_internal(text)
     text = tostring(text or '')
-    if rawget(self, 'disabled') or rawget(self, 'readOnly') then
+    if self.disabled or self.readOnly then
         return self
     end
     replace_selection(self, text)
@@ -362,24 +362,13 @@ end
 function TextInput:update(dt)
     Drawable.update(self, dt)
 
-    local disabled = rawget(self, 'disabled') == true
+    local disabled = self.disabled == true
     local focused = (not disabled) and has_focus(self)
     local was_focused = rawget(self, '_focused') == true
 
     rawset(self, '_focused', focused)
 
-    local pv = rawget(self, '_public_values')
-    local ev = rawget(self, '_effective_values')
-    if pv then
-        pv.enabled = not disabled
-        pv.interactive = not disabled
-        pv.focusable = not disabled
-    end
-    if ev then
-        ev.enabled = not disabled
-        ev.interactive = not disabled
-        ev.focusable = not disabled
-    end
+    ControlUtils.set_interaction_state(self, not disabled)
 
     if focused ~= was_focused and love ~= nil and love.keyboard ~= nil and Types.is_function(love.keyboard.setTextInput) then
         love.keyboard.setTextInput(focused)
@@ -408,7 +397,7 @@ end
 function TextInput:_measure_text(graphics)
     local font = rawget(self, '_cached_font')
     if font == nil then
-        font = FontCache.get(rawget(self, 'font'), rawget(self, 'fontSize') or 16)
+        font = FontCache.get(self.font, self.fontSize or 16)
         rawset(self, '_cached_font', font)
     end
 

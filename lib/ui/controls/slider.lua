@@ -2,56 +2,69 @@ local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
+local MathUtils = require('lib.ui.utils.math')
+local Rule = require('lib.ui.utils.rule')
 
 local Slider = Drawable:extends('Slider')
 
-local function clamp(value, min_value, max_value)
-    if value < min_value then
-        return min_value
-    end
-    if value > max_value then
-        return max_value
-    end
-    return value
-end
-
 local function normalize_value(self, value)
-    local min_value = rawget(self, 'min') or 0
-    local max_value = rawget(self, 'max') or 1
-    value = clamp(value, min_value, max_value)
+    local min_value = self.min or 0
+    local max_value = self.max or 1
+    value = MathUtils.clamp(value, min_value, max_value)
 
-    local step = rawget(self, 'step')
+    local step = self.step
     if step ~= nil then
         local steps = math.floor(((value - min_value) / step) + 0.5)
         value = min_value + (steps * step)
-        value = clamp(value, min_value, max_value)
+        value = MathUtils.clamp(value, min_value, max_value)
     end
 
     return value
 end
 
-local function effective_value(self)
-    local current = rawget(self, '_value_controlled') and rawget(self, 'value') or rawget(self, '_value_uncontrolled')
-    if current == nil then
-        current = rawget(self, 'min') or 0
-    end
-    return normalize_value(self, current)
-end
+local effective_value, request_value =
+    ControlUtils.controlled_value('value', function(self)
+        return self.min or 0
+    end, {
+        normalize = normalize_value,
+    })
 
-local function request_value(self, next_value)
-    next_value = normalize_value(self, next_value)
-    if rawget(self, '_value_controlled') then
-        ControlUtils.call_if_function(rawget(self, 'onValueChange'), next_value)
-        return
-    end
+Slider._control_schema = {
+    value = Rule.any(),
+    onValueChange = Rule.any(),
+    min = Rule.number({ default = 0 }),
+    max = Rule.custom(function(_, value, _, level, full_opts)
+        value = (value == nil) and 1 or value
+        Assert.number('Slider.max', value, level or 1)
+        local min_value = (full_opts and full_opts.min) or 0
+        if value <= min_value then
+            Assert.fail('Slider.max must be greater than Slider.min', level or 1)
+        end
+        return value
+    end, { default = 1 }),
+    step = Rule.custom(function(_, value, _, level)
+        if value == nil then return nil end
+        Assert.number('Slider.step', value, level or 1)
+        if value <= 0 then
+            Assert.fail('Slider.step must be > 0 when provided', level or 1)
+        end
+        return value
+    end),
+    orientation = Rule.custom(function(_, value, _, level)
+        value = value or 'horizontal'
+        if value ~= 'horizontal' and value ~= 'vertical' then
+            Assert.fail('Slider.orientation must be "horizontal" or "vertical"', level or 1)
+        end
+        return value
+    end, { default = 'horizontal' }),
+    disabled = Rule.boolean(false),
+}
 
-    rawset(self, '_value_uncontrolled', next_value)
-    ControlUtils.call_if_function(rawget(self, 'onValueChange'), next_value)
-end
+Slider._schema = ControlUtils.extend_schema(Drawable._schema, Slider._control_schema)
 
 local function ratio_for_value(self, value)
-    local min_value = rawget(self, 'min') or 0
-    local max_value = rawget(self, 'max') or 1
+    local min_value = self.min or 0
+    local max_value = self.max or 1
     if max_value <= min_value then
         return 0
     end
@@ -60,7 +73,7 @@ end
 
 local function value_from_pointer(self, x, y)
     local bounds = self:getWorldBounds()
-    local orientation = rawget(self, 'orientation')
+    local orientation = self.orientation
     local ratio = 0
 
     if orientation == 'vertical' then
@@ -71,10 +84,10 @@ local function value_from_pointer(self, x, y)
         ratio = (x - bounds.x) / denom
     end
 
-    ratio = clamp(ratio, 0, 1)
+    ratio = MathUtils.clamp(ratio, 0, 1)
 
-    local min_value = rawget(self, 'min') or 0
-    local max_value = rawget(self, 'max') or 1
+    local min_value = self.min or 0
+    local max_value = self.max or 1
     return min_value + ((max_value - min_value) * ratio)
 end
 
@@ -89,7 +102,7 @@ local function sync_parts(self)
         height = rawget(self, '_resolved_height') or 0,
     }
 
-    if rawget(self, 'orientation') == 'vertical' then
+    if self.orientation == 'vertical' then
         track.x = bounds.width * 0.35
         track.y = 0
         track.width = math.max(6, bounds.width * 0.3)
@@ -122,16 +135,18 @@ function Slider:constructor(opts)
         focusable = true,
     })
     Drawable.constructor(self, drawable_opts)
+    self.schema:define(Slider._control_schema)
+    self.value = opts.value
+    self.onValueChange = opts.onValueChange
+    self.min = opts.min or 0
+    self.max = opts.max or 1
+    self.step = opts.step
+    self.orientation = opts.orientation or 'horizontal'
+    self.disabled = opts.disabled == true
+    ControlUtils.validate_control_schema(self, opts, Slider._control_schema, 2)
     rawset(self, 'pointerFocusCoupling', 'before')
 
     rawset(self, '_ui_slider_control', true)
-    rawset(self, 'value', opts.value)
-    rawset(self, 'onValueChange', opts.onValueChange)
-    rawset(self, 'min', opts.min or 0)
-    rawset(self, 'max', opts.max or 1)
-    rawset(self, 'step', opts.step)
-    rawset(self, 'orientation', opts.orientation or 'horizontal')
-    rawset(self, 'disabled', opts.disabled == true)
 
     if self.max <= self.min then
         Assert.fail('Slider.max must be greater than Slider.min', 2)
@@ -177,7 +192,7 @@ function Slider:constructor(opts)
     rawset(self, 'track', track)
     rawset(self, 'thumb', thumb)
 
-    self:_add_event_listener('ui.activate', function(event)
+    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
         if self.disabled or event.defaultPrevented then
             return
         end
@@ -188,7 +203,7 @@ function Slider:constructor(opts)
         end
     end)
 
-    self:_add_event_listener('ui.drag', function(event)
+    ControlUtils.add_control_listener(self, self, 'ui.drag', function(event)
         if self.disabled then
             return
         end
@@ -212,12 +227,12 @@ function Slider:constructor(opts)
         end
     end)
 
-    self:_add_event_listener('ui.scroll', function(event)
+    ControlUtils.add_control_listener(self, self, 'ui.scroll', function(event)
         if self.disabled then
             return
         end
 
-        local step = rawget(self, 'step') or ((self.max - self.min) / 10)
+        local step = self.step or ((self.max - self.min) / 10)
         local next_value = effective_value(self)
         if event.deltaY < 0 or event.deltaX > 0 then
             next_value = next_value + step
@@ -229,12 +244,12 @@ function Slider:constructor(opts)
         event:stopPropagation()
     end)
 
-    self:_add_event_listener('ui.navigate', function(event)
+    ControlUtils.add_control_listener(self, self, 'ui.navigate', function(event)
         if self.disabled or event.navigationMode ~= 'directional' then
             return
         end
 
-        local step = rawget(self, 'step') or ((self.max - self.min) / 10)
+        local step = self.step or ((self.max - self.min) / 10)
         local next_value = effective_value(self)
         if self.orientation == 'horizontal' then
             if event.direction == 'right' then
@@ -288,18 +303,7 @@ function Slider:update(dt)
     Drawable.update(self, dt)
 
     local disabled = self.disabled == true
-    local pv = rawget(self, '_public_values')
-    local ev = rawget(self, '_effective_values')
-    if pv then
-        pv.enabled = not disabled
-        pv.interactive = not disabled
-        pv.focusable = not disabled
-    end
-    if ev then
-        ev.enabled = not disabled
-        ev.interactive = not disabled
-        ev.focusable = not disabled
-    end
+    ControlUtils.set_interaction_state(self, not disabled)
 
     local value = effective_value(self)
     local previous = rawget(self, '_last_motion_value')
@@ -317,6 +321,16 @@ function Slider:update(dt)
     rawset(rawget(self, 'thumb'), '_styling_variant', variant)
     sync_parts(self)
     return self
+end
+
+function Slider:destroy()
+    if rawget(self, '_destroyed') then
+        return
+    end
+    rawset(self, '_destroyed', true)
+    ControlUtils.remove_control_listeners(self)
+    rawset(self, '_destroyed', false)
+    Container.destroy(self)
 end
 
 return Slider

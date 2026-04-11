@@ -1,5 +1,7 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
+local Rule = require('lib.ui.utils.rule')
+local Proxy = require('lib.ui.utils.proxy')
 
 local Responsive = {}
 
@@ -290,9 +292,8 @@ local function normalize_source(node, source_kind, source)
 end
 
 local function get_source(node)
-    local public_values = rawget(node, '_public_values') or {}
-    local responsive = public_values.responsive
-    local breakpoints = public_values.breakpoints
+    local responsive = Proxy.raw_get(node, 'responsive')
+    local breakpoints = Proxy.raw_get(node, 'breakpoints')
 
     if responsive ~= nil and breakpoints ~= nil then
         Assert.fail(
@@ -435,6 +436,16 @@ function Responsive.resolve(node, context)
 
     local token = source_kind .. ':' .. table.concat(token_parts, '|')
     return token, cache_resolved_overrides(node, token, merged_overrides)
+end
+
+function Responsive.schema_rule(kind, opts)
+    return Rule.custom(function(_, value, _, level)
+        if not Types.is_table(value) and not Types.is_function(value) then
+            Assert.fail(kind .. '.responsive must be a table or a function', level or 1)
+        end
+
+        return value
+    end, opts)
 end
 
 return Responsive

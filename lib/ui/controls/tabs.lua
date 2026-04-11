@@ -6,6 +6,7 @@ local ScrollableContainer = require('lib.ui.scroll.scrollable_container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
+local Rule = require('lib.ui.utils.rule')
 
 local Tabs = Drawable:extends('Tabs')
 
@@ -54,10 +55,7 @@ local function is_value_mapped(self, value)
     return triggers[value] ~= nil and panels[value] ~= nil
 end
 
-local function effective_value(self)
-    local controlled = rawget(self, '_value_controlled') == true
-    local current = controlled and rawget(self, 'value') or rawget(self, '_value_uncontrolled')
-
+local function normalize_tab_value(self, current)
     if current ~= nil and is_value_mapped(self, current) and not trigger_is_disabled(self, current) then
         return current
     end
@@ -65,15 +63,22 @@ local function effective_value(self)
     return find_fallback_value(self)
 end
 
-local function request_value(self, value)
-    if rawget(self, '_value_controlled') then
-        ControlUtils.call_if_function(rawget(self, 'onValueChange'), value)
-        return
-    end
+local effective_value, request_value =
+    ControlUtils.controlled_value('value', nil, {
+        normalize = normalize_tab_value,
+    })
 
-    rawset(self, '_value_uncontrolled', value)
-    ControlUtils.call_if_function(rawget(self, 'onValueChange'), value)
-end
+local TabsSchema = {
+    value = Rule.any(),
+    onValueChange = Rule.any(),
+    orientation = Rule.any({ default = 'horizontal' }),
+    activationMode = Rule.any({ default = 'manual' }),
+    listScrollable = Rule.boolean(false),
+    loopFocus = Rule.boolean(true),
+    disabledValues = Rule.any(),
+}
+
+Tabs._schema = ControlUtils.extend_schema(Drawable._schema, TabsSchema)
 
 local function find_trigger_value_from_target(self, target)
     local current = target
@@ -97,18 +102,7 @@ local function sync_visual_state(self)
     for key, node in pairs(triggers) do
         local disabled = trigger_is_disabled(self, key)
         local active = (value == key)
-        local pv = rawget(node, '_public_values')
-        local ev = rawget(node, '_effective_values')
-        if pv then
-            pv.enabled = not disabled
-            pv.interactive = not disabled
-            pv.focusable = not disabled
-        end
-        if ev then
-            ev.enabled = not disabled
-            ev.interactive = not disabled
-            ev.focusable = not disabled
-        end
+        ControlUtils.set_interaction_state(node, not disabled)
         rawset(node, '_tab_active', active)
         rawset(node, '_tab_disabled', disabled)
         rawset(node, '_styling_variant', self:_resolve_trigger_variant(node))
@@ -116,18 +110,8 @@ local function sync_visual_state(self)
 
     for key, node in pairs(panels) do
         local active = (value == key)
-        local pv = rawget(node, '_public_values')
-        local ev = rawget(node, '_effective_values')
-        if pv then
-            pv.visible = active
-            pv.interactive = active
-            pv.focusable = active
-        end
-        if ev then
-            ev.visible = active
-            ev.interactive = active
-            ev.focusable = active
-        end
+        node.props:raw_set('visible', active)
+        ControlUtils.set_interaction_state(node, active)
         rawset(node, '_tab_active', active)
         rawset(node, '_styling_variant', self:_resolve_panel_variant(node))
     end
@@ -155,7 +139,7 @@ local function next_focus_value(self, current, direction)
     local next_idx = idx + step
 
     if next_idx < 1 or next_idx > #values then
-        if rawget(self, 'loopFocus') == true then
+        if self.loopFocus == true then
             if next_idx < 1 then
                 next_idx = #values
             else
@@ -201,7 +185,7 @@ local function sync_indicator_geometry(self)
     local indicator = rawget(self, 'indicator')
     local active_value = effective_value(self)
     local trigger = active_value and (rawget(self, '_trigger_nodes') or {})[active_value] or nil
-    local orientation = rawget(self, 'orientation')
+    local orientation = self.orientation
 
     if indicator == nil then
         return
@@ -217,8 +201,8 @@ local function sync_indicator_geometry(self)
         width = rawget(trigger, '_resolved_width') or 0,
         height = rawget(trigger, '_resolved_height') or 0,
     }
-    local origin_x = (rawget(trigger, '_layout_offset_x') or 0) + ((rawget(trigger, '_effective_values') or {}).x or 0)
-    local origin_y = (rawget(trigger, '_layout_offset_y') or 0) + ((rawget(trigger, '_effective_values') or {}).y or 0)
+    local origin_x = (rawget(trigger, '_layout_offset_x') or 0) + (trigger.x or 0)
+    local origin_y = (rawget(trigger, '_layout_offset_y') or 0) + (trigger.y or 0)
 
     indicator.visible = true
     if orientation == 'vertical' then
@@ -242,16 +226,16 @@ function Tabs:constructor(opts)
         focusable = false,
     })
     Drawable.constructor(self, drawable_opts)
+    self.schema:define(TabsSchema)
+    self.value = opts.value
+    self.onValueChange = opts.onValueChange
+    self.orientation = opts.orientation or 'horizontal'
+    self.activationMode = opts.activationMode or 'manual'
+    self.listScrollable = opts.listScrollable == true
+    self.loopFocus = opts.loopFocus ~= false
+    self.disabledValues = opts.disabledValues
 
     rawset(self, '_ui_tabs_control', true)
-
-    rawset(self, 'value', opts.value)
-    rawset(self, 'onValueChange', opts.onValueChange)
-    rawset(self, 'orientation', opts.orientation or 'horizontal')
-    rawset(self, 'activationMode', opts.activationMode or 'manual')
-    rawset(self, 'listScrollable', opts.listScrollable == true)
-    rawset(self, 'loopFocus', opts.loopFocus ~= false)
-    rawset(self, 'disabledValues', opts.disabledValues)
 
     if self.orientation ~= 'horizontal' and self.orientation ~= 'vertical' then
         Assert.fail('Tabs.orientation must be "horizontal" or "vertical"', 2)
@@ -335,9 +319,7 @@ function Tabs:constructor(opts)
     rawset(self, 'indicator', indicator)
     rawset(self, 'panel', panels)
 
-    self:_add_event_listener('ui.activate', function(event)
-        if rawget(self, '_destroyed') then return end
-
+    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
         local val = find_trigger_value_from_target(self, event.target)
         if val == nil then
             return
@@ -352,8 +334,7 @@ function Tabs:constructor(opts)
         event:stopPropagation()
     end)
 
-    self:_add_event_listener('ui.navigate', function(event)
-        if rawget(self, '_destroyed') then return end
+    ControlUtils.add_control_listener(self, self, 'ui.navigate', function(event)
         if event.navigationMode ~= 'directional' then return end
 
         local focus_owner = ControlUtils.stage_focus_owner(self)
@@ -362,7 +343,7 @@ function Tabs:constructor(opts)
         local current = find_trigger_value_from_target(self, focus_owner)
         if current == nil then return end
 
-        local orientation = rawget(self, 'orientation')
+        local orientation = self.orientation
         if orientation == 'horizontal' and event.direction ~= 'left' and event.direction ~= 'right' then
             return
         end
@@ -479,7 +460,7 @@ end
 function Tabs:update(dt)
     Drawable.update(self, dt)
 
-    rawset(self, '_disabled_map', normalize_disabled_values(rawget(self, 'disabledValues')))
+    rawset(self, '_disabled_map', normalize_disabled_values(self.disabledValues))
 
     local value = effective_value(self)
     if rawget(self, '_value_controlled') == false and rawget(self, '_value_uncontrolled') ~= value then

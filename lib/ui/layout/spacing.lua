@@ -2,12 +2,16 @@ local Insets = require('lib.ui.core.insets')
 
 local LayoutSpacing = {}
 
-local function get_node_effective_values(node)
-    return rawget(node, '_effective_values') or {}
+local function get_node_values(node)
+    return setmetatable({}, {
+        __index = function(_, key)
+            return node[key]
+        end,
+    })
 end
 
 function LayoutSpacing.get_effective_margin(node)
-    local effective_values = get_node_effective_values(node)
+    local effective_values = get_node_values(node)
     return effective_values.margin or Insets.zero()
 end
 
@@ -24,7 +28,7 @@ function LayoutSpacing.get_outer_size(size, leading_margin, trailing_margin)
 end
 
 function LayoutSpacing.resolve_stack_layout_offset(content_rect, child, margin)
-    local effective_values = get_node_effective_values(child)
+    local effective_values = get_node_values(child)
     local anchor_x = effective_values.anchorX or 0
     local anchor_y = effective_values.anchorY or 0
 

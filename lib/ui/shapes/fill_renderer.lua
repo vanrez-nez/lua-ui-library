@@ -2,6 +2,7 @@ local Types = require('lib.ui.utils.types')
 local GraphicsStencil = require('lib.ui.render.graphics_stencil')
 local Texture = require('lib.ui.graphics.texture')
 local Sprite = require('lib.ui.graphics.sprite')
+local DrawHelpers = require('lib.ui.shapes.draw_helpers')
 local RuntimeProfiler = require('profiler.runtime_profiler')
 
 local FillRenderer = {}
@@ -16,27 +17,6 @@ local TEXTURE_MESH_FORMAT = {
     { 'VertexTexCoord', 'float', 2 },
     { 'VertexColor', 'float', 4 },
 }
-
-local function save_color(graphics)
-    if Types.is_function(graphics.getColor) then
-        return { graphics.getColor() }
-    end
-
-    return nil
-end
-
-local function restore_color(graphics, saved_color)
-    if saved_color == nil or not Types.is_function(graphics.setColor) then
-        return
-    end
-
-    graphics.setColor(
-        saved_color[1],
-        saved_color[2],
-        saved_color[3],
-        saved_color[4]
-    )
-end
 
 local function error_message(prefix, source_prop, detail)
     local message = prefix .. ' for ' .. tostring(source_prop)
@@ -282,7 +262,7 @@ end
 
 local function with_silhouette_clip(graphics, clip_points, draw_fn)
     local saved_stencil = GraphicsStencil.save(graphics)
-    local saved_color = save_color(graphics)
+    local saved_color = DrawHelpers.save_color(graphics)
 
     local ok, err = xpcall(function()
         if not GraphicsStencil.write_polygon(graphics, clip_points) then
@@ -300,7 +280,7 @@ local function with_silhouette_clip(graphics, clip_points, draw_fn)
         return failure
     end)
 
-    restore_color(graphics, saved_color)
+    DrawHelpers.restore_color(graphics, saved_color)
     GraphicsStencil.restore(graphics, saved_stencil)
 
     if not ok then

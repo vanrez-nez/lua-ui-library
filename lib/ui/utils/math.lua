@@ -20,6 +20,22 @@ function MathUtils.default(value, fallback)
     return value
 end
 
+function MathUtils.clamp(value, min_value, max_value)
+    if min_value ~= nil and max_value ~= nil and min_value > max_value then
+        return min_value
+    end
+
+    if min_value ~= nil and value < min_value then
+        value = min_value
+    end
+
+    if max_value ~= nil and value > max_value then
+        value = max_value
+    end
+
+    return value
+end
+
 function MathUtils.clamp_number(value, min_value, max_value)
     if min_value ~= nil and value < min_value then
         value = min_value
@@ -30,6 +46,19 @@ function MathUtils.clamp_number(value, min_value, max_value)
     end
 
     return max(0, value)
+end
+
+function MathUtils.positive_mod(value, modulus)
+    if modulus == nil or modulus <= 0 then
+        return 0
+    end
+
+    local result = value % modulus
+    if result < 0 then
+        result = result + modulus
+    end
+
+    return result
 end
 
 function MathUtils.parse_percentage(value)

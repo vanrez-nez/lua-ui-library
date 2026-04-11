@@ -3,11 +3,21 @@ local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
+local Rule = require('lib.ui.utils.rule')
 
 local Button = Drawable:extends('Button')
 
+local ButtonSchema = {
+    pressed = Rule.boolean(),
+    onPressedChange = Rule.any(),
+    onActivate = Rule.any(),
+    disabled = Rule.boolean(false),
+}
+
+Button._schema = ControlUtils.extend_schema(Drawable._schema, ButtonSchema)
+
 local function effective_disabled(self)
-    return rawget(self, 'disabled') == true
+    return self.disabled == true
 end
 
 local function set_pressed(self, value)
@@ -15,7 +25,7 @@ local function set_pressed(self, value)
 
     local controlled = rawget(self, '_pressed_controlled') == true
     if controlled then
-        local on_change = rawget(self, 'onPressedChange')
+        local on_change = self.onPressedChange
         ControlUtils.call_if_function(on_change, value)
         return
     end
@@ -25,7 +35,7 @@ end
 
 local function get_pressed(self)
     if rawget(self, '_pressed_controlled') then
-        return rawget(self, 'pressed') == true
+        return self.pressed == true
     end
     return rawget(self, '_pressed_uncontrolled') == true
 end
@@ -37,14 +47,15 @@ function Button:constructor(opts)
         focusable = true,
     })
     Drawable.constructor(self, drawable_opts)
+    self.schema:define(ButtonSchema)
+    self.pressed = opts.pressed
+    self.onPressedChange = opts.onPressedChange
+    self.onActivate = opts.onActivate
+    self.disabled = opts.disabled == true
     rawset(self, 'pointerFocusCoupling', 'before')
 
     rawset(self, '_ui_button_control', true)
 
-    rawset(self, 'pressed', opts.pressed)
-    rawset(self, 'onPressedChange', opts.onPressedChange)
-    rawset(self, 'onActivate', opts.onActivate)
-    rawset(self, 'disabled', opts.disabled == true)
     rawset(self, '_pressed_controlled', opts.pressed ~= nil)
     rawset(self, '_pressed_uncontrolled', false)
     rawset(self, '_hovered', false)
@@ -76,8 +87,7 @@ function Button:constructor(opts)
     })
     rawset(self, '_last_visual_variant', self:_resolve_visual_variant())
 
-    self:_add_event_listener('ui.activate', function(event)
-        if rawget(self, '_destroyed') then return end
+    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
         if effective_disabled(self) then return end
 
         if event.defaultPrevented then
@@ -85,11 +95,10 @@ function Button:constructor(opts)
         end
 
         set_pressed(self, false)
-        ControlUtils.call_if_function(rawget(self, 'onActivate'), self, event)
+        ControlUtils.call_if_function(self.onActivate, self, event)
     end)
 
-    self:_add_event_listener('ui.drag', function(event)
-        if rawget(self, '_destroyed') then return end
+    ControlUtils.add_control_listener(self, self, 'ui.drag', function(event)
         if effective_disabled(self) then return end
 
         if event.dragPhase == 'start' then
@@ -139,7 +148,7 @@ function Button:_is_pressed()
 end
 
 function Button:_resolve_visual_variant()
-    if rawget(self, 'disabled') == true then
+    if self.disabled == true then
         return 'disabled'
     end
 
@@ -162,18 +171,7 @@ function Button:update(dt)
     Drawable.update(self, dt)
 
     local disabled = effective_disabled(self)
-    local pv = rawget(self, '_public_values')
-    local ev = rawget(self, '_effective_values')
-    if pv then
-        pv.enabled = not disabled
-        pv.interactive = not disabled
-        pv.focusable = not disabled
-    end
-    if ev then
-        ev.enabled = not disabled
-        ev.interactive = not disabled
-        ev.focusable = not disabled
-    end
+    ControlUtils.set_interaction_state(self, not disabled)
 
     if disabled then
         rawset(self, '_hovered', false)
@@ -203,6 +201,16 @@ function Button:update(dt)
     rawset(self, '_last_visual_variant', variant)
 
     return self
+end
+
+function Button:destroy()
+    if rawget(self, '_destroyed') then
+        return
+    end
+    rawset(self, '_destroyed', true)
+    ControlUtils.remove_control_listeners(self)
+    rawset(self, '_destroyed', false)
+    Container.destroy(self)
 end
 
 return Button

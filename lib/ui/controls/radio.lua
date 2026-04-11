@@ -3,8 +3,21 @@ local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
+local Rule = require('lib.ui.utils.rule')
 
 local Radio = Drawable:extends('Radio')
+
+local RadioSchema = {
+    value = Rule.custom(function(_, value, _, level)
+        if not Types.is_string(value) or value == '' then
+            Assert.fail('Radio.value is required', level or 1)
+        end
+        return value
+    end, { required = true }),
+    disabled = Rule.boolean(false),
+}
+
+Radio._schema = ControlUtils.extend_schema(Drawable._schema, RadioSchema)
 
 local function assert_string_or_node(name, value, level)
     if value == nil or Types.is_string(value) or Types.is_table(value) then
@@ -21,6 +34,7 @@ function Radio:constructor(opts)
         focusable = true,
     })
     Drawable.constructor(self, drawable_opts)
+    self.schema:define(RadioSchema)
     rawset(self, 'pointerFocusCoupling', 'before')
 
     if not Types.is_string(opts.value) or opts.value == '' then
@@ -31,8 +45,8 @@ function Radio:constructor(opts)
     assert_string_or_node('Radio.description', opts.description, 2)
 
     rawset(self, '_ui_radio_control', true)
-    rawset(self, 'value', opts.value)
-    rawset(self, 'disabled', opts.disabled == true)
+    self.value = opts.value
+    self.disabled = opts.disabled == true
 
     local indicator = Drawable.new({
         tag = (self.tag and (self.tag .. '.indicator')) or 'radio.indicator',
@@ -85,8 +99,8 @@ function Radio:constructor(opts)
         rawset(description_slot, 'text', opts.description)
     end
 
-    self:_add_event_listener('ui.activate', function(event)
-        if self.disabled or rawget(self, '_destroyed') then
+    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
+        if self.disabled then
             return
         end
 
@@ -115,13 +129,13 @@ end
 
 function Radio:_is_selected()
     local group = self:_find_group()
-    return group ~= nil and group:_is_value_selected(rawget(self, 'value'))
+    return group ~= nil and group:_is_value_selected(self.value)
 end
 
 function Radio:_is_effectively_disabled()
     local group = self:_find_group()
     if group == nil then
-        return rawget(self, 'disabled') == true
+        return self.disabled == true
     end
     return group:_is_radio_disabled(self)
 end
@@ -146,18 +160,7 @@ function Radio:update(dt)
     Drawable.update(self, dt)
 
     local disabled = self:_is_effectively_disabled()
-    local pv = rawget(self, '_public_values')
-    local ev = rawget(self, '_effective_values')
-    if pv then
-        pv.enabled = not disabled
-        pv.interactive = not disabled
-        pv.focusable = not disabled
-    end
-    if ev then
-        ev.enabled = not disabled
-        ev.interactive = not disabled
-        ev.focusable = not disabled
-    end
+    ControlUtils.set_interaction_state(self, not disabled)
 
     local indicator = rawget(self, 'indicator')
     if indicator ~= nil then
@@ -165,6 +168,16 @@ function Radio:update(dt)
     end
 
     return self
+end
+
+function Radio:destroy()
+    if rawget(self, '_destroyed') then
+        return
+    end
+    rawset(self, '_destroyed', true)
+    ControlUtils.remove_control_listeners(self)
+    rawset(self, '_destroyed', false)
+    Container.destroy(self)
 end
 
 return Radio

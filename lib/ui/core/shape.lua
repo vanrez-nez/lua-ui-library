@@ -1,18 +1,17 @@
 local Container = require('lib.ui.core.container')
-local Schema = require('lib.ui.utils.schema')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
+local Utils = require('lib.ui.utils.common')
 local DrawHelpers = require('lib.ui.shapes.draw_helpers')
 local ShapeFillSource = require('lib.ui.shapes.fill_source')
 local ShapeFillPlacement = require('lib.ui.shapes.fill_placement')
 local ShapeFillRenderer = require('lib.ui.shapes.fill_renderer')
 local RuntimeProfiler = require('profiler.runtime_profiler')
+local DirtyState = require('lib.ui.utils.dirty_state')
+local ShapeSchema = require('lib.ui.core.shape_schema')
 
 local Shape = Container:extends('Shape')
 local WHITE_COLOR = { 1, 1, 1, 1 }
-
-local walk_hierarchy = Container._walk_hierarchy
-local get_public_read_value = Container._get_public_read_value
 
 Shape._root_compositing_capabilities = {
     opacity = true,
@@ -20,7 +19,10 @@ Shape._root_compositing_capabilities = {
     blendMode = true,
 }
 
-Shape._schema = Schema.merge(Container._schema, require('lib.ui.core.shape_schema'))
+Shape._schema = Utils.merge_tables(
+    Utils.copy_table(Container._schema),
+    ShapeSchema
+)
 
 local FILL_CACHE_KEYS = {
     fillColor = true,
@@ -46,6 +48,58 @@ local FILL_MOTION_CACHE_KEYS = {
     fillOffsetY = true,
     fillAlignX = true,
     fillAlignY = true,
+}
+
+local PAINT_KEYS = {
+    fillColor = true,
+    fillOpacity = true,
+    fillGradient = true,
+    fillTexture = true,
+    fillRepeatX = true,
+    fillRepeatY = true,
+    fillOffsetX = true,
+    fillOffsetY = true,
+    fillAlignX = true,
+    fillAlignY = true,
+    strokeColor = true,
+    strokeOpacity = true,
+    strokeWidth = true,
+    strokeStyle = true,
+    strokeJoin = true,
+    strokeMiterLimit = true,
+    strokePattern = true,
+    strokeDashLength = true,
+    strokeGapLength = true,
+    strokeDashOffset = true,
+    shader = true,
+    opacity = true,
+    blendMode = true,
+}
+
+local GEOMETRY_KEYS = {
+    width = true,
+    height = true,
+    minWidth = true,
+    minHeight = true,
+    maxWidth = true,
+    maxHeight = true,
+    x = true,
+    y = true,
+    anchorX = true,
+    anchorY = true,
+    pivotX = true,
+    pivotY = true,
+    scaleX = true,
+    scaleY = true,
+    rotation = true,
+    skewX = true,
+    skewY = true,
+    radius = true,
+    cornerRadius = true,
+    cornerRadiusTopLeft = true,
+    cornerRadiusTopRight = true,
+    cornerRadiusBottomRight = true,
+    cornerRadiusBottomLeft = true,
 }
 
 local function copy_bounds_into(target, bounds)
@@ -99,64 +153,53 @@ local function bounds_match(cached_bounds, bounds)
         cached_bounds.height == (bounds.height or 0)
 end
 
-function Shape.__index(self, key)
-    local val = walk_hierarchy(getmetatable(self), key)
-    if val ~= nil then
-        return val
-    end
-
-    local allowed_public_keys = rawget(self, '_allowed_public_keys')
-    if allowed_public_keys and allowed_public_keys[key] then
-        return get_public_read_value(self, key)
-    end
-
-    return nil
-end
-
-function Shape.__newindex(self, key, value)
-    local allowed_public_keys = rawget(self, '_allowed_public_keys')
-    if allowed_public_keys and allowed_public_keys[key] then
-        local previous_value = nil
-
-        if FILL_CACHE_KEYS[key] then
-            local public_values = rawget(self, '_public_values')
-            previous_value = public_values and public_values[key] or nil
-        end
-
-        Container._set_public_value(self, key, value, 2)
-
-        local rule = allowed_public_keys[key]
-        if Types.is_table(rule) and Types.is_function(rule.set) then
-            rule.set(self, value)
-        end
-
-        if FILL_CACHE_KEYS[key] then
-            local public_values = rawget(self, '_public_values')
-            local next_value = public_values and public_values[key] or nil
-
-            if previous_value ~= next_value then
-                self:_invalidate_fill_resolution_cache()
-            end
-        end
-
-        return
-    end
-
-    rawset(self, key, value)
-end
+Shape.__index = Shape
 
 function Shape:constructor(opts)
-    Container.constructor(self, opts)
+    Container.constructor(self, opts, ShapeSchema)
+    self.shape_dirty = DirtyState({ 'paint', 'geometry' })
+    self.schema:define(ShapeSchema)
+
+    for key in pairs(PAINT_KEYS) do
+        self.props:watch(key, function(_, _, watched_key, target)
+            local dirty = rawget(target, 'shape_dirty')
+            if dirty ~= nil then
+                dirty:mark('paint')
+            end
+
+            if FILL_CACHE_KEYS[watched_key] then
+                target:_invalidate_fill_resolution_cache()
+            end
+        end)
+    end
+
+    for key in pairs(GEOMETRY_KEYS) do
+        self.props:watch(key, function(_, _, _, target)
+            local dirty = rawget(target, 'shape_dirty')
+            if dirty ~= nil then
+                dirty:mark('geometry')
+            end
+        end)
+    end
+
+    for key, value in pairs(opts or {}) do
+        self[key] = value
+    end
+
+    self.shape_dirty:mark('paint', 'geometry')
     rawset(self, '_ui_shape_instance', true)
     rawset(self, '_fill_surface_cache', nil)
     rawset(self, '_fill_active_descriptor_cache', nil)
     rawset(self, '_fill_active_descriptor_cache_surface', nil)
     rawset(self, '_fill_placement_cache', nil)
-    rawset(self, '_local_points_scratch', nil)
+    rawset(self, '_local_points', {})
+    rawset(self, '_world_points', {})
+    rawset(self, '_stroke_options', {})
+    rawset(self, '_local_points_scratch', rawget(self, '_local_points'))
     rawset(self, '_world_bounds_points_scratch', nil)
-    rawset(self, '_transformed_points_scratch', nil)
+    rawset(self, '_transformed_points_scratch', rawget(self, '_world_points'))
     rawset(self, '_flattened_points_scratch', nil)
-    rawset(self, '_polygon_stroke_options_scratch', nil)
+    rawset(self, '_polygon_stroke_options_scratch', rawget(self, '_stroke_options'))
     rawset(self, '_polygon_stroke_mask_options_scratch', nil)
 end
 
@@ -176,25 +219,28 @@ function Shape:_get_shape_local_bounds()
     return rawget(self, '_local_bounds_cache') or self:getLocalBounds()
 end
 
-function Shape:_get_local_point_buffer(count)
-    local points = rawget(self, '_local_points_scratch')
+function Shape:_get_local_point_buffer(count, target)
+    local points = target or rawget(self, '_local_points')
 
     if points == nil then
-        -- Point buffers stay instance-local so sibling shapes never alias draw scratch.
         points = {}
-        rawset(self, '_local_points_scratch', points)
+        rawset(self, '_local_points', points)
     end
+
+    rawset(self, '_local_points_scratch', points)
 
     return ensure_indexed_point_buffer(points, count)
 end
 
-function Shape:_transform_local_points(local_points)
-    local points = rawget(self, '_transformed_points_scratch')
+function Shape:_transform_local_points(local_points, target)
+    local points = target or rawget(self, '_world_points')
 
     if points == nil then
         points = {}
-        rawset(self, '_transformed_points_scratch', points)
+        rawset(self, '_world_points', points)
     end
+
+    rawset(self, '_transformed_points_scratch', points)
 
     return DrawHelpers.transform_local_points(self, local_points, points)
 end
@@ -210,10 +256,10 @@ function Shape:_flatten_points(points)
     return DrawHelpers.flatten_points(points, flattened)
 end
 
-function Shape:_get_local_points()
+function Shape:_get_local_points(out_table)
     local profile_token = RuntimeProfiler.push_zone('Shape._get_local_points')
     local bounds = self:_get_shape_local_bounds()
-    local points = self:_get_local_point_buffer(4)
+    local points = self:_get_local_point_buffer(4, out_table)
     points[1][1] = bounds.x
     points[1][2] = bounds.y
     points[2][1] = bounds.x + bounds.width
@@ -325,14 +371,35 @@ function Shape:_apply_motion_value(target_name, property_name, value)
     return surface
 end
 
+function Shape:_refresh_if_dirty()
+    local dirty = rawget(self, 'dirty')
+    local geometry_was_dirty = dirty ~= nil and (
+        dirty:is_dirty('measurement') or
+        dirty:is_dirty('local_transform') or
+        dirty:is_dirty('world_transform') or
+        dirty:is_dirty('bounds')
+    )
+
+    Container._refresh_if_dirty(self)
+
+    if geometry_was_dirty then
+        local shape_dirty = rawget(self, 'shape_dirty')
+        if shape_dirty ~= nil then
+            shape_dirty:mark('geometry')
+        end
+    end
+end
+
 function Shape:_resolve_polygon_stroke_options(target)
     local profile_token = RuntimeProfiler.push_zone('Shape._resolve_polygon_stroke_options')
-    local stroke = target or rawget(self, '_polygon_stroke_options_scratch')
+    local stroke = target or rawget(self, '_stroke_options')
 
     if stroke == nil then
         stroke = {}
-        rawset(self, '_polygon_stroke_options_scratch', stroke)
+        rawset(self, '_stroke_options', stroke)
     end
+
+    rawset(self, '_polygon_stroke_options_scratch', stroke)
 
     stroke.color = self.strokeColor
     stroke.opacity = self.strokeOpacity or 1
@@ -390,12 +457,69 @@ function Shape:_render_active_fill(graphics, local_points, world_points, active_
     )
 end
 
+function Shape:_refresh_shape_geometry()
+    local local_points = self:_get_local_points(rawget(self, '_local_points'))
+    self:_transform_local_points(local_points, rawget(self, '_world_points'))
+    return local_points, rawget(self, '_world_points')
+end
+
+function Shape:_refresh_shape_paint()
+    return self:_resolve_polygon_stroke_options(rawget(self, '_stroke_options'))
+end
+
+function Shape:_draw_rect_fallback(graphics, active_fill)
+    if self._allow_rect_draw_fallback == false or
+        active_fill.kind ~= 'color' or
+        not Types.is_function(graphics.rectangle) then
+        return false
+    end
+
+    local bounds = self:getWorldBounds()
+    local fill_color = active_fill.color or { 1, 1, 1, 1 }
+
+    return DrawHelpers.with_fill_color(graphics, fill_color, active_fill.opacity, function()
+        graphics.rectangle(
+            'fill',
+            bounds.x,
+            bounds.y,
+            bounds.width,
+            bounds.height
+        )
+    end)
+end
+
+function Shape:_draw_fill(graphics, active_fill)
+    active_fill = active_fill or self:_resolve_active_fill_source()
+
+    if active_fill.kind == 'color' and not Types.is_function(graphics.polygon) then
+        return self:_draw_rect_fallback(graphics, active_fill)
+    end
+
+    return self:_render_active_fill(
+        graphics,
+        rawget(self, '_local_points'),
+        rawget(self, '_world_points'),
+        active_fill
+    )
+end
+
+function Shape:_draw_stroke(graphics)
+    return DrawHelpers.draw_polygon_stroke(
+        graphics,
+        rawget(self, '_world_points'),
+        rawget(self, '_stroke_options')
+    )
+end
+
 function Shape:draw(graphics)
     local profile_token = RuntimeProfiler.push_zone('Shape.draw')
+
     if not Types.is_table(graphics) then
         RuntimeProfiler.pop_zone(profile_token)
         return
     end
+
+    self:_refresh_if_dirty()
 
     local bounds = self:getWorldBounds()
     if bounds.width <= 0 or bounds.height <= 0 then
@@ -403,64 +527,26 @@ function Shape:draw(graphics)
         return
     end
 
+    local shape_dirty = rawget(self, 'shape_dirty')
+    if shape_dirty == nil then
+        shape_dirty = DirtyState({ 'paint', 'geometry' })
+        rawset(self, 'shape_dirty', shape_dirty)
+        shape_dirty:mark('paint', 'geometry')
+    end
+
+    if shape_dirty:is_dirty('geometry') then
+        self:_refresh_shape_geometry()
+        shape_dirty:clear('geometry')
+    end
+
+    if shape_dirty:is_dirty('paint') then
+        self:_refresh_shape_paint()
+        shape_dirty:clear('paint')
+    end
+
     local active_fill = self:_resolve_active_fill_source()
-
-    if active_fill.kind ~= 'color' or Types.is_function(graphics.polygon) then
-        local local_points = self:_get_local_points()
-        local world_points = self:_transform_local_points(local_points)
-
-        local result = self:_render_active_fill(graphics, local_points, world_points, active_fill)
-        RuntimeProfiler.pop_zone(profile_token)
-        return result
-    end
-
-    if not Types.is_function(graphics.rectangle) then
-        RuntimeProfiler.pop_zone(profile_token)
-        return
-    end
-
-    local fill_color = active_fill.color or { 1, 1, 1, 1 }
-    local alpha = (fill_color[4] or 1) * (active_fill.opacity or 1)
-
-    if alpha <= 0 then
-        RuntimeProfiler.pop_zone(profile_token)
-        return
-    end
-
-    local restore_red = nil
-    local restore_green = nil
-    local restore_blue = nil
-    local restore_alpha = nil
-
-    if Types.is_function(graphics.getColor) then
-        restore_red, restore_green, restore_blue, restore_alpha = graphics.getColor()
-    end
-
-    if Types.is_function(graphics.setColor) then
-        graphics.setColor(
-            fill_color[1] or 1,
-            fill_color[2] or 1,
-            fill_color[3] or 1,
-            alpha
-        )
-    end
-
-    graphics.rectangle(
-        'fill',
-        bounds.x,
-        bounds.y,
-        bounds.width,
-        bounds.height
-    )
-
-    if restore_red ~= nil and Types.is_function(graphics.setColor) then
-        graphics.setColor(
-            restore_red,
-            restore_green,
-            restore_blue,
-            restore_alpha
-        )
-    end
+    self:_draw_fill(graphics, active_fill)
+    self:_draw_stroke(graphics)
 
     RuntimeProfiler.pop_zone(profile_token)
 end

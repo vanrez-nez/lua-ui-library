@@ -113,12 +113,11 @@ function Text:constructor(opts)
 
     -- Intrinsic measurement based on current content.
     local w, h = get_text_metrics(self, self.maxWidth)
-    local pv = rawget(self, '_public_values')
-    local ev = rawget(self, '_effective_values')
-    if pv and pv.width == 0 then pv.width = w end
-    if ev and ev.width == 0 then ev.width = w end
-    if pv and pv.height == 0 then pv.height = h end
-    if ev and ev.height == 0 then ev.height = h end
+    local props = rawget(self, 'props')
+    if props ~= nil then
+        if props:raw_get('width') == 0 then props:raw_set('width', w) end
+        if props:raw_get('height') == 0 then props:raw_set('height', h) end
+    end
     self:markDirty()
 end
 
@@ -146,12 +145,13 @@ function Text:setText(value)
 end
 
 local function refresh_intrinsic_size(self)
-    local pv = rawget(self, '_public_values')
-    local ev = rawget(self, '_effective_values')
+    local props = rawget(self, 'props')
     local width_hint = nil
 
     if rawget(self, 'wrap') == true then
-        width_hint = rawget(self, '_resolved_width') or (ev and ev.width) or (pv and pv.width) or 0
+        width_hint = rawget(self, '_resolved_width') or
+            (props and props:raw_get('width')) or
+            0
         if rawget(self, '_text_auto_width') == true and rawget(self, 'maxWidth') ~= nil then
             width_hint = rawget(self, 'maxWidth')
         end
@@ -160,14 +160,18 @@ local function refresh_intrinsic_size(self)
     local measured_width, measured_height = get_text_metrics(self, width_hint)
     local changed = false
 
-    if rawget(self, '_text_auto_width') == true and pv and ev then
-        if pv.width ~= measured_width then pv.width = measured_width; changed = true end
-        if ev.width ~= measured_width then ev.width = measured_width; changed = true end
+    if rawget(self, '_text_auto_width') == true and props ~= nil then
+        if props:raw_get('width') ~= measured_width then
+            props:raw_set('width', measured_width)
+            changed = true
+        end
     end
 
-    if rawget(self, '_text_auto_height') == true and pv and ev then
-        if pv.height ~= measured_height then pv.height = measured_height; changed = true end
-        if ev.height ~= measured_height then ev.height = measured_height; changed = true end
+    if rawget(self, '_text_auto_height') == true and props ~= nil then
+        if props:raw_get('height') ~= measured_height then
+            props:raw_set('height', measured_height)
+            changed = true
+        end
     end
 
     if changed then

@@ -1,4 +1,5 @@
 local Types = require('lib.ui.utils.types')
+local MathUtils = require('lib.ui.utils.math')
 
 local DrawHelpers = {}
 local abs = math.abs
@@ -27,21 +28,11 @@ local function restore_color(graphics, saved_color)
     )
 end
 
+DrawHelpers.save_color = save_color
+DrawHelpers.restore_color = restore_color
+
 local function resolve_alpha(color, opacity)
     return (color[4] or 1) * (opacity or 1)
-end
-
-local function positive_mod(value, modulus)
-    if modulus == nil or modulus <= 0 then
-        return 0
-    end
-
-    local result = value % modulus
-    if result < 0 then
-        result = result + modulus
-    end
-
-    return result
 end
 
 local function append_point(points, x, y)
@@ -299,7 +290,7 @@ function DrawHelpers.rotate_closed_path(points, shift_distance)
         return points, total_length
     end
 
-    local shift = positive_mod(shift_distance or 0, total_length)
+    local shift = MathUtils.positive_mod(shift_distance or 0, total_length)
     if shift <= PATH_EPSILON or abs(total_length - shift) <= PATH_EPSILON then
         return points, total_length
     end
@@ -337,73 +328,6 @@ function DrawHelpers.rotate_closed_path(points, shift_distance)
     end
 
     return rotated, total_length
-end
-
-function DrawHelpers.for_each_dashed_segment(points, dash_length, gap_length, dash_offset, closed, callback)
-    local segments, total_length = DrawHelpers.build_path_segments(points, closed)
-    local emitted = 0
-
-    if total_length <= 0 then
-        return emitted, total_length
-    end
-
-    if gap_length <= 0 then
-        for index = 1, #segments do
-            local segment = segments[index]
-            callback(
-                segment.x1,
-                segment.y1,
-                segment.x2,
-                segment.y2,
-                segment.start_distance,
-                segment.end_distance
-            )
-            emitted = emitted + 1
-        end
-
-        return emitted, total_length
-    end
-
-    local cycle = dash_length + gap_length
-    local distance = ((dash_offset or 0) % cycle) - cycle
-
-    while distance < total_length do
-        local dash_start = math.max(0, distance)
-        local dash_end = math.min(total_length, distance + dash_length)
-
-        if dash_end > dash_start then
-            for index = 1, #segments do
-                local segment = segments[index]
-                local overlap_start = math.max(dash_start, segment.start_distance)
-                local overlap_end = math.min(dash_end, segment.end_distance)
-
-                if overlap_end > overlap_start then
-                    local start_x, start_y = interpolate_segment(
-                        segment,
-                        overlap_start - segment.start_distance
-                    )
-                    local end_x, end_y = interpolate_segment(
-                        segment,
-                        overlap_end - segment.start_distance
-                    )
-
-                    callback(
-                        start_x,
-                        start_y,
-                        end_x,
-                        end_y,
-                        overlap_start,
-                        overlap_end
-                    )
-                    emitted = emitted + 1
-                end
-            end
-        end
-
-        distance = distance + cycle
-    end
-
-    return emitted, total_length
 end
 
 function DrawHelpers.draw_dashed_polyline(graphics, points, dash_length, gap_length, dash_offset, closed)

@@ -1,15 +1,8 @@
+local Rectangle = require('lib.ui.core.rectangle')
+
 local SourcePlacement = {}
 
 local floor = math.floor
-
-local function copy_bounds(bounds)
-    return {
-        x = bounds.x or 0,
-        y = bounds.y or 0,
-        width = bounds.width or 0,
-        height = bounds.height or 0,
-    }
-end
 
 function SourcePlacement.resolve_aligned_origin(axis_start, axis_size, source_size, align, offset)
     local origin = axis_start or 0
@@ -62,7 +55,7 @@ local function resolve_tiling_axis(axis_start, axis_size, source_size, align, of
 end
 
 function SourcePlacement.resolve_tiled_placements(bounds, source_width, source_height, opts)
-    local resolved_bounds = copy_bounds(bounds or {})
+    local resolved_bounds = Rectangle.copy_bounds(bounds or {})
     local resolved_source_width = source_width or 0
     local resolved_source_height = source_height or 0
 

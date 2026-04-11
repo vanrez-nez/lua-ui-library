@@ -3,6 +3,7 @@ local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
+local Rule = require('lib.ui.utils.rule')
 
 local Checkbox = Drawable:extends('Checkbox')
 
@@ -46,27 +47,32 @@ local function validate_toggle_order(toggle_order)
     return toggle_order
 end
 
-local function get_effective_checked(self)
-    if rawget(self, '_checked_controlled') then
-        return normalize_state(rawget(self, 'checked')) or 'unchecked'
-    end
-    return rawget(self, '_checked_uncontrolled') or 'unchecked'
+local function normalize_checked(_, value)
+    return normalize_state(value) or 'unchecked'
 end
 
-local function request_checked(self, next_state)
-    local on_change = rawget(self, 'onCheckedChange')
-    if rawget(self, '_checked_controlled') then
-        ControlUtils.call_if_function(on_change, next_state)
-        return
-    end
+local get_effective_checked, request_checked =
+    ControlUtils.controlled_value('checked', 'unchecked', {
+        callback = 'onCheckedChange',
+        normalize = normalize_checked,
+    })
 
-    rawset(self, '_checked_uncontrolled', next_state)
-    ControlUtils.call_if_function(on_change, next_state)
-end
+Checkbox._control_schema = {
+    checked = Rule.any(),
+    onCheckedChange = Rule.any(),
+    disabled = Rule.boolean(false),
+    label = Rule.any(),
+    description = Rule.any(),
+    toggleOrder = Rule.custom(function(_, value, _, level)
+        return validate_toggle_order(value)
+    end),
+}
+
+Checkbox._schema = ControlUtils.extend_schema(Drawable._schema, Checkbox._control_schema)
 
 local function resolve_next_state(self)
     local current = get_effective_checked(self)
-    local toggle_order = rawget(self, 'toggleOrder')
+    local toggle_order = self.toggleOrder
 
     if toggle_order == nil then
         if current == 'indeterminate' then
@@ -94,15 +100,17 @@ function Checkbox:constructor(opts)
         focusable = true,
     })
     Drawable.constructor(self, drawable_opts)
+    self.schema:define(Checkbox._control_schema)
+    self.checked = opts.checked
+    self.onCheckedChange = opts.onCheckedChange
+    self.disabled = opts.disabled == true
+    self.label = opts.label
+    self.description = opts.description
+    self.toggleOrder = opts.toggleOrder
+    ControlUtils.validate_control_schema(self, opts, Checkbox._control_schema, 2)
     rawset(self, 'pointerFocusCoupling', 'before')
 
     rawset(self, '_ui_checkbox_control', true)
-    rawset(self, 'checked', opts.checked)
-    rawset(self, 'onCheckedChange', opts.onCheckedChange)
-    rawset(self, 'disabled', opts.disabled == true)
-    rawset(self, 'label', opts.label)
-    rawset(self, 'description', opts.description)
-    rawset(self, 'toggleOrder', validate_toggle_order(opts.toggleOrder))
 
     rawset(self, '_checked_controlled', opts.checked ~= nil)
     rawset(self, '_checked_uncontrolled', normalize_state(opts.checked) or 'unchecked')
@@ -138,9 +146,8 @@ function Checkbox:constructor(opts)
 
     ControlUtils.assert_controlled_pair('checked', opts.checked, 'onCheckedChange', opts.onCheckedChange, 2)
 
-    self:_add_event_listener('ui.activate', function(event)
-        if rawget(self, '_destroyed') then return end
-        if rawget(self, 'disabled') == true then return end
+    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
+        if self.disabled == true then return end
         if event.defaultPrevented then return end
 
         request_checked(self, resolve_next_state(self))
@@ -156,7 +163,7 @@ function Checkbox:_get_checked_state()
 end
 
 function Checkbox:_resolve_visual_variant()
-    if rawget(self, 'disabled') == true then
+    if self.disabled == true then
         return 'disabled'
     end
 
@@ -180,19 +187,8 @@ end
 function Checkbox:update(dt)
     Drawable.update(self, dt)
 
-    local disabled = rawget(self, 'disabled') == true
-    local pv = rawget(self, '_public_values')
-    local ev = rawget(self, '_effective_values')
-    if pv then
-        pv.enabled = not disabled
-        pv.interactive = not disabled
-        pv.focusable = not disabled
-    end
-    if ev then
-        ev.enabled = not disabled
-        ev.interactive = not disabled
-        ev.focusable = not disabled
-    end
+    local disabled = self.disabled == true
+    ControlUtils.set_interaction_state(self, not disabled)
 
     local box = rawget(self, 'box')
     local indicator = rawget(self, 'indicator')
@@ -224,6 +220,16 @@ function Checkbox:update(dt)
     end
 
     return self
+end
+
+function Checkbox:destroy()
+    if rawget(self, '_destroyed') then
+        return
+    end
+    rawset(self, '_destroyed', true)
+    ControlUtils.remove_control_listeners(self)
+    rawset(self, '_destroyed', false)
+    Container.destroy(self)
 end
 
 return Checkbox

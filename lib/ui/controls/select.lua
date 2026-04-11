@@ -4,6 +4,7 @@ local Text = require('lib.ui.controls.text')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
+local Rule = require('lib.ui.utils.rule')
 
 local Select = Drawable:extends('Select')
 
@@ -65,7 +66,7 @@ end
 
 local function effective_open(self)
     if rawget(self, '_open_controlled') then
-        return rawget(self, 'open') == true
+        return self.open == true
     end
     return rawget(self, '_open_uncontrolled') == true
 end
@@ -76,18 +77,36 @@ local function request_open_change(self, next_value)
         rawset(self, '_open_uncontrolled', next_value)
     end
 
-    ControlUtils.call_if_function(rawget(self, 'onOpenChange'), next_value)
+    ControlUtils.call_if_function(self.onOpenChange, next_value)
 end
 
-local function request_value_change(self, next_value)
-    if rawget(self, '_value_controlled') then
-        ControlUtils.call_if_function(rawget(self, 'onValueChange'), next_value)
-        return
-    end
+local raw_selected_value, request_value_change =
+    ControlUtils.controlled_value('value', nil)
 
-    rawset(self, '_value_uncontrolled', next_value)
-    ControlUtils.call_if_function(rawget(self, 'onValueChange'), next_value)
-end
+Select._control_schema = {
+    value = Rule.any(),
+    onValueChange = Rule.any(),
+    open = Rule.boolean(),
+    onOpenChange = Rule.any(),
+    selectionMode = Rule.custom(function(_, value, _, level)
+        value = value or 'single'
+        if value ~= 'single' and value ~= 'multiple' then
+            Assert.fail('Select.selectionMode must be "single" or "multiple"', level or 1)
+        end
+        return value
+    end, { default = 'single' }),
+    placeholder = Rule.any({ default = 'None selected' }),
+    modal = Rule.boolean(false),
+    disabled = Rule.boolean(false),
+    disabledValues = Rule.custom(function(_, value)
+        normalize_disabled_values(value)
+        return value
+    end),
+}
+
+Select._schema = ControlUtils.extend_schema(Drawable._schema, Select._control_schema)
+Select._overlay_root_key = '_popup_root'
+Select:implements(ControlUtils.overlay_mixin)
 
 local function sync_option_registry(self)
     local options = collect_options(rawget(self, '_popup_slot'), {})
@@ -98,7 +117,7 @@ local function sync_option_registry(self)
     local by_value = {}
     for index = 1, #options do
         local option = options[index]
-        local value = rawget(option, 'value')
+        local value = option.value
         if by_value[value] ~= nil then
             Assert.fail('duplicate option values within one Select root are invalid', 3)
         end
@@ -113,12 +132,12 @@ local function option_is_enabled(self, option)
     if option == nil then
         return false
     end
-    return rawget(option, 'disabled') ~= true and not (rawget(self, '_disabled_value_map') or {})[tostring(rawget(option, 'value'))]
+    return option.disabled ~= true and not (rawget(self, '_disabled_value_map') or {})[tostring(option.value)]
 end
 
 local function effective_selected_order(self)
-    local mode = rawget(self, 'selectionMode')
-    local current = rawget(self, '_value_controlled') and rawget(self, 'value') or rawget(self, '_value_uncontrolled')
+    local mode = self.selectionMode
+    local current = raw_selected_value(self)
     local ordered = {}
     local selected = {}
 
@@ -134,7 +153,7 @@ local function effective_selected_order(self)
 
     local options = rawget(self, '_option_order') or {}
     for index = 1, #options do
-        local value = rawget(options[index], 'value')
+        local value = options[index].value
         if selected[value] == true and option_is_enabled(self, options[index]) then
             ordered[#ordered + 1] = value
         end
@@ -145,7 +164,7 @@ end
 
 local function commit_effective_value(self)
     local ordered = effective_selected_order(self)
-    if rawget(self, 'selectionMode') == 'single' then
+    if self.selectionMode == 'single' then
         if rawget(self, '_value_controlled') == false then
             rawset(self, '_value_uncontrolled', ordered[1])
         end
@@ -162,10 +181,10 @@ end
 local function summary_text(self)
     local ordered = effective_selected_order(self)
     if #ordered == 0 then
-        return rawget(self, 'placeholder') or 'None selected'
+        return self.placeholder or 'None selected'
     end
 
-    if rawget(self, 'selectionMode') == 'single' then
+    if self.selectionMode == 'single' then
         local option = (rawget(self, '_option_by_value') or {})[ordered[1]]
         local label_slot = option and rawget(option, 'label') or nil
         local label = label_slot and rawget(label_slot, 'text') or nil
@@ -180,38 +199,6 @@ local function sync_summary(self)
     if summary ~= nil then
         summary:setText(summary_text(self))
     end
-end
-
-local function attach_popup(self, stage)
-    local popup_root = rawget(self, '_popup_root')
-    if popup_root.parent ~= stage.overlayLayer then
-        stage.overlayLayer:addChild(popup_root)
-    end
-
-    if rawget(self, 'modal') == true then
-        stage:_set_focus_contract_internal(popup_root, {
-            scope = true,
-            trap = true,
-        })
-    else
-        stage:_set_focus_contract_internal(popup_root, {
-            scope = true,
-        })
-    end
-
-    rawset(self, '_mounted_stage', stage)
-end
-
-local function detach_popup(self)
-    local stage = rawget(self, '_mounted_stage')
-    local popup_root = rawget(self, '_popup_root')
-    if stage ~= nil then
-        stage:_set_focus_contract_internal(popup_root, nil)
-    end
-    if popup_root.parent ~= nil then
-        popup_root.parent:removeChild(popup_root)
-    end
-    rawset(self, '_mounted_stage', nil)
 end
 
 local function position_popup(self, stage)
@@ -259,17 +246,19 @@ function Select:constructor(opts)
         focusable = false,
     })
     Drawable.constructor(self, drawable_opts)
+    self.schema:define(Select._control_schema)
+    self.value = opts.value
+    self.onValueChange = opts.onValueChange
+    self.open = opts.open
+    self.onOpenChange = opts.onOpenChange
+    self.selectionMode = opts.selectionMode or 'single'
+    self.placeholder = opts.placeholder or 'None selected'
+    self.modal = opts.modal == true
+    self.disabled = opts.disabled == true
+    self.disabledValues = opts.disabledValues
+    ControlUtils.validate_control_schema(self, opts, Select._control_schema, 2)
 
     rawset(self, '_ui_select_control', true)
-    rawset(self, 'value', opts.value)
-    rawset(self, 'onValueChange', opts.onValueChange)
-    rawset(self, 'open', opts.open)
-    rawset(self, 'onOpenChange', opts.onOpenChange)
-    rawset(self, 'selectionMode', opts.selectionMode or 'single')
-    rawset(self, 'placeholder', opts.placeholder or 'None selected')
-    rawset(self, 'modal', opts.modal == true)
-    rawset(self, 'disabled', opts.disabled == true)
-    rawset(self, 'disabledValues', opts.disabledValues)
 
     ControlUtils.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
     ControlUtils.assert_controlled_pair('open', opts.open, 'onOpenChange', opts.onOpenChange, 2)
@@ -302,7 +291,7 @@ function Select:constructor(opts)
     local summary = Text.new({
         tag = (self.tag and (self.tag .. '.summary')) or 'select.summary',
         internal = true,
-        text = rawget(self, 'placeholder'),
+        text = self.placeholder,
         width = 'fill',
         fontSize = 16,
     })
@@ -355,8 +344,8 @@ function Select:constructor(opts)
     rawset(self, '_popup_slot', popup_slot)
     rawset(self, '_summary_text', summary)
 
-    self:_add_event_listener('ui.activate', function(event)
-        if self.disabled or rawget(self, '_destroyed') then
+    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
+        if self.disabled then
             return
         end
 
@@ -371,7 +360,7 @@ function Select:constructor(opts)
         end
     end)
 
-    popup_root:_add_event_listener('ui.navigate', function(event)
+    ControlUtils.add_control_listener(self, popup_root, 'ui.navigate', function(event)
         if not effective_open(self) or event.navigationMode ~= 'directional' then
             return
         end
@@ -384,7 +373,7 @@ function Select:constructor(opts)
         end
     end)
 
-    popup_root:_add_event_listener('ui.dismiss', function(event)
+    ControlUtils.add_control_listener(self, popup_root, 'ui.dismiss', function(event)
         if effective_open(self) then
             request_open_change(self, false)
             event:stopPropagation()
@@ -426,8 +415,8 @@ function Select:_activate_option(option)
         return
     end
 
-    local value = rawget(option, 'value')
-    local mode = rawget(self, 'selectionMode')
+    local value = option.value
+    local mode = self.selectionMode
     local ordered = effective_selected_order(self)
 
     if mode == 'single' then
@@ -454,7 +443,7 @@ function Select:_activate_option(option)
     local next_values = {}
     local options = rawget(self, '_option_order') or {}
     for index = 1, #options do
-        local option_value = rawget(options[index], 'value')
+        local option_value = options[index].value
         if selected[option_value] == true then
             next_values[#next_values + 1] = option_value
         end
@@ -466,7 +455,7 @@ end
 function Select:update(dt)
     Drawable.update(self, dt)
 
-    rawset(self, '_disabled_value_map', normalize_disabled_values(rawget(self, 'disabledValues')))
+    rawset(self, '_disabled_value_map', normalize_disabled_values(self.disabledValues))
     sync_option_registry(self)
     commit_effective_value(self)
     sync_summary(self)
@@ -476,7 +465,7 @@ function Select:update(dt)
     local was_open = rawget(self, '_last_open_state')
 
     if wants_open and stage ~= nil then
-        attach_popup(self, stage)
+        self:_attach_overlay(stage)
         position_popup(self, stage)
         if not was_open then
             self:_raise_motion('open', { defaultTarget = 'popup' })
@@ -487,7 +476,7 @@ function Select:update(dt)
         end
     else
         if rawget(self, '_mounted_stage') ~= nil then
-            detach_popup(self)
+            self:_detach_overlay()
         end
         if was_open and not wants_open then
             self:_raise_motion('close', { defaultTarget = 'popup' })
@@ -500,15 +489,31 @@ function Select:update(dt)
     return self
 end
 
+function Select:_overlay_focus_contract()
+    if self.modal == true then
+        return {
+            scope = true,
+            trap = true,
+        }
+    end
+
+    return {
+        scope = true,
+    }
+end
+
 function Select:destroy()
     if rawget(self, '_destroyed') then
         return
     end
 
-    detach_popup(self)
+    rawset(self, '_destroyed', true)
+    ControlUtils.remove_control_listeners(self)
+    self:_detach_overlay()
     if not rawget(rawget(self, '_popup_root'), '_destroyed') then
         rawget(self, '_popup_root'):destroy()
     end
+    rawset(self, '_destroyed', false)
     Container.destroy(self)
 end
 

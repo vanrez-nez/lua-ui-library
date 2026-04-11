@@ -81,6 +81,15 @@ function Rectangle:clone()
     return Rectangle(self.x, self.y, self.width, self.height)
 end
 
+function Rectangle.copy_bounds(bounds)
+    return {
+        x = (bounds and bounds.x) or 0,
+        y = (bounds and bounds.y) or 0,
+        width = (bounds and bounds.width) or 0,
+        height = (bounds and bounds.height) or 0,
+    }
+end
+
 function Rectangle:left()
     return self.x
 end

@@ -1,6 +1,7 @@
 local Assert = require('lib.ui.utils.assert')
 local Container = require('lib.ui.core.container')
 local Types = require('lib.ui.utils.types')
+local Proxy = require('lib.ui.utils.proxy')
 
 local Scene = Container:extends('Scene')
 
@@ -9,13 +10,11 @@ local SCENE_PUBLIC_KEYS = {
 }
 
 local function get_public_value(self, key)
-    local public_values = rawget(self, '_public_values')
-
-    if public_values == nil then
-        return nil
+    if key == 'params' then
+        return rawget(self, '_scene_params')
     end
 
-    return public_values[key]
+    return Proxy.raw_get(self, key)
 end
 
 local function assert_not_destroyed(self, level)
@@ -57,15 +56,7 @@ end
 
 local function set_initial_params(self, value)
     local normalized = validate_params(value, 3)
-
-    local public_values = rawget(self, '_public_values')
-    if public_values then
-        public_values.params = normalized
-    end
-    local effective_values = rawget(self, '_effective_values')
-    if effective_values then
-        effective_values.params = normalized
-    end
+    rawset(self, '_scene_params', normalized)
 end
 
 local function set_params(self, value, level)
@@ -75,14 +66,7 @@ local function set_params(self, value, level)
         return normalized
     end
 
-    local public_values = rawget(self, '_public_values')
-    if public_values then
-        public_values.params = normalized
-    end
-    local effective_values = rawget(self, '_effective_values')
-    if effective_values then
-        effective_values.params = normalized
-    end
+    rawset(self, '_scene_params', normalized)
     return normalized
 end
 
@@ -145,7 +129,7 @@ end
 
 function Scene:__index(key)
     -- Walk the class hierarchy for methods
-    local cls = getmetatable(self)
+    local cls = rawget(self, '_pclass') or getmetatable(self)
     local current = cls
     while current do
         local val = rawget(current, key)
@@ -157,7 +141,12 @@ function Scene:__index(key)
         return get_public_value(self, 'params')
     end
 
-    return Container.__index(self, key)
+    local declared_props = rawget(self, '_declared_props')
+    if declared_props and declared_props[key] then
+        return Container._get_public_read_value(self, key)
+    end
+
+    return nil
 end
 
 function Scene:__newindex(key, value)
@@ -171,7 +160,7 @@ function Scene:__newindex(key, value)
         else
             rawset(self, '_scene_active', false)
             rawset(self, '_scene_runtime_owner', nil)
-            Container.__newindex(self, 'enabled', false)
+            Proxy.raw_set(self, 'enabled', false)
         end
 
         rawset(self, key, value)
@@ -184,7 +173,7 @@ function Scene:__newindex(key, value)
         return
     end
 
-    local allowed_public_keys = rawget(self, '_allowed_public_keys')
+    local allowed_public_keys = rawget(self, '_declared_props')
     if allowed_public_keys and allowed_public_keys[key] then
         Assert.fail(
             'Scene does not support prop "' .. tostring(key) .. '"',
@@ -204,15 +193,17 @@ function Scene:constructor(opts)
     }, SCENE_PUBLIC_KEYS)
     Container._allow_fill_from_parent(self, { width = true, height = true })
 
+    for key in pairs(Container._schema) do
+        Proxy.on_pre_write(self, key, function()
+            Assert.fail(
+                'Scene does not support prop "' .. tostring(key) .. '"',
+                2
+            )
+        end)
+    end
+
     set_initial_params(self, opts.params)
-    local public_values = rawget(self, '_public_values')
-    if public_values then
-        public_values.enabled = false
-    end
-    local effective_values = rawget(self, '_effective_values')
-    if effective_values then
-        effective_values.enabled = false
-    end
+    Proxy.raw_set(self, 'enabled', false)
 
     rawset(self, '_ui_scene_instance', true)
     rawset(self, '_scene_created', false)
@@ -345,7 +336,7 @@ function Scene:_set_runtime_active(active)
         Assert.fail('Scene must be mounted before it can become active', 2)
     end
 
-    Container.__newindex(self, 'enabled', active)
+    Proxy.raw_set(self, 'enabled', active)
     rawset(self, '_scene_active', active)
     return self
 end

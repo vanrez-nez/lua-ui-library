@@ -1,17 +1,9 @@
 local GraphicsSource = require('lib.ui.render.graphics_source')
 local SourcePlacement = require('lib.ui.render.source_placement')
+local Rectangle = require('lib.ui.core.rectangle')
 local RuntimeProfiler = require('profiler.runtime_profiler')
 
 local FillPlacement = {}
-
-local function copy_bounds(bounds)
-    return {
-        x = bounds.x or 0,
-        y = bounds.y or 0,
-        width = bounds.width or 0,
-        height = bounds.height or 0,
-    }
-end
 
 local function resolve_gradient_points(bounds, direction)
     if direction == 'vertical' then
@@ -24,7 +16,7 @@ end
 local function resolve_texture_placement(bounds, descriptor)
     local texture_source = descriptor.texture or descriptor.source
     local drawable, quad, source_width, source_height = GraphicsSource.resolve_draw_source(texture_source)
-    local resolved_bounds = copy_bounds(bounds)
+    local resolved_bounds = Rectangle.copy_bounds(bounds)
     local repeat_x = descriptor.repeatX == true
     local repeat_y = descriptor.repeatY == true
     local placement = {
@@ -92,7 +84,7 @@ end
 
 function FillPlacement.resolve(bounds, descriptor)
     local profile_token = RuntimeProfiler.push_zone('FillPlacement.resolve')
-    local resolved_bounds = copy_bounds(bounds or {})
+    local resolved_bounds = Rectangle.copy_bounds(bounds or {})
     descriptor = descriptor or {}
 
     if descriptor.kind == 'texture' then
@@ -114,7 +106,7 @@ function FillPlacement.resolve(bounds, descriptor)
             opacity = descriptor.opacity ~= nil and descriptor.opacity or 1,
             placementMode = 'gradient',
             localBounds = resolved_bounds,
-            span = copy_bounds(resolved_bounds),
+            span = Rectangle.copy_bounds(resolved_bounds),
             direction = direction,
             startX = start_x,
             startY = start_y,
@@ -135,7 +127,7 @@ function FillPlacement.resolve(bounds, descriptor)
         opacity = descriptor.opacity ~= nil and descriptor.opacity or 1,
         placementMode = 'flat',
         localBounds = resolved_bounds,
-        span = copy_bounds(resolved_bounds),
+        span = Rectangle.copy_bounds(resolved_bounds),
     }
     RuntimeProfiler.pop_zone(profile_token)
     return placement

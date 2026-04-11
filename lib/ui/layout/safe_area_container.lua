@@ -3,47 +3,35 @@ local Container = require('lib.ui.core.container')
 local LayoutNode = require('lib.ui.layout.layout_node')
 local Rectangle = require('lib.ui.core.rectangle')
 local LayoutSpacing = require('lib.ui.layout.spacing')
+local SafeAreaContainerSchema = require('lib.ui.layout.safe_area_container_schema')
 
 local max = math.max
 local min = math.min
 
 local SafeAreaContainer = LayoutNode:extends('SafeAreaContainer')
-SafeAreaContainer._schema = require('lib.ui.layout.safe_area_container_schema')
+SafeAreaContainer._schema = SafeAreaContainerSchema
 
-local EXTRA_PUBLIC_KEYS = {
-    applyTop = true,
-    applyBottom = true,
-    applyLeft = true,
-    applyRight = true,
+local APPLY_FLAG_KEYS = {
+    left = 'applyLeft',
+    top = 'applyTop',
+    right = 'applyRight',
+    bottom = 'applyBottom',
+    applyLeft = 'applyLeft',
+    applyTop = 'applyTop',
+    applyRight = 'applyRight',
+    applyBottom = 'applyBottom',
 }
 
-local function validate_apply_flag(name, value, level)
-    Assert.boolean(name, value, level or 1)
-end
-
-local function set_apply_flag(self, key, value, level)
-    validate_apply_flag('SafeAreaContainer.' .. key, value, level)
-
-    local public_values = rawget(self, '_public_values')
-    if public_values and public_values[key] == value then
-        return value
-    end
-
-    if public_values then
-        public_values[key] = value
-    end
-    self:markDirty()
-    return value
+local function effective_values(node)
+    return setmetatable({}, {
+        __index = function(_, key)
+            return node[key]
+        end,
+    })
 end
 
 local function child_is_visible(child)
-    local effective_values = rawget(child, '_effective_values')
-
-    if effective_values == nil then
-        return true
-    end
-
-    return effective_values.visible ~= false
+    return child.visible ~= false
 end
 
 local function get_child_parent_local_bounds(child)
@@ -134,7 +122,7 @@ local function resolve_stage(node, stage)
 end
 
 local function resolve_layout_world_rect(node)
-    local values = rawget(node, '_effective_values') or {}
+    local values = effective_values(node)
     local width = rawget(node, '_resolved_width') or 0
     local height = rawget(node, '_resolved_height') or 0
     local parent_width = 0
@@ -172,7 +160,7 @@ local function resolve_safe_area_insets(self, stage)
     end
 
     local world_rect = resolve_layout_world_rect(self)
-    local values = rawget(self, '_effective_values') or {}
+    local values = effective_values(self)
     local left = world_rect:left()
     local top = world_rect:top()
     local right = world_rect:right()
@@ -210,7 +198,7 @@ local function resolve_safe_area_insets(self, stage)
 end
 
 local function resolve_content_edge_insets(self, stage)
-    local padding = (rawget(self, '_effective_values') or {}).padding or {
+    local padding = self.padding or {
         left = 0,
         top = 0,
         right = 0,
@@ -226,68 +214,13 @@ local function resolve_content_edge_insets(self, stage)
         safe_bottom + padding.bottom
 end
 
-local function apply_content_measurement(self, content_width, content_height, stage)
-    local effective_values = rawget(self, '_effective_values') or {}
-    local resolved_width = rawget(self, '_resolved_width') or 0
-    local resolved_height = rawget(self, '_resolved_height') or 0
+local function resize_to_safe_area_content(self, content_width, content_height, stage)
     local left_inset, top_inset, right_inset, bottom_inset =
         resolve_content_edge_insets(self, stage)
-
-    if effective_values.width == 'content' then
-        resolved_width = max(
-            0,
-            left_inset + content_width + right_inset
-        )
-
-        if effective_values.minWidth ~= nil and
-            resolved_width < effective_values.minWidth then
-            resolved_width = effective_values.minWidth
-        end
-
-        if effective_values.maxWidth ~= nil and
-            resolved_width > effective_values.maxWidth then
-            resolved_width = effective_values.maxWidth
-        end
-    end
-
-    if effective_values.height == 'content' then
-        resolved_height = max(
-            0,
-            top_inset + content_height + bottom_inset
-        )
-
-        if effective_values.minHeight ~= nil and
-            resolved_height < effective_values.minHeight then
-            resolved_height = effective_values.minHeight
-        end
-
-        if effective_values.maxHeight ~= nil and
-            resolved_height > effective_values.maxHeight then
-            resolved_height = effective_values.maxHeight
-        end
-    end
-
-    if rawget(self, '_resolved_width') == resolved_width and
-        rawget(self, '_resolved_height') == resolved_height then
-        return false
-    end
-
-    rawset(self, '_resolved_width', resolved_width)
-    rawset(self, '_resolved_height', resolved_height)
-    rawset(self, '_local_bounds_cache', Rectangle(0, 0, resolved_width, resolved_height))
-    rawset(self, '_local_transform_dirty', true)
-    rawset(self, '_world_transform_dirty', true)
-    rawset(self, '_bounds_dirty', true)
-    rawset(self, '_world_inverse_dirty', true)
-    self:_refresh_layout_content_rect(stage)
-
-    local children = rawget(self, '_children') or {}
-
-    for index = 1, #children do
-        children[index]:_mark_parent_layout_dependency_dirty()
-    end
-
-    return true
+    return self:_apply_content_measurement(
+        max(0, left_inset + content_width + right_inset),
+        max(0, top_inset + content_height + bottom_inset)
+    )
 end
 
 local function mark_children_parent_region_dirty(self)
@@ -295,7 +228,9 @@ local function mark_children_parent_region_dirty(self)
 
     for index = 1, #children do
         local child = children[index]
-        rawset(child, '_responsive_dirty', true)
+        if rawget(child, 'dirty') ~= nil then
+            rawget(child, 'dirty'):mark('responsive')
+        end
         child:_mark_parent_layout_dependency_dirty()
     end
 end
@@ -303,11 +238,22 @@ end
 
 
 function SafeAreaContainer:constructor(opts)
-    LayoutNode.constructor(self, opts, nil, {
+    LayoutNode.constructor(self, opts, SafeAreaContainerSchema, {
         allow_content_width = true,
         allow_content_height = true,
     })
     self._ui_layout_kind = 'SafeAreaContainer'
+end
+
+function SafeAreaContainer:set_apply_flag(side, value)
+    local key = APPLY_FLAG_KEYS[side]
+
+    if key == nil then
+        Assert.fail('SafeAreaContainer.set_apply_flag side is invalid', 2)
+    end
+
+    self[key] = value
+    return self
 end
 
 function SafeAreaContainer.new(opts)
@@ -348,6 +294,9 @@ function SafeAreaContainer:_run_layout_pass(stage)
     if rawget(self, '_layout_dirty') then
         self:_apply_layout(stage)
         rawset(self, '_layout_dirty', false)
+        if rawget(self, 'dirty') ~= nil then
+            rawget(self, 'dirty'):clear('layout')
+        end
     end
 
     return self
@@ -356,7 +305,7 @@ end
 function SafeAreaContainer:_apply_layout(stage)
     local content_rect = self:_refresh_layout_content_rect(stage)
     local children = place_children(self, content_rect)
-    local effective_values = rawget(self, '_effective_values') or {}
+    local effective_values = effective_values(self)
     local width_mode = effective_values.width
     local height_mode = effective_values.height
 
@@ -366,7 +315,7 @@ function SafeAreaContainer:_apply_layout(stage)
 
     local content_width, content_height = measure_content_extent(children, content_rect)
 
-    if apply_content_measurement(self, content_width, content_height, stage) then
+    if resize_to_safe_area_content(self, content_width, content_height, stage) then
         content_rect = self:_refresh_layout_content_rect(stage)
         place_children(self, content_rect)
     end

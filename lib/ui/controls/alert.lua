@@ -70,6 +70,8 @@ local ALERT_PUBLIC_KEYS = {
     },
 }
 
+Alert._schema = ControlUtils.extend_schema(Modal._schema, ALERT_PUBLIC_KEYS)
+
 local function is_content_node(value)
     return Types.is_table(value) and rawget(value, '_ui_container_instance') == true
 end
@@ -150,10 +152,9 @@ local function collect_action_nodes(node, out)
         return out
     end
 
-    local effective_values = rawget(node, '_effective_values') or rawget(node, '_public_values') or {}
-    local is_action = effective_values.focusable == true and (
+    local is_action = node.focusable == true and (
         rawget(node, '_ui_button_control') == true or
-        rawget(node, 'onActivate') ~= nil
+        node.onActivate ~= nil
     )
 
     if is_action then
@@ -250,24 +251,12 @@ function Alert:constructor(opts)
     modal_opts.content = layout
 
     Modal.constructor(self, modal_opts)
-
-    local keys = rawget(self, '_allowed_public_keys') or {}
-
-    for key, rule in pairs(ALERT_PUBLIC_KEYS) do
-        keys[key] = rule
-    end
-
-    rawset(self, '_allowed_public_keys', keys)
-    rawget(self, '_public_values').title = opts.title
-    rawget(self, '_public_values').message = opts.message
-    rawget(self, '_public_values').actions = opts.actions
-    rawget(self, '_public_values').variant = opts.variant or 'default'
-    rawget(self, '_public_values').initialFocus = opts.initialFocus
-    rawget(self, '_effective_values').title = opts.title
-    rawget(self, '_effective_values').message = opts.message
-    rawget(self, '_effective_values').actions = opts.actions
-    rawget(self, '_effective_values').variant = opts.variant or 'default'
-    rawget(self, '_effective_values').initialFocus = opts.initialFocus
+    self.schema:define(ALERT_PUBLIC_KEYS)
+    self.title = opts.title
+    self.message = opts.message
+    self.actions = opts.actions
+    self.variant = opts.variant or 'default'
+    self.initialFocus = opts.initialFocus
 
     rawset(self, '_ui_alert_control', true)
     rawset(self, '_title_node', title_node)

@@ -2,10 +2,10 @@ local Assert = require('lib.ui.utils.assert')
 local LayoutNode = require('lib.ui.layout.layout_node')
 local Types = require('lib.ui.utils.types')
 local MathUtils = require('lib.ui.utils.math')
-local Rectangle = require('lib.ui.core.rectangle')
 local LayoutSpacing = require('lib.ui.layout.spacing')
 local Direction = require('lib.ui.layout.direction')
 local ContentFillGuard = require('lib.ui.layout.content_fill_guard')
+local FlowSchema = require('lib.ui.layout.flow_schema')
 
 local max = math.max
 local clamp_number = MathUtils.clamp_number
@@ -13,7 +13,15 @@ local resolve_axis_size = MathUtils.resolve_axis_size
 local is_percentage_string = MathUtils.is_percentage_string
 
 local Flow = LayoutNode:extends('Flow')
-Flow._schema = require('lib.ui.layout.flow_schema')
+Flow._schema = FlowSchema
+
+local function effective_values(node)
+    return setmetatable({}, {
+        __index = function(_, key)
+            return node[key]
+        end,
+    })
+end
 
 local JUSTIFY_VALUES = {
     start = true,
@@ -31,13 +39,7 @@ local ALIGN_VALUES = {
 }
 
 local function child_is_visible(child)
-    local effective_values = rawget(child, '_effective_values')
-
-    if effective_values == nil then
-        return true
-    end
-
-    return effective_values.visible ~= false
+    return child.visible ~= false
 end
 
 local function get_axis_size(node, axis_key)
@@ -50,47 +52,6 @@ end
 
 local function depends_on_parent_axis(value)
     return value == 'fill' or is_percentage_string(value)
-end
-
-local function apply_resolved_size(node, width, height)
-    local resolved_width = width
-    local resolved_height = height
-
-    if resolved_width == nil then
-        resolved_width = node._resolved_width or 0
-    end
-
-    if resolved_height == nil then
-        resolved_height = node._resolved_height or 0
-    end
-
-    if node._resolved_width == resolved_width and
-        node._resolved_height == resolved_height then
-        node._measurement_dirty = false
-        return false
-    end
-
-    node._resolved_width = resolved_width
-    node._resolved_height = resolved_height
-    node._measurement_dirty = false
-    node._local_bounds_cache = Rectangle(0, 0, resolved_width, resolved_height)
-    node._local_transform_dirty = true
-    node._world_transform_dirty = true
-    node._bounds_dirty = true
-    node._world_inverse_dirty = true
-
-    if node._ui_layout_instance == true and
-        Types.is_function(node._refresh_layout_content_rect) then
-        node:_refresh_layout_content_rect()
-    end
-
-    local children = rawget(node, '_children') or {}
-
-    for index = 1, #children do
-        children[index]:_mark_parent_layout_dependency_dirty()
-    end
-
-    return true
 end
 
 local function resolve_axis(value, available, min_value, max_value)
@@ -110,7 +71,7 @@ local function resolve_axis(value, available, min_value, max_value)
 end
 
 local function validate_effective_props(self)
-    local effective_values = rawget(self, '_effective_values') or {}
+    local effective_values = effective_values(self)
     local gap = effective_values.gap
     local wrap = effective_values.wrap
     local justify = effective_values.justify
@@ -164,7 +125,7 @@ local function measure_entry(entry, stage, available_width, available_height,
         )
     end
 
-    apply_resolved_size(child, resolved_width, resolved_height)
+    child:_apply_resolved_size(resolved_width, resolved_height)
 
     if LayoutNode.is_layout_node(child) then
         child:_run_layout_pass(stage)
@@ -187,8 +148,8 @@ local function measure_entry(entry, stage, available_width, available_height,
 end
 
 local function assert_no_circular_dependency(self, child)
-    local self_values = rawget(self, '_effective_values') or {}
-    local child_values = rawget(child, '_effective_values') or {}
+    local self_values = effective_values(self)
+    local child_values = effective_values(child)
 
     if self_values.width == 'content' and
         depends_on_parent_axis(child_values.width) then
@@ -212,7 +173,7 @@ local function make_entry(child)
 
     return {
         child = child,
-        values = rawget(child, '_effective_values') or {},
+        values = effective_values(child),
         margin = margin,
         width = 0,
         height = 0,
@@ -323,8 +284,8 @@ local function reverse_entries(entries)
     return reversed
 end
 
-local function apply_self_content_measurement(self, content_width, content_height)
-    local effective_values = rawget(self, '_effective_values') or {}
+local function resize_to_flow_content(self, content_width, content_height)
+    local effective_values = effective_values(self)
     local padding = effective_values.padding or {
         left = 0,
         right = 0,
@@ -350,27 +311,7 @@ local function apply_self_content_measurement(self, content_width, content_heigh
         )
     end
 
-    if self._resolved_width == resolved_width and
-        self._resolved_height == resolved_height then
-        return false
-    end
-
-    self._resolved_width = resolved_width
-    self._resolved_height = resolved_height
-    self._local_bounds_cache = Rectangle(0, 0, resolved_width, resolved_height)
-    self._local_transform_dirty = true
-    self._world_transform_dirty = true
-    self._bounds_dirty = true
-    self._world_inverse_dirty = true
-    self:_refresh_layout_content_rect()
-
-    local children = rawget(self, '_children') or {}
-
-    for index = 1, #children do
-        children[index]:_mark_parent_layout_dependency_dirty()
-    end
-
-    return true
+    return self:_apply_resolved_size(resolved_width, resolved_height)
 end
 
 local function place_invisible_children(self, invisible_children, content_rect)
@@ -382,7 +323,7 @@ local function place_invisible_children(self, invisible_children, content_rect)
 end
 
 function Flow:constructor(opts)
-    LayoutNode.constructor(self, opts, nil, {
+    LayoutNode.constructor(self, opts, FlowSchema, {
         allow_content_width = true,
         allow_content_height = true,
     })
@@ -405,7 +346,7 @@ function Flow:_apply_layout(stage)
 
     local ok, result = xpcall(function()
         local gap, wrap, justify, _, direction = validate_effective_props(self)
-        local effective_values = rawget(self, '_effective_values') or {}
+        local effective_values = effective_values(self)
         local children = rawget(self, '_children') or {}
         local content_rect
         local available_width
@@ -460,7 +401,7 @@ function Flow:_apply_layout(stage)
             end
         end
 
-        if apply_self_content_measurement(self, content_width, content_height) then
+        if resize_to_flow_content(self, content_width, content_height) then
             content_rect = self:_refresh_layout_content_rect()
             available_width = content_rect.width or 0
         end

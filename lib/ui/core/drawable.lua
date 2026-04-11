@@ -3,10 +3,11 @@ local Container = require('lib.ui.core.container')
 local Types = require('lib.ui.utils.types')
 local Insets = require('lib.ui.core.insets')
 local Rectangle = require('lib.ui.core.rectangle')
-local Schema = require('lib.ui.utils.schema')
+local Utils = require('lib.ui.utils.common')
 local Motion = require('lib.ui.motion')
 local RootCompositor = require('lib.ui.render.root_compositor')
 local Styling = require('lib.ui.render.styling')
+local DrawableSchema = require('lib.ui.core.drawable_schema')
 
 local max = math.max
 local min = math.min
@@ -19,37 +20,10 @@ Drawable._root_compositing_capabilities = {
     blendMode = true,
 }
 
-function Drawable.__index(self, key)
-    local val = Container._walk_hierarchy(getmetatable(self), key)
-    if val ~= nil then return val end
-    
-    val = Container._walk_hierarchy(Drawable, key)
-    if val ~= nil then return val end
-
-    local allowed_public_keys = rawget(self, '_allowed_public_keys')
-    if allowed_public_keys and allowed_public_keys[key] then
-        return Container._get_public_read_value(self, key)
-    end
-
-    return nil
-end
-
-function Drawable.__newindex(self, key, value)
-    local allowed_public_keys = rawget(self, '_allowed_public_keys')
-    if allowed_public_keys and allowed_public_keys[key] then
-        Container._set_public_value(self, key, value, 2)
-        
-        local rule = allowed_public_keys[key]
-        if Types.is_table(rule) and Types.is_function(rule.set) then
-            rule.set(self, value)
-        end
-        return
-    end
-
-    rawset(self, key, value)
-end
-
-Drawable._schema = Schema.merge(Container._schema, require('lib.ui.core.drawable_schema'))
+Drawable._schema = Utils.merge_tables(
+    Utils.copy_table(Container._schema),
+    DrawableSchema
+)
 
 local DEFAULT_FOCUS_RING_OFFSET = 2
 local DEFAULT_FOCUS_RING_WIDTH = 2
@@ -81,8 +55,7 @@ end
 
 
 local function get_effective_insets(self, key)
-    local effective_values = rawget(self, '_effective_values')
-    return (effective_values and effective_values[key]) or Insets.zero()
+    return self[key] or Insets.zero()
 end
 
 local function get_motion_surface_value(self, key)
@@ -95,13 +68,7 @@ local function get_motion_surface_value(self, key)
 end
 
 local function child_is_visible(child)
-    local effective_values = rawget(child, '_effective_values')
-
-    if effective_values == nil then
-        return true
-    end
-
-    return effective_values.visible ~= false
+    return child.visible ~= false
 end
 
 local function get_local_content_rect(self)
@@ -134,57 +101,12 @@ local function get_child_parent_local_bounds(child)
     })
 end
 
-local function apply_resolved_size(node, width, height)
-    local resolved_width = width
-    local resolved_height = height
-
-    if resolved_width == nil then
-        resolved_width = rawget(node, '_resolved_width') or 0
-    end
-
-    if resolved_height == nil then
-        resolved_height = rawget(node, '_resolved_height') or 0
-    end
-
-    if rawget(node, '_resolved_width') == resolved_width and
-        rawget(node, '_resolved_height') == resolved_height then
-        rawset(node, '_measurement_dirty', false)
-        return false
-    end
-
-    rawset(node, '_resolved_width', resolved_width)
-    rawset(node, '_resolved_height', resolved_height)
-    rawset(node, '_measurement_dirty', false)
-    rawset(node, '_local_bounds_cache', Rectangle(0, 0, resolved_width, resolved_height))
-    rawset(node, '_local_transform_dirty', true)
-    rawset(node, '_world_transform_dirty', true)
-    rawset(node, '_bounds_dirty', true)
-    rawset(node, '_world_inverse_dirty', true)
-
-    if rawget(node, '_ui_layout_instance') == true and
-        Types.is_function(node._refresh_layout_content_rect) then
-        node:_refresh_layout_content_rect()
-        rawset(node, '_layout_dirty', true)
-    end
-
-    local children = rawget(node, '_children') or {}
-
-    for index = 1, #children do
-        children[index]:_mark_parent_layout_dependency_dirty()
-    end
-
-    return true
-end
-
 local function assert_no_content_fill_dependency(self, children)
-    local effective_values = rawget(self, '_effective_values') or {}
-
-    if effective_values.width == 'content' then
+    if self.width == 'content' then
         for index = 1, #children do
             local child = children[index]
-            local child_values = rawget(child, '_effective_values') or {}
 
-            if child_is_visible(child) and child_values.width == 'fill' then
+            if child_is_visible(child) and child.width == 'fill' then
                 Assert.fail(
                     'Drawable has a circular measurement dependency because width = "content" and a visible child has width = "fill"',
                     3
@@ -193,12 +115,11 @@ local function assert_no_content_fill_dependency(self, children)
         end
     end
 
-    if effective_values.height == 'content' then
+    if self.height == 'content' then
         for index = 1, #children do
             local child = children[index]
-            local child_values = rawget(child, '_effective_values') or {}
 
-            if child_is_visible(child) and child_values.height == 'fill' then
+            if child_is_visible(child) and child.height == 'fill' then
                 Assert.fail(
                     'Drawable has a circular measurement dependency because height = "content" and a visible child has height = "fill"',
                     3
@@ -255,55 +176,14 @@ local function measure_content_extent(self, entries)
 end
 
 local function apply_content_measurement(self, content_extent)
-    local effective_values = rawget(self, '_effective_values') or {}
     local padding = get_effective_insets(self, 'padding')
-    local resolved_width = rawget(self, '_resolved_width') or 0
-    local resolved_height = rawget(self, '_resolved_height') or 0
-
-    if effective_values.width == 'content' then
-        resolved_width = max(
-            effective_values.minWidth or 0,
-            min(
-                effective_values.maxWidth or math.huge,
-                padding.left + content_extent.width + padding.right
-            )
-        )
-    end
-
-    if effective_values.height == 'content' then
-        resolved_height = max(
-            effective_values.minHeight or 0,
-            min(
-                effective_values.maxHeight or math.huge,
-                padding.top + content_extent.height + padding.bottom
-            )
-        )
-    end
-
-    if rawget(self, '_resolved_width') == resolved_width and
-        rawget(self, '_resolved_height') == resolved_height then
-        return false
-    end
-
-    rawset(self, '_resolved_width', resolved_width)
-    rawset(self, '_resolved_height', resolved_height)
-    rawset(self, '_local_bounds_cache', Rectangle(0, 0, resolved_width, resolved_height))
-    rawset(self, '_local_transform_dirty', true)
-    rawset(self, '_world_transform_dirty', true)
-    rawset(self, '_bounds_dirty', true)
-    rawset(self, '_world_inverse_dirty', true)
-
-    local children = rawget(self, '_children') or {}
-
-    for index = 1, #children do
-        children[index]:_mark_parent_layout_dependency_dirty()
-    end
-
-    return true
+    return self:_apply_content_measurement(
+        padding.left + content_extent.width + padding.right,
+        padding.top + content_extent.height + padding.bottom
+    )
 end
 
 local function align_children(self, entries, content_extent)
-    local effective_values = rawget(self, '_effective_values') or {}
     local content_rect = get_local_content_rect(self)
     local target_rect = resolve_content_rect(self, content_extent.width, content_extent.height)
     local shared_offset_x = target_rect.x - content_extent.x
@@ -315,16 +195,16 @@ local function align_children(self, entries, content_extent)
         local width = nil
         local height = nil
 
-        if effective_values.alignX == 'stretch' then
+        if self.alignX == 'stretch' then
             width = target_rect.width
         end
 
-        if effective_values.alignY == 'stretch' then
+        if self.alignY == 'stretch' then
             height = target_rect.height
         end
 
         if width ~= nil or height ~= nil then
-            apply_resolved_size(child, width, height)
+            child:_apply_resolved_size(width, height)
             child:_refresh_if_dirty()
             entry.bounds = get_child_parent_local_bounds(child)
         end
@@ -332,11 +212,11 @@ local function align_children(self, entries, content_extent)
         local offset_x = shared_offset_x
         local offset_y = shared_offset_y
 
-        if effective_values.alignX == 'stretch' then
+        if self.alignX == 'stretch' then
             offset_x = content_rect.x - entry.bounds.x
         end
 
-        if effective_values.alignY == 'stretch' then
+        if self.alignY == 'stretch' then
             offset_y = content_rect.y - entry.bounds.y
         end
 
@@ -408,45 +288,17 @@ end
 
 
 
-function Drawable.__index(self, key)
-    local val = Container._walk_hierarchy(getmetatable(self), key)
-    if val ~= nil then return val end
-    
-    val = Container._walk_hierarchy(Drawable, key)
-    if val ~= nil then return val end
-
-    local allowed_public_keys = rawget(self, '_allowed_public_keys')
-    if allowed_public_keys and allowed_public_keys[key] then
-        return Container._get_public_read_value(self, key)
-    end
-
-    return nil
-end
-
-function Drawable.__newindex(self, key, value)
-    local allowed_public_keys = rawget(self, '_allowed_public_keys')
-    if allowed_public_keys and allowed_public_keys[key] then
-        Container._set_public_value(self, key, value, 2)
-        
-        local rule = allowed_public_keys[key]
-        if Types.is_table(rule) and Types.is_function(rule.set) then
-            rule.set(self, value)
-        end
-        return
-    end
-
-    rawset(self, key, value)
-end
+Drawable.__index = Drawable
 
 function Drawable:constructor(opts)
-    self:_initialize(opts)
-end
-
-function Drawable:_initialize(opts)
-    Container._initialize(self, opts, Drawable._schema, {
+    Container.constructor(self, opts, DrawableSchema, {
         allow_content_width = true,
         allow_content_height = true,
     })
+    self.schema:define(DrawableSchema)
+    for key, value in pairs(opts or {}) do
+        self[key] = value
+    end
     self._ui_drawable_instance = true
     rawset(self, '_motion_visual_state', {})
     rawset(self, '_motion_last_request', nil)
@@ -490,8 +342,7 @@ function Drawable:_resolve_root_compositing_extras()
 end
 
 get_effective_value = function(self, key)
-    local effective_values = rawget(self, '_effective_values')
-    return effective_values and effective_values[key]
+    return self[key]
 end
 
 local function color_input_is_visible(color, opacity)

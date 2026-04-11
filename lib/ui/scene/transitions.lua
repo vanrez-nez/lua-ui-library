@@ -1,6 +1,7 @@
 local Assert = require('lib.ui.utils.assert')
 local Easing = require('lib.ui.core.easing')
 local Types = require('lib.ui.utils.types')
+local MathUtils = require('lib.ui.utils.math')
 
 local Transitions = {}
 
@@ -19,7 +20,7 @@ local function clamp_01(value)
         return 1
     end
 
-    return value
+    return MathUtils.clamp(value, 0, 1)
 end
 
 local function unwrap_canvas(canvas)

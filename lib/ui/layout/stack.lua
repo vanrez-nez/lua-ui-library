@@ -1,24 +1,25 @@
 local LayoutNode = require('lib.ui.layout.layout_node')
-local MathUtils = require('lib.ui.utils.math')
 local Rectangle = require('lib.ui.core.rectangle')
 local LayoutSpacing = require('lib.ui.layout.spacing')
 local ContentFillGuard = require('lib.ui.layout.content_fill_guard')
+local StackSchema = require('lib.ui.layout.stack_schema')
 
 local max = math.max
 local min = math.min
-local clamp_number = MathUtils.clamp_number
 
 local Stack = LayoutNode:extends('Stack')
-Stack._schema = require('lib.ui.layout.stack_schema')
+Stack._schema = StackSchema
+
+local function effective_values(node)
+    return setmetatable({}, {
+        __index = function(_, key)
+            return node[key]
+        end,
+    })
+end
 
 local function child_is_visible(child)
-    local effective_values = rawget(child, '_effective_values')
-
-    if effective_values == nil then
-        return true
-    end
-
-    return effective_values.visible ~= false
+    return child.visible ~= false
 end
 
 local function get_child_parent_local_bounds(child)
@@ -88,58 +89,21 @@ local function measure_content_extent(children, content_rect)
         max(0, content_bounds:bottom()) - min(0, content_bounds:top())
 end
 
-local function apply_content_measurement(self, content_width, content_height)
-    local effective_values = rawget(self, '_effective_values') or {}
-    local padding = effective_values.padding or {
+local function resize_to_content(self, content_width, content_height)
+    local padding = self.padding or {
         left = 0,
         right = 0,
         top = 0,
         bottom = 0,
     }
-    local resolved_width = self._resolved_width or 0
-    local resolved_height = self._resolved_height or 0
-
-    if effective_values.width == 'content' then
-        resolved_width = clamp_number(
-            padding.left + content_width + padding.right,
-            effective_values.minWidth,
-            effective_values.maxWidth
-        )
-    end
-
-    if effective_values.height == 'content' then
-        resolved_height = clamp_number(
-            padding.top + content_height + padding.bottom,
-            effective_values.minHeight,
-            effective_values.maxHeight
-        )
-    end
-
-    if self._resolved_width == resolved_width and
-        self._resolved_height == resolved_height then
-        return false
-    end
-
-    self._resolved_width = resolved_width
-    self._resolved_height = resolved_height
-    self._local_bounds_cache = Rectangle(0, 0, resolved_width, resolved_height)
-    self._local_transform_dirty = true
-    self._world_transform_dirty = true
-    self._bounds_dirty = true
-    self._world_inverse_dirty = true
-    self:_refresh_layout_content_rect()
-
-    local children = rawget(self, '_children') or {}
-
-    for index = 1, #children do
-        children[index]:_mark_parent_layout_dependency_dirty()
-    end
-
-    return true
+    return self:_apply_content_measurement(
+        padding.left + content_width + padding.right,
+        padding.top + content_height + padding.bottom
+    )
 end
 
 function Stack:constructor(opts)
-    LayoutNode.constructor(self, opts, nil, {
+    LayoutNode.constructor(self, opts, StackSchema, {
         allow_content_width = true,
         allow_content_height = true,
     })
@@ -151,15 +115,15 @@ function Stack.new(opts)
 end
 
 function Stack:_apply_layout(_)
-    local effective_values = rawget(self, '_effective_values') or {}
+    local values = effective_values(self)
     local children = rawget(self, '_children') or {}
-    local width_mode = self._effective_values.width
-    local height_mode = self._effective_values.height
+    local width_mode = values.width
+    local height_mode = values.height
     local content_rect
 
     ContentFillGuard.assert_valid(
         'Stack',
-        effective_values,
+        values,
         children,
         { 'width', 'height' },
         3
@@ -174,7 +138,7 @@ function Stack:_apply_layout(_)
 
     local content_width, content_height = measure_content_extent(children, content_rect)
 
-    if apply_content_measurement(self, content_width, content_height) then
+    if resize_to_content(self, content_width, content_height) then
         content_rect = self:_refresh_layout_content_rect()
         place_children(self, content_rect)
     end

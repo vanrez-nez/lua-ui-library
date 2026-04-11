@@ -1,7 +1,7 @@
 local Shape = require('lib.ui.core.shape')
-local DrawHelpers = require('lib.ui.shapes.draw_helpers')
 
 local TriangleShape = Shape:extends('TriangleShape')
+TriangleShape._allow_rect_draw_fallback = false
 
 local function sign(px, py, ax, ay, bx, by)
     return (px - bx) * (ay - by) - (ax - bx) * (py - by)
@@ -34,9 +34,9 @@ function TriangleShape:constructor(opts)
     Shape.constructor(self, opts)
 end
 
-function TriangleShape:_get_local_points()
+function TriangleShape:_get_local_points(out_table)
     local bounds = self:_get_shape_local_bounds()
-    local points = self:_get_local_point_buffer(3)
+    local points = self:_get_local_point_buffer(3, out_table)
     local top_x = bounds.x + (bounds.width / 2)
     local top_y = bounds.y
     local base_y = bounds.y + bounds.height
@@ -61,28 +61,6 @@ function TriangleShape:get_local_centroid()
     return
         (points[1][1] + points[2][1] + points[3][1]) / 3,
         (points[1][2] + points[2][2] + points[3][2]) / 3
-end
-
-function TriangleShape:draw(graphics)
-    if type(graphics) ~= 'table' then
-        return
-    end
-
-    local bounds = self:getWorldBounds()
-    if bounds.width <= 0 or bounds.height <= 0 then
-        return
-    end
-
-    local local_points = self:_get_local_points()
-    local world_points = self:_transform_local_points(local_points)
-    local active_fill = self:_resolve_active_fill_source()
-
-    if active_fill.kind == 'color' and type(graphics.polygon) ~= 'function' then
-        return
-    end
-
-    self:_render_active_fill(graphics, local_points, world_points, active_fill)
-    DrawHelpers.draw_polygon_stroke(graphics, world_points, self:_resolve_polygon_stroke_options())
 end
 
 function TriangleShape:_contains_local_point(local_x, local_y)

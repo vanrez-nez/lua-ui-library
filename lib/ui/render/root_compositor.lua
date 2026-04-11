@@ -1,7 +1,7 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Rectangle = require('lib.ui.core.rectangle')
-local CanvasPool = require('lib.ui.render.canvas_pool')
+local CanvasPoolRegistry = require('lib.ui.render.canvas_pool_registry')
 local GraphicsState = require('lib.ui.render.graphics_state')
 local GraphicsValidation = require('lib.ui.render.graphics_validation')
 local RuntimeProfiler = require('profiler.runtime_profiler')
@@ -83,7 +83,6 @@ local SHAPE_RESULT_CLIP_SURFACE_KEYS = {
     strokePattern = true,
 }
 
-local canvas_pools = setmetatable({}, { __mode = 'k' })
 local root_compositing_capability_cache = setmetatable({}, { __mode = 'k' })
 
 local function walk_class_hierarchy(class, key)
@@ -138,7 +137,7 @@ local function get_class_root_compositing_capabilities(class)
 end
 
 local function get_node_root_compositing_capabilities(node)
-    return get_class_root_compositing_capabilities(getmetatable(node))
+    return get_class_root_compositing_capabilities(rawget(node, '_pclass') or getmetatable(node))
 end
 
 local function node_uses_root_compositing_extras(node)
@@ -181,19 +180,6 @@ local function set_cached_node_plan(node, runtime, plan)
     rawset(node, '_root_compositing_plan_cache_runtime', runtime)
     rawset(node, '_root_compositing_plan_cache', plan or NO_ROOT_COMPOSITING_PLAN)
     return plan
-end
-
-local function get_canvas_pool(graphics)
-    local pool = canvas_pools[graphics]
-
-    if pool == nil then
-        pool = CanvasPool.new({
-            graphics = graphics,
-        })
-        canvas_pools[graphics] = pool
-    end
-
-    return pool
 end
 
 local function get_drawable_dimensions(drawable)
@@ -1180,7 +1166,7 @@ function RootCompositor.draw_isolated_subtree(node, graphics, draw_callback, cli
 
     render_state = RootCompositor.initialize_render_state(graphics, render_state)
 
-    local pool = get_canvas_pool(graphics)
+    local pool = CanvasPoolRegistry.get_for(graphics)
     local isolation_target = resolve_isolation_target(node, render_state, compositing_plan, runtime, graphics)
     local canvas = pool:acquire(isolation_target.canvas_width, isolation_target.canvas_height)
     local previous_canvas = peek_composition_target(render_state, graphics)

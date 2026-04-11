@@ -1,67 +1,74 @@
 local Assert = require('lib.ui.utils.assert')
-local Schema = require('lib.ui.utils.schema')
+local Rule = require('lib.ui.utils.rule')
 local Motion = require('lib.ui.motion')
+local ResponsiveBreakpointsGate = require('lib.ui.core.responsive_breakpoints_gate')
+local MathUtils = require('lib.ui.utils.math')
 
 local function validate_container_size(key, value, ctx, level)
     local prop_name = key:match("%.([^%.]+)$") or key
-    return Schema.validate_size(key, value, ctx._config['allow_content_' .. prop_name] == true, level)
-end
+    local allow_content = ctx._config['allow_content_' .. prop_name] == true
 
-local function validate_optional_nonempty_string(key, value, _, level)
-    Assert.string(key, value, level)
-    if value == '' then
-        Assert.fail(key .. ' must not be an empty string', level)
+    if value == 'content' then
+        if not allow_content then
+            Assert.fail(
+                tostring(key) ..
+                    '="content" is only supported by layout nodes with an intrinsic measurement rule',
+                (level or 1) + 1
+            )
+        end
+        return value
     end
-    return value
+
+    if value == 'fill' or type(value) == 'number' then
+        return value
+    end
+
+    if MathUtils.is_percentage_string(value) then
+        return value
+    end
+
+    Assert.fail(
+        key .. ' must be a number, "content", "fill", or a percentage string',
+        level or 1
+    )
 end
 
 local CONTAINER_SCHEMA = {
-    id = { validate = validate_optional_nonempty_string },
-    name = { validate = validate_optional_nonempty_string },
-    tag = { validate = validate_optional_nonempty_string },
-    internal = { type = 'boolean', default = false },
-    visible = { type = 'boolean', default = true },
-    interactive = { type = 'boolean', default = false },
-    enabled = { type = 'boolean', default = true },
-    focusable = { type = 'boolean', default = false },
-    clipChildren = { type = 'boolean', default = false },
-    zIndex = { type = 'number', default = 0 },
-    anchorX = { type = 'number', default = 0 },
-    anchorY = { type = 'number', default = 0 },
-    pivotX = { type = 'number', default = 0.5 },
-    pivotY = { type = 'number', default = 0.5 },
-    x = { type = 'number', default = 0 },
-    y = { type = 'number', default = 0 },
-    width = { validate = validate_container_size, default = 0 },
-    height = { validate = validate_container_size, default = 0 },
-    minWidth = { type = 'number' },
-    minHeight = { type = 'number' },
-    maxWidth = { type = 'number' },
-    maxHeight = { type = 'number' },
-    scaleX = { type = 'number', default = 1 },
-    scaleY = { type = 'number', default = 1 },
-    rotation = { type = 'number', default = 0 },
-    skewX = { type = 'number', default = 0 },
-    skewY = { type = 'number', default = 0 },
-    breakpoints = { 
-        validate = function(key, value, ctx, level, full_opts)
-            if value ~= nil then
-                Assert.table('Container.breakpoints', value, level)
-                local public_values = rawget(ctx, '_public_values')
-                local allowed_public_keys = rawget(ctx, '_allowed_public_keys')
-                
-                local has_responsive = (full_opts and full_opts.responsive ~= nil) or 
-                                     (public_values and public_values.responsive ~= nil)
-
-                if allowed_public_keys and allowed_public_keys.responsive and has_responsive then
-                    Assert.fail('responsive and breakpoints cannot both be supplied on the same node', level)
-                end
-            end
-            return value
-        end
-    },
-    motionPreset = { validate = Motion.validate_motion_preset },
-    motion = { validate = Motion.validate_motion },
+    id = Rule.string({ non_empty = true }),
+    name = Rule.string({ non_empty = true }),
+    tag = Rule.string({ non_empty = true }),
+    internal = Rule.boolean(false),
+    visible = Rule.boolean(true),
+    interactive = Rule.boolean(false),
+    enabled = Rule.boolean(true),
+    focusable = Rule.boolean(false),
+    clipChildren = Rule.boolean(false),
+    zIndex = Rule.number({ default = 0 }),
+    anchorX = Rule.number({ default = 0 }),
+    anchorY = Rule.number({ default = 0 }),
+    pivotX = Rule.number({ default = 0.5 }),
+    pivotY = Rule.number({ default = 0.5 }),
+    x = Rule.number({ default = 0 }),
+    y = Rule.number({ default = 0 }),
+    width = Rule.custom(validate_container_size, { default = 0 }),
+    height = Rule.custom(validate_container_size, { default = 0 }),
+    minWidth = Rule.number(),
+    minHeight = Rule.number(),
+    maxWidth = Rule.number(),
+    maxHeight = Rule.number(),
+    scaleX = Rule.number({ default = 1 }),
+    scaleY = Rule.number({ default = 1 }),
+    rotation = Rule.number({ default = 0 }),
+    skewX = Rule.number({ default = 0 }),
+    skewY = Rule.number({ default = 0 }),
+    breakpoints = Rule.gate(
+        ResponsiveBreakpointsGate.with_peer('responsive', {
+            require_declared_peer = true,
+        }),
+        Rule.table()
+    ),
+    motionPreset = Rule.custom(Motion.validate_motion_preset, { tier = 'heavy' }),
+    motion = Rule.custom(Motion.validate_motion, { tier = 'heavy' }),
 }
 
 return CONTAINER_SCHEMA

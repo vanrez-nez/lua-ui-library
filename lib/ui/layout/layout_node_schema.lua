@@ -1,6 +1,9 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
+local Rule = require('lib.ui.utils.rule')
 local SpacingSchema = require('lib.ui.core.spacing_schema')
+local ResponsiveBreakpointsGate = require('lib.ui.core.responsive_breakpoints_gate')
+local Responsive = require('lib.ui.layout.responsive')
 
 local JUSTIFY_VALUES = {
     start = true,
@@ -17,81 +20,54 @@ local ALIGN_VALUES = {
     stretch = true,
 }
 
+local function mark_dirty(ctx)
+    local method = rawget(ctx, 'markDirty')
+    local current = rawget(ctx, '_pclass') or getmetatable(ctx)
+
+    while method == nil and current ~= nil do
+        method = rawget(current, 'markDirty')
+        current = rawget(current, 'super')
+    end
+
+    if method ~= nil then
+        method(ctx)
+    end
+end
+
+local function validate_justify(_, value, _, level)
+    if not Types.is_string(value) or not JUSTIFY_VALUES[value] then
+        Assert.fail('Layout.justify must be "start", "center", "end", "space-between", or "space-around"', level)
+    end
+    return value
+end
+
+local function validate_align(_, value, _, level)
+    if not Types.is_string(value) or not ALIGN_VALUES[value] then
+        Assert.fail('Layout.align must be "start", "center", "end", or "stretch"', level)
+    end
+    return value
+end
+
 local LAYOUT_NODE_SCHEMA = {
-    gap = {
-        validate = function(key, value, ctx, level)
-            return SpacingSchema.check_non_negative_finite(key, value, level)
-        end,
-        default = 0,
-        set = function(ctx) ctx:markDirty() end
-    },
-    padding = {
-        validate = function(key, value, ctx, level)
-            return SpacingSchema.normalize_padding(key, value, level)
-        end,
-        default = 0,
-        set = function(ctx) ctx:markDirty() end
-    },
-    paddingTop = {
-        validate = function(key, value, ctx, level)
-            return SpacingSchema.check_non_negative_finite(key, value, level)
-        end,
-        set = function(ctx) ctx:markDirty() end
-    },
-    paddingRight = {
-        validate = function(key, value, ctx, level)
-            return SpacingSchema.check_non_negative_finite(key, value, level)
-        end,
-        set = function(ctx) ctx:markDirty() end
-    },
-    paddingBottom = {
-        validate = function(key, value, ctx, level)
-            return SpacingSchema.check_non_negative_finite(key, value, level)
-        end,
-        set = function(ctx) ctx:markDirty() end
-    },
-    paddingLeft = {
-        validate = function(key, value, ctx, level)
-            return SpacingSchema.check_non_negative_finite(key, value, level)
-        end,
-        set = function(ctx) ctx:markDirty() end
-    },
-    wrap = { type = 'boolean', default = false, set = function(ctx) ctx:markDirty() end },
-    justify = { 
-        validate = function(key, value, ctx, level)
-            if not Types.is_string(value) or not JUSTIFY_VALUES[value] then
-                Assert.fail('Layout.justify must be "start", "center", "end", "space-between", or "space-around"', level)
-            end
-            return value
-        end,
+    gap = SpacingSchema.non_negative_finite_rule({ default = 0, set = mark_dirty }),
+    padding = SpacingSchema.padding_rule({ default = 0, set = mark_dirty }),
+    paddingTop = SpacingSchema.non_negative_finite_rule({ set = mark_dirty }),
+    paddingRight = SpacingSchema.non_negative_finite_rule({ set = mark_dirty }),
+    paddingBottom = SpacingSchema.non_negative_finite_rule({ set = mark_dirty }),
+    paddingLeft = SpacingSchema.non_negative_finite_rule({ set = mark_dirty }),
+    wrap = Rule.boolean(false, { set = mark_dirty }),
+    justify = Rule.custom(validate_justify, {
         default = 'start',
-        set = function(ctx) ctx:markDirty() end
-    },
-    align = { 
-        validate = function(key, value, ctx, level)
-            if not Types.is_string(value) or not ALIGN_VALUES[value] then
-                Assert.fail('Layout.align must be "start", "center", "end", or "stretch"', level)
-            end
-            return value
-        end,
+        set = mark_dirty,
+    }),
+    align = Rule.custom(validate_align, {
         default = 'start',
-        set = function(ctx) ctx:markDirty() end
-    },
-    responsive = {
-        validate = function(key, value, ctx, level)
-            if value ~= nil then
-                local public_values = rawget(ctx, '_public_values')
-                if public_values and public_values.breakpoints ~= nil then
-                    Assert.fail('responsive and breakpoints cannot both be supplied on the same node', level)
-                end
-                if not Types.is_table(value) and not Types.is_function(value) then
-                    Assert.fail('Layout.responsive must be a table or a function', level)
-                end
-            end
-            return value
-        end,
-        set = function(ctx) ctx:markDirty() end
-    }
+        set = mark_dirty,
+    }),
+    responsive = Rule.gate(
+        ResponsiveBreakpointsGate.with_peer('breakpoints'),
+        Responsive.schema_rule('Layout', { set = mark_dirty })
+    ),
 }
 
 return LAYOUT_NODE_SCHEMA

@@ -3,12 +3,25 @@ local ScrollableContainer = require('lib.ui.scroll.scrollable_container')
 local Container = require('lib.ui.core.container')
 local Drawable = require('lib.ui.core.drawable')
 local Assert = require('lib.ui.utils.assert')
+local ControlUtils = require('lib.ui.controls.control_utils')
+local Rule = require('lib.ui.utils.rule')
 
 local TextArea = TextInput:extends('TextArea')
+
+local TextAreaSchema = {
+    wrap = Rule.boolean(true),
+    rows = Rule.number(),
+    scrollXEnabled = Rule.boolean(false),
+    scrollYEnabled = Rule.boolean(true),
+    momentum = Rule.boolean(false),
+}
+
+TextArea._schema = ControlUtils.extend_schema(TextInput._schema, TextAreaSchema)
 
 function TextArea:constructor(opts)
     opts = opts or {}
     TextInput.constructor(self, opts)
+    self.schema:define(TextAreaSchema)
 
     rawset(self, '_ui_text_area_control', true)
     rawset(self, '_styling_context', {
@@ -16,11 +29,11 @@ function TextArea:constructor(opts)
         part = 'field',
     })
 
-    rawset(self, 'wrap', opts.wrap ~= false)
-    rawset(self, 'rows', opts.rows)
-    rawset(self, 'scrollXEnabled', opts.scrollXEnabled == true)
-    rawset(self, 'scrollYEnabled', opts.scrollYEnabled ~= false)
-    rawset(self, 'momentum', opts.momentum == true)
+    self.wrap = opts.wrap ~= false
+    self.rows = opts.rows
+    self.scrollXEnabled = opts.scrollXEnabled == true
+    self.scrollYEnabled = opts.scrollYEnabled ~= false
+    self.momentum = opts.momentum == true
 
     if self.rows ~= nil then
         Assert.number('TextArea.rows', self.rows, 2)
@@ -57,9 +70,8 @@ function TextArea:constructor(opts)
     rawset(self, 'scrollRegion', region_surface)
     rawset(self, '_scroll_region', region)
 
-    self:_add_event_listener('ui.submit', function(event)
-        if rawget(self, '_destroyed') then return end
-        if rawget(self, 'disabled') or rawget(self, 'readOnly') then return end
+    ControlUtils.add_control_listener(self, self, 'ui.submit', function(event)
+        if self.disabled or self.readOnly then return end
         if not self:_is_focused() then return end
 
         self:_replace_selection_internal('\n')
@@ -67,8 +79,7 @@ function TextArea:constructor(opts)
         event:stopImmediatePropagation()
     end, 'capture')
 
-    self:_add_event_listener('ui.scroll', function(event)
-        if rawget(self, '_destroyed') then return end
+    ControlUtils.add_control_listener(self, self, 'ui.scroll', function(event)
         if not self:_is_focused() then return end
         local region_ref = rawget(self, '_scroll_region')
         if region_ref == nil then return end
@@ -97,10 +108,10 @@ function TextArea:update(dt)
 
     local region = rawget(self, '_scroll_region')
     if region ~= nil then
-        local rx = (rawget(self, 'wrap') == false) and (rawget(self, 'scrollXEnabled') == true)
+        local rx = (self.wrap == false) and (self.scrollXEnabled == true)
         region.scrollXEnabled = rx
-        region.scrollYEnabled = rawget(self, 'scrollYEnabled') ~= false
-        region.momentum = rawget(self, 'momentum') == true
+        region.scrollYEnabled = self.scrollYEnabled ~= false
+        region.momentum = self.momentum == true
     end
 
     local region_surface = rawget(self, 'scrollRegion')

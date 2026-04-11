@@ -2,30 +2,32 @@ local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
+local MathUtils = require('lib.ui.utils.math')
+local Rule = require('lib.ui.utils.rule')
 
 local ProgressBar = Drawable:extends('ProgressBar')
 
-local function clamp(value, min_value, max_value)
-    if value < min_value then
-        return min_value
-    end
-    if value > max_value then
-        return max_value
-    end
-    return value
-end
+local ProgressBarSchema = {
+    value = Rule.number(),
+    min = Rule.number({ default = 0 }),
+    max = Rule.number({ default = 1 }),
+    indeterminate = Rule.boolean(false),
+    orientation = Rule.any({ default = 'horizontal' }),
+}
+
+ProgressBar._schema = ControlUtils.extend_schema(Drawable._schema, ProgressBarSchema)
 
 local function effective_value(self)
-    local value = rawget(self, 'value')
+    local value = self.value
     if value == nil then
-        value = rawget(self, 'min') or 0
+        value = self.min or 0
     end
-    return clamp(value, rawget(self, 'min') or 0, rawget(self, 'max') or 1)
+    return MathUtils.clamp(value, self.min or 0, self.max or 1)
 end
 
 local function ratio(self)
-    local min_value = rawget(self, 'min') or 0
-    local max_value = rawget(self, 'max') or 1
+    local min_value = self.min or 0
+    local max_value = self.max or 1
     if max_value <= min_value then
         return 0
     end
@@ -46,10 +48,10 @@ local function sync_parts(self)
     track.width = bounds.width
     track.height = bounds.height
 
-    if rawget(self, 'orientation') == 'vertical' then
+    if self.orientation == 'vertical' then
         indicator.x = 0
         indicator.width = bounds.width
-        if rawget(self, 'indeterminate') then
+        if self.indeterminate then
             indicator.height = math.max(12, bounds.height * 0.35)
             indicator.y = (bounds.height - indicator.height) * 0.5
         else
@@ -59,7 +61,7 @@ local function sync_parts(self)
     else
         indicator.y = 0
         indicator.height = bounds.height
-        if rawget(self, 'indeterminate') then
+        if self.indeterminate then
             indicator.width = math.max(12, bounds.width * 0.35)
             indicator.x = (bounds.width - indicator.width) * 0.5
         else
@@ -79,13 +81,14 @@ function ProgressBar:constructor(opts)
         focusable = false,
     })
     Drawable.constructor(self, drawable_opts)
+    self.schema:define(ProgressBarSchema)
+    self.value = opts.value
+    self.min = opts.min or 0
+    self.max = opts.max or 1
+    self.indeterminate = opts.indeterminate == true
+    self.orientation = opts.orientation or 'horizontal'
 
     rawset(self, '_ui_progress_bar_control', true)
-    rawset(self, 'value', opts.value)
-    rawset(self, 'min', opts.min or 0)
-    rawset(self, 'max', opts.max or 1)
-    rawset(self, 'indeterminate', opts.indeterminate == true)
-    rawset(self, 'orientation', opts.orientation or 'horizontal')
 
     if self.max <= self.min then
         Assert.fail('ProgressBar.max must be greater than ProgressBar.min', 2)
@@ -161,6 +164,16 @@ function ProgressBar:update(dt)
     rawset(self, '_last_motion_ratio', current_ratio)
     sync_parts(self)
     return self
+end
+
+function ProgressBar:destroy()
+    if rawget(self, '_destroyed') then
+        return
+    end
+    rawset(self, '_destroyed', true)
+    ControlUtils.remove_control_listeners(self)
+    rawset(self, '_destroyed', false)
+    Container.destroy(self)
 end
 
 return ProgressBar

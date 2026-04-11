@@ -1,32 +1,24 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
-local Schema = require('lib.ui.utils.schema')
-local CanvasPool = require('lib.ui.render.canvas_pool')
+local Rule = require('lib.ui.utils.rule')
+local CanvasPoolRegistry = require('lib.ui.render.canvas_pool_registry')
 local StylingContract = require('lib.ui.render.styling_contract')
 local ThemeRuntime = require('lib.ui.themes.runtime')
 local GraphicsSource = require('lib.ui.render.graphics_source')
 local GraphicsStencil = require('lib.ui.render.graphics_stencil')
 local SourcePlacement = require('lib.ui.render.source_placement')
+local DrawHelpers = require('lib.ui.shapes.draw_helpers')
 local DrawableSchema = require('lib.ui.core.drawable_schema')
 local SideQuad = require('lib.ui.core.side_quad')
 local CornerQuad = require('lib.ui.core.corner_quad')
 
 local Styling = {}
+local save_color = DrawHelpers.save_color
+local restore_color = DrawHelpers.restore_color
 
 -- Lerp scalar ported from reference/color.lua — plain arithmetic, [0,1] space, no class import.
 local function lerp(a, b, s)
     return a + s * (b - a)
-end
-
--- Per-graphics-adapter canvas pool, same pattern as container.lua.
-local canvas_pools = {}
-local function get_canvas_pool(graphics)
-    local pool = canvas_pools[graphics]
-    if pool == nil then
-        pool = CanvasPool.new({ graphics = graphics })
-        canvas_pools[graphics] = pool
-    end
-    return pool
 end
 
 -- ---------------------------------------------------------------------------
@@ -117,18 +109,6 @@ end
 -- ---------------------------------------------------------------------------
 -- Graphics state helpers — guard every call with is_function checks.
 -- ---------------------------------------------------------------------------
-
-local function save_color(graphics)
-    if Types.is_function(graphics.getColor) then
-        return { graphics.getColor() }
-    end
-    return nil
-end
-
-local function restore_color(graphics, saved)
-    if saved == nil or not Types.is_function(graphics.setColor) then return end
-    graphics.setColor(saved[1], saved[2], saved[3], saved[4])
-end
 
 local function save_stencil(graphics)
     return GraphicsStencil.save(graphics)
@@ -740,7 +720,7 @@ local function render_shadow_soft(
         return
     end
 
-    local pool = get_canvas_pool(graphics)
+    local pool = CanvasPoolRegistry.get_for(graphics)
     local canvas = pool:acquire(canvas_w, canvas_h)
     local prev_canvas = Types.is_function(graphics.getCanvas) and graphics.getCanvas() or nil
 
@@ -924,7 +904,12 @@ local function normalize_styling_value(property_name, value, node)
         return nil
     end
 
-    return Schema.validate(DrawableSchema, property_name, value, node, 3, 'Drawable')
+    local rule = DrawableSchema[property_name]
+    if rule == nil then
+        Assert.fail('Unsupported prop "' .. tostring(property_name) .. '"', 3)
+    end
+
+    return Rule.validate(rule, 'Drawable.' .. tostring(property_name), value, node, 3)
 end
 
 local function normalize_resolver_context(node, resolver_context)

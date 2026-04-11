@@ -1,13 +1,15 @@
 local Assert = require('lib.ui.utils.assert')
+local Container = require('lib.ui.core.container')
 local Scene = require('lib.ui.scene.scene')
 local Stage = require('lib.ui.scene.stage')
 local Transitions = require('lib.ui.scene.transitions')
-local Object = require('lib.cls')
 local Types = require('lib.ui.utils.types')
-local Schema = require('lib.ui.utils.schema')
+local Rule = require('lib.ui.utils.rule')
+local Proxy = require('lib.ui.utils.proxy')
+local ComposerSchema = require('lib.ui.scene.composer_schema')
 
-local Composer = Object:extends('Composer')
-Composer._schema = require('lib.ui.scene.composer_schema')
+local Composer = Container:extends('Composer')
+Composer._schema = ComposerSchema.composer
 
 
 
@@ -77,13 +79,7 @@ local function clear_transition_canvas(graphics)
 end
 
 local function get_public_value(self, key)
-    local public_values = rawget(self, '_public_values')
-
-    if public_values == nil then
-        return nil
-    end
-
-    return public_values[key]
+    return Proxy.raw_get(self, key)
 end
 
 local function assert_not_destroyed(self, level)
@@ -113,11 +109,22 @@ local function copy_options(opts)
         opts = {}
     end
 
-    Schema.validate_all(Composer._schema.composer, opts, 'Composer', 2)
+    for key, value in pairs(opts) do
+        local rule = ComposerSchema.composer[key]
+        if rule == nil then
+            Assert.fail('Composer does not support prop "' .. tostring(key) .. '"', 2)
+        end
+        Rule.validate(rule, 'Composer.' .. tostring(key), value, nil, 2, opts)
+    end
 
-    local copy = Schema.extract_defaults(Composer._schema.composer)
-    for k, v in pairs(opts) do
-        copy[k] = v
+    local copy = {}
+    for key, rule in pairs(ComposerSchema.composer) do
+        if rule.default ~= nil then
+            copy[key] = rule.default
+        end
+    end
+    for key, value in pairs(opts) do
+        copy[key] = value
     end
 
     return copy
@@ -130,7 +137,13 @@ local function copy_navigation_options(options)
 
     Assert.table('options', options, 2)
 
-    Schema.validate_all(Composer._schema.navigation, options, 'gotoScene', 3)
+    for key, value in pairs(options) do
+        local rule = ComposerSchema.navigation[key]
+        if rule == nil then
+            Assert.fail('gotoScene does not support option "' .. tostring(key) .. '"', 3)
+        end
+        Rule.validate(rule, 'gotoScene.' .. tostring(key), value, nil, 3, options)
+    end
 
     local copy = {}
     for key, value in pairs(options) do
@@ -178,25 +191,21 @@ local function run_protected(callback)
 end
 
 function Composer:__index(key)
-    -- Walk the class hierarchy for methods
-    local cls = getmetatable(self)
-    local current = cls
-    while current do
-        local val = rawget(current, key)
-        if val ~= nil then return val end
-        current = rawget(current, "super")
-    end
-
-    if Composer._schema.composer[key] then
-        return get_public_value(self, key)
-    end
-
     if key == 'stage' then
         return rawget(self, '_stage')
     end
 
     if key == 'transitionState' then
         return rawget(self, '_transition_state')
+    end
+
+    local current = rawget(self, '_pclass') or getmetatable(self)
+    while current ~= nil do
+        local method = rawget(current, key)
+        if method ~= nil then
+            return method
+        end
+        current = rawget(current, 'super')
     end
 
     return nil
@@ -216,23 +225,19 @@ function Composer:__newindex(key, value)
         Assert.fail('Composer runtime ownership is internal', 2)
     end
 
-    if Composer._schema.composer[key] then
-        assert_not_destroyed(self, 2)
-        Schema.validate(Composer._schema.composer, key, value, 'Composer', 2)
-        local public_values = rawget(self, '_public_values')
-        if public_values then
-            public_values[key] = value
-        end
-        return
-    end
-
     rawset(self, key, value)
 end
 
 function Composer:constructor(opts)
     opts = copy_options(opts)
 
-    rawset(self, '_public_values', opts)
+    Container.constructor(self, {}, Composer._schema)
+    self.schema:define(Composer._schema)
+
+    for key, value in pairs(opts) do
+        self[key] = value
+    end
+
     rawset(self, '_scene_registry', {})
     rawset(self, '_current_scene', nil)
     rawset(self, '_current_scene_name', nil)
