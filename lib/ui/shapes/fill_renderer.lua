@@ -2,6 +2,7 @@ local Types = require('lib.ui.utils.types')
 local GraphicsStencil = require('lib.ui.render.graphics_stencil')
 local Texture = require('lib.ui.graphics.texture')
 local Sprite = require('lib.ui.graphics.sprite')
+local RuntimeProfiler = require('profiler.runtime_profiler')
 
 local FillRenderer = {}
 
@@ -54,23 +55,63 @@ local function raise_unusable_texture_source(source_prop)
     error('Active ' .. tostring(source_prop) .. ' source is unusable at draw time', 0)
 end
 
+local function get_renderer_scratch(shape)
+    local scratch = rawget(shape, '_fill_renderer_scratch')
+
+    if scratch == nil then
+        -- Non-flat fill scratch stays shape-local because mesh builders mutate it between tiles/stops.
+        scratch = {
+            silhouette_points = {},
+            gradient_vertices = {},
+            textured_tile_vertices = {},
+        }
+        rawset(shape, '_fill_renderer_scratch', scratch)
+    end
+
+    return scratch
+end
+
+local function clear_tail(values, last_index)
+    for index = #values, last_index + 1, -1 do
+        values[index] = nil
+    end
+end
+
 local function flatten_world_points(shape, local_points)
-    local flattened = {}
+    local scratch = get_renderer_scratch(shape)
+    local flattened = scratch.silhouette_points
+    local flattened_index = 1
 
     for index = 1, #local_points do
         local point = local_points[index]
         local world_x, world_y = shape:localToWorld(point[1], point[2])
-        flattened[#flattened + 1] = world_x
-        flattened[#flattened + 1] = world_y
+        flattened[flattened_index] = world_x
+        flattened[flattened_index + 1] = world_y
+        flattened_index = flattened_index + 2
     end
+
+    clear_tail(flattened, flattened_index - 1)
 
     return flattened
 end
 
-local function append_gradient_triangle(vertices, ax, ay, bx, by, color_a, cx, cy, color_c)
-    vertices[#vertices + 1] = { ax, ay, color_a[1], color_a[2], color_a[3], color_a[4] }
-    vertices[#vertices + 1] = { bx, by, color_a[1], color_a[2], color_a[3], color_a[4] }
-    vertices[#vertices + 1] = { cx, cy, color_c[1], color_c[2], color_c[3], color_c[4] }
+local function set_mesh_vertex(vertices, index, x, y, z1, z2, z3, z4, z5, z6)
+    local vertex = vertices[index]
+
+    if vertex == nil then
+        vertex = { x, y, z1, z2, z3, z4, z5, z6 }
+        vertices[index] = vertex
+        return
+    end
+
+    vertex[1] = x
+    vertex[2] = y
+    vertex[3] = z1
+    vertex[4] = z2
+    vertex[5] = z3
+    vertex[6] = z4
+    vertex[7] = z5
+    vertex[8] = z6
 end
 
 local function build_gradient_vertices(shape, placement)
@@ -78,25 +119,16 @@ local function build_gradient_vertices(shape, placement)
     local gradient = placement.gradient
     local colors = gradient.colors
     local horizontal = placement.direction == 'horizontal'
-    local vertices = {}
+    local vertices = get_renderer_scratch(shape).gradient_vertices
+    local vertex_index = 1
 
     for index = 1, #colors - 1 do
         local start_t = (index - 1) / (#colors - 1)
         local end_t = index / (#colors - 1)
         local start_color = colors[index]
         local end_color = colors[index + 1]
-        local color_a = {
-            start_color[1],
-            start_color[2],
-            start_color[3],
-            (start_color[4] or 1) * placement.opacity,
-        }
-        local color_b = {
-            end_color[1],
-            end_color[2],
-            end_color[3],
-            (end_color[4] or 1) * placement.opacity,
-        }
+        local start_alpha = (start_color[4] or 1) * placement.opacity
+        local end_alpha = (end_color[4] or 1) * placement.opacity
 
         local start_ax = nil
         local start_ay = nil
@@ -123,9 +155,70 @@ local function build_gradient_vertices(shape, placement)
             end_bx, end_by = shape:localToWorld(bounds.x + bounds.width, end_y)
         end
 
-        append_gradient_triangle(vertices, start_ax, start_ay, start_bx, start_by, color_a, end_ax, end_ay, color_b)
-        append_gradient_triangle(vertices, start_bx, start_by, end_bx, end_by, color_a, end_ax, end_ay, color_b)
+        set_mesh_vertex(
+            vertices,
+            vertex_index,
+            start_ax,
+            start_ay,
+            start_color[1],
+            start_color[2],
+            start_color[3],
+            start_alpha
+        )
+        set_mesh_vertex(
+            vertices,
+            vertex_index + 1,
+            start_bx,
+            start_by,
+            start_color[1],
+            start_color[2],
+            start_color[3],
+            start_alpha
+        )
+        set_mesh_vertex(
+            vertices,
+            vertex_index + 2,
+            end_ax,
+            end_ay,
+            end_color[1],
+            end_color[2],
+            end_color[3],
+            end_alpha
+        )
+        set_mesh_vertex(
+            vertices,
+            vertex_index + 3,
+            start_bx,
+            start_by,
+            start_color[1],
+            start_color[2],
+            start_color[3],
+            start_alpha
+        )
+        set_mesh_vertex(
+            vertices,
+            vertex_index + 4,
+            end_bx,
+            end_by,
+            start_color[1],
+            start_color[2],
+            start_color[3],
+            start_alpha
+        )
+        set_mesh_vertex(
+            vertices,
+            vertex_index + 5,
+            end_ax,
+            end_ay,
+            end_color[1],
+            end_color[2],
+            end_color[3],
+            end_alpha
+        )
+        vertex_index = vertex_index + 6
     end
+
+    clear_tail(vertices, vertex_index - 1)
 
     return vertices
 end
@@ -162,15 +255,16 @@ local function build_textured_tile_vertices(shape, tile, u1, v1, u2, v2, opacity
     local bottom_right_x, bottom_right_y = shape:localToWorld(tile.x + tile.width, tile.y + tile.height)
     local bottom_left_x, bottom_left_y = shape:localToWorld(tile.x, tile.y + tile.height)
     local alpha = opacity or 1
+    local vertices = get_renderer_scratch(shape).textured_tile_vertices
 
-    return {
-        { top_left_x, top_left_y, u1, v1, 1, 1, 1, alpha },
-        { top_right_x, top_right_y, u2, v1, 1, 1, 1, alpha },
-        { bottom_right_x, bottom_right_y, u2, v2, 1, 1, 1, alpha },
-        { top_left_x, top_left_y, u1, v1, 1, 1, 1, alpha },
-        { bottom_right_x, bottom_right_y, u2, v2, 1, 1, 1, alpha },
-        { bottom_left_x, bottom_left_y, u1, v2, 1, 1, 1, alpha },
-    }
+    set_mesh_vertex(vertices, 1, top_left_x, top_left_y, u1, v1, 1, 1, 1, alpha)
+    set_mesh_vertex(vertices, 2, top_right_x, top_right_y, u2, v1, 1, 1, 1, alpha)
+    set_mesh_vertex(vertices, 3, bottom_right_x, bottom_right_y, u2, v2, 1, 1, 1, alpha)
+    set_mesh_vertex(vertices, 4, top_left_x, top_left_y, u1, v1, 1, 1, 1, alpha)
+    set_mesh_vertex(vertices, 5, bottom_right_x, bottom_right_y, u2, v2, 1, 1, 1, alpha)
+    set_mesh_vertex(vertices, 6, bottom_left_x, bottom_left_y, u1, v2, 1, 1, 1, alpha)
+
+    return vertices
 end
 
 local function ensure_non_flat_renderer_support(graphics, source_prop)
@@ -255,49 +349,53 @@ local function draw_texture_fill(shape, graphics, local_points, placement)
         raise_unusable_texture_source(placement.source_prop)
     end
 
-    local meshes = {}
-    for index = 1, #placement.placements do
-        local tile = placement.placements[index]
-        local mesh = graphics.newMesh(
-            TEXTURE_MESH_FORMAT,
-            build_textured_tile_vertices(shape, tile, u1, v1, u2, v2, placement.opacity),
-            'triangles',
-            'static'
-        )
-
-        if mesh == nil then
-            raise_unsupported_renderer(placement.source_prop, 'graphics.newMesh returned nil')
-        end
-
-        if not Types.is_function(mesh.setTexture) then
-            raise_unsupported_renderer(placement.source_prop, 'mesh texture binding is unavailable')
-        end
-
-        mesh:setTexture(drawable)
-        meshes[#meshes + 1] = mesh
-    end
+    local emitted_meshes = 0
 
     with_silhouette_clip(graphics, flatten_world_points(shape, local_points), function()
-        for index = 1, #meshes do
-            graphics.draw(meshes[index])
+        for index = 1, #placement.placements do
+            local tile = placement.placements[index]
+            local mesh = graphics.newMesh(
+                TEXTURE_MESH_FORMAT,
+                build_textured_tile_vertices(shape, tile, u1, v1, u2, v2, placement.opacity),
+                'triangles',
+                'static'
+            )
+
+            if mesh == nil then
+                raise_unsupported_renderer(placement.source_prop, 'graphics.newMesh returned nil')
+            end
+
+            if not Types.is_function(mesh.setTexture) then
+                raise_unsupported_renderer(placement.source_prop, 'mesh texture binding is unavailable')
+            end
+
+            mesh:setTexture(drawable)
+            graphics.draw(mesh)
+            emitted_meshes = emitted_meshes + 1
         end
     end)
 
-    return #meshes > 0
+    return emitted_meshes > 0
 end
 
 function FillRenderer.draw(shape, graphics, local_points, placement)
+    local profile_token = RuntimeProfiler.push_zone('FillRenderer.draw')
     placement = placement or shape:_resolve_active_fill_placement()
     local_points = local_points or shape:_get_local_points()
 
     if placement.kind == 'gradient' then
-        return draw_gradient_fill(shape, graphics, local_points, placement)
+        local result = draw_gradient_fill(shape, graphics, local_points, placement)
+        RuntimeProfiler.pop_zone(profile_token)
+        return result
     end
 
     if placement.kind == 'texture' then
-        return draw_texture_fill(shape, graphics, local_points, placement)
+        local result = draw_texture_fill(shape, graphics, local_points, placement)
+        RuntimeProfiler.pop_zone(profile_token)
+        return result
     end
 
+    RuntimeProfiler.pop_zone(profile_token)
     return false
 end
 

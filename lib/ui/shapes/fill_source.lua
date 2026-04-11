@@ -1,4 +1,5 @@
 local Types = require('lib.ui.utils.types')
+local RuntimeProfiler = require('profiler.runtime_profiler')
 
 local FillSource = {}
 
@@ -40,7 +41,8 @@ local function get_surface_value(shape, key, default)
 end
 
 function FillSource.resolve_surface(shape)
-    return {
+    local profile_token = RuntimeProfiler.push_zone('FillSource.resolve_surface')
+    local surface = {
         fillColor = get_surface_value(shape, 'fillColor', default_fill_color()),
         fillOpacity = get_surface_value(shape, 'fillOpacity', 1),
         fillGradient = get_surface_value(shape, 'fillGradient', nil),
@@ -52,9 +54,12 @@ function FillSource.resolve_surface(shape)
         fillAlignX = get_surface_value(shape, 'fillAlignX', 'center'),
         fillAlignY = get_surface_value(shape, 'fillAlignY', 'center'),
     }
+    RuntimeProfiler.pop_zone(profile_token)
+    return surface
 end
 
 function FillSource.resolve_active_descriptor(fill_surface)
+    local profile_token = RuntimeProfiler.push_zone('FillSource.resolve_active_descriptor')
     fill_surface = fill_surface or {}
 
     local descriptor = {
@@ -72,6 +77,7 @@ function FillSource.resolve_active_descriptor(fill_surface)
         descriptor.source_prop = 'fillTexture'
         descriptor.source = fill_surface.fillTexture
         descriptor.texture = fill_surface.fillTexture
+        RuntimeProfiler.pop_zone(profile_token)
         return descriptor
     end
 
@@ -80,6 +86,7 @@ function FillSource.resolve_active_descriptor(fill_surface)
         descriptor.source_prop = 'fillGradient'
         descriptor.source = fill_surface.fillGradient
         descriptor.gradient = fill_surface.fillGradient
+        RuntimeProfiler.pop_zone(profile_token)
         return descriptor
     end
 
@@ -89,6 +96,7 @@ function FillSource.resolve_active_descriptor(fill_surface)
     descriptor.source_prop = 'fillColor'
     descriptor.source = fill_color
     descriptor.color = fill_color
+    RuntimeProfiler.pop_zone(profile_token)
 
     return descriptor
 end

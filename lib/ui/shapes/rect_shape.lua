@@ -9,13 +9,18 @@ end
 
 function RectShape:_get_local_points()
     local bounds = self:_get_shape_local_bounds()
+    local points = self:_get_local_point_buffer(4)
 
-    return {
-        { bounds.x, bounds.y },
-        { bounds.x + bounds.width, bounds.y },
-        { bounds.x + bounds.width, bounds.y + bounds.height },
-        { bounds.x, bounds.y + bounds.height },
-    }
+    points[1][1] = bounds.x
+    points[1][2] = bounds.y
+    points[2][1] = bounds.x + bounds.width
+    points[2][2] = bounds.y
+    points[3][1] = bounds.x + bounds.width
+    points[3][2] = bounds.y + bounds.height
+    points[4][1] = bounds.x
+    points[4][2] = bounds.y + bounds.height
+
+    return points
 end
 
 function RectShape:draw(graphics)
@@ -29,7 +34,7 @@ function RectShape:draw(graphics)
     end
 
     local local_points = self:_get_local_points()
-    local world_points = DrawHelpers.transform_local_points(self, local_points)
+    local world_points = self:_transform_local_points(local_points)
     local active_fill = self:_resolve_active_fill_source()
 
     if active_fill.kind == 'color' and type(graphics.polygon) ~= 'function' then

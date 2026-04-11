@@ -36,7 +36,19 @@ end
 
 function TriangleShape:_get_local_points()
     local bounds = self:_get_shape_local_bounds()
-    return resolve_local_points(bounds)
+    local points = self:_get_local_point_buffer(3)
+    local top_x = bounds.x + (bounds.width / 2)
+    local top_y = bounds.y
+    local base_y = bounds.y + bounds.height
+
+    points[1][1] = top_x
+    points[1][2] = top_y
+    points[2][1] = bounds.x + bounds.width
+    points[2][2] = base_y
+    points[3][1] = bounds.x
+    points[3][2] = base_y
+
+    return points
 end
 
 function TriangleShape:_requires_shape_result_clip()
@@ -62,7 +74,7 @@ function TriangleShape:draw(graphics)
     end
 
     local local_points = self:_get_local_points()
-    local world_points = DrawHelpers.transform_local_points(self, local_points)
+    local world_points = self:_transform_local_points(local_points)
     local active_fill = self:_resolve_active_fill_source()
 
     if active_fill.kind == 'color' and type(graphics.polygon) ~= 'function' then

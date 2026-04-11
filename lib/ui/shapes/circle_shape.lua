@@ -2,6 +2,7 @@ local Shape = require('lib.ui.core.shape')
 local DrawHelpers = require('lib.ui.shapes.draw_helpers')
 
 local CircleShape = Shape:extends('CircleShape')
+local WHITE_COLOR = { 1, 1, 1, 1 }
 
 local abs = math.abs
 local ceil = math.ceil
@@ -23,7 +24,11 @@ local function resolve_segments(shape)
         return DEFAULT_SEGMENTS
     end
 
-    local bounds = shape:getLocalBounds()
+    -- Use the raw local-bounds cache directly instead of calling getLocalBounds(),
+    -- which triggers ensure_current() and re-enters the update cycle if this runs
+    -- from inside refresh_bounds (refresh_bounds -> _get_world_bounds_points ->
+    -- _get_local_points -> resolve_segments -> getLocalBounds -> refresh_bounds).
+    local bounds = shape:_get_shape_local_bounds()
     local radius_x = bounds.width / 2
     local radius_y = bounds.height / 2
 
@@ -88,8 +93,8 @@ local function resolve_closed_dash_pattern(perimeter, dash_length, gap_length)
     return adjusted_dash, adjusted_cycle - adjusted_dash
 end
 
-local function build_local_ellipse_points(bounds, segments)
-    local points = {}
+local function build_local_ellipse_points(bounds, segments, points)
+    points = points or {}
     local radius_x = bounds.width / 2
     local radius_y = bounds.height / 2
     local center_x = bounds.x + radius_x
@@ -97,10 +102,20 @@ local function build_local_ellipse_points(bounds, segments)
 
     for index = 0, segments - 1 do
         local angle = (-math.pi / 2) + ((index / segments) * TWO_PI)
-        points[#points + 1] = {
-            center_x + math.cos(angle) * radius_x,
-            center_y + math.sin(angle) * radius_y,
-        }
+        local point_index = index + 1
+        local point = points[point_index]
+
+        if point == nil then
+            point = { 0, 0 }
+            points[point_index] = point
+        end
+
+        point[1] = center_x + math.cos(angle) * radius_x
+        point[2] = center_y + math.sin(angle) * radius_y
+    end
+
+    for index = #points, segments + 1, -1 do
+        points[index] = nil
     end
 
     return points
@@ -206,9 +221,9 @@ local function draw_polygon_result_clip_fill(shape, graphics, radius_delta, segm
         return false
     end
 
-    local local_points = build_local_ellipse_points(adjusted_bounds, segments)
-    local world_points = DrawHelpers.transform_local_points(shape, local_points)
-    graphics.polygon('fill', DrawHelpers.flatten_points(world_points))
+    local local_points = build_local_ellipse_points(adjusted_bounds, segments, shape:_get_local_point_buffer(segments))
+    local world_points = shape:_transform_local_points(local_points)
+    graphics.polygon('fill', shape:_flatten_points(world_points))
 
     return true
 end
@@ -256,18 +271,26 @@ local function resolve_stroke_draw_options(shape, bounds, world_points)
         end
     end
 
-    return world_points, {
-        color = shape.strokeColor,
-        opacity = shape.strokeOpacity or 1,
-        width = shape.strokeWidth or 0,
-        style = shape.strokeStyle or 'smooth',
-        join = nil,
-        miter_limit = nil,
-        pattern = stroke_pattern,
-        dash_length = dash_length,
-        gap_length = gap_length,
-        dash_offset = dash_offset,
-    }
+    local stroke = rawget(shape, '_circle_stroke_options_scratch')
+
+    if stroke == nil then
+        stroke = {}
+        rawset(shape, '_circle_stroke_options_scratch', stroke)
+    end
+
+    stroke.color = shape.strokeColor
+    stroke.opacity = shape.strokeOpacity or 1
+    stroke.width = shape.strokeWidth or 0
+    stroke.style = shape.strokeStyle or 'smooth'
+    stroke.join = nil
+    stroke.miter_limit = nil
+    stroke.pattern = stroke_pattern
+    stroke.dash_length = dash_length
+    stroke.gap_length = gap_length
+    stroke.dash_offset = dash_offset
+    stroke.node_opacity = nil
+
+    return world_points, stroke
 end
 
 function CircleShape:constructor(opts)
@@ -276,7 +299,8 @@ end
 
 function CircleShape:_get_local_points()
     local bounds = self:_get_shape_local_bounds()
-    return build_local_ellipse_points(bounds, resolve_segments(self))
+    local segments = resolve_segments(self)
+    return build_local_ellipse_points(bounds, segments, self:_get_local_point_buffer(segments))
 end
 
 function CircleShape:_requires_shape_result_clip()
@@ -314,7 +338,7 @@ function CircleShape:draw(graphics)
     local segments = resolve_segments(self)
     local axis_aligned_world_ellipse = nil
     local local_points = self:_get_local_points()
-    local world_points = DrawHelpers.transform_local_points(self, local_points)
+    local world_points = self:_transform_local_points(local_points)
     local active_fill = self:_resolve_active_fill_source()
 
     if type(graphics.ellipse) == 'function' then
@@ -369,7 +393,7 @@ end
 function CircleShape:_draw_root_compositing_result_stroke_mask(graphics, world_points)
     local bounds = self:getLocalBounds()
     local stroked_world_points, stroke = resolve_stroke_draw_options(self, bounds, world_points)
-    stroke.color = { 1, 1, 1, 1 }
+    stroke.color = WHITE_COLOR
     stroke.opacity = 1
     stroke.node_opacity = 1
 

@@ -5,6 +5,7 @@ local Insets = require('lib.ui.core.insets')
 local Rectangle = require('lib.ui.core.rectangle')
 local Schema = require('lib.ui.utils.schema')
 local Motion = require('lib.ui.motion')
+local RootCompositor = require('lib.ui.render.root_compositor')
 local Styling = require('lib.ui.render.styling')
 
 local max = math.max
@@ -690,6 +691,16 @@ function Drawable:_apply_motion_value(target_name, property_name, value)
     end
 
     state[property_name] = value
+
+    local plan_target = surface
+    if rawget(plan_target, '_ui_container_instance') ~= true then
+        plan_target = self
+    end
+
+    if RootCompositor.motion_property_affects_node_plan(plan_target, property_name) then
+        RootCompositor.invalidate_node_plan(plan_target)
+    end
+
     return surface
 end
 

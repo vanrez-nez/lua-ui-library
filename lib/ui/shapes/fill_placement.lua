@@ -1,5 +1,6 @@
 local GraphicsSource = require('lib.ui.render.graphics_source')
 local SourcePlacement = require('lib.ui.render.source_placement')
+local RuntimeProfiler = require('profiler.runtime_profiler')
 
 local FillPlacement = {}
 
@@ -90,11 +91,14 @@ local function resolve_texture_placement(bounds, descriptor)
 end
 
 function FillPlacement.resolve(bounds, descriptor)
+    local profile_token = RuntimeProfiler.push_zone('FillPlacement.resolve')
     local resolved_bounds = copy_bounds(bounds or {})
     descriptor = descriptor or {}
 
     if descriptor.kind == 'texture' then
-        return resolve_texture_placement(resolved_bounds, descriptor)
+        local placement = resolve_texture_placement(resolved_bounds, descriptor)
+        RuntimeProfiler.pop_zone(profile_token)
+        return placement
     end
 
     if descriptor.kind == 'gradient' then
@@ -102,7 +106,7 @@ function FillPlacement.resolve(bounds, descriptor)
         local direction = (gradient and gradient.direction) or 'horizontal'
         local start_x, start_y, end_x, end_y = resolve_gradient_points(resolved_bounds, direction)
 
-        return {
+        local placement = {
             kind = 'gradient',
             source_prop = descriptor.source_prop or 'fillGradient',
             source = gradient,
@@ -117,11 +121,13 @@ function FillPlacement.resolve(bounds, descriptor)
             endX = end_x,
             endY = end_y,
         }
+        RuntimeProfiler.pop_zone(profile_token)
+        return placement
     end
 
     local fill_color = descriptor.color or descriptor.source or { 1, 1, 1, 1 }
 
-    return {
+    local placement = {
         kind = 'color',
         source_prop = descriptor.source_prop or 'fillColor',
         source = fill_color,
@@ -131,6 +137,8 @@ function FillPlacement.resolve(bounds, descriptor)
         localBounds = resolved_bounds,
         span = copy_bounds(resolved_bounds),
     }
+    RuntimeProfiler.pop_zone(profile_token)
+    return placement
 end
 
 return FillPlacement

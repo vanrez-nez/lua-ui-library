@@ -4,10 +4,12 @@ local Rectangle = require('lib.ui.core.rectangle')
 local CanvasPool = require('lib.ui.render.canvas_pool')
 local GraphicsState = require('lib.ui.render.graphics_state')
 local GraphicsValidation = require('lib.ui.render.graphics_validation')
+local RuntimeProfiler = require('profiler.runtime_profiler')
 
 local ceil = math.ceil
 local cos = math.cos
 local max = math.max
+local min = math.min
 local sin = math.sin
 
 local RootCompositor = {}
@@ -25,6 +27,60 @@ local EMPTY_COMPOSITING_EXTRAS = {
     scaleX = 1,
     scaleY = 1,
     rotation = 0,
+}
+
+local ZERO_WORLD_ORIGIN = {
+    x = 0,
+    y = 0,
+}
+
+local DEFAULT_ROOT_COMPOSITING_STATE = {
+    opacity = GraphicsValidation.ROOT_OPACITY_DEFAULT,
+    shader = nil,
+    blendMode = GraphicsValidation.ROOT_BLEND_MODE_DEFAULT,
+}
+
+local DEFAULT_ROOT_COMPOSITING_PLAN = {
+    root_compositing_state = DEFAULT_ROOT_COMPOSITING_STATE,
+    compositing_extras = nil,
+    result_clip = nil,
+}
+
+local NO_ROOT_COMPOSITING_PLAN = {}
+
+local ROOT_COMPOSITING_STATE_PUBLIC_KEYS = {
+    opacity = true,
+    shader = true,
+    blendMode = true,
+}
+
+local ROOT_COMPOSITING_EXTRA_PUBLIC_KEYS = {
+    mask = true,
+}
+
+local ROOT_COMPOSITING_STATE_MOTION_KEYS = {
+    opacity = true,
+    shader = true,
+    blendMode = true,
+}
+
+local ROOT_COMPOSITING_EXTRA_MOTION_KEYS = {
+    translationX = true,
+    translationY = true,
+    scaleX = true,
+    scaleY = true,
+    rotation = true,
+}
+
+local SHAPE_RESULT_CLIP_SURFACE_KEYS = {
+    fillColor = true,
+    fillOpacity = true,
+    fillGradient = true,
+    fillTexture = true,
+    strokeColor = true,
+    strokeOpacity = true,
+    strokeWidth = true,
+    strokePattern = true,
 }
 
 local canvas_pools = setmetatable({}, { __mode = 'k' })
@@ -85,6 +141,14 @@ local function get_node_root_compositing_capabilities(node)
     return get_class_root_compositing_capabilities(getmetatable(node))
 end
 
+local function node_uses_root_compositing_extras(node)
+    return rawget(node, '_ui_drawable_instance') == true
+end
+
+local function node_uses_shape_result_clip(node)
+    return rawget(node, '_ui_shape_instance') == true
+end
+
 local function get_motion_surface_value(node, key)
     if not Types.is_table(node) then
         return nil
@@ -96,6 +160,27 @@ local function get_motion_surface_value(node, key)
     end
 
     return state[key]
+end
+
+local function get_cached_node_plan(node, runtime)
+    local cached_runtime = rawget(node, '_root_compositing_plan_cache_runtime')
+    local cached_plan = rawget(node, '_root_compositing_plan_cache')
+
+    if cached_plan == nil or cached_runtime ~= runtime then
+        return nil, false
+    end
+
+    if cached_plan == NO_ROOT_COMPOSITING_PLAN then
+        return nil, true
+    end
+
+    return cached_plan, true
+end
+
+local function set_cached_node_plan(node, runtime, plan)
+    rawset(node, '_root_compositing_plan_cache_runtime', runtime)
+    rawset(node, '_root_compositing_plan_cache', plan or NO_ROOT_COMPOSITING_PLAN)
+    return plan
 end
 
 local function get_canvas_pool(graphics)
@@ -168,6 +253,31 @@ local function create_source_quad(graphics, drawable, rect)
     )
 end
 
+local function normalize_root_compositing_state(opacity, shader, blend_mode)
+    local resolved_opacity = opacity
+    local resolved_blend_mode = blend_mode
+
+    if resolved_opacity == nil then
+        resolved_opacity = GraphicsValidation.ROOT_OPACITY_DEFAULT
+    end
+
+    if resolved_blend_mode == nil then
+        resolved_blend_mode = GraphicsValidation.ROOT_BLEND_MODE_DEFAULT
+    end
+
+    if resolved_opacity == GraphicsValidation.ROOT_OPACITY_DEFAULT and
+        shader == nil and
+        resolved_blend_mode == GraphicsValidation.ROOT_BLEND_MODE_DEFAULT then
+        return DEFAULT_ROOT_COMPOSITING_STATE
+    end
+
+    return {
+        opacity = resolved_opacity,
+        shader = shader,
+        blendMode = resolved_blend_mode,
+    }
+end
+
 local function resolve_root_compositing_state(node, runtime)
     local capabilities = get_node_root_compositing_capabilities(node)
     if not (capabilities.opacity or capabilities.shader or capabilities.blendMode) then
@@ -184,11 +294,37 @@ local function resolve_root_compositing_state(node, runtime)
         end
     end
 
-    return GraphicsValidation.normalize_root_compositing_state({
-        opacity = opacity,
-        shader = capabilities.shader and get_effective_value(node, 'shader') or nil,
-        blendMode = capabilities.blendMode and get_effective_value(node, 'blendMode') or nil,
-    })
+    return normalize_root_compositing_state(
+        opacity,
+        capabilities.shader and get_effective_value(node, 'shader') or nil,
+        capabilities.blendMode and get_effective_value(node, 'blendMode') or nil
+    )
+end
+
+local function normalize_compositing_extras(compositing_extras)
+    if not Types.is_table(compositing_extras) then
+        return nil
+    end
+
+    local normalized = {
+        mask = compositing_extras.mask,
+        translationX = compositing_extras.translationX or 0,
+        translationY = compositing_extras.translationY or 0,
+        scaleX = compositing_extras.scaleX ~= nil and compositing_extras.scaleX or 1,
+        scaleY = compositing_extras.scaleY ~= nil and compositing_extras.scaleY or 1,
+        rotation = compositing_extras.rotation or 0,
+    }
+
+    if normalized.mask == nil and
+        normalized.translationX == 0 and
+        normalized.translationY == 0 and
+        normalized.scaleX == 1 and
+        normalized.scaleY == 1 and
+        normalized.rotation == 0 then
+        return nil
+    end
+
+    return normalized
 end
 
 local function resolve_node_compositing_extras(node)
@@ -198,7 +334,7 @@ local function resolve_node_compositing_extras(node)
         return nil
     end
 
-    return node:_resolve_root_compositing_extras()
+    return normalize_compositing_extras(node:_resolve_root_compositing_extras())
 end
 
 local function resolve_node_world_paint_bounds(node)
@@ -231,21 +367,101 @@ local function resolve_node_result_clip(node)
     return node:_resolve_root_compositing_result_clip()
 end
 
+function RootCompositor.invalidate_node_plan(node)
+    if not Types.is_table(node) then
+        return false
+    end
+
+    if rawget(node, '_root_compositing_plan_cache') == nil and
+        rawget(node, '_root_compositing_plan_cache_runtime') == nil then
+        return false
+    end
+
+    rawset(node, '_root_compositing_plan_cache', nil)
+    rawset(node, '_root_compositing_plan_cache_runtime', nil)
+    return true
+end
+
+function RootCompositor.property_affects_node_plan(node, key)
+    if not Types.is_table(node) or not Types.is_string(key) then
+        return false
+    end
+
+    if ROOT_COMPOSITING_STATE_PUBLIC_KEYS[key] then
+        local capabilities = get_node_root_compositing_capabilities(node)
+        return capabilities[key] == true
+    end
+
+    if ROOT_COMPOSITING_EXTRA_PUBLIC_KEYS[key] then
+        return node_uses_root_compositing_extras(node)
+    end
+
+    if SHAPE_RESULT_CLIP_SURFACE_KEYS[key] then
+        return node_uses_shape_result_clip(node)
+    end
+
+    return false
+end
+
+function RootCompositor.motion_property_affects_node_plan(node, property_name)
+    if not Types.is_table(node) or not Types.is_string(property_name) then
+        return false
+    end
+
+    if ROOT_COMPOSITING_STATE_MOTION_KEYS[property_name] then
+        local capabilities = get_node_root_compositing_capabilities(node)
+        return capabilities[property_name] == true
+    end
+
+    if ROOT_COMPOSITING_EXTRA_MOTION_KEYS[property_name] then
+        return node_uses_root_compositing_extras(node)
+    end
+
+    if SHAPE_RESULT_CLIP_SURFACE_KEYS[property_name] then
+        return node_uses_shape_result_clip(node)
+    end
+
+    return false
+end
+
 function RootCompositor.resolve_node_plan(node, runtime)
+    local profile_token = RuntimeProfiler.push_zone('RootCompositor.resolve_node_plan')
+    local cached_plan, has_cached_plan = get_cached_node_plan(node, runtime)
+
+    if has_cached_plan then
+        RuntimeProfiler.pop_zone(profile_token)
+        return cached_plan
+    end
+
     local root_compositing_state = resolve_root_compositing_state(node, runtime)
     local compositing_extras = resolve_node_compositing_extras(node)
     local result_clip = resolve_node_result_clip(node)
 
-    if root_compositing_state == nil and compositing_extras == nil then
+    if root_compositing_state == nil and compositing_extras == nil and result_clip == nil then
+        set_cached_node_plan(node, runtime, nil)
+        RuntimeProfiler.pop_zone(profile_token)
         return nil
     end
 
-    return {
-        root_compositing_state = root_compositing_state or
-            GraphicsValidation.normalize_root_compositing_state(),
+    if root_compositing_state == nil then
+        root_compositing_state = DEFAULT_ROOT_COMPOSITING_STATE
+    end
+
+    if root_compositing_state == DEFAULT_ROOT_COMPOSITING_STATE and
+        compositing_extras == nil and result_clip == nil then
+        set_cached_node_plan(node, runtime, DEFAULT_ROOT_COMPOSITING_PLAN)
+        RuntimeProfiler.pop_zone(profile_token)
+        return DEFAULT_ROOT_COMPOSITING_PLAN
+    end
+
+    local plan = {
+        root_compositing_state = root_compositing_state,
         compositing_extras = compositing_extras,
         result_clip = result_clip,
     }
+    set_cached_node_plan(node, runtime, plan)
+    RuntimeProfiler.pop_zone(profile_token)
+    return plan
 end
 
 local function compositing_extras_require_isolation(compositing_extras)
@@ -262,14 +478,18 @@ local function compositing_extras_require_isolation(compositing_extras)
 end
 
 function RootCompositor.plan_requires_isolation(compositing_plan)
+    local profile_token = RuntimeProfiler.push_zone('RootCompositor.plan_requires_isolation')
     if compositing_plan == nil then
+        RuntimeProfiler.pop_zone(profile_token)
         return false
     end
 
-    return not GraphicsValidation.is_default_root_compositing_state(
+    local requires_isolation = not GraphicsValidation.is_default_root_compositing_state(
             compositing_plan.root_compositing_state
         ) or
         compositing_extras_require_isolation(compositing_plan.compositing_extras)
+    RuntimeProfiler.pop_zone(profile_token)
+    return requires_isolation
 end
 
 function RootCompositor.initialize_render_state(graphics, render_state)
@@ -307,7 +527,50 @@ local function pop_composition_target(render_state, graphics)
     return target
 end
 
-local function get_isolation_canvas_size(node, render_state, runtime, graphics)
+local function ensure_composition_target_origin_stack(render_state, graphics)
+    render_state = RootCompositor.initialize_render_state(graphics, render_state)
+
+    if render_state.composition_target_origin_stack == nil then
+        render_state.composition_target_origin_stack = {
+            ZERO_WORLD_ORIGIN,
+        }
+    end
+
+    return render_state.composition_target_origin_stack
+end
+
+local function peek_composition_target_origin(render_state, graphics)
+    local composition_target_origin_stack = ensure_composition_target_origin_stack(render_state, graphics)
+    return composition_target_origin_stack[#composition_target_origin_stack] or ZERO_WORLD_ORIGIN
+end
+
+local function push_composition_target_origin(render_state, graphics, origin)
+    local composition_target_origin_stack = ensure_composition_target_origin_stack(render_state, graphics)
+    local next_index = #composition_target_origin_stack + 1
+    local entry = composition_target_origin_stack[next_index]
+
+    if entry == nil then
+        entry = {
+            x = 0,
+            y = 0,
+        }
+        composition_target_origin_stack[next_index] = entry
+    end
+
+    entry.x = origin and origin.x or 0
+    entry.y = origin and origin.y or 0
+
+    return composition_target_origin_stack
+end
+
+local function pop_composition_target_origin(render_state, graphics)
+    local composition_target_origin_stack = ensure_composition_target_origin_stack(render_state, graphics)
+    local origin = composition_target_origin_stack[#composition_target_origin_stack]
+    composition_target_origin_stack[#composition_target_origin_stack] = nil
+    return origin
+end
+
+local function get_full_isolation_canvas_size(node, render_state, runtime, graphics)
     local target = peek_composition_target(render_state, graphics)
     local target_width, target_height = get_drawable_dimensions(target)
 
@@ -512,10 +775,222 @@ local function apply_canvas_composite_blend_mode(graphics, root_compositing_stat
     GraphicsState.set_blend_mode(graphics, blend_mode, 'premultiplied')
 end
 
-local function composite_isolated_subtree(node, graphics, canvas, compositing_plan, clip_state, runtime)
+local function can_use_cropped_isolation(compositing_plan, graphics)
+    local root_compositing_state = compositing_plan and compositing_plan.root_compositing_state or nil
+
+    if compositing_plan == nil or root_compositing_state == nil then
+        return false
+    end
+
+    if root_compositing_state.shader ~= nil then
+        return false
+    end
+
+    if compositing_plan.result_clip ~= nil then
+        return false
+    end
+
+    if compositing_extras_require_isolation(compositing_plan.compositing_extras) then
+        return false
+    end
+
+    -- The optimized path is intentionally narrow until shader, result-clip,
+    -- and compositing-motion equivalence are proven with focused coverage.
+    return Types.is_function(graphics.push) and
+        Types.is_function(graphics.pop) and
+        Types.is_function(graphics.translate) and
+        Types.is_function(graphics.origin)
+end
+
+local function resolve_canvas_local_rect(rect, canvas_world_origin)
+    if rect == nil then
+        return nil
+    end
+
+    local origin = canvas_world_origin or ZERO_WORLD_ORIGIN
+
+    return Rectangle(
+        rect.x - (origin.x or 0),
+        rect.y - (origin.y or 0),
+        rect.width,
+        rect.height
+    )
+end
+
+local function intersect_rect_values(first, second, target)
+    if first == nil then
+        if second == nil then
+            return nil
+        end
+
+        target = target or Rectangle(0, 0, 0, 0)
+        target.x = second.x or 0
+        target.y = second.y or 0
+        target.width = second.width or 0
+        target.height = second.height or 0
+        return target
+    end
+
+    if second == nil then
+        target = target or Rectangle(0, 0, 0, 0)
+        target.x = first.x or 0
+        target.y = first.y or 0
+        target.width = first.width or 0
+        target.height = first.height or 0
+        return target
+    end
+
+    target = target or Rectangle(0, 0, 0, 0)
+    local left = max(first.x or 0, second.x or 0)
+    local top = max(first.y or 0, second.y or 0)
+    local right = min(
+        (first.x or 0) + (first.width or 0),
+        (second.x or 0) + (second.width or 0)
+    )
+    local bottom = min(
+        (first.y or 0) + (first.height or 0),
+        (second.y or 0) + (second.height or 0)
+    )
+
+    target.x = left
+    target.y = top
+    target.width = max(0, right - left)
+    target.height = max(0, bottom - top)
+
+    return target
+end
+
+local function acquire_isolation_clip_state(render_state)
+    local depth = (render_state._isolation_clip_state_depth or 0) + 1
+    local stack = render_state._isolation_clip_state_stack
+
+    if stack == nil then
+        stack = {}
+        render_state._isolation_clip_state_stack = stack
+    end
+
+    local clip_state = stack[depth]
+
+    if clip_state == nil then
+        -- Isolation clip state is reused by depth so nested isolated draws cannot trample each other.
+        clip_state = {
+            active_clips = {},
+            scissor = nil,
+            scissor_scratch_stack = {},
+            stencil_compare = nil,
+            stencil_value = nil,
+        }
+        stack[depth] = clip_state
+    end
+
+    for index = #clip_state.active_clips, 1, -1 do
+        clip_state.active_clips[index] = nil
+    end
+
+    clip_state.scissor = nil
+    clip_state.stencil_compare = nil
+    clip_state.stencil_value = nil
+    render_state._isolation_clip_state_depth = depth
+
+    return clip_state, depth
+end
+
+local function release_isolation_clip_state(render_state, depth)
+    if render_state._isolation_clip_state_depth == depth then
+        render_state._isolation_clip_state_depth = depth - 1
+    end
+end
+
+local function acquire_isolation_render_state(render_state, node)
+    local depth = (render_state._isolation_render_state_depth or 0) + 1
+    local stack = render_state._isolation_render_state_stack
+
+    if stack == nil then
+        stack = {}
+        render_state._isolation_render_state_stack = stack
+    end
+
+    local nested_render_state = stack[depth]
+
+    if nested_render_state == nil then
+        nested_render_state = {}
+        stack[depth] = nested_render_state
+    end
+
+    nested_render_state.suppress_root_compositing_for = node
+    nested_render_state.composition_target_stack = render_state.composition_target_stack
+    nested_render_state.composition_target_origin_stack = render_state.composition_target_origin_stack
+    render_state._isolation_render_state_depth = depth
+
+    return nested_render_state, depth
+end
+
+local function release_isolation_render_state(render_state, depth)
+    if render_state._isolation_render_state_depth == depth then
+        render_state._isolation_render_state_depth = depth - 1
+    end
+end
+
+local function resolve_isolation_target(node, render_state, compositing_plan, runtime, graphics)
+    local source_bounds = resolve_subtree_world_bounds(node, runtime)
+
+    if can_use_cropped_isolation(compositing_plan, graphics) and not source_bounds:is_empty() then
+        return {
+            source_bounds = source_bounds,
+            canvas_world_origin = {
+                x = source_bounds.x,
+                y = source_bounds.y,
+            },
+            canvas_width = max(1, ceil(source_bounds.width)),
+            canvas_height = max(1, ceil(source_bounds.height)),
+            optimized = true,
+        }
+    end
+
+    local parent_origin = peek_composition_target_origin(render_state, graphics)
+    local canvas_width, canvas_height = get_full_isolation_canvas_size(node, render_state, runtime, graphics)
+
+    return {
+        source_bounds = source_bounds,
+        canvas_world_origin = {
+            x = parent_origin.x or 0,
+            y = parent_origin.y or 0,
+        },
+        canvas_width = canvas_width,
+        canvas_height = canvas_height,
+        optimized = false,
+    }
+end
+
+local function begin_canvas_origin_transform(graphics, canvas_world_origin)
+    local origin = canvas_world_origin or ZERO_WORLD_ORIGIN
+
+    if (origin.x or 0) == 0 and (origin.y or 0) == 0 then
+        if Types.is_function(graphics.origin) then
+            graphics.origin()
+        end
+
+        return false
+    end
+
+    if not Types.is_function(graphics.push) or
+        not Types.is_function(graphics.pop) or
+        not Types.is_function(graphics.translate) or
+        not Types.is_function(graphics.origin) then
+        Assert.fail('graphics adapter must support push/pop/translate for offset canvas isolation', 3)
+    end
+
+    graphics.push()
+    graphics.origin()
+    graphics.translate(-origin.x, -origin.y)
+    return true
+end
+
+local function composite_isolated_subtree(node, graphics, canvas, isolation_target, compositing_plan, clip_state, runtime, render_state)
     local root_compositing_state = compositing_plan.root_compositing_state
     local compositing_extras = compositing_plan.compositing_extras or EMPTY_COMPOSITING_EXTRAS
     local result_clip = compositing_plan.result_clip
+    local canvas_world_origin = isolation_target.canvas_world_origin or ZERO_WORLD_ORIGIN
 
     if compositing_extras.mask ~= nil then
         Assert.fail(
@@ -551,7 +1026,7 @@ local function composite_isolated_subtree(node, graphics, canvas, compositing_pl
     local rotation = compositing_extras.rotation
     local scale_x = compositing_extras.scaleX
     local scale_y = compositing_extras.scaleY
-    local source_bounds = resolve_subtree_world_bounds(node, runtime)
+    local source_bounds = isolation_target.source_bounds or resolve_subtree_world_bounds(node, runtime)
     local result_clip_state = nil
 
     if source_bounds:is_empty() then
@@ -589,7 +1064,7 @@ local function composite_isolated_subtree(node, graphics, canvas, compositing_pl
 
     if result_clip ~= nil then
         GraphicsState.set_scissor_rect(graphics, clip_state.scissor)
-        graphics.draw(canvas, 0, 0)
+        graphics.draw(canvas, canvas_world_origin.x, canvas_world_origin.y)
         GraphicsState.restore_blend_mode(graphics, previous_blend_mode)
         GraphicsState.restore_shader(graphics, previous_shader)
         GraphicsState.restore_color(graphics, previous_color)
@@ -597,7 +1072,11 @@ local function composite_isolated_subtree(node, graphics, canvas, compositing_pl
         return nil
     end
 
-    local source_quad = create_source_quad(graphics, canvas, source_bounds)
+    local source_quad = create_source_quad(
+        graphics,
+        canvas,
+        resolve_canvas_local_rect(source_bounds, canvas_world_origin)
+    )
     local destination_bounds = source_bounds
 
     if draw_x ~= 0 or draw_y ~= 0 or rotation ~= 0 or scale_x ~= 1 or scale_y ~= 1 then
@@ -621,7 +1100,14 @@ local function composite_isolated_subtree(node, graphics, canvas, compositing_pl
         )
 
         if composite_scissor ~= nil then
-            composite_scissor = composite_scissor:intersection(destination_bounds)
+            composite_scissor = intersect_rect_values(
+                composite_scissor,
+                destination_bounds,
+                render_state and render_state._composite_scissor_scratch
+            )
+            if render_state ~= nil then
+                render_state._composite_scissor_scratch = composite_scissor
+            end
         else
             composite_scissor = destination_bounds
         end
@@ -655,7 +1141,14 @@ local function composite_isolated_subtree(node, graphics, canvas, compositing_pl
         local composite_scissor = clip_state.scissor
 
         if composite_scissor ~= nil then
-            composite_scissor = composite_scissor:intersection(destination_bounds)
+            composite_scissor = intersect_rect_values(
+                composite_scissor,
+                destination_bounds,
+                render_state and render_state._composite_scissor_scratch
+            )
+            if render_state ~= nil then
+                render_state._composite_scissor_scratch = composite_scissor
+            end
         else
             composite_scissor = destination_bounds
         end
@@ -664,7 +1157,7 @@ local function composite_isolated_subtree(node, graphics, canvas, compositing_pl
         if source_quad ~= nil then
             graphics.draw(canvas, source_quad, source_bounds.x, source_bounds.y)
         else
-            graphics.draw(canvas, 0, 0)
+            graphics.draw(canvas, canvas_world_origin.x, canvas_world_origin.y)
         end
     end
 
@@ -674,9 +1167,11 @@ local function composite_isolated_subtree(node, graphics, canvas, compositing_pl
 end
 
 function RootCompositor.draw_isolated_subtree(node, graphics, draw_callback, clip_state, render_state, compositing_plan, runtime)
+    local profile_token = RuntimeProfiler.push_zone('RootCompositor.draw_isolated_subtree')
     if not Types.is_function(graphics.newCanvas) or
         not Types.is_function(graphics.setCanvas) or
         not Types.is_function(graphics.draw) then
+        RuntimeProfiler.pop_zone(profile_token)
         Assert.fail(
             'graphics adapter must support canvas isolation for retained root compositing',
             3
@@ -686,23 +1181,27 @@ function RootCompositor.draw_isolated_subtree(node, graphics, draw_callback, cli
     render_state = RootCompositor.initialize_render_state(graphics, render_state)
 
     local pool = get_canvas_pool(graphics)
-    local canvas_width, canvas_height = get_isolation_canvas_size(node, render_state, runtime, graphics)
-    local canvas = pool:acquire(canvas_width, canvas_height)
+    local isolation_target = resolve_isolation_target(node, render_state, compositing_plan, runtime, graphics)
+    local canvas = pool:acquire(isolation_target.canvas_width, isolation_target.canvas_height)
     local previous_canvas = peek_composition_target(render_state, graphics)
     local previous_color = GraphicsState.get_current_color(graphics)
     local previous_shader = GraphicsState.get_current_shader(graphics)
     local previous_blend_mode = GraphicsState.get_current_blend_mode(graphics)
     local previous_scissor = GraphicsState.get_scissor_rect(graphics)
     local previous_stencil_compare, previous_stencil_value = GraphicsState.get_stencil_test(graphics)
+    local nested_clip_state, nested_clip_state_depth = acquire_isolation_clip_state(render_state)
+    local nested_render_state, nested_render_state_depth = acquire_isolation_render_state(render_state, node)
     local composition_target_pushed = false
+    local composition_target_origin_pushed = false
+    local canvas_origin_transform_pushed = false
     local ok, err = xpcall(function()
         GraphicsState.set_current_canvas(graphics, canvas)
         push_composition_target(render_state, graphics, canvas)
         composition_target_pushed = true
+        push_composition_target_origin(render_state, graphics, isolation_target.canvas_world_origin)
+        composition_target_origin_pushed = true
 
-        if Types.is_function(graphics.origin) then
-            graphics.origin()
-        end
+        canvas_origin_transform_pushed = begin_canvas_origin_transform(graphics, isolation_target.canvas_world_origin)
 
         GraphicsState.clear_target(graphics)
         GraphicsState.set_scissor_rect(graphics, nil)
@@ -720,29 +1219,48 @@ function RootCompositor.draw_isolated_subtree(node, graphics, draw_callback, cli
             GraphicsState.set_blend_mode(graphics, previous_blend_mode[1], previous_blend_mode[2])
         end
 
-        runtime.draw_subtree(node, graphics, draw_callback, {
-            active_clips = {},
-            scissor = nil,
-            stencil_compare = nil,
-            stencil_value = nil,
-        }, {
-            suppress_root_compositing_for = node,
-            composition_target_stack = render_state.composition_target_stack,
-        })
+        runtime.draw_subtree(node, graphics, draw_callback, nested_clip_state, nested_render_state)
+
+        if canvas_origin_transform_pushed then
+            graphics.pop()
+            canvas_origin_transform_pushed = false
+        end
 
         if composition_target_pushed and peek_composition_target(render_state, graphics) == canvas then
             pop_composition_target(render_state, graphics)
             composition_target_pushed = false
         end
 
+        if composition_target_origin_pushed then
+            pop_composition_target_origin(render_state, graphics)
+            composition_target_origin_pushed = false
+        end
+
         GraphicsState.set_current_canvas(graphics, previous_canvas)
         GraphicsState.set_scissor_rect(graphics, previous_scissor)
         GraphicsState.set_stencil_test(graphics, previous_stencil_compare, previous_stencil_value)
-        composite_isolated_subtree(node, graphics, canvas, compositing_plan, clip_state, runtime)
+        composite_isolated_subtree(
+            node,
+            graphics,
+            canvas,
+            isolation_target,
+            compositing_plan,
+            clip_state,
+            runtime,
+            render_state
+        )
     end, debug.traceback)
+
+    if canvas_origin_transform_pushed then
+        graphics.pop()
+    end
 
     if composition_target_pushed and peek_composition_target(render_state, graphics) == canvas then
         pop_composition_target(render_state, graphics)
+    end
+
+    if composition_target_origin_pushed then
+        pop_composition_target_origin(render_state, graphics)
     end
 
     GraphicsState.set_current_canvas(graphics, previous_canvas)
@@ -751,7 +1269,10 @@ function RootCompositor.draw_isolated_subtree(node, graphics, draw_callback, cli
     GraphicsState.restore_blend_mode(graphics, previous_blend_mode)
     GraphicsState.restore_shader(graphics, previous_shader)
     GraphicsState.restore_color(graphics, previous_color)
+    release_isolation_render_state(render_state, nested_render_state_depth)
+    release_isolation_clip_state(render_state, nested_clip_state_depth)
     pool:release(canvas)
+    RuntimeProfiler.pop_zone(profile_token)
 
     if not ok then
         error(err, 0)

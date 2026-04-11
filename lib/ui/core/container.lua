@@ -13,8 +13,11 @@ local Utils = require('lib.ui.utils.common')
 local Motion = require('lib.ui.motion')
 local GraphicsState = require('lib.ui.render.graphics_state')
 local RootCompositor = require('lib.ui.render.root_compositor')
+local RuntimeProfiler = require('profiler.runtime_profiler')
 
 local abs = math.abs
+local max = math.max
+local min = math.min
 
 local CLIP_EPSILON = 1e-9
 
@@ -77,6 +80,7 @@ end
 -- Removed manual key checks; Schemas handles extension directly.
 
 function Container:invalidate_world()
+    RootCompositor.invalidate_node_plan(self)
     rawset(self, '_world_transform_dirty', true)
     rawset(self, '_bounds_dirty', true)
     rawset(self, '_world_inverse_dirty', true)
@@ -159,6 +163,26 @@ local function get_public_value(self, key)
     end
 
     return public_values[key]
+end
+
+local function responsive_overrides_affect_root_compositing_plan(self, previous_overrides, next_overrides)
+    if previous_overrides ~= nil then
+        for key in pairs(previous_overrides) do
+            if RootCompositor.property_affects_node_plan(self, key) then
+                return true
+            end
+        end
+    end
+
+    if next_overrides ~= nil then
+        for key in pairs(next_overrides) do
+            if RootCompositor.property_affects_node_plan(self, key) then
+                return true
+            end
+        end
+    end
+
+    return false
 end
 
 local function is_internal_node(node)
@@ -914,7 +938,7 @@ local function point_within_active_clips(active_clips, x, y)
     return true
 end
 
-local function get_world_clip_points(self)
+local function get_world_clip_points(self, points)
     local width = rawget(self, '_resolved_width') or 0
     local height = rawget(self, '_resolved_height') or 0
     local matrix = rawget(self, '_world_transform_cache')
@@ -923,12 +947,27 @@ local function get_world_clip_points(self)
     local x3, y3 = matrix:transform_point(width, height)
     local x4, y4 = matrix:transform_point(0, height)
 
-    return {
-        { x = x1, y = y1 },
-        { x = x2, y = y2 },
-        { x = x3, y = y3 },
-        { x = x4, y = y4 },
-    }
+    points = points or {}
+
+    for index = 1, 4 do
+        if points[index] == nil then
+            points[index] = {
+                x = 0,
+                y = 0,
+            }
+        end
+    end
+
+    points[1].x = x1
+    points[1].y = y1
+    points[2].x = x2
+    points[2].y = y2
+    points[3].x = x3
+    points[3].y = y3
+    points[4].x = x4
+    points[4].y = y4
+
+    return points
 end
 
 local function is_axis_aligned_edge(first, second)
@@ -936,8 +975,12 @@ local function is_axis_aligned_edge(first, second)
         abs(first.y - second.y) <= CLIP_EPSILON
 end
 
-local function is_axis_aligned_clip(self)
-    local points = get_world_clip_points(self)
+local function is_axis_aligned_clip(self, clip_state)
+    local points = get_world_clip_points(self, clip_state and clip_state.axis_clip_points_scratch or nil)
+
+    if clip_state ~= nil then
+        clip_state.axis_clip_points_scratch = points
+    end
 
     return is_axis_aligned_edge(points[1], points[2]) and
         is_axis_aligned_edge(points[2], points[3]) and
@@ -946,7 +989,7 @@ local function is_axis_aligned_clip(self)
 end
 
 local function get_world_clip_rect(self)
-    return rawget(self, '_world_bounds_cache'):clone()
+    return rawget(self, '_world_bounds_cache')
 end
 
 local function has_degenerate_clip(self)
@@ -959,15 +1002,117 @@ local function has_degenerate_clip(self)
     return not matrix:is_invertible()
 end
 
-local function draw_clip_polygon(graphics, self)
-    local points = get_world_clip_points(self)
-    local flattened = {}
+local function clear_array_tail(values, last_index)
+    for index = #values, last_index + 1, -1 do
+        values[index] = nil
+    end
+end
+
+local function get_empty_scissor_rect(clip_state)
+    local rect = clip_state.empty_scissor_rect
+
+    if rect == nil then
+        rect = {
+            x = 0,
+            y = 0,
+            width = 0,
+            height = 0,
+        }
+        clip_state.empty_scissor_rect = rect
+    else
+        rect.x = 0
+        rect.y = 0
+        rect.width = 0
+        rect.height = 0
+    end
+
+    return rect
+end
+
+local function get_scissor_scratch_rect(clip_state, depth)
+    local stack = clip_state.scissor_scratch_stack
+
+    if stack == nil then
+        stack = {}
+        clip_state.scissor_scratch_stack = stack
+    end
+
+    local rect = stack[depth]
+
+    if rect == nil then
+        rect = {
+            x = 0,
+            y = 0,
+            width = 0,
+            height = 0,
+        }
+        stack[depth] = rect
+    end
+
+    return rect
+end
+
+local function copy_rect_into(target, source)
+    target.x = source.x or 0
+    target.y = source.y or 0
+    target.width = source.width or 0
+    target.height = source.height or 0
+    return target
+end
+
+local function intersect_rect_into(target, first, second)
+    local left = max(first.x or 0, second.x or 0)
+    local top = max(first.y or 0, second.y or 0)
+    local right = min(
+        (first.x or 0) + (first.width or 0),
+        (second.x or 0) + (second.width or 0)
+    )
+    local bottom = min(
+        (first.y or 0) + (first.height or 0),
+        (second.y or 0) + (second.height or 0)
+    )
+
+    target.x = left
+    target.y = top
+    target.width = max(0, right - left)
+    target.height = max(0, bottom - top)
+
+    return target
+end
+
+local function resolve_axis_aligned_scissor(clip_state, clip_rect)
+    local depth = #clip_state.active_clips
+    -- Each clip depth gets its own rect scratch so nested branches can restore parent scissor state.
+    local combined = get_scissor_scratch_rect(clip_state, depth)
+    local previous_scissor = clip_state.scissor
+
+    if previous_scissor ~= nil then
+        return intersect_rect_into(combined, previous_scissor, clip_rect)
+    end
+
+    return copy_rect_into(combined, clip_rect)
+end
+
+local function draw_clip_polygon(graphics, self, clip_state)
+    local points = get_world_clip_points(self, clip_state.axis_clip_points_scratch)
+    clip_state.axis_clip_points_scratch = points
+    local flattened = clip_state.clip_polygon_scratch
+
+    if flattened == nil then
+        flattened = {}
+        clip_state.clip_polygon_scratch = flattened
+    end
+
+    local flattened_index = 1
 
     for index = 1, #points do
         local point = points[index]
-        flattened[#flattened + 1] = point.x
-        flattened[#flattened + 1] = point.y
+        flattened[flattened_index] = point.x
+        flattened[flattened_index + 1] = point.y
+        flattened_index = flattened_index + 2
     end
+
+    clear_array_tail(flattened, flattened_index - 1)
 
     if Types.is_function(graphics.polygon) then
         graphics.polygon('fill', flattened)
@@ -1029,15 +1174,17 @@ draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
     local active_clips = clip_state.active_clips
 
     if get_effective_value(self, 'clipChildren') then
+        local clip_profile_token = RuntimeProfiler.push_zone('Container.draw_subtree.clip_children')
         if has_degenerate_clip(self) then
             local previous_scissor = clip_state.scissor
 
             clip_state.active_clips[#active_clips + 1] = self
-            clip_state.scissor = Rectangle(0, 0, 0, 0)
+            clip_state.scissor = get_empty_scissor_rect(clip_state)
             set_scissor_rect(graphics, clip_state.scissor)
             clip_state.active_clips[#clip_state.active_clips] = nil
             clip_state.scissor = previous_scissor
             set_scissor_rect(graphics, previous_scissor)
+            RuntimeProfiler.pop_zone(clip_profile_token)
             return nil
         end
 
@@ -1047,12 +1194,8 @@ draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
 
         clip_state.active_clips[#active_clips + 1] = self
 
-        if is_axis_aligned_clip(self) then
-            local combined = get_world_clip_rect(self)
-
-            if previous_scissor ~= nil then
-                combined = previous_scissor:intersection(combined)
-            end
+        if is_axis_aligned_clip(self, clip_state) then
+            local combined = resolve_axis_aligned_scissor(clip_state, get_world_clip_rect(self))
 
             clip_state.scissor = combined
             set_scissor_rect(graphics, combined)
@@ -1068,6 +1211,7 @@ draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
             clip_state.active_clips[#clip_state.active_clips] = nil
             clip_state.scissor = previous_scissor
             set_scissor_rect(graphics, previous_scissor)
+            RuntimeProfiler.pop_zone(clip_profile_token)
             return nil
         end
 
@@ -1077,7 +1221,7 @@ draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
 
         if Types.is_function(graphics.stencil) then
             graphics.stencil(function()
-                draw_clip_polygon(graphics, self)
+                draw_clip_polygon(graphics, self, clip_state)
             end, 'increment', 1, true)
         end
 
@@ -1097,7 +1241,7 @@ draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
 
         if Types.is_function(graphics.stencil) then
             graphics.stencil(function()
-                draw_clip_polygon(graphics, self)
+                draw_clip_polygon(graphics, self, clip_state)
             end, 'decrement', 1, true)
         end
 
@@ -1107,6 +1251,7 @@ draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
         clip_state.stencil_value = previous_stencil_value
         set_scissor_rect(graphics, previous_scissor)
         set_stencil_test(graphics, previous_stencil_compare, previous_stencil_value)
+        RuntimeProfiler.pop_zone(clip_profile_token)
         return nil
     end
 
@@ -1284,6 +1429,12 @@ local function set_public_value(self, key, value, level)
     end
     rawset(self, '_responsive_dirty', true)
     self:invalidate_stage_update_token()
+
+    if RootCompositor.property_affects_node_plan(self, key) or
+        key == 'breakpoints' or
+        key == 'responsive' then
+        RootCompositor.invalidate_node_plan(self)
+    end
 
     if key == 'breakpoints' then
         self:invalidate_ancestor_layouts()
@@ -1819,6 +1970,7 @@ function Container:_draw_subtree_resolved(graphics, draw_callback)
     draw_subtree(self, graphics, draw_callback, {
         active_clips = {},
         scissor = get_scissor_rect(graphics),
+        scissor_scratch_stack = {},
         stencil_compare = stencil_compare,
         stencil_value = stencil_value,
     }, render_state)
@@ -1923,6 +2075,12 @@ function Container:_set_resolved_responsive_overrides(token, overrides)
         return self
     end
 
+    local previous_overrides = rawget(self, '_responsive_overrides')
+
+    if responsive_overrides_affect_root_compositing_plan(self, previous_overrides, overrides) then
+        RootCompositor.invalidate_node_plan(self)
+    end
+
     self:invalidate_stage_update_token()
     rawset(self, '_responsive_token', token)
     rawset(self, '_responsive_overrides', overrides)
@@ -1965,6 +2123,16 @@ function Container:_apply_motion_value(target_name, property_name, value)
     end
 
     state[property_name] = value
+
+    local plan_target = surface
+    if rawget(plan_target, '_ui_container_instance') ~= true then
+        plan_target = self
+    end
+
+    if RootCompositor.motion_property_affects_node_plan(plan_target, property_name) then
+        RootCompositor.invalidate_node_plan(plan_target)
+    end
+
     return surface
 end
 

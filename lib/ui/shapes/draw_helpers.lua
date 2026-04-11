@@ -3,6 +3,7 @@ local Types = require('lib.ui.utils.types')
 local DrawHelpers = {}
 local abs = math.abs
 local sqrt = math.sqrt
+local unpack = table.unpack or unpack
 local PATH_EPSILON = 1e-9
 
 local function save_color(graphics)
@@ -201,25 +202,50 @@ function DrawHelpers.with_stroke_state(graphics, line_width, line_style, line_jo
     DrawHelpers.restore_selected_line_state(graphics, saved_state, restore_flags)
 end
 
-function DrawHelpers.transform_local_points(node, points)
-    local transformed = {}
+function DrawHelpers.transform_local_points(node, points, transformed)
+
+    if not Types.is_table(transformed) then
+        transformed = {}
+    end
 
     for index = 1, #points do
         local point = points[index]
         local world_x, world_y = node:localToWorld(point[1], point[2])
-        transformed[#transformed + 1] = { world_x, world_y }
+        local transformed_point = transformed[index]
+
+        if transformed_point == nil then
+            transformed_point = { world_x, world_y }
+            transformed[index] = transformed_point
+        else
+            transformed_point[1] = world_x
+            transformed_point[2] = world_y
+        end
+    end
+
+    for index = #transformed, #points + 1, -1 do
+        transformed[index] = nil
     end
 
     return transformed
 end
 
-function DrawHelpers.flatten_points(points)
-    local flattened = {}
+function DrawHelpers.flatten_points(points, flattened)
+
+    if not Types.is_table(flattened) then
+        flattened = {}
+    end
+
+    local flattened_index = 1
 
     for index = 1, #points do
         local point = points[index]
-        flattened[#flattened + 1] = point[1]
-        flattened[#flattened + 1] = point[2]
+        flattened[flattened_index] = point[1]
+        flattened[flattened_index + 1] = point[2]
+        flattened_index = flattened_index + 2
+    end
+
+    for index = #flattened, flattened_index, -1 do
+        flattened[index] = nil
     end
 
     return flattened
@@ -427,7 +453,7 @@ function DrawHelpers.draw_dashed_polyline(graphics, points, dash_length, gap_len
             end
 
             if #dash_points >= 2 then
-                graphics.line(DrawHelpers.flatten_points(dash_points))
+                graphics.line(unpack(DrawHelpers.flatten_points(dash_points)))
                 emitted = emitted + 1
             end
         end
@@ -458,7 +484,7 @@ function DrawHelpers.draw_polyline_segments(graphics, points, closed)
         append_point(polyline_points, points[1][1], points[1][2])
     end
 
-    graphics.line(DrawHelpers.flatten_points(polyline_points))
+    graphics.line(unpack(DrawHelpers.flatten_points(polyline_points)))
 
     return 1, total_length
 end

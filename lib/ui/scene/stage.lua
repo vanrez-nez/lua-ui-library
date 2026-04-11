@@ -8,6 +8,7 @@ local Rectangle = require('lib.ui.core.rectangle')
 local Responsive = require('lib.ui.layout.responsive')
 local Object = require('lib.cls')
 local Types = require('lib.ui.utils.types')
+local RuntimeProfiler = require('profiler.runtime_profiler')
 
 local max = math.max
 local huge = math.huge
@@ -2472,6 +2473,7 @@ end
 function Stage:draw(graphics, draw_callback)
     assert_not_destroyed(self, 2)
 
+    local profile_token = RuntimeProfiler.push_zone('Stage.draw')
     graphics, draw_callback = self:_prepare_draw(graphics, draw_callback)
     local previous_drawing = rawget(self, '_drawing')
 
@@ -2495,6 +2497,7 @@ function Stage:draw(graphics, draw_callback)
 
     rawset(self, '_drawing', previous_drawing)
     rawset(self, '_update_ran', false)
+    RuntimeProfiler.pop_zone(profile_token)
 
     if not ok then
         error(err, 0)

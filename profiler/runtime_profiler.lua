@@ -4,7 +4,17 @@ local MemoryProfiler = require('profiler.memory_profiler')
 
 local RuntimeProfiler = {}
 
+function RuntimeProfiler.is_active()
+    return JitProfiler.is_active() or
+        TimingProfiler.is_active() or
+        MemoryProfiler.is_active()
+end
+
 function RuntimeProfiler.push_zone(name)
+    if name == nil or not RuntimeProfiler.is_active() then
+        return nil
+    end
+
     return {
         jit = JitProfiler.push_zone(name),
         timing = TimingProfiler.push_zone(name),
