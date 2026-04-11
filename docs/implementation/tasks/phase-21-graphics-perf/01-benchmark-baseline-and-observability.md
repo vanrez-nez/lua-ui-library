@@ -23,7 +23,8 @@ Out of scope:
 
 - `demos/04-graphics/main.lua` already wires `DemoProfiling` with timing, JIT, and memory prefixes.
 - `demos/common/demo_profiling.lua` already supports env-driven automatic capture and screen selection.
-- There is currently no phase-local baseline summary for graphics-pipeline work.
+- internal-only runtime zones may be added for the phase as long as they stay removable and do not alter draw behavior when profiling is off.
+- The phase-local baseline summary and output matrix should live beside this task in `baseline-summary.md`.
 
 ## Work items
 
@@ -38,6 +39,7 @@ Out of scope:
 - Record at least one dense-case capture where isolated compositing is active on many nodes, using either:
   - an internal stress fixture outside the public demo surface, or
   - a temporary internal harness built on the existing graphics demo shell
+- If the dense case is added to the shared demo shell, gate it behind an internal env flag so the normal user-facing screen list stays unchanged.
 - Capture baseline spec results for the graphics-sensitive specs that downstream tasks must keep green.
 
 ## Suggested baseline commands
@@ -47,7 +49,7 @@ Timing example:
 ```sh
 UI_TIME_PROFILE=1 \
 UI_TIME_PROFILE_SECONDS=5 \
-UI_TIME_PROFILE_SCREEN=1 \
+UI_PROFILE_SCREEN=1 \
 UI_TIME_PROFILE_OUTPUT=tmp/phase-21-graphics-perf/opacity-before.txt \
 love demos/04-graphics
 ```
@@ -57,8 +59,19 @@ Memory example:
 ```sh
 UI_MEMORY_PROFILE=1 \
 UI_MEMORY_PROFILE_SECONDS=5 \
-UI_TIME_PROFILE_SCREEN=4 \
+UI_PROFILE_SCREEN=4 \
 UI_MEMORY_PROFILE_OUTPUT=tmp/phase-21-graphics-perf/texture-surfaces-memory-before.txt \
+love demos/04-graphics
+```
+
+Dense internal stress example:
+
+```sh
+UI_GRAPHICS_PERF_STRESS=1 \
+UI_TIME_PROFILE=1 \
+UI_TIME_PROFILE_SECONDS=5 \
+UI_PROFILE_SCREEN=5 \
+UI_TIME_PROFILE_OUTPUT=tmp/phase-21-graphics-perf/dense-isolation-before.txt \
 love demos/04-graphics
 ```
 
@@ -67,6 +80,7 @@ love demos/04-graphics
 - `demos/04-graphics/main.lua`
 - `demos/common/demo_profiling.lua`
 - optional internal harness files if the existing screens are not sufficient
+- `docs/implementation/tasks/phase-21-graphics-perf/baseline-summary.md`
 - phase-21 task docs or a sibling baseline summary document
 
 ## Testing

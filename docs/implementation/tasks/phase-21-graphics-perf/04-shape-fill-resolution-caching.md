@@ -92,3 +92,12 @@ Required runtime verification:
 - Cache invalidation is explicit and regression-tested.
 - The common solid-color path remains a fast path.
 - No fill-contract or motion-contract behavior changes are required.
+
+## Execution notes
+
+- `Shape` now caches the resolved fill surface, active descriptor, and placement internally and invalidates those caches on fill-related public writes and supported fill-motion writes.
+- Placement caching is narrower than the surface cache: it reuses the cached placement only when both the cached active descriptor and the local-bounds snapshot still match.
+- Focused cache coverage lives in `spec/shape_fill_resolution_cache_spec.lua`.
+- Task-04 texture-screen artifacts were written to:
+  - `tmp/phase-21-graphics-perf/texture-surfaces-after-task-04.txt`
+  - `tmp/phase-21-graphics-perf/texture-surfaces-memory-after-task-04.txt`

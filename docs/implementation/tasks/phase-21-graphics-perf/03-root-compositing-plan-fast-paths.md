@@ -80,3 +80,15 @@ Required runtime verification:
 - Cache invalidation is explicit and covered by focused regression tests.
 - No public dirty flag or new consumer knob is introduced.
 - The current root-compositing semantics remain unchanged.
+
+## Execution notes
+
+- `RootCompositor.resolve_node_plan(...)` now caches per-node, per-runtime plan results and normalizes the no-plan and default-plan cases to shared internal sentinels.
+- Cache invalidation is wired through plan-affecting public prop writes, responsive override replacement, root-surface motion writes, and world/bounds invalidation in the retained node model.
+- Focused regression coverage lives in `spec/root_compositor_plan_fast_paths_spec.lua`.
+- Task-03 timing captures were written to:
+  - `tmp/phase-21-graphics-perf/opacity-after-task-03.txt`
+  - `tmp/phase-21-graphics-perf/blendmode-after-task-03.txt`
+  - `tmp/phase-21-graphics-perf/render-effects-after-task-03.txt`
+  - `tmp/phase-21-graphics-perf/texture-surfaces-after-task-03.txt`
+  - `tmp/phase-21-graphics-perf/dense-isolation-after-task-03.txt`
