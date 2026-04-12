@@ -448,10 +448,14 @@ function ScreenHelper.screen_wrapper(owner, helpers, build)
     return function(index)
         local stage = ScreenHelper.make_stage()
         local build_state = build(stage) or {}
-        local state = {
-            title = build_state.title,
-            description = build_state.description,
-        }
+        local state = {}
+
+        for key, value in pairs(build_state) do
+            state[key] = value
+        end
+
+        state.title = build_state.title
+        state.description = build_state.description
 
         install_companion_setup(build, {
             owner = owner,
