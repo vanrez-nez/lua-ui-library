@@ -81,6 +81,20 @@ function Rectangle:clone()
     return Rectangle(self.x, self.y, self.width, self.height)
 end
 
+function Rectangle:set(x, y, width, height)
+    Assert.number('x', x, 2)
+    Assert.number('y', y, 2)
+    Assert.number('width', width, 2)
+    Assert.number('height', height, 2)
+
+    self.x = x
+    self.y = y
+    self.width = width
+    self.height = height
+
+    return self
+end
+
 function Rectangle.copy_bounds(bounds)
     return {
         x = (bounds and bounds.x) or 0,

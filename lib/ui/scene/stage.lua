@@ -524,14 +524,6 @@ local function create_focus_aware_draw_callback(self, draw_callback)
         end
     end
 
-    local error_handler = function(message)
-        if debug ~= nil and Types.is_function(debug.traceback) then
-            return debug.traceback(message, 2)
-        end
-
-        return message
-    end
-
     return function(node, graphics)
         local previous = rawget(node, '_focused')
         local focused = get_stored_focus_owner(self) == node or nil
@@ -540,17 +532,10 @@ local function create_focus_aware_draw_callback(self, draw_callback)
             rawset(node, '_focused', focused)
         end
 
-        local ok, err = xpcall(function()
-            draw_node_default(node, graphics)
-            draw_callback(node, graphics)
-            decorate_focused_drawable(node, graphics)
-        end, error_handler)
-
+        draw_node_default(node, graphics)
+        draw_callback(node, graphics)
+        decorate_focused_drawable(node, graphics)
         restore_focus_draw_state(node, previous, focused)
-
-        if not ok then
-            error(err, 0)
-        end
     end
 end
 
@@ -1708,6 +1693,15 @@ end
 function Stage:_resolve_responsive_for_node(node)
     assert_not_destroyed(self, 2)
 
+    local responsive = Proxy.raw_get(node, 'responsive')
+    local breakpoints = Proxy.raw_get(node, 'breakpoints')
+    if responsive == nil and breakpoints == nil then
+        if rawget(node, '_responsive_token') ~= nil or rawget(node, '_resolved_responsive_overrides') ~= nil then
+            node:_set_resolved_responsive_overrides(nil, nil)
+        end
+        return node
+    end
+
     local viewport = rawget(self, '_viewport_bounds_cache')
     local safe_area_bounds = rawget(self, '_safe_area_bounds_cache')
     local safe_area_insets = get_public_value(self, 'safeAreaInsets')
@@ -2389,6 +2383,7 @@ function Stage:update(_)
         return self
     end
 
+    local profile_token = RuntimeProfiler.push_zone('Stage.update')
     rawset(self, '_updating', true)
     refresh_environment_bounds(self)
 
@@ -2417,6 +2412,7 @@ function Stage:update(_)
 
     rawset(self, '_updating', false)
     rawset(self, '_update_ran', true)
+    RuntimeProfiler.pop_zone(profile_token)
 
     return self
 end

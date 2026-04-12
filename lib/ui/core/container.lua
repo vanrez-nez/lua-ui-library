@@ -900,7 +900,8 @@ local function refresh_local_transform(self)
     local position_x = layout_offset_x + anchor_x + (get_effective_value(self, 'x') or 0)
     local position_y = layout_offset_y + anchor_y + (get_effective_value(self, 'y') or 0)
 
-    rawset(self, '_local_transform_cache', Matrix.from_transform(
+    local local_transform = rawget(self, '_local_transform_cache')
+    local_transform:set_from_transform(
         position_x + pivot_x,
         position_y + pivot_y,
         pivot_x,
@@ -910,25 +911,46 @@ local function refresh_local_transform(self)
         (get_effective_value(self, 'rotation') or 0),
         (get_effective_value(self, 'skewX') or 0),
         (get_effective_value(self, 'skewY') or 0)
-    ))
+    )
     clear_dirty(self, 'local_transform')
 end
 
 local function refresh_world_transform(self)
     local previous = rawget(self, '_world_transform_cache')
-    local next_world = nil
+    local next_a, next_b, next_c, next_d, next_tx, next_ty
 
     if self.parent then
-        next_world = rawget(self.parent, '_world_transform_cache') * rawget(self, '_local_transform_cache')
+        local parent_world = rawget(self.parent, '_world_transform_cache')
+        local local_transform = rawget(self, '_local_transform_cache')
+        next_a = parent_world.a * local_transform.a + parent_world.c * local_transform.b
+        next_b = parent_world.b * local_transform.a + parent_world.d * local_transform.b
+        next_c = parent_world.a * local_transform.c + parent_world.c * local_transform.d
+        next_d = parent_world.b * local_transform.c + parent_world.d * local_transform.d
+        next_tx = parent_world.a * local_transform.tx + parent_world.c * local_transform.ty + parent_world.tx
+        next_ty = parent_world.b * local_transform.tx + parent_world.d * local_transform.ty + parent_world.ty
     else
-        next_world = rawget(self, '_local_transform_cache'):clone()
+        local local_transform = rawget(self, '_local_transform_cache')
+        next_a = local_transform.a
+        next_b = local_transform.b
+        next_c = local_transform.c
+        next_d = local_transform.d
+        next_tx = local_transform.tx
+        next_ty = local_transform.ty
     end
 
-    rawset(self, '_world_transform_cache', next_world)
+    local changed =
+        previous.a ~= next_a or
+        previous.b ~= next_b or
+        previous.c ~= next_c or
+        previous.d ~= next_d or
+        previous.tx ~= next_tx or
+        previous.ty ~= next_ty
+
+    previous:set(next_a, next_b, next_c, next_d, next_tx, next_ty)
     clear_dirty(self, 'world_transform')
     mark_dirty(self, 'world_inverse')
 
-    if previous == nil or not previous:equals(next_world) then
+    if changed then
         local children = rawget(self, '_children') or {}
         for index = 1, #children do
             local child = children[index]
@@ -956,13 +978,12 @@ local function refresh_bounds(self)
     local x2, y2 = matrix:transform_point(width, 0)
     local x3, y3 = matrix:transform_point(width, height)
     local x4, y4 = matrix:transform_point(0, height)
-
-    rawset(self, '_world_bounds_cache', Rectangle.bounding_box({
-        { x = x1, y = y1 },
-        { x = x2, y = y2 },
-        { x = x3, y = y3 },
-        { x = x4, y = y4 },
-    }))
+    local min_x = min(min(x1, x2), min(x3, x4))
+    local min_y = min(min(y1, y2), min(y3, y4))
+    local max_x = max(max(x1, x2), max(x3, x4))
+    local max_y = max(max(y1, y2), max(y3, y4))
+    local world_bounds = rawget(self, '_world_bounds_cache')
+    world_bounds:set(min_x, min_y, max_x - min_x, max_y - min_y)
     clear_dirty(self, 'bounds')
 end
 
@@ -1515,7 +1536,13 @@ end
 
 local function handle_public_prop_change(self, key)
     Container.invalidate_stage_update_token(self)
-    mark_dirty(self, 'responsive')
+    local has_responsive_surface =
+        rawget(self, 'responsive') ~= nil or
+        rawget(self, 'breakpoints') ~= nil
+
+    if key == 'responsive' or key == 'breakpoints' or has_responsive_surface then
+        mark_dirty(self, 'responsive')
+    end
 
     if RootCompositor.property_affects_node_plan(self, key) or
         key == 'breakpoints' or
@@ -1865,8 +1892,9 @@ function Container:update(_)
 
     local root = get_root(self)
     local resolve_responsive_for_node = rawget(root, '_resolve_responsive_for_node')
+    local stage_managed_update = rawget(root, '_ui_stage_instance') == true and rawget(root, '_updating') == true
 
-    if Types.is_function(resolve_responsive_for_node) then
+    if not stage_managed_update and Types.is_function(resolve_responsive_for_node) then
         resolve_responsive_for_node(root, self)
     end
 

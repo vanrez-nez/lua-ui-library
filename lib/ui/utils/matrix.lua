@@ -88,6 +88,65 @@ function Matrix:clone()
     return Matrix(self.a, self.b, self.c, self.d, self.tx, self.ty)
 end
 
+function Matrix:set(a, b, c, d, tx, ty)
+    Assert.number('a', a, 2)
+    Assert.number('b', b, 2)
+    Assert.number('c', c, 2)
+    Assert.number('d', d, 2)
+    Assert.number('tx', tx, 2)
+    Assert.number('ty', ty, 2)
+
+    self.a = a
+    self.b = b
+    self.c = c
+    self.d = d
+    self.tx = tx
+    self.ty = ty
+
+    return self
+end
+
+function Matrix:set_from_transform(
+    x,
+    y,
+    pivot_x,
+    pivot_y,
+    scale_x,
+    scale_y,
+    rotation,
+    skew_x,
+    skew_y
+)
+    x = x or 0
+    y = y or 0
+    pivot_x = pivot_x or 0
+    pivot_y = pivot_y or 0
+    scale_x = scale_x == nil and 1 or scale_x
+    scale_y = scale_y == nil and 1 or scale_y
+    rotation = rotation or 0
+    skew_x = skew_x or 0
+    skew_y = skew_y or 0
+
+    Assert.number('x', x, 2)
+    Assert.number('y', y, 2)
+    Assert.number('pivot_x', pivot_x, 2)
+    Assert.number('pivot_y', pivot_y, 2)
+    Assert.number('scale_x', scale_x, 2)
+    Assert.number('scale_y', scale_y, 2)
+    Assert.number('rotation', rotation, 2)
+    Assert.number('skew_x', skew_x, 2)
+    Assert.number('skew_y', skew_y, 2)
+
+    local a = cos(rotation + skew_y) * scale_x
+    local b = sin(rotation + skew_y) * scale_x
+    local c = -sin(rotation - skew_x) * scale_y
+    local d = cos(rotation - skew_x) * scale_y
+    local tx = x - (pivot_x * a + pivot_y * c)
+    local ty = y - (pivot_x * b + pivot_y * d)
+
+    return self:set(a, b, c, d, tx, ty)
+end
+
 function Matrix:is_identity(epsilon)
     epsilon = epsilon or 0
     Assert.number('epsilon', epsilon, 2)

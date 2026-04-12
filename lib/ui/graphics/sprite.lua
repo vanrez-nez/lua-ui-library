@@ -118,4 +118,8 @@ function Sprite:getRegion()
     }
 end
 
+function Sprite:getRegionRef()
+    return rawget(self, 'region')
+end
+
 return Sprite

@@ -8,7 +8,10 @@ local Common = require('lib.ui.utils.common')
 local Utils = {}
 
 local BASE_KEYS = {
+    id = true,
+    name = true,
     tag = true,
+    internal = true,
     visible = true,
     interactive = true,
     enabled = true,

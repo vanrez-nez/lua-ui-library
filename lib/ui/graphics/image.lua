@@ -1,4 +1,5 @@
 local Drawable = require('lib.ui.core.drawable')
+local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Rectangle = require('lib.ui.core.rectangle')
@@ -8,6 +9,8 @@ local ControlUtils = require('lib.ui.controls.control_utils')
 local Utils = require('lib.ui.utils.common')
 
 local Image = Drawable:extends('Image')
+local max = math.max
+local min = math.min
 
 local function validate_source(_, value, _, level)
     if Types.is_instance(value, Texture) or Types.is_instance(value, Sprite) then
@@ -77,6 +80,17 @@ local function resolve_source_view(source)
     return source:getTexture(), source:getRegion()
 end
 
+local function resolve_source_metrics(source)
+    if Types.is_instance(source, Texture) then
+        return source, 0, 0, source:getWidth(), source:getHeight()
+    end
+
+    local region = source.getRegionRef and source:getRegionRef() or source:getRegion()
+    local texture = source:getTexture()
+
+    return texture, region.x, region.y, region.width, region.height
+end
+
 local function resolve_axis(origin, available, content, align)
     if align == 'center' then
         return origin + ((available - content) * 0.5)
@@ -87,6 +101,108 @@ local function resolve_axis(origin, available, content, align)
     end
 
     return origin
+end
+
+local function resolve_padding_edges(padding)
+    if padding == nil then
+        return 0, 0, 0, 0
+    end
+
+    if Types.is_number(padding) then
+        return padding, padding, padding, padding
+    end
+
+    return padding.left or 0, padding.top or 0, padding.right or 0, padding.bottom or 0
+end
+
+local function resolve_draw_geometry(self, content_x, content_y, content_width, content_height, source_width, source_height)
+    local fit = self.fit
+    local draw_width = source_width
+    local draw_height = source_height
+
+    if fit == 'stretch' then
+        draw_width = content_width
+        draw_height = content_height
+    elseif fit == 'contain' or fit == 'cover' then
+        if source_width > 0 and source_height > 0 and content_width > 0 and content_height > 0 then
+            local scale_x = content_width / source_width
+            local scale_y = content_height / source_height
+            local scale = fit == 'cover' and max(scale_x, scale_y) or min(scale_x, scale_y)
+            draw_width = source_width * scale
+            draw_height = source_height * scale
+        end
+    end
+
+    return
+        resolve_axis(content_x, content_width, draw_width, self.alignX),
+        resolve_axis(content_y, content_height, draw_height, self.alignY),
+        draw_width,
+        draw_height
+end
+
+local function resolve_quad(self, texture, region_x, region_y, region_width, region_height)
+    if texture == nil then
+        return nil
+    end
+
+    local texture_width = texture:getWidth()
+    local texture_height = texture:getHeight()
+
+    if region_x == 0 and region_y == 0 and region_width == texture_width and region_height == texture_height then
+        return nil
+    end
+
+    local cached = rawget(self, '_cached_quad')
+    if cached ~= nil and
+        cached.texture == texture and
+        cached.x == region_x and
+        cached.y == region_y and
+        cached.width == region_width and
+        cached.height == region_height and
+        cached.texture_width == texture_width and
+        cached.texture_height == texture_height then
+        return cached.quad
+    end
+
+    if love == nil or love.graphics == nil or not Types.is_function(love.graphics.newQuad) then
+        return nil
+    end
+
+    local quad = love.graphics.newQuad(
+        region_x,
+        region_y,
+        region_width,
+        region_height,
+        texture_width,
+        texture_height
+    )
+
+    rawset(self, '_cached_quad', {
+        texture = texture,
+        x = region_x,
+        y = region_y,
+        width = region_width,
+        height = region_height,
+        texture_width = texture_width,
+        texture_height = texture_height,
+        quad = quad,
+    })
+
+    return quad
+end
+
+local function apply_sampling(texture, drawable, sampling)
+    if drawable == nil or not Types.is_function(drawable.setFilter) then
+        return
+    end
+
+    local applied_sampling = rawget(texture, '_ui_applied_sampling')
+    if applied_sampling == sampling then
+        return
+    end
+
+    drawable:setFilter(sampling, sampling)
+    rawset(texture, '_ui_applied_sampling', sampling)
 end
 
 function Image:constructor(opts)
@@ -131,31 +247,38 @@ end
 function Image:resolveImageRect(content)
     content = content or self:getContentRect()
     local _, _, region = self:getIntrinsicSize()
-    local source_width = region.width
-    local source_height = region.height
-    local fit = self.fit
-    local draw_width = source_width
-    local draw_height = source_height
-
-    if fit == 'stretch' then
-        draw_width = content.width
-        draw_height = content.height
-    elseif fit == 'contain' or fit == 'cover' then
-        if source_width > 0 and source_height > 0 and content.width > 0 and content.height > 0 then
-            local scale_x = content.width / source_width
-            local scale_y = content.height / source_height
-            local scale = fit == 'cover' and math.max(scale_x, scale_y) or math.min(scale_x, scale_y)
-            draw_width = source_width * scale
-            draw_height = source_height * scale
-        end
-    end
+    local draw_x, draw_y, draw_width, draw_height = resolve_draw_geometry(
+        self,
+        content.x,
+        content.y,
+        content.width,
+        content.height,
+        region.width,
+        region.height
+    )
 
     return Rectangle(
-        resolve_axis(content.x, content.width, draw_width, self.alignX),
-        resolve_axis(content.y, content.height, draw_height, self.alignY),
+        draw_x,
+        draw_y,
         draw_width,
         draw_height
     ), region
+end
+
+function Image:draw()
+    -- Image is a closed graphics primitive. It does not expose Drawable styling
+    -- surfaces such as background, border, corner radius, or shadow.
+end
+
+function Image:update(dt)
+    local root = rawget(self, '_attachment_root')
+
+    if root ~= nil and rawget(root, '_ui_stage_instance') == true and rawget(root, '_updating') == true then
+        self:_refresh_if_dirty()
+        return self
+    end
+
+    return Container.update(self, dt)
 end
 
 function Image:_draw_control(graphics)
@@ -164,53 +287,55 @@ function Image:_draw_control(graphics)
     end
 
     local source = self.source
-    local texture, region = resolve_source_view(source)
+    local texture, region_x, region_y, region_width, region_height = resolve_source_metrics(source)
     local drawable = texture:getDrawable()
     if drawable == nil then
         return
     end
 
     local effective_values = rawget(self, '_effective_values') or {}
-    local world_content = self:getWorldBounds():inset(effective_values.padding or 0)
-    local draw_rect, resolved_region = self:resolveImageRect(world_content)
-    local quad = nil
-    local previous_scissor = nil
+    local padding_left, padding_top, padding_right, padding_bottom = resolve_padding_edges(effective_values.padding)
+    local world_bounds = self:getWorldBounds()
+    local content_x = world_bounds.x + padding_left
+    local content_y = world_bounds.y + padding_top
+    local content_width = max(0, world_bounds.width - padding_left - padding_right)
+    local content_height = max(0, world_bounds.height - padding_top - padding_bottom)
+    local draw_x, draw_y, draw_width, draw_height = resolve_draw_geometry(
+        self,
+        content_x,
+        content_y,
+        content_width,
+        content_height,
+        region_width,
+        region_height
+    )
+    local quad = resolve_quad(self, texture, region_x, region_y, region_width, region_height)
+    local previous_scissor_x = nil
+    local previous_scissor_y = nil
+    local previous_scissor_width = nil
+    local previous_scissor_height = nil
     local apply_cover_clip = self.fit == 'cover' and Types.is_function(graphics.setScissor)
+    local scale_x = region_width == 0 and 1 or (draw_width / region_width)
+    local scale_y = region_height == 0 and 1 or (draw_height / region_height)
 
-    if love ~= nil and love.graphics ~= nil and Types.is_function(love.graphics.newQuad) then
-        quad = love.graphics.newQuad(
-            resolved_region.x,
-            resolved_region.y,
-            resolved_region.width,
-            resolved_region.height,
-            texture:getWidth(),
-            texture:getHeight()
-        )
-    end
-
-    if Types.is_function(drawable.setFilter) then
-        drawable:setFilter(self.sampling, self.sampling)
-    end
-
-    local scale_x = resolved_region.width == 0 and 1 or (draw_rect.width / resolved_region.width)
-    local scale_y = resolved_region.height == 0 and 1 or (draw_rect.height / resolved_region.height)
+    apply_sampling(texture, drawable, self.sampling)
 
     if apply_cover_clip then
         if Types.is_function(graphics.getScissor) then
-            previous_scissor = { graphics.getScissor() }
+            previous_scissor_x, previous_scissor_y, previous_scissor_width, previous_scissor_height = graphics.getScissor()
         end
-        graphics.setScissor(world_content.x, world_content.y, world_content.width, world_content.height)
+        graphics.setScissor(content_x, content_y, content_width, content_height)
     end
 
     if quad ~= nil then
-        graphics.draw(drawable, quad, draw_rect.x, draw_rect.y, 0, scale_x, scale_y)
+        graphics.draw(drawable, quad, draw_x, draw_y, 0, scale_x, scale_y)
     else
-        graphics.draw(drawable, draw_rect.x, draw_rect.y, 0, scale_x, scale_y)
+        graphics.draw(drawable, draw_x, draw_y, 0, scale_x, scale_y)
     end
 
     if apply_cover_clip then
-        if previous_scissor ~= nil and previous_scissor[1] ~= nil then
-            graphics.setScissor(previous_scissor[1], previous_scissor[2], previous_scissor[3], previous_scissor[4])
+        if previous_scissor_x ~= nil then
+            graphics.setScissor(previous_scissor_x, previous_scissor_y, previous_scissor_width, previous_scissor_height)
         else
             graphics.setScissor()
         end
