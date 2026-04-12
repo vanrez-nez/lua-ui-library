@@ -6,10 +6,13 @@
   "watcherScope": "project",
   "watchExclude": ["docs/**", "spec/**"],
   "locations": [
+    "_test/performance-native",
     "demos/01-container",
     "demos/02-shape",
     "demos/03-drawable",
-    "demos/04-graphics"
+    "demos/04-graphics",
+    "demos/05-controls",
+    "demos/06-performance"
   ],
   "logFilter": [
     "app", "error"
