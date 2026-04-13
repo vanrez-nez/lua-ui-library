@@ -51,7 +51,7 @@ end
 
 
 local function get_effective_insets(self, key)
-    return self[key] or Insets.zero()
+    return Insets.normalize(self[key])
 end
 
 local function get_motion_surface_value(self, key)

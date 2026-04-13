@@ -8,6 +8,7 @@ local Responsive = require('lib.ui.layout.responsive')
 local Object = require('lib.cls')
 local Types = require('lib.ui.utils.types')
 local Proxy = require('lib.ui.utils.proxy')
+local Memoize = require('lib.ui.utils.memoize')
 local RuntimeProfiler = require('profiler.runtime_profiler')
 local CallCounterProfiler = require('profiler.call_counter_profiler')
 
@@ -2133,7 +2134,7 @@ function Stage:_mark_layout_subtree_dirty()
     return self
 end
 
-local function synchronize_for_read(self)
+local synchronize_for_read = Memoize.memoize_tick(function(self)
 
     -- Draw pass must remain read-only. Stage:update() is responsible for
     -- producing a frame-current tree before Stage:draw() begins.
@@ -2166,7 +2167,7 @@ local function synchronize_for_read(self)
     end
 
     return self
-end
+end)
 
 function Stage:_synchronize_for_read()
     return synchronize_for_read(self)
@@ -2365,6 +2366,7 @@ function Stage:deliverInput(raw_event)
 end
 
 function Stage:update(_)
+    Memoize.tick()
 
     if self._updating then
         return self
@@ -2373,18 +2375,17 @@ function Stage:update(_)
     local profile_token = RuntimeProfiler.push_zone('Stage.update')
     self._updating = true
     
-    Proxy.flush(Container._batch_flush_handler)
-    
     refresh_environment_bounds(self)
-
+    
     local queue = self._queued_state_changes
-
     while queue and queue.head <= queue.tail do
         local handler = queue.items[queue.head]
         queue.items[queue.head] = nil
         queue.head = queue.head + 1
         handler()
     end
+
+    Proxy.flush(Container._batch_flush_handler)
 
     if queue then
         queue.head = 1

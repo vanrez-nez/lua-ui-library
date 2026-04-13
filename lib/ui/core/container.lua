@@ -756,10 +756,30 @@ local function get_effective_value(self, key)
         return overrides[key]
     end
 
-    -- Falls back to raw_get, bypassing proxy getters. This is intentional to prevent
-    -- double-resolving read hooks internally, but external callers should prefer direct property access
-    -- via normal proxy indexing.
     return Proxy.raw_get(self, key)
+end
+
+local function sync_resolved_cache(self)
+    local declared_props = self._declared_props
+    local resolved_pdata = self._resolved_pdata
+    for key in pairs(declared_props) do
+        if type(declared_props[key]) == 'table' then
+            resolved_pdata[key] = get_effective_value(self, key)
+        end
+    end
+end
+
+local function sync_quad_family_cache(self, family_name)
+    local family = QUAD_FAMILIES[family_name]
+    local resolved_pdata = self._resolved_pdata
+    
+    -- Sync the aggregate
+    resolved_pdata[family.aggregate] = get_effective_value(self, family.aggregate)
+    
+    -- Sync the members
+    for _, member_key in pairs(family.members) do
+        resolved_pdata[member_key] = get_effective_value(self, member_key)
+    end
 end
 
 -- Export function as a public read alias.
@@ -1570,6 +1590,14 @@ local function handle_public_prop_change(self, key)
     if key == 'zIndex' then
         Container.mark_parent_order_dirty(self)
     end
+
+    -- Sync eager cache for immediate (non-deferred) updates
+    local family_name = QUAD_KEY_TO_FAMILY[key]
+    if family_name then
+        sync_quad_family_cache(self, family_name)
+    else
+        self._resolved_pdata[key] = get_effective_value(self, key)
+    end
 end
 
 local function handle_public_prop_watch(_, _, watched_key, target)
@@ -1580,10 +1608,21 @@ function Container._batch_flush_handler(instance, keys)
     for key in pairs(keys) do
         handle_public_prop_change(instance, key)
     end
+
+    -- Update eager cache for changed keys
+    local resolved_pdata = instance._resolved_pdata
+    for key in pairs(keys) do
+        local family_name = QUAD_KEY_TO_FAMILY[key]
+        if family_name then
+            sync_quad_family_cache(instance, family_name)
+        else
+            resolved_pdata[key] = get_effective_value(instance, key)
+        end
+    end
 end
 
 local function read_responsive_effective_value(_, read_key, target)
-    return get_effective_value(target, read_key)
+    return target._resolved_pdata[read_key]
 end
 
 local function install_responsive_read_hooks(self, declared_props)
@@ -1679,6 +1718,7 @@ local function _init_state_fields(self, config)
     rawset(self, '_attachment_root', self)
     rawset(self, '_id_index', {})
     rawset(self, '_resolved_responsive_overrides', {})
+    rawset(self, '_resolved_pdata', {})
 
     rawset(self, '_motion_visual_state', {})
     rawset(self, '_motion_last_request', nil)
@@ -1714,7 +1754,7 @@ local function _init_proxy_and_schema(self, extra_public_keys)
         end,
         effective = function(instance, key)
             if instance._declared_props[key] ~= nil then
-                return get_effective_value(instance, key)
+                return instance._resolved_pdata[key]
             end
             return rawget(instance, key)
         end,
@@ -1763,6 +1803,8 @@ function Container:_initialize(opts, extra_public_keys, config)
     )
 
     register_node_id_with_root(self, self)
+    -- Initial cache population
+    sync_resolved_cache(self)
 end
 
 function Container:constructor(opts, extra_public_keys, config)
@@ -2299,6 +2341,10 @@ function Container:_set_resolved_responsive_overrides(token, overrides)
     self._responsive_token = token
     self._resolved_responsive_overrides_source = overrides
     self._resolved_responsive_overrides = normalized
+    
+    -- When overrides change, we must sync the entire resolved cache
+    sync_resolved_cache(self)
+
     self:invalidate_ancestor_layouts()
     self.dirty:mark('responsive', 'measurement', 'local_transform')
     self:invalidate_world()
