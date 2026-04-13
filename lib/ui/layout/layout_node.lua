@@ -71,10 +71,10 @@ function LayoutNode:constructor(opts, schema, config)
         self[key] = value
     end
 
-    rawset(self, '_ui_layout_kind', 'LayoutNode')
-    rawset(self, '_ui_layout_instance', true)
+    self._ui_layout_kind = 'LayoutNode'
+    self._ui_layout_instance = true
     self.dirty:mark('layout')
-    rawset(self, '_layout_content_rect_cache', Rectangle(0, 0, 0, 0))
+    self._layout_content_rect_cache = Rectangle(0, 0, 0, 0)
 end
 
 function LayoutNode:_initialize(opts, schema, config)
@@ -82,7 +82,7 @@ function LayoutNode:_initialize(opts, schema, config)
 end
 
 function LayoutNode.is_layout_node(value)
-    return Types.is_table(value) and rawget(value, '_ui_layout_instance') == true
+    return Types.is_table(value) and value._ui_layout_instance == true
 end
 
 function LayoutNode:markDirty()

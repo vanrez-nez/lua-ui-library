@@ -260,11 +260,11 @@ local function normalize_rule_list(source, level)
 end
 
 local function normalize_source(node, source_kind, source)
-    local cached_source = rawget(node, '_responsive_source_cache')
-    local cached_kind = rawget(node, '_responsive_source_cache_kind')
+    local cached_source = node._responsive_source_cache
+    local cached_kind = node._responsive_source_cache_kind
 
     if cached_source == source and cached_kind == source_kind then
-        return rawget(node, '_responsive_normalized_source')
+        return node._responsive_normalized_source
     end
 
     local normalized
@@ -283,10 +283,10 @@ local function normalize_source(node, source_kind, source)
         }
     end
 
-    rawset(node, '_responsive_source_cache', source)
-    rawset(node, '_responsive_source_cache_kind', source_kind)
-    rawset(node, '_responsive_normalized_source', normalized)
-    rawset(node, '_responsive_resolved_cache', {})
+    node._responsive_source_cache = source
+    node._responsive_source_cache_kind = source_kind
+    node._responsive_normalized_source = normalized
+    node._responsive_resolved_cache = {}
 
     return normalized
 end
@@ -368,11 +368,11 @@ local function matches_rule(matcher, context, node)
 end
 
 local function cache_resolved_overrides(node, token, overrides)
-    local cache = rawget(node, '_responsive_resolved_cache')
+    local cache = node._responsive_resolved_cache
 
     if cache == nil then
         cache = {}
-        rawset(node, '_responsive_resolved_cache', cache)
+        node._responsive_resolved_cache = cache
     end
 
     local existing = cache[token]

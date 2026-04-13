@@ -73,7 +73,7 @@ local ALERT_PUBLIC_KEYS = {
 Alert._schema = ControlUtils.extend_schema(Modal._schema, ALERT_PUBLIC_KEYS)
 
 local function is_content_node(value)
-    return Types.is_table(value) and rawget(value, '_ui_container_instance') == true
+    return Types.is_table(value) and value._ui_container_instance == true
 end
 
 local function can_construct_text()
@@ -97,7 +97,7 @@ local function coerce_text_node(value, tag)
                 focusable = false,
             })
 
-            rawset(placeholder, 'text', value)
+            placeholder.text = value
 
             return placeholder
         end
@@ -153,7 +153,7 @@ local function collect_action_nodes(node, out)
     end
 
     local is_action = node.focusable == true and (
-        rawget(node, '_ui_button_control') == true or
+        node._ui_button_control == true or
         node.onActivate ~= nil
     )
 
@@ -161,7 +161,7 @@ local function collect_action_nodes(node, out)
         out[#out + 1] = node
     end
 
-    local children = rawget(node, '_children')
+    local children = node._children
 
     for index = 1, #children do
         collect_action_nodes(children[index], out)
@@ -198,7 +198,7 @@ local function resolve_initial_action(self, actions)
     if preferred ~= nil then
         for index = 1, #actions do
             local action = actions[index]
-            local identifier = rawget(action, 'actionId') or rawget(action, 'id') or action.tag
+            local identifier = action.actionId or action.id or action.tag
 
             if identifier == preferred then
                 return action
@@ -258,13 +258,13 @@ function Alert:constructor(opts)
     self.variant = opts.variant or 'default'
     self.initialFocus = opts.initialFocus
 
-    rawset(self, '_ui_alert_control', true)
-    rawset(self, '_title_node', title_node)
-    rawset(self, '_message_node', message_node)
-    rawset(self, '_actions_container', actions_container)
+    self._ui_alert_control = true
+    self._title_node = title_node
+    self._message_node = message_node
+    self._actions_container = actions_container
 
-    rawset(self.surface, 'role', 'alertdialog')
-    rawset(self.surface, 'accessibleName', Types.is_string(opts.title) and opts.title or nil)
+    self.surface.role = 'alertdialog'
+    self.surface.accessibleName = Types.is_string(opts.title) and opts.title or nil
 end
 
 function Alert.new(opts)
@@ -272,7 +272,7 @@ function Alert.new(opts)
 end
 
 function Alert:_handle_overlay_opened_internal()
-    local actions = collect_action_nodes(rawget(self, '_actions_container'), {})
+    local actions = collect_action_nodes(self._actions_container, {})
 
     if #actions == 0 then
         Assert.fail('Alert requires at least one action node.', 2)

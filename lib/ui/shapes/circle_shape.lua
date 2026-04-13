@@ -20,7 +20,7 @@ local DEFAULT_SEGMENTS = 64
 local ARC_LENGTH_THRESHOLD = 3
 
 local function resolve_segments(shape)
-    local matrix = rawget(shape, '_world_transform_cache')
+    local matrix = shape._world_transform_cache
 
     if matrix == nil then
         return DEFAULT_SEGMENTS
@@ -111,7 +111,7 @@ local function build_local_ellipse_points(bounds, segments, points)
 end
 
 local function resolve_axis_aligned_world_ellipse(shape)
-    local matrix = rawget(shape, '_world_transform_cache')
+    local matrix = shape._world_transform_cache
 
     if matrix == nil or abs(matrix.b) > PATH_EPSILON or abs(matrix.c) > PATH_EPSILON then
         return nil
@@ -260,14 +260,14 @@ local function resolve_stroke_draw_options(shape, bounds, world_points)
         end
     end
 
-    local stroke = rawget(shape, '_stroke_options')
+    local stroke = shape._stroke_options
 
     if stroke == nil then
         stroke = {}
-        rawset(shape, '_stroke_options', stroke)
+        shape._stroke_options = stroke
     end
 
-    rawset(shape, '_circle_stroke_options_scratch', stroke)
+    shape._circle_stroke_options_scratch = stroke
 
     stroke.color = shape.strokeColor
     stroke.opacity = shape.strokeOpacity or 1
@@ -346,7 +346,7 @@ function CircleShape:_draw_stroke(graphics)
 
     local segments = resolve_segments(self)
     local axis_aligned_world_ellipse = nil
-    local world_points = rawget(self, '_world_points')
+    local world_points = self._world_points
 
     if type(graphics.ellipse) == 'function' then
         axis_aligned_world_ellipse = resolve_axis_aligned_world_ellipse(self)

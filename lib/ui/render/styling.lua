@@ -922,12 +922,12 @@ local function normalize_resolver_context(node, resolver_context)
         context[key] = value
     end
 
-    if context.partSkin == nil and Types.is_table(rawget(node, 'skin')) then
-        context.partSkin = rawget(node, 'skin')
+    if context.partSkin == nil and Types.is_table(node.skin) then
+        context.partSkin = node.skin
     end
 
     if context.variant == nil then
-        local explicit_variant = rawget(node, '_styling_variant')
+        local explicit_variant = node._styling_variant
         if explicit_variant ~= nil then
             context.variant = explicit_variant
         elseif Types.is_function(node._resolve_visual_variant) then

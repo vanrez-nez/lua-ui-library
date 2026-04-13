@@ -12,7 +12,7 @@ local function get_motion_value(shape, key)
         return nil
     end
 
-    local motion_state = rawget(shape, '_motion_visual_state')
+    local motion_state = shape._motion_visual_state
     if motion_state == nil then
         return nil
     end

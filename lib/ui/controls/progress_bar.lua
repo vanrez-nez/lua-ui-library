@@ -35,11 +35,11 @@ local function ratio(self)
 end
 
 local function sync_parts(self)
-    local track = rawget(self, 'track')
-    local indicator = rawget(self, 'indicator')
+    local track = self.track
+    local indicator = self.indicator
     local bounds = {
-        width = rawget(self, '_resolved_width') or 0,
-        height = rawget(self, '_resolved_height') or 0,
+        width = self._resolved_width or 0,
+        height = self._resolved_height or 0,
     }
     local current_ratio = ratio(self)
 
@@ -88,7 +88,7 @@ function ProgressBar:constructor(opts)
     self.indeterminate = opts.indeterminate == true
     self.orientation = opts.orientation or 'horizontal'
 
-    rawset(self, '_ui_progress_bar_control', true)
+    self._ui_progress_bar_control = true
 
     if self.max <= self.min then
         Assert.fail('ProgressBar.max must be greater than ProgressBar.min', 2)
@@ -110,21 +110,21 @@ function ProgressBar:constructor(opts)
         interactive = false,
         focusable = false,
     })
-    rawset(track, '_styling_context', {
+    track._styling_context = {
         component = 'progressBar',
         part = 'track',
-    })
-    rawset(indicator, '_styling_context', {
+    }
+    indicator._styling_context = {
         component = 'progressBar',
         part = 'indicator',
-    })
+    }
 
     Container.addChild(self, track)
     Container.addChild(self, indicator)
-    rawset(self, 'track', track)
-    rawset(self, 'indicator', indicator)
-    rawset(self, '_last_motion_ratio', nil)
-    rawset(self, '_last_indeterminate', self.indeterminate)
+    self.track = track
+    self.indicator = indicator
+    self._last_motion_ratio = nil
+    self._last_indeterminate = self.indeterminate
 end
 
 function ProgressBar.new(opts)
@@ -139,8 +139,8 @@ function ProgressBar:update(dt)
     Drawable.update(self, dt)
 
     local current_ratio = ratio(self)
-    local previous_ratio = rawget(self, '_last_motion_ratio')
-    local previous_indeterminate = rawget(self, '_last_indeterminate')
+    local previous_ratio = self._last_motion_ratio
+    local previous_indeterminate = self._last_indeterminate
 
     if self.indeterminate ~= previous_indeterminate then
         self:_raise_motion('indeterminate', {
@@ -148,7 +148,7 @@ function ProgressBar:update(dt)
             previousValue = previous_indeterminate,
             nextValue = self.indeterminate,
         })
-        rawset(self, '_last_indeterminate', self.indeterminate)
+        self._last_indeterminate = self.indeterminate
     elseif previous_ratio ~= nil and math.abs(current_ratio - previous_ratio) > 1e-9 then
         self:_raise_motion('value', {
             defaultTarget = 'indicator',
@@ -158,10 +158,10 @@ function ProgressBar:update(dt)
     end
 
     local variant = self.indeterminate and 'indeterminate' or 'determinate'
-    rawset(rawget(self, 'track'), '_styling_variant', variant)
-    rawset(rawget(self, 'indicator'), '_styling_variant', variant)
+    self.track._styling_variant = variant
+    self.indicator._styling_variant = variant
 
-    rawset(self, '_last_motion_ratio', current_ratio)
+    self._last_motion_ratio = current_ratio
     sync_parts(self)
     return self
 end

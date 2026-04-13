@@ -497,7 +497,7 @@ function SequentialLayout.apply(self, stage, config)
     local ok, result = xpcall(function()
         local justify, align, wrap, gap = validate_effective_props(self, config)
         local effective_values = effective_values(self)
-        local children = rawget(self, '_children')
+        local children = self._children
         local content_rect
         local available_main
         local available_cross

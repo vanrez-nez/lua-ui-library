@@ -25,7 +25,7 @@ local function validate_bound_rule_type(key, rule, value)
 end
 
 local function get_bound_rule(target, key)
-    local rules = rawget(target, '_schema_bound_rules')
+    local rules = target._schema_bound_rules
     if rules ~= nil then
         return rules[key]
     end
@@ -65,7 +65,7 @@ end
 
 function Schema:define(prop_defs)
     local instance = self._instance
-    local bound_rules = rawget(instance, '_schema_bound_rules') or {}
+    local bound_rules = instance._schema_bound_rules or {}
 
     rawset(instance, '_schema_bound_rules', bound_rules)
     self._prop_defs = prop_defs

@@ -23,11 +23,11 @@ function TextArea:constructor(opts)
     TextInput.constructor(self, opts)
     self.schema:define(TextAreaSchema)
 
-    rawset(self, '_ui_text_area_control', true)
-    rawset(self, '_styling_context', {
+    self._ui_text_area_control = true
+    self._styling_context = {
         component = 'textArea',
         part = 'field',
-    })
+    }
 
     self.wrap = opts.wrap ~= false
     self.rows = opts.rows
@@ -51,10 +51,10 @@ function TextArea:constructor(opts)
         focusable = false,
     })
     Container._allow_fill_from_parent(region_surface, { width = true, height = true })
-    rawset(region_surface, '_styling_context', {
+    region_surface._styling_context = {
         component = 'textArea',
         part = 'scroll region',
-    })
+    }
 
     local region = ScrollableContainer._create_scroll_region({
         scroll_x = (self.wrap == false) and self.scrollXEnabled,
@@ -67,8 +67,8 @@ function TextArea:constructor(opts)
     Container._allow_fill_from_parent(region, { width = true, height = true })
     region_surface:addChild(region)
     Container.addChild(self, region_surface)
-    rawset(self, 'scrollRegion', region_surface)
-    rawset(self, '_scroll_region', region)
+    self.scrollRegion = region_surface
+    self._scroll_region = region
 
     ControlUtils.add_control_listener(self, self, 'ui.submit', function(event)
         if self.disabled or self.readOnly then return end
@@ -81,7 +81,7 @@ function TextArea:constructor(opts)
 
     ControlUtils.add_control_listener(self, self, 'ui.scroll', function(event)
         if not self:_is_focused() then return end
-        local region_ref = rawget(self, '_scroll_region')
+        local region_ref = self._scroll_region
         if region_ref == nil then return end
 
         local dx = event.deltaX or 0
@@ -106,7 +106,7 @@ end
 function TextArea:update(dt)
     TextInput.update(self, dt)
 
-    local region = rawget(self, '_scroll_region')
+    local region = self._scroll_region
     if region ~= nil then
         local rx = (self.wrap == false) and (self.scrollXEnabled == true)
         region.scrollXEnabled = rx
@@ -114,9 +114,9 @@ function TextArea:update(dt)
         region.momentum = self.momentum == true
     end
 
-    local region_surface = rawget(self, 'scrollRegion')
+    local region_surface = self.scrollRegion
     if region_surface ~= nil then
-        rawset(region_surface, '_styling_variant', self:_resolve_visual_variant())
+        region_surface._styling_variant = self:_resolve_visual_variant()
     end
 
     return self

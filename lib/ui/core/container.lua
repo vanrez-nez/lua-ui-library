@@ -184,7 +184,7 @@ local function resolve_corner_quad_layer(source, family)
 end
 
 local function find_child_index(parent, child)
-    local children = rawget(parent, '_children')
+    local children = parent._children
     for index = 1, #children do
         if children[index] == child then
             return index
@@ -202,7 +202,7 @@ function Container:invalidate_world()
 end
 
 function Container:invalidate_descendant_world()
-    local children = rawget(self, '_children')
+    local children = self._children
     for index = 1, #children do
         local child = children[index]
         child:invalidate_world()
@@ -211,7 +211,7 @@ function Container:invalidate_descendant_world()
 end
 
 function Container:invalidate_descendant_geometry()
-    local children = rawget(self, '_children')
+    local children = self._children
     for index = 1, #children do
         local child = children[index]
         child.dirty:mark('responsive', 'measurement', 'local_transform')
@@ -222,7 +222,7 @@ function Container:invalidate_descendant_geometry()
 end
 
 local function assert_live_container(node, name, level)
-    local is_container = Object.is(node, "Container") or (type(node) == 'table' and rawget(node, '_ui_container_instance'))
+    local is_container = Object.is(node, "Container") or (type(node) == 'table' and node._ui_container_instance)
     if not is_container then
         Assert.fail(name .. ' must be a Container', level or 1)
     end
@@ -244,16 +244,16 @@ local function assert_no_cycle(parent, child, level)
 end
 
 local function get_root(node)
-    local attachment_root = rawget(node, '_attachment_root')
+    local attachment_root = node._attachment_root
     if attachment_root ~= nil then
         return attachment_root
     end
 
     local current = node
-    local parent = rawget(current, 'parent')
+    local parent = current.parent
     while parent ~= nil do
         current = parent
-        parent = rawget(current, 'parent')
+        parent = current.parent
     end
     return current
 end
@@ -291,12 +291,12 @@ local function is_public_node(node)
 end
 
 local function is_strict_descendant_of(node, ancestor)
-    local current = rawget(node, 'parent')
+    local current = node.parent
     while current ~= nil do
         if current == ancestor then
             return true
         end
-        current = rawget(current, 'parent')
+        current = current.parent
     end
 
     return false
@@ -307,15 +307,15 @@ local function is_in_same_or_descendant_subtree(node, root)
 end
 
 local function assign_attachment_root_recursive(node, attachment_root)
-    rawset(node, '_attachment_root', attachment_root)
+    node._attachment_root = attachment_root
 
     if node == attachment_root then
-        rawset(node, '_id_index', rawget(node, '_id_index') or {})
+        node._id_index = node._id_index or {}
     else
-        rawset(node, '_id_index', nil)
+        node._id_index = nil
     end
 
-    local children = rawget(node, '_children')
+    local children = node._children
     for index = 1, #children do
         assign_attachment_root_recursive(children[index], attachment_root)
     end
@@ -331,10 +331,10 @@ local function register_node_id_with_root(node, attachment_root)
         return
     end
 
-    local index = rawget(attachment_root, '_id_index')
+    local index = attachment_root._id_index
     if index == nil then
         index = {}
-        rawset(attachment_root, '_id_index', index)
+        attachment_root._id_index = index
     end
 
     index[id] = node
@@ -343,7 +343,7 @@ end
 local function register_subtree_ids(node, attachment_root)
     register_node_id_with_root(node, attachment_root)
 
-    local children = rawget(node, '_children')
+    local children = node._children
     for index = 1, #children do
         register_subtree_ids(children[index], attachment_root)
     end
@@ -358,7 +358,7 @@ local function deregister_node_id_from_root_value(node, attachment_root, id)
         return
     end
 
-    local index = rawget(attachment_root, '_id_index')
+    local index = attachment_root._id_index
     if index ~= nil and index[id] == node then
         index[id] = nil
     end
@@ -371,14 +371,14 @@ end
 local function deregister_subtree_ids(node, attachment_root)
     deregister_node_id_from_root(node, attachment_root)
 
-    local children = rawget(node, '_children')
+    local children = node._children
     for index = 1, #children do
         deregister_subtree_ids(children[index], attachment_root)
     end
 end
 
 local function rebuild_attachment_root_index(root)
-    rawset(root, '_id_index', {})
+    root._id_index = {}
     assign_attachment_root_recursive(root, root)
     register_subtree_ids(root, root)
 end
@@ -388,7 +388,7 @@ local function find_sibling_name_collision(node, name, parent)
         return nil
     end
 
-    local children = rawget(parent, '_children')
+    local children = parent._children
     for index = 1, #children do
         local sibling = children[index]
         if sibling ~= node and is_public_node(sibling) and get_public_value(sibling, 'name') == name then
@@ -428,7 +428,7 @@ local function collect_public_subtree_identity(node, state)
         end
     end
 
-    local children = rawget(node, '_children')
+    local children = node._children
     for index = 1, #children do
         collect_public_subtree_identity(children[index], state)
     end
@@ -441,7 +441,7 @@ local function validate_id_uniqueness_against_root(node, id, attachment_root, ig
         return
     end
 
-    local index = attachment_root and rawget(attachment_root, '_id_index')
+    local index = attachment_root and attachment_root._id_index
     local existing = index and index[id] or nil
     if existing ~= nil and existing ~= node and not (ignored_nodes and ignored_nodes[existing]) then
         Assert.fail(
@@ -504,7 +504,7 @@ local function find_by_id_bounded(node, id, depth)
         return nil
     end
 
-    local children = rawget(node, '_children')
+    local children = node._children
     for index = 1, #children do
         local child = children[index]
         if is_public_node(child) and get_public_value(child, 'id') == id then
@@ -533,7 +533,7 @@ local function find_by_tag_bounded(node, tag, depth, results)
         return results
     end
 
-    local children = rawget(node, '_children')
+    local children = node._children
     for index = 1, #children do
         local child = children[index]
         if is_public_node(child) and get_public_value(child, 'tag') == tag then
@@ -554,7 +554,13 @@ function Container:notify_stage_subtree_change(stage, handler_name, child, paren
         return
     end
 
-    local handler = rawget(stage, handler_name)
+    if child._destroying_subtree == true or
+        parent._destroying_subtree == true or
+        stage._destroying_subtree == true then
+        return
+    end
+
+    local handler = stage[handler_name]
 
     if handler == nil then
         handler = stage[handler_name]
@@ -612,7 +618,7 @@ local function ensure_current(node)
     local root = get_root(node)
 
     -- Fast path for Stage instances (which are usually the root)
-    if rawget(root, '_ui_stage_instance') then
+    if root._ui_stage_instance then
         local method = root._synchronize_for_read
         if Types.is_function(method) then
             method(root)
@@ -620,7 +626,7 @@ local function ensure_current(node)
         end
     end
 
-    local method = walk_hierarchy(rawget(root, '_pclass') or getmetatable(root), "_synchronize_for_read")
+    local method = walk_hierarchy(root._pclass or getmetatable(root), "_synchronize_for_read")
 
     if Types.is_function(method) then
         method(root)
@@ -633,7 +639,7 @@ local function ensure_current(node)
 end
 
 local function get_declared_rule(self, key)
-    local declared_props = rawget(self, '_declared_props')
+    local declared_props = self._declared_props
     return declared_props[key]
 end
 
@@ -648,12 +654,12 @@ end
 
 local function resolve_quad_value(self, family_name, requested_key)
     local family = QUAD_FAMILIES[family_name]
-    local overrides = rawget(self, '_resolved_responsive_overrides')
+    local overrides = self._resolved_responsive_overrides
 
     if family.kind == 'corner' then
         local resolved = CornerQuad.resolve_layers({
             resolve_corner_quad_layer(overrides, family),
-            resolve_corner_quad_layer(rawget(self, '_pdata'), family),
+            resolve_corner_quad_layer(self._pdata, family),
         }, {
             label = family.aggregate,
         }, 3)
@@ -687,7 +693,7 @@ local function resolve_quad_value(self, family_name, requested_key)
 
     local resolved = SideQuad.resolve_layers({
         resolve_side_quad_layer(overrides, family),
-        resolve_side_quad_layer(rawget(self, '_pdata'), family),
+        resolve_side_quad_layer(self._pdata, family),
     }, {
         label = family.aggregate,
         factory = family.factory,
@@ -726,7 +732,7 @@ local function get_effective_value(self, key)
         return resolve_quad_value(self, family_name, key)
     end
 
-    local overrides = rawget(self, '_resolved_responsive_overrides')
+    local overrides = self._resolved_responsive_overrides
     if overrides ~= nil and overrides[key] ~= nil then
         return overrides[key]
     end
@@ -736,22 +742,22 @@ end
 Container._get_public_read_value = get_effective_value
 
 local function axis_fill_supported_by_parent(self, axis_key)
-    local parent = rawget(self, 'parent')
+    local parent = self.parent
 
-    if parent ~= nil and rawget(parent, '_ui_stage_instance') == true then
+    if parent ~= nil and parent._ui_stage_instance == true then
         return true
     end
 
-    if parent ~= nil and rawget(parent, '_ui_layout_instance') == true then
+    if parent ~= nil and parent._ui_layout_instance == true then
         return true
     end
 
-    local parent_contract = parent and rawget(parent, '_child_fill_contract')
+    local parent_contract = parent and parent._child_fill_contract
     if parent_contract ~= nil and parent_contract[axis_key] == true then
         return true
     end
 
-    local node_contract = rawget(self, '_fill_parent_contract')
+    local node_contract = self._fill_parent_contract
     if node_contract ~= nil and node_contract[axis_key] == true then
         return true
     end
@@ -764,13 +770,13 @@ local function resolve_fill_axis_size(self, axis_key, parent_size)
         return parent_size or 0
     end
 
-    local parent = rawget(self, 'parent')
+    local parent = self.parent
     local parent_name = nil
 
     if parent ~= nil then
-        parent_name = rawget(getmetatable(parent), '__name') or tostring(parent)
-    elseif rawget(self, '_measurement_context_width') ~= nil or
-        rawget(self, '_measurement_context_height') ~= nil then
+        parent_name = getmetatable(parent).__name or tostring(parent)
+    elseif self._measurement_context_width ~= nil or
+        self._measurement_context_height ~= nil then
         parent_name = 'measurement context'
     else
         parent_name = 'no parent'
@@ -800,8 +806,8 @@ local function refresh_measurement(self)
         parent_width = parent_content_rect.width
         parent_height = parent_content_rect.height
     else
-        parent_width = rawget(self, '_measurement_context_width')
-        parent_height = rawget(self, '_measurement_context_height')
+        parent_width = self._measurement_context_width
+        parent_height = self._measurement_context_height
     end
 
     local width = clamp_number(
@@ -815,9 +821,9 @@ local function refresh_measurement(self)
         get_effective_value(self, 'maxHeight')
     )
 
-    rawset(self, '_resolved_width', width)
-    rawset(self, '_resolved_height', height)
-    rawset(self, '_local_bounds_cache', Rectangle(0, 0, width, height))
+    self._resolved_width = width
+    self._resolved_height = height
+    self._local_bounds_cache = Rectangle(0, 0, width, height)
     self.dirty:clear('measurement')
 end
 
@@ -829,25 +835,25 @@ local function refresh_local_transform(self)
         local parent_content_rect = self.parent:_get_effective_content_rect()
         parent_width = parent_content_rect.width
         parent_height = parent_content_rect.height
-    elseif rawget(self, '_measurement_context_width') ~= nil or
-        rawget(self, '_measurement_context_height') ~= nil then
-        parent_width = rawget(self, '_measurement_context_width') or 0
-        parent_height = rawget(self, '_measurement_context_height') or 0
+    elseif self._measurement_context_width ~= nil or
+        self._measurement_context_height ~= nil then
+        parent_width = self._measurement_context_width or 0
+        parent_height = self._measurement_context_height or 0
     end
 
-    local width = rawget(self, '_resolved_width') or 0
-    local height = rawget(self, '_resolved_height') or 0
+    local width = self._resolved_width or 0
+    local height = self._resolved_height or 0
     local pivot_x = (get_effective_value(self, 'pivotX') or 0.5) * width
     local pivot_y = (get_effective_value(self, 'pivotY') or 0.5) * height
     local anchor_x = (get_effective_value(self, 'anchorX') or 0) * parent_width
     local anchor_y = (get_effective_value(self, 'anchorY') or 0) * parent_height
-    local layout_offset_x = rawget(self, '_layout_offset_x') or 0
-    local layout_offset_y = rawget(self, '_layout_offset_y') or 0
+    local layout_offset_x = self._layout_offset_x or 0
+    local layout_offset_y = self._layout_offset_y or 0
 
     local position_x = layout_offset_x + anchor_x + (get_effective_value(self, 'x') or 0)
     local position_y = layout_offset_y + anchor_y + (get_effective_value(self, 'y') or 0)
 
-    local local_transform = rawget(self, '_local_transform_cache')
+    local local_transform = self._local_transform_cache
     local_transform:set_from_transform(
         position_x + pivot_x,
         position_y + pivot_y,
@@ -863,12 +869,12 @@ local function refresh_local_transform(self)
 end
 
 local function refresh_world_transform(self)
-    local previous = rawget(self, '_world_transform_cache')
+    local previous = self._world_transform_cache
     local next_a, next_b, next_c, next_d, next_tx, next_ty
 
     if self.parent then
-        local parent_world = rawget(self.parent, '_world_transform_cache')
-        local local_transform = rawget(self, '_local_transform_cache')
+        local parent_world = self.parent._world_transform_cache
+        local local_transform = self._local_transform_cache
         next_a = parent_world.a * local_transform.a + parent_world.c * local_transform.b
         next_b = parent_world.b * local_transform.a + parent_world.d * local_transform.b
         next_c = parent_world.a * local_transform.c + parent_world.c * local_transform.d
@@ -876,7 +882,7 @@ local function refresh_world_transform(self)
         next_tx = parent_world.a * local_transform.tx + parent_world.c * local_transform.ty + parent_world.tx
         next_ty = parent_world.b * local_transform.tx + parent_world.d * local_transform.ty + parent_world.ty
     else
-        local local_transform = rawget(self, '_local_transform_cache')
+        local local_transform = self._local_transform_cache
         next_a = local_transform.a
         next_b = local_transform.b
         next_c = local_transform.c
@@ -898,7 +904,7 @@ local function refresh_world_transform(self)
     self.dirty:mark('world_inverse')
 
     if changed then
-        local children = rawget(self, '_children')
+        local children = self._children
         for index = 1, #children do
             local child = children[index]
             child:invalidate_world()
@@ -908,19 +914,19 @@ local function refresh_world_transform(self)
 end
 
 local function refresh_bounds(self)
-    local resolve_world_bounds_points = walk_hierarchy(rawget(self, '_pclass') or getmetatable(self), '_get_world_bounds_points')
+    local resolve_world_bounds_points = walk_hierarchy(self._pclass or getmetatable(self), '_get_world_bounds_points')
     if Types.is_function(resolve_world_bounds_points) then
         local points = resolve_world_bounds_points(self)
         if Types.is_table(points) and #points > 0 then
-            rawset(self, '_world_bounds_cache', Rectangle.bounding_box(points))
+            self._world_bounds_cache = Rectangle.bounding_box(points)
             self.dirty:clear('bounds')
             return
         end
     end
 
-    local width = rawget(self, '_resolved_width') or 0
-    local height = rawget(self, '_resolved_height') or 0
-    local matrix = rawget(self, '_world_transform_cache')
+    local width = self._resolved_width or 0
+    local height = self._resolved_height or 0
+    local matrix = self._world_transform_cache
     local x1, y1 = matrix:transform_point(0, 0)
     local x2, y2 = matrix:transform_point(width, 0)
     local x3, y3 = matrix:transform_point(width, height)
@@ -929,17 +935,17 @@ local function refresh_bounds(self)
     local min_y = min(min(y1, y2), min(y3, y4))
     local max_x = max(max(x1, x2), max(x3, x4))
     local max_y = max(max(y1, y2), max(y3, y4))
-    local world_bounds = rawget(self, '_world_bounds_cache')
+    local world_bounds = self._world_bounds_cache
     world_bounds:set(min_x, min_y, max_x - min_x, max_y - min_y)
     self.dirty:clear('bounds')
 end
 
 local function refresh_child_order_cache(self)
-    if not self.dirty:is_dirty('child_order') and rawget(self, '_ordered_children') ~= nil then
+    if not self.dirty:is_dirty('child_order') and self._ordered_children ~= nil then
         return
     end
 
-    local children = rawget(self, '_children')
+    local children = self._children
     local decorated = {}
 
     for index = 1, #children do
@@ -966,7 +972,7 @@ local function refresh_child_order_cache(self)
         ordered[index] = decorated[index].child
     end
 
-    rawset(self, '_ordered_children', ordered)
+    self._ordered_children = ordered
     self.dirty:clear('child_order')
 end
 
@@ -978,18 +984,18 @@ end
 
 local function resolve_world_inverse(self)
     if self.dirty:is_dirty('world_inverse') then
-        local matrix = rawget(self, '_world_transform_cache')
+        local matrix = self._world_transform_cache
         local inv, err = matrix:inverse()
-        rawset(self, '_world_inverse_cache', inv)
-        rawset(self, '_world_inverse_error', err)
+        self._world_inverse_cache = inv
+        self._world_inverse_error = err
         self.dirty:clear('world_inverse')
     end
 
-    return rawget(self, '_world_inverse_cache'), rawget(self, '_world_inverse_error')
+    return self._world_inverse_cache, self._world_inverse_error
 end
 
 local function contains_world_point(self, x, y)
-    local local_bounds = rawget(self, '_local_bounds_cache')
+    local local_bounds = self._local_bounds_cache
     if local_bounds:is_empty() then
         return false
     end
@@ -1016,9 +1022,9 @@ local function point_within_active_clips(active_clips, x, y)
 end
 
 local function get_world_clip_points(self, points)
-    local width = rawget(self, '_resolved_width') or 0
-    local height = rawget(self, '_resolved_height') or 0
-    local matrix = rawget(self, '_world_transform_cache')
+    local width = self._resolved_width or 0
+    local height = self._resolved_height or 0
+    local matrix = self._world_transform_cache
     local x1, y1 = matrix:transform_point(0, 0)
     local x2, y2 = matrix:transform_point(width, 0)
     local x3, y3 = matrix:transform_point(width, height)
@@ -1066,16 +1072,16 @@ local function is_axis_aligned_clip(self, clip_state)
 end
 
 local function get_world_clip_rect(self)
-    return rawget(self, '_world_bounds_cache')
+    return self._world_bounds_cache
 end
 
 local function has_degenerate_clip(self)
-    local local_bounds = rawget(self, '_local_bounds_cache')
+    local local_bounds = self._local_bounds_cache
     if local_bounds:is_empty() then
         return true
     end
 
-    local matrix = rawget(self, '_world_transform_cache')
+    local matrix = self._world_transform_cache
     return not matrix:is_invertible()
 end
 
@@ -1279,7 +1285,7 @@ draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
 
             draw_callback(self)
 
-            local ordered_children = rawget(self, '_ordered_children')
+            local ordered_children = self._ordered_children
 
             for index = 1, #ordered_children do
                 draw_subtree(ordered_children[index], graphics, draw_callback, clip_state, render_state)
@@ -1308,7 +1314,7 @@ draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
 
         draw_callback(self)
 
-        local ordered_children = rawget(self, '_ordered_children')
+        local ordered_children = self._ordered_children
 
         for index = 1, #ordered_children do
             draw_subtree(ordered_children[index], graphics, draw_callback, clip_state, render_state)
@@ -1334,7 +1340,7 @@ draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
 
     draw_callback(self)
 
-    local ordered_children = rawget(self, '_ordered_children')
+    local ordered_children = self._ordered_children
 
     for index = 1, #ordered_children do
         draw_subtree(ordered_children[index], graphics, draw_callback, clip_state, render_state)
@@ -1374,7 +1380,7 @@ local function find_hit_target(self, x, y, state)
         added_clip = true
     end
 
-    local ordered_children = rawget(self, '_ordered_children')
+    local ordered_children = self._ordered_children
 
     for index = #ordered_children, 1, -1 do
         local child = ordered_children[index]
@@ -1434,7 +1440,7 @@ local function handle_id_change(new, old, _, target)
 end
 
 local function validate_name_write(_, value, target)
-    validate_name_uniqueness(target, value, rawget(target, 'parent'), 4)
+    validate_name_uniqueness(target, value, target.parent, 4)
     return value
 end
 
@@ -1455,7 +1461,7 @@ local function validate_internal_write(_, value, target)
     validate_name_uniqueness(
         target,
         get_public_value(target, 'name'),
-        rawget(target, 'parent'),
+        target.parent,
         4
     )
     return value
@@ -1495,8 +1501,8 @@ end
 local function handle_public_prop_change(self, key)
     Container.invalidate_stage_update_token(self)
     local has_responsive_surface =
-        rawget(self, 'responsive') ~= nil or
-        rawget(self, 'breakpoints') ~= nil
+        self.responsive ~= nil or
+        self.breakpoints ~= nil
 
     if key == 'responsive' or key == 'breakpoints' or has_responsive_surface then
         self.dirty:mark('responsive')
@@ -1550,7 +1556,7 @@ local function install_responsive_read_hooks(self, declared_props)
 end
 
 local function install_public_prop_watchers(self, declared_props)
-    local props = rawget(self, 'props')
+    local props = self.props
 
     for key, rule in pairs(declared_props) do
         if type(rule) == 'table' and key ~= 'id' and key ~= 'name' and key ~= 'internal' then
@@ -1570,14 +1576,14 @@ local function detach_child(parent, child)
     local old_attachment_root = get_root(child)
     deregister_subtree_ids(child, old_attachment_root)
 
-    local children = rawget(parent, '_children')
+    local children = parent._children
     table.remove(children, index)
     parent.dirty:mark('child_order')
     parent:invalidate_stage_update_token()
     parent:invalidate_ancestor_layouts()
     child.parent = nil
-    rawset(child, '_layout_offset_x', 0)
-    rawset(child, '_layout_offset_y', 0)
+    child._layout_offset_x = 0
+    child._layout_offset_y = 0
     child.dirty:mark('responsive', 'measurement', 'local_transform')
     assign_attachment_root_recursive(child, child)
     rebuild_attachment_root_index(child)
@@ -1588,19 +1594,21 @@ local function detach_child(parent, child)
 end
 
 local function destroy_subtree(node)
+    rawset(node, '_destroying_subtree', true)
+
     if node.parent then
         detach_child(node.parent, node)
     end
 
-    local children = rawget(node, '_children')
+    local children = node._children
     for index = #children, 1, -1 do
         local child = children[index]
         child:destroy()
     end
 
-    rawset(node, '_ordered_children', nil)
-    rawset(node, '_id_index', nil)
-    rawset(node, '_attachment_root', nil)
+    node._ordered_children = nil
+    node._id_index = nil
+    node._attachment_root = nil
 end
 
 function Container:_initialize(opts, extra_public_keys, config)
@@ -1663,13 +1671,13 @@ function Container:_initialize(opts, extra_public_keys, config)
 
     ContainerPropertyViews.install(self, {
         public = function(instance, key)
-            if rawget(instance, '_declared_props')[key] ~= nil then
+            if instance._declared_props[key] ~= nil then
                 return Proxy.raw_get(instance, key)
             end
             return rawget(instance, key)
         end,
         effective = function(instance, key)
-            if rawget(instance, '_declared_props')[key] ~= nil then
+            if instance._declared_props[key] ~= nil then
                 return get_effective_value(instance, key)
             end
             return rawget(instance, key)
@@ -1718,10 +1726,10 @@ function Container._allow_fill_from_parent(node, axes)
     assert_live_container(node, 'node', 2)
     Assert.table('axes', axes, 2)
 
-    rawset(node, '_fill_parent_contract', {
+    node._fill_parent_contract = {
         width = axes.width == true,
         height = axes.height == true,
-    })
+    }
 
     return node
 end
@@ -1730,10 +1738,10 @@ function Container._allow_child_fill(node, axes)
     assert_live_container(node, 'node', 2)
     Assert.table('axes', axes, 2)
 
-    rawset(node, '_child_fill_contract', {
+    node._child_fill_contract = {
         width = axes.width == true,
         height = axes.height == true,
-    })
+    }
 
     return node
 end
@@ -1743,29 +1751,29 @@ local function refresh_responsive(self)
 end
 
 function Container:_apply_resolved_size(width, height)
-    local resolved_width = default(width, rawget(self, '_resolved_width') or 0)
-    local resolved_height = default(height, rawget(self, '_resolved_height') or 0)
+    local resolved_width = default(width, self._resolved_width or 0)
+    local resolved_height = default(height, self._resolved_height or 0)
 
-    if rawget(self, '_resolved_width') == resolved_width and
-        rawget(self, '_resolved_height') == resolved_height then
+    if self._resolved_width == resolved_width and
+        self._resolved_height == resolved_height then
         self.dirty:clear('measurement')
         return false
     end
 
-    rawset(self, '_resolved_width', resolved_width)
-    rawset(self, '_resolved_height', resolved_height)
-    rawset(self, '_local_bounds_cache', Rectangle(0, 0, resolved_width, resolved_height))
+    self._resolved_width = resolved_width
+    self._resolved_height = resolved_height
+    self._local_bounds_cache = Rectangle(0, 0, resolved_width, resolved_height)
     self.dirty:clear('measurement')
     self.dirty:mark('local_transform')
     self:invalidate_world()
 
-    if rawget(self, '_ui_layout_instance') == true and
+    if self._ui_layout_instance == true and
         Types.is_function(self._refresh_layout_content_rect) then
         self:_refresh_layout_content_rect()
         self:mark_layout_node_dirty()
     end
 
-    local children = rawget(self, '_children')
+    local children = self._children
     for index = 1, #children do
         children[index]:_mark_parent_layout_dependency_dirty()
     end
@@ -1774,8 +1782,8 @@ function Container:_apply_resolved_size(width, height)
 end
 
 function Container:_apply_content_measurement(width, height)
-    local effective_width = rawget(self, '_resolved_width') or 0
-    local effective_height = rawget(self, '_resolved_height') or 0
+    local effective_width = self._resolved_width or 0
+    local effective_height = self._resolved_height or 0
 
     if get_effective_value(self, 'width') == 'content' then
         effective_width = clamp_number(
@@ -1843,8 +1851,8 @@ end
 function Container:update(_)
 
     local root = get_root(self)
-    local resolve_responsive_for_node = rawget(root, '_resolve_responsive_for_node')
-    local stage_managed_update = rawget(root, '_ui_stage_instance') == true and rawget(root, '_updating') == true
+    local resolve_responsive_for_node = root._resolve_responsive_for_node
+    local stage_managed_update = root._ui_stage_instance == true and root._updating == true
 
     if not stage_managed_update and Types.is_function(resolve_responsive_for_node) then
         resolve_responsive_for_node(root, self)
@@ -1852,7 +1860,7 @@ function Container:update(_)
 
     self:_refresh_if_dirty()
 
-    local children = rawget(self, '_children')
+    local children = self._children
     local snapshot = {}
 
     for index = 1, #children do
@@ -1889,7 +1897,7 @@ function Container:addChild(child)
     end
 
     child.parent = self
-    local children = rawget(self, '_children')
+    local children = self._children
     children[#children + 1] = child
     local attachment_root = get_root(self)
     assign_attachment_root_recursive(child, attachment_root)
@@ -1918,7 +1926,7 @@ function Container:removeChild(child)
 end
 
 function Container:getChildren()
-    return Utils.copy_array(rawget(self, '_children'))
+    return Utils.copy_array(self._children)
 end
 
 function Container:findById(id, depth)
@@ -1936,7 +1944,7 @@ function Container:findById(id, depth)
 
     if depth == -1 or depth == math.huge then
         local attachment_root = get_root(self)
-        local index = attachment_root and rawget(attachment_root, '_id_index') or nil
+        local index = attachment_root and attachment_root._id_index or nil
         local candidate = index and index[id] or nil
         if candidate ~= nil and candidate ~= self and is_public_node(candidate) and is_strict_descendant_of(candidate, self) then
             return candidate
@@ -1962,22 +1970,22 @@ end
 
 function Container:_get_ordered_children()
     ensure_current(self)
-    return Utils.copy_array(rawget(self, '_ordered_children'))
+    return Utils.copy_array(self._ordered_children)
 end
 
 function Container:getWorldTransform()
     ensure_current(self)
-    return rawget(self, '_world_transform_cache'):clone()
+    return self._world_transform_cache:clone()
 end
 
 function Container:getLocalBounds()
     ensure_current(self)
-    return rawget(self, '_local_bounds_cache'):clone()
+    return self._local_bounds_cache:clone()
 end
 
 function Container:getWorldBounds()
     ensure_current(self)
-    return rawget(self, '_world_bounds_cache'):clone()
+    return self._world_bounds_cache:clone()
 end
 
 function Container:getBounds()
@@ -1986,7 +1994,7 @@ end
 
 function Container:localToWorld(x, y)
     ensure_current(self)
-    local matrix = rawget(self, '_world_transform_cache')
+    local matrix = self._world_transform_cache
     return matrix:transform_point(x, y)
 end
 
@@ -2128,12 +2136,12 @@ function Container:_set_layout_offset(x, y)
     Assert.number('x', x, 2)
     Assert.number('y', y, 2)
 
-    if rawget(self, '_layout_offset_x') == x and rawget(self, '_layout_offset_y') == y then
+    if self._layout_offset_x == x and self._layout_offset_y == y then
         return self
     end
 
-    rawset(self, '_layout_offset_x', x)
-    rawset(self, '_layout_offset_y', y)
+    self._layout_offset_x = x
+    self._layout_offset_y = y
     self.dirty:mark('local_transform')
     self:invalidate_world()
     self:invalidate_descendant_world()
@@ -2152,8 +2160,8 @@ function Container:_get_effective_content_rect()
     return Rectangle(
         0,
         0,
-        rawget(self, '_resolved_width') or 0,
-        rawget(self, '_resolved_height') or 0
+        self._resolved_width or 0,
+        self._resolved_height or 0
     )
 end
 
@@ -2167,14 +2175,14 @@ function Container:_set_measurement_context(width, height)
         Assert.number('height', height, 2)
     end
 
-    if rawget(self, '_measurement_context_width') == width and
-        rawget(self, '_measurement_context_height') == height then
+    if self._measurement_context_width == width and
+        self._measurement_context_height == height then
         return self
     end
 
     self:invalidate_stage_update_token()
-    rawset(self, '_measurement_context_width', width)
-    rawset(self, '_measurement_context_height', height)
+    self._measurement_context_width = width
+    self._measurement_context_height = height
     self:invalidate_ancestor_layouts()
     self.dirty:mark('measurement', 'local_transform')
     self:invalidate_world()
@@ -2184,8 +2192,8 @@ end
 
 function Container:_set_resolved_responsive_overrides(token, overrides)
 
-    if rawget(self, '_responsive_token') == token and
-        rawget(self, '_resolved_responsive_overrides_source') == overrides then
+    if self._responsive_token == token and
+        self._resolved_responsive_overrides_source == overrides then
         return self
     end
 
@@ -2208,7 +2216,7 @@ function Container:_set_resolved_responsive_overrides(token, overrides)
         end
     end
 
-    local previous_overrides = rawget(self, '_resolved_responsive_overrides')
+    local previous_overrides = self._resolved_responsive_overrides
     local previous_effective_z_index = get_effective_value(self, 'zIndex')
 
     if responsive_overrides_affect_root_compositing_plan(self, previous_overrides, normalized) then
@@ -2216,9 +2224,9 @@ function Container:_set_resolved_responsive_overrides(token, overrides)
     end
 
     self:invalidate_stage_update_token()
-    rawset(self, '_responsive_token', token)
-    rawset(self, '_resolved_responsive_overrides_source', overrides)
-    rawset(self, '_resolved_responsive_overrides', normalized)
+    self._responsive_token = token
+    self._resolved_responsive_overrides_source = overrides
+    self._resolved_responsive_overrides = normalized
     self:invalidate_ancestor_layouts()
     self.dirty:mark('responsive', 'measurement', 'local_transform')
     self:invalidate_world()
@@ -2240,7 +2248,7 @@ function Container:_get_motion_surface(target_name)
         return self
     end
 
-    local value = rawget(self, target_name)
+    local value = self[target_name]
     if Types.is_table(value) then
         return value
     end
@@ -2254,16 +2262,16 @@ function Container:_apply_motion_value(target_name, property_name, value)
         Assert.fail('unknown motion surface "' .. tostring(target_name) .. '"', 2)
     end
 
-    local state = rawget(surface, '_motion_visual_state')
+    local state = surface._motion_visual_state
     if state == nil then
         state = {}
-        rawset(surface, '_motion_visual_state', state)
+        surface._motion_visual_state = state
     end
 
     state[property_name] = value
 
     local plan_target = surface
-    if rawget(plan_target, '_ui_container_instance') ~= true then
+    if plan_target._ui_container_instance ~= true then
         plan_target = self
     end
 
@@ -2280,7 +2288,7 @@ function Container:_get_motion_value(target_name, property_name)
         return nil
     end
 
-    local state = rawget(surface, '_motion_visual_state')
+    local state = surface._motion_visual_state
     return state[property_name]
 end
 

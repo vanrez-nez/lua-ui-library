@@ -24,8 +24,8 @@ local function clamp_01(value)
 end
 
 local function unwrap_canvas(canvas)
-    if Types.is_table(canvas) and rawget(canvas, 'handle') ~= nil then
-        return rawget(canvas, 'handle')
+    if Types.is_table(canvas) and canvas.handle ~= nil then
+        return canvas.handle
     end
 
     return canvas

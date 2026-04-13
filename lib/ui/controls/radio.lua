@@ -35,7 +35,7 @@ function Radio:constructor(opts)
     })
     Drawable.constructor(self, drawable_opts)
     self.schema:define(RadioSchema)
-    rawset(self, 'pointerFocusCoupling', 'before')
+    self.pointerFocusCoupling = 'before'
 
     if not Types.is_string(opts.value) or opts.value == '' then
         Assert.fail('Radio.value is required', 2)
@@ -44,7 +44,7 @@ function Radio:constructor(opts)
     assert_string_or_node('Radio.label', opts.label, 2)
     assert_string_or_node('Radio.description', opts.description, 2)
 
-    rawset(self, '_ui_radio_control', true)
+    self._ui_radio_control = true
     self.value = opts.value
     self.disabled = opts.disabled == true
 
@@ -56,10 +56,10 @@ function Radio:constructor(opts)
         interactive = false,
         focusable = false,
     })
-    rawset(indicator, '_styling_context', {
+    indicator._styling_context = {
         component = 'radio',
         part = 'indicator',
-    })
+    }
     local label_slot = Container.new({
         tag = (self.tag and (self.tag .. '.label')) or 'radio.label',
         internal = true,
@@ -83,20 +83,20 @@ function Radio:constructor(opts)
     Container.addChild(self, label_slot)
     Container.addChild(self, description_slot)
 
-    rawset(self, 'indicator', indicator)
-    rawset(self, 'label', label_slot)
-    rawset(self, 'description', description_slot)
+    self.indicator = indicator
+    self.label = label_slot
+    self.description = description_slot
 
     if Types.is_table(opts.label) then
         label_slot:addChild(opts.label)
     else
-        rawset(label_slot, 'text', opts.label)
+        label_slot.text = opts.label
     end
 
     if Types.is_table(opts.description) then
         description_slot:addChild(opts.description)
     else
-        rawset(description_slot, 'text', opts.description)
+        description_slot.text = opts.description
     end
 
     ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
@@ -117,12 +117,12 @@ function Radio.new(opts)
 end
 
 function Radio:_find_group()
-    local current = rawget(self, 'parent')
+    local current = self.parent
     while current ~= nil do
-        if rawget(current, '_ui_radio_group_control') == true then
+        if current._ui_radio_group_control == true then
             return current
         end
-        current = rawget(current, 'parent')
+        current = current.parent
     end
     return nil
 end
@@ -149,7 +149,7 @@ function Radio:_resolve_visual_variant()
         return 'selected'
     end
 
-    if rawget(self, '_focused') == true then
+    if self._focused == true then
         return 'focused'
     end
 
@@ -162,9 +162,9 @@ function Radio:update(dt)
     local disabled = self:_is_effectively_disabled()
     ControlUtils.set_interaction_state(self, not disabled)
 
-    local indicator = rawget(self, 'indicator')
+    local indicator = self.indicator
     if indicator ~= nil then
-        rawset(indicator, '_styling_variant', self:_resolve_visual_variant())
+        indicator._styling_variant = self:_resolve_visual_variant()
     end
 
     return self

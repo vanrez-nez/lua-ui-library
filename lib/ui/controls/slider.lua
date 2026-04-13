@@ -93,13 +93,13 @@ end
 
 local function sync_parts(self)
     local ratio = ratio_for_value(self, effective_value(self))
-    rawset(self, '_value_ratio', ratio)
+    self._value_ratio = ratio
 
-    local track = rawget(self, 'track')
-    local thumb = rawget(self, 'thumb')
+    local track = self.track
+    local thumb = self.thumb
     local bounds = {
-        width = rawget(self, '_resolved_width') or 0,
-        height = rawget(self, '_resolved_height') or 0,
+        width = self._resolved_width or 0,
+        height = self._resolved_height or 0,
     }
 
     if self.orientation == 'vertical' then
@@ -144,9 +144,9 @@ function Slider:constructor(opts)
     self.orientation = opts.orientation or 'horizontal'
     self.disabled = opts.disabled == true
     ControlUtils.validate_control_schema(self, opts, Slider._control_schema, 2)
-    rawset(self, 'pointerFocusCoupling', 'before')
+    self.pointerFocusCoupling = 'before'
 
-    rawset(self, '_ui_slider_control', true)
+    self._ui_slider_control = true
 
     if self.max <= self.min then
         Assert.fail('Slider.max must be greater than Slider.min', 2)
@@ -162,10 +162,10 @@ function Slider:constructor(opts)
 
     ControlUtils.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
 
-    rawset(self, '_value_controlled', opts.value ~= nil)
-    rawset(self, '_value_uncontrolled', normalize_value(self, opts.value or self.min))
-    rawset(self, '_dragging', false)
-    rawset(self, '_last_motion_value', effective_value(self))
+    self._value_controlled = opts.value ~= nil
+    self._value_uncontrolled = normalize_value(self, opts.value or self.min)
+    self._dragging = false
+    self._last_motion_value = effective_value(self)
 
     local track = Drawable.new({
         tag = (self.tag and (self.tag .. '.track')) or 'slider.track',
@@ -179,18 +179,18 @@ function Slider:constructor(opts)
         interactive = false,
         focusable = false,
     })
-    rawset(track, '_styling_context', {
+    track._styling_context = {
         component = 'slider',
         part = 'track',
-    })
-    rawset(thumb, '_styling_context', {
+    }
+    thumb._styling_context = {
         component = 'slider',
         part = 'thumb',
-    })
+    }
     Container.addChild(self, track)
     Container.addChild(self, thumb)
-    rawset(self, 'track', track)
-    rawset(self, 'thumb', thumb)
+    self.track = track
+    self.thumb = thumb
 
     ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
         if self.disabled or event.defaultPrevented then
@@ -209,20 +209,20 @@ function Slider:constructor(opts)
         end
 
         if event.dragPhase == 'start' then
-            rawset(self, '_dragging', true)
+            self._dragging = true
             request_value(self, value_from_pointer(self, event.x, event.y))
             event:stopPropagation()
             return
         end
 
-        if event.dragPhase == 'move' and rawget(self, '_dragging') then
+        if event.dragPhase == 'move' and self._dragging then
             request_value(self, value_from_pointer(self, event.x, event.y))
             event:stopPropagation()
             return
         end
 
         if event.dragPhase == 'end' then
-            rawset(self, '_dragging', false)
+            self._dragging = false
             event:stopPropagation()
         end
     end)
@@ -284,11 +284,11 @@ function Slider:_resolve_visual_variant()
         return 'disabled'
     end
 
-    if rawget(self, '_dragging') then
+    if self._dragging then
         return 'dragging'
     end
 
-    if rawget(self, '_focused') == true then
+    if self._focused == true then
         return 'focused'
     end
 
@@ -306,19 +306,19 @@ function Slider:update(dt)
     ControlUtils.set_interaction_state(self, not disabled)
 
     local value = effective_value(self)
-    local previous = rawget(self, '_last_motion_value')
+    local previous = self._last_motion_value
     if previous ~= value then
-        self:_raise_motion(rawget(self, '_dragging') and 'value' or 'state-change', {
+        self:_raise_motion(self._dragging and 'value' or 'state-change', {
             defaultTarget = 'thumb',
             previousValue = previous,
             nextValue = value,
         })
     end
-    rawset(self, '_last_motion_value', value)
+    self._last_motion_value = value
 
     local variant = self:_resolve_visual_variant()
-    rawset(rawget(self, 'track'), '_styling_variant', variant)
-    rawset(rawget(self, 'thumb'), '_styling_variant', variant)
+    self.track._styling_variant = variant
+    self.thumb._styling_variant = variant
     sync_parts(self)
     return self
 end

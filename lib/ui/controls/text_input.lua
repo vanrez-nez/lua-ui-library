@@ -39,7 +39,7 @@ local TextInputSchema = {
 TextInput._schema = ControlUtils.extend_schema(Drawable._schema, TextInputSchema)
 
 local function get_selection_pair(self)
-    if rawget(self, '_selection_controlled') then
+    if self._selection_controlled then
         local value = get_effective_value(self)
         local len = strlen(value)
         local s = MathUtils.clamp(self.selectionStart or len, 0, len)
@@ -48,7 +48,7 @@ local function get_selection_pair(self)
         return s, e
     end
 
-    return rawget(self, '_selection_start') or 0, rawget(self, '_selection_end') or 0
+    return self._selection_start or 0, self._selection_end or 0
 end
 
 local function set_selection_request(self, s, e)
@@ -58,13 +58,13 @@ local function set_selection_request(self, s, e)
     e = MathUtils.clamp(e or s, 0, len)
     if e < s then s, e = e, s end
 
-    if rawget(self, '_selection_controlled') then
+    if self._selection_controlled then
         ControlUtils.call_if_function(self.onSelectionChange, s, e)
         return
     end
 
-    rawset(self, '_selection_start', s)
-    rawset(self, '_selection_end', e)
+    self._selection_start = s
+    self._selection_end = e
     ControlUtils.call_if_function(self.onSelectionChange, s, e)
 end
 
@@ -74,8 +74,8 @@ local function caret_pos(self)
 end
 
 local function reset_blink(self)
-    rawset(self, '_caret_blink_t', 0)
-    rawset(self, '_caret_blink_on', true)
+    self._caret_blink_t = 0
+    self._caret_blink_on = true
 end
 
 local function has_focus(self)
@@ -153,9 +153,9 @@ function TextInput:constructor(opts)
     self.onSubmit = opts.onSubmit
     self.font = opts.font
     self.fontSize = opts.fontSize or 16
-    rawset(self, 'pointerFocusCoupling', 'before')
+    self.pointerFocusCoupling = 'before'
 
-    rawset(self, '_ui_text_input_control', true)
+    self._ui_text_input_control = true
 
     if self.maxLength ~= nil then
         Assert.number('TextInput.maxLength', self.maxLength, 2)
@@ -184,21 +184,21 @@ function TextInput:constructor(opts)
         Assert.fail('controlled selection requires onSelectionChange', 2)
     end
 
-    rawset(self, '_value_controlled', opts.value ~= nil)
-    rawset(self, '_selection_controlled', has_start and has_end)
+    self._value_controlled = opts.value ~= nil
+    self._selection_controlled = has_start and has_end
 
-    rawset(self, '_value_uncontrolled', opts.value or '')
-    rawset(self, '_selection_start', strlen(opts.value or ''))
-    rawset(self, '_selection_end', strlen(opts.value or ''))
-    rawset(self, '_focused', false)
-    rawset(self, '_composing', false)
-    rawset(self, '_composition_text', '')
-    rawset(self, '_caret_blink_t', 0)
-    rawset(self, '_caret_blink_on', true)
-    rawset(self, '_styling_context', {
+    self._value_uncontrolled = opts.value or ''
+    self._selection_start = strlen(opts.value or '')
+    self._selection_end = strlen(opts.value or '')
+    self._focused = false
+    self._composing = false
+    self._composition_text = ''
+    self._caret_blink_t = 0
+    self._caret_blink_on = true
+    self._styling_context = {
         component = 'textInput',
         part = 'field',
-    })
+    }
 
     ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
         if self.disabled then return end
@@ -221,8 +221,8 @@ function TextInput:constructor(opts)
         end
 
         replace_selection(self, text)
-        rawset(self, '_composing', false)
-        rawset(self, '_composition_text', '')
+        self._composing = false
+        self._composition_text = ''
         event:stopPropagation()
     end)
 
@@ -230,8 +230,8 @@ function TextInput:constructor(opts)
         if self.disabled or self.readOnly then return end
         if not has_focus(self) then return end
 
-        rawset(self, '_composing', true)
-        rawset(self, '_composition_text', event.text or '')
+        self._composing = true
+        self._composition_text = event.text or ''
         event:stopPropagation()
     end)
 
@@ -311,15 +311,15 @@ function TextInput:_get_selection()
 end
 
 function TextInput:_is_focused()
-    return rawget(self, '_focused') == true
+    return self._focused == true
 end
 
 function TextInput:_is_composing()
-    return rawget(self, '_composing') == true
+    return self._composing == true
 end
 
 function TextInput:_composition_text_value()
-    return rawget(self, '_composition_text') or ''
+    return self._composition_text or ''
 end
 
 function TextInput:_resolve_visual_variant()
@@ -331,11 +331,11 @@ function TextInput:_resolve_visual_variant()
         return 'readOnly'
     end
 
-    if rawget(self, '_composing') == true then
+    if self._composing == true then
         return 'composing'
     end
 
-    if rawget(self, '_focused') == true then
+    if self._focused == true then
         return 'focused'
     end
 
@@ -364,9 +364,9 @@ function TextInput:update(dt)
 
     local disabled = self.disabled == true
     local focused = (not disabled) and has_focus(self)
-    local was_focused = rawget(self, '_focused') == true
+    local was_focused = self._focused == true
 
-    rawset(self, '_focused', focused)
+    self._focused = focused
 
     ControlUtils.set_interaction_state(self, not disabled)
 
@@ -374,31 +374,31 @@ function TextInput:update(dt)
         love.keyboard.setTextInput(focused)
     end
 
-    if not focused and rawget(self, '_composing') then
-        rawset(self, '_composing', false)
-        rawset(self, '_composition_text', '')
+    if not focused and self._composing then
+        self._composing = false
+        self._composition_text = ''
     end
 
     if focused then
-        local t = (rawget(self, '_caret_blink_t') or 0) + (dt or 0)
+        local t = (self._caret_blink_t or 0) + (dt or 0)
         if t >= 0.5 then
             t = t - 0.5
-            rawset(self, '_caret_blink_on', not rawget(self, '_caret_blink_on'))
+            self._caret_blink_on = not self._caret_blink_on
         end
-        rawset(self, '_caret_blink_t', t)
+        self._caret_blink_t = t
     else
-        rawset(self, '_caret_blink_on', false)
-        rawset(self, '_caret_blink_t', 0)
+        self._caret_blink_on = false
+        self._caret_blink_t = 0
     end
 
     return self
 end
 
 function TextInput:_measure_text(graphics)
-    local font = rawget(self, '_cached_font')
+    local font = self._cached_font
     if font == nil then
         font = FontCache.get(self.font, self.fontSize or 16)
-        rawset(self, '_cached_font', font)
+        self._cached_font = font
     end
 
     local value = get_effective_value(self)

@@ -35,7 +35,7 @@ function Option:constructor(opts)
     })
     Drawable.constructor(self, drawable_opts)
     self.schema:define(OptionSchema)
-    rawset(self, 'pointerFocusCoupling', 'before')
+    self.pointerFocusCoupling = 'before'
 
     if not Types.is_string(opts.value) or opts.value == '' then
         Assert.fail('Option.value is required', 2)
@@ -44,7 +44,7 @@ function Option:constructor(opts)
     assert_string_or_node('Option.label', opts.label, 2)
     assert_string_or_node('Option.description', opts.description, 2)
 
-    rawset(self, '_ui_option_control', true)
+    self._ui_option_control = true
     self.value = opts.value
     self.disabled = opts.disabled == true
 
@@ -70,19 +70,19 @@ function Option:constructor(opts)
     Container.addChild(self, label_slot)
     Container.addChild(self, description_slot)
 
-    rawset(self, 'label', label_slot)
-    rawset(self, 'description', description_slot)
+    self.label = label_slot
+    self.description = description_slot
 
     if Types.is_table(opts.label) then
         label_slot:addChild(opts.label)
     else
-        rawset(label_slot, 'text', opts.label)
+        label_slot.text = opts.label
     end
 
     if Types.is_table(opts.description) then
         description_slot:addChild(opts.description)
     else
-        rawset(description_slot, 'text', opts.description)
+        description_slot.text = opts.description
     end
 
     ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
@@ -103,15 +103,15 @@ function Option.new(opts)
 end
 
 function Option:_find_select()
-    local current = rawget(self, 'parent')
+    local current = self.parent
     while current ~= nil do
-        if rawget(current, '_ui_select_popup_slot') == true then
-            return rawget(current, '_ui_select_owner')
+        if current._ui_select_popup_slot == true then
+            return current._ui_select_owner
         end
-        if rawget(current, '_ui_select_control') == true then
+        if current._ui_select_control == true then
             return current
         end
-        current = rawget(current, 'parent')
+        current = current.parent
     end
     return nil
 end
@@ -138,7 +138,7 @@ function Option:_resolve_visual_variant()
         return 'selected'
     end
 
-    if rawget(self, '_focused') == true then
+    if self._focused == true then
         return 'focused'
     end
 

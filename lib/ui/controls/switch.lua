@@ -54,9 +54,9 @@ function Switch:constructor(opts)
     self.snapBehavior = opts.snapBehavior or 'nearest'
     self.label = opts.label
     self.description = opts.description
-    rawset(self, 'pointerFocusCoupling', 'before')
+    self.pointerFocusCoupling = 'before'
 
-    rawset(self, '_ui_switch_control', true)
+    self._ui_switch_control = true
 
     if self.dragThreshold < 0 then
         Assert.fail('negative dragThreshold is invalid', 2)
@@ -66,12 +66,12 @@ function Switch:constructor(opts)
         Assert.fail('Switch.snapBehavior must be "nearest" or "directional"', 2)
     end
 
-    rawset(self, '_checked_controlled', opts.checked ~= nil)
-    rawset(self, '_checked_uncontrolled', opts.checked == true)
-    rawset(self, '_dragging', false)
-    rawset(self, '_drag_start_x', 0)
-    rawset(self, '_drag_dx', 0)
-    rawset(self, '_last_drag_dx', 0)
+    self._checked_controlled = opts.checked ~= nil
+    self._checked_uncontrolled = opts.checked == true
+    self._dragging = false
+    self._drag_start_x = 0
+    self._drag_dx = 0
+    self._last_drag_dx = 0
 
     local track = Drawable.new({
         tag = (self.tag and (self.tag .. '.track')) or 'switch.track',
@@ -89,25 +89,25 @@ function Switch:constructor(opts)
         interactive = false,
         focusable = false,
     })
-    rawset(track, '_styling_context', {
+    track._styling_context = {
         component = 'switch',
         part = 'track',
-    })
-    rawset(thumb, '_styling_context', {
+    }
+    thumb._styling_context = {
         component = 'switch',
         part = 'thumb',
-    })
+    }
     track:addChild(thumb)
     Container.addChild(self, track)
-    rawset(self, 'track', track)
-    rawset(self, 'thumb', thumb)
+    self.track = track
+    self.thumb = thumb
 
     ControlUtils.assert_controlled_pair('checked', opts.checked, 'onCheckedChange', opts.onCheckedChange, 2)
 
     ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
         if self.disabled == true then return end
         if event.defaultPrevented then return end
-        if rawget(self, '_dragging') then return end
+        if self._dragging then return end
 
         request_checked(self, not checked_value(self))
     end)
@@ -116,25 +116,25 @@ function Switch:constructor(opts)
         if self.disabled == true then return end
 
         if event.dragPhase == 'start' then
-            rawset(self, '_dragging', true)
-            rawset(self, '_drag_start_x', event.x or 0)
-            rawset(self, '_drag_dx', 0)
-            rawset(self, '_last_drag_dx', 0)
+            self._dragging = true
+            self._drag_start_x = event.x or 0
+            self._drag_dx = 0
+            self._last_drag_dx = 0
             event:stopPropagation()
             return
         end
 
-        if event.dragPhase == 'move' and rawget(self, '_dragging') then
-            local dx = (event.x or 0) - (rawget(self, '_drag_start_x') or 0)
-            rawset(self, '_last_drag_dx', rawget(self, '_drag_dx') or 0)
-            rawset(self, '_drag_dx', dx)
+        if event.dragPhase == 'move' and self._dragging then
+            local dx = (event.x or 0) - (self._drag_start_x or 0)
+            self._last_drag_dx = self._drag_dx or 0
+            self._drag_dx = dx
             event:stopPropagation()
             return
         end
 
-        if event.dragPhase == 'end' and rawget(self, '_dragging') then
+        if event.dragPhase == 'end' and self._dragging then
                 local threshold = self.dragThreshold or 10
-            local dx = rawget(self, '_drag_dx') or 0
+            local dx = self._drag_dx or 0
             local abs_dx = math.abs(dx)
             local current = checked_value(self)
             local next_value = current
@@ -152,9 +152,9 @@ function Switch:constructor(opts)
                 end
             end
 
-            rawset(self, '_dragging', false)
-            rawset(self, '_drag_dx', 0)
-            rawset(self, '_last_drag_dx', 0)
+            self._dragging = false
+            self._drag_dx = 0
+            self._last_drag_dx = 0
 
             if next_value ~= current then
                 request_checked(self, next_value)
@@ -179,7 +179,7 @@ function Switch:_resolve_visual_variant()
         return 'disabled'
     end
 
-    if rawget(self, '_dragging') == true then
+    if self._dragging == true then
         return 'dragging'
     end
 
@@ -187,7 +187,7 @@ function Switch:_resolve_visual_variant()
         return 'checked'
     end
 
-    if rawget(self, '_focused') == true then
+    if self._focused == true then
         return 'focused'
     end
 
@@ -201,15 +201,15 @@ function Switch:update(dt)
     ControlUtils.set_interaction_state(self, not disabled)
 
     if disabled then
-        rawset(self, '_dragging', false)
-        rawset(self, '_drag_dx', 0)
-        rawset(self, '_last_drag_dx', 0)
+        self._dragging = false
+        self._drag_dx = 0
+        self._last_drag_dx = 0
     end
 
-    local track = rawget(self, 'track')
-    local thumb = rawget(self, 'thumb')
-    local width = rawget(self, '_resolved_width') or 0
-    local height = rawget(self, '_resolved_height') or 0
+    local track = self.track
+    local thumb = self.thumb
+    local width = self._resolved_width or 0
+    local height = self._resolved_height or 0
     local track_width = math.max(32, math.min(width, 48))
     local track_height = math.max(18, math.min(height, 28))
     local thumb_size = math.max(12, track_height - 6)
@@ -221,7 +221,7 @@ function Switch:update(dt)
         track.height = track_height
         track.x = (width - track_width) * 0.5
         track.y = (height - track_height) * 0.5
-        rawset(track, '_styling_variant', variant)
+        track._styling_variant = variant
         track:markDirty()
     end
 
@@ -230,7 +230,7 @@ function Switch:update(dt)
         thumb.height = thumb_size
         thumb.x = thumb_x
         thumb.y = (track_height - thumb_size) * 0.5
-        rawset(thumb, '_styling_variant', variant)
+        thumb._styling_variant = variant
         thumb:markDirty()
     end
 

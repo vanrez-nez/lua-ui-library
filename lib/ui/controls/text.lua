@@ -16,13 +16,13 @@ local function count_lines(text)
 end
 
 local function resolve_font(self)
-    local font = rawget(self, '_font_object')
+    local font = self._font_object
     if font ~= nil then
         return font
     end
 
-    local font_size = rawget(self, 'fontSize') or 16
-    local font_path = rawget(self, 'font')
+    local font_size = self.fontSize or 16
+    local font_path = self.font
 
     if font_path ~= nil and Types.is_table(font_path) then
         return font_path
@@ -33,25 +33,25 @@ local function resolve_font(self)
     end
 
     font = FontCache.get(font_path, font_size)
-    rawset(self, '_font_object', font)
+    self._font_object = font
     return font
 end
 
 local function get_text_metrics(self, width_hint)
     local font = resolve_font(self)
-    local text = rawget(self, 'text') or ''
-    local wrap = rawget(self, 'wrap') == true
-    local line_height = rawget(self, 'lineHeight') or 1
+    local text = self.text or ''
+    local wrap = self.wrap == true
+    local line_height = self.lineHeight or 1
 
     if not wrap then
         local lines = count_lines(text)
         return font:getWidth(text), font:getHeight() * line_height * lines, lines
     end
 
-    local max_width = rawget(self, 'maxWidth')
+    local max_width = self.maxWidth
     local wrap_width = max_width
     if wrap_width == nil then
-        wrap_width = width_hint or rawget(self, '_resolved_width') or 0
+        wrap_width = width_hint or self._resolved_width or 0
     end
     wrap_width = math.max(0, wrap_width)
 
@@ -73,16 +73,16 @@ function Text:constructor(opts)
 
     Drawable.constructor(self, drawable_opts)
 
-    rawset(self, '_ui_text_control', true)
-    rawset(self, 'text', opts.text or '')
-    rawset(self, 'font', opts.font)
-    rawset(self, 'fontSize', opts.fontSize or 16)
-    rawset(self, 'lineHeight', opts.lineHeight or 1)
-    rawset(self, 'maxWidth', opts.maxWidth)
-    rawset(self, 'textAlign', opts.textAlign or 'start')
-    rawset(self, 'textVariant', opts.textVariant)
-    rawset(self, 'color', opts.color or { 1, 1, 1, 1 })
-    rawset(self, 'wrap', opts.wrap == true)
+    self._ui_text_control = true
+    self.text = opts.text or ''
+    self.font = opts.font
+    self.fontSize = opts.fontSize or 16
+    self.lineHeight = opts.lineHeight or 1
+    self.maxWidth = opts.maxWidth
+    self.textAlign = opts.textAlign or 'start'
+    self.textVariant = opts.textVariant
+    self.color = opts.color or { 1, 1, 1, 1 }
+    self.wrap = opts.wrap == true
 
     if self.textAlign ~= 'start' and self.textAlign ~= 'center' and self.textAlign ~= 'end' then
         Assert.fail('Text.textAlign must be "start", "center", or "end"', 2)
@@ -107,13 +107,13 @@ function Text:constructor(opts)
         end
     end
 
-    rawset(self, '_font_object', nil)
-    rawset(self, '_text_auto_width', opts.width == nil)
-    rawset(self, '_text_auto_height', opts.height == nil)
+    self._font_object = nil
+    self._text_auto_width = opts.width == nil
+    self._text_auto_height = opts.height == nil
 
     -- Intrinsic measurement based on current content.
     local w, h = get_text_metrics(self, self.maxWidth)
-    local props = rawget(self, 'props')
+    local props = self.props
     if props ~= nil then
         if props:raw_get('width') == 0 then props:raw_set('width', w) end
         if props:raw_get('height') == 0 then props:raw_set('height', h) end
@@ -126,7 +126,7 @@ function Text.new(opts)
 end
 
 function Text:_resolve_visual_variant()
-    return rawget(self, 'textVariant') or 'base'
+    return self.textVariant or 'base'
 end
 
 function Text:addChild()
@@ -139,35 +139,35 @@ end
 
 function Text:setText(value)
     Assert.string('value', value, 2)
-    rawset(self, 'text', value)
+    self.text = value
     self:markDirty()
     return self
 end
 
 local function refresh_intrinsic_size(self)
-    local props = rawget(self, 'props')
+    local props = self.props
     local width_hint = nil
 
-    if rawget(self, 'wrap') == true then
-        width_hint = rawget(self, '_resolved_width') or
+    if self.wrap == true then
+        width_hint = self._resolved_width or
             (props and props:raw_get('width')) or
             0
-        if rawget(self, '_text_auto_width') == true and rawget(self, 'maxWidth') ~= nil then
-            width_hint = rawget(self, 'maxWidth')
+        if self._text_auto_width == true and self.maxWidth ~= nil then
+            width_hint = self.maxWidth
         end
     end
 
     local measured_width, measured_height = get_text_metrics(self, width_hint)
     local changed = false
 
-    if rawget(self, '_text_auto_width') == true and props ~= nil then
+    if self._text_auto_width == true and props ~= nil then
         if props:raw_get('width') ~= measured_width then
             props:raw_set('width', measured_width)
             changed = true
         end
     end
 
-    if rawget(self, '_text_auto_height') == true and props ~= nil then
+    if self._text_auto_height == true and props ~= nil then
         if props:raw_get('height') ~= measured_height then
             props:raw_set('height', measured_height)
             changed = true
@@ -194,18 +194,18 @@ function Text:_draw_control(graphics)
         return
     end
 
-    local bounds = rawget(self, '_world_bounds_cache')
+    local bounds = self._world_bounds_cache
     if bounds == nil then
         return
     end
 
-    local text = rawget(self, 'text') or ''
+    local text = self.text or ''
     if text == '' then
         return
     end
 
     local font = resolve_font(self)
-    local color = rawget(self, 'color') or { 1, 1, 1, 1 }
+    local color = self.color or { 1, 1, 1, 1 }
 
     local old_font = nil
     if Types.is_function(graphics.getFont) then
@@ -219,10 +219,10 @@ function Text:_draw_control(graphics)
         graphics.setColor(color)
     end
 
-    local wrap = rawget(self, 'wrap') == true
-    local align = rawget(self, 'textAlign') or 'start'
+    local wrap = self.wrap == true
+    local align = self.textAlign or 'start'
     local love_align = align == 'end' and 'right' or (align == 'center' and 'center' or 'left')
-    local line_height = rawget(self, 'lineHeight') or 1
+    local line_height = self.lineHeight or 1
     local old_line_height = nil
 
     if Types.is_function(font.getLineHeight) then
@@ -234,7 +234,7 @@ function Text:_draw_control(graphics)
     end
 
     if wrap then
-        local width = rawget(self, 'maxWidth')
+        local width = self.maxWidth
         if width == nil then
             width = bounds.width
         end

@@ -25,16 +25,16 @@ Tooltip._schema = ControlUtils.extend_schema(Container._schema, TooltipSchema)
 Tooltip:implements(ControlUtils.overlay_mixin)
 
 local function effective_open(self)
-    if rawget(self, '_open_controlled') then
+    if self._open_controlled then
         return self.open == true
     end
-    return rawget(self, '_open_uncontrolled') == true
+    return self._open_uncontrolled == true
 end
 
 local function request_open_change(self, next_value)
     next_value = next_value == true
-    if not rawget(self, '_open_controlled') then
-        rawset(self, '_open_uncontrolled', next_value)
+    if not self._open_controlled then
+        self._open_uncontrolled = next_value
     end
     ControlUtils.call_if_function(self.onOpenChange, next_value)
 end
@@ -45,18 +45,18 @@ local function hovered(self)
     end
 
     local x, y = love.mouse.getPosition()
-    return rawget(self, 'trigger'):containsPoint(x, y)
+    return self.trigger:containsPoint(x, y)
 end
 
 local function focused(self)
     local focus_owner = ControlUtils.stage_focus_owner(self)
     local current = focus_owner
-    local trigger = rawget(self, 'trigger')
+    local trigger = self.trigger
     while current ~= nil do
         if current == trigger then
             return true
         end
-        current = rawget(current, 'parent')
+        current = current.parent
     end
     return false
 end
@@ -128,8 +128,8 @@ local function visible_area(rect, viewport)
 end
 
 local function resolve_placement(self, stage)
-    local surface = rawget(self, 'surface')
-    local bounds = rawget(self, 'trigger'):getWorldBounds()
+    local surface = self.surface
+    local bounds = self.trigger:getWorldBounds()
     local viewport = self.safeAreaAware and stage:getSafeAreaBounds() or stage:getViewport()
     local placements = {
         self.placement,
@@ -160,7 +160,7 @@ local function resolve_placement(self, stage)
     surface.x = best.rect.x
     surface.y = best.rect.y
     surface:markDirty()
-    rawset(self, '_resolved_placement', best.placement)
+    self._resolved_placement = best.placement
 end
 
 function Tooltip:constructor(opts)
@@ -181,12 +181,12 @@ function Tooltip:constructor(opts)
     self.triggerMode = opts.triggerMode or 'hover-focus'
     self.safeAreaAware = opts.safeAreaAware ~= false
 
-    rawset(self, '_ui_tooltip_control', true)
-    rawset(self, '_open_controlled', opts.open ~= nil)
-    rawset(self, '_open_uncontrolled', opts.open == true)
-    rawset(self, '_mounted_stage', nil)
-    rawset(self, '_last_open_state', effective_open(self))
-    rawset(self, '_resolved_placement', self.placement)
+    self._ui_tooltip_control = true
+    self._open_controlled = opts.open ~= nil
+    self._open_uncontrolled = opts.open == true
+    self._mounted_stage = nil
+    self._last_open_state = effective_open(self)
+    self._resolved_placement = self.placement
 
     ControlUtils.assert_controlled_pair('open', opts.open, 'onOpenChange', opts.onOpenChange, 2)
 
@@ -228,10 +228,10 @@ function Tooltip:constructor(opts)
         interactive = false,
         focusable = false,
     })
-    rawset(surface, '_styling_context', {
+    surface._styling_context = {
         component = 'tooltip',
         part = 'surface',
-    })
+    }
     local content = Container.new({
         tag = (self.tag and (self.tag .. '.content')) or 'tooltip.content',
         internal = true,
@@ -247,11 +247,11 @@ function Tooltip:constructor(opts)
     surface:addChild(content)
     Container.addChild(self, trigger)
 
-    rawset(self, 'root', self)
-    rawset(self, 'trigger', trigger)
-    rawset(self, 'surface', surface)
-    rawset(self, 'content', content)
-    rawset(self, '_overlay_root', overlay_root)
+    self.root = self
+    self.trigger = trigger
+    self.surface = surface
+    self.content = content
+    self._overlay_root = overlay_root
 
     if opts.trigger ~= nil then
         trigger:addChild(opts.trigger)
@@ -273,13 +273,13 @@ end
 function Tooltip:update(dt)
     Container.update(self, dt)
 
-    if self.triggerMode ~= 'manual' and rawget(self, '_open_controlled') == false then
+    if self.triggerMode ~= 'manual' and self._open_controlled == false then
         request_open_change(self, desired_open(self))
     end
 
     local wants_open = effective_open(self)
     local stage = ControlUtils.find_stage(self)
-    local was_open = rawget(self, '_last_open_state')
+    local was_open = self._last_open_state
 
     if wants_open and stage ~= nil then
         self:_attach_overlay(stage)
@@ -287,16 +287,16 @@ function Tooltip:update(dt)
         if not was_open then
             self:_raise_motion('open', {
                 defaultTarget = 'surface',
-                resolvedPlacement = rawget(self, '_resolved_placement'),
+                resolvedPlacement = self._resolved_placement,
             })
         else
             self:_raise_motion('placement', {
                 defaultTarget = 'surface',
-                resolvedPlacement = rawget(self, '_resolved_placement'),
+                resolvedPlacement = self._resolved_placement,
             })
         end
     else
-        if rawget(self, '_mounted_stage') ~= nil then
+        if self._mounted_stage ~= nil then
             self:_detach_overlay()
         end
         if was_open and not wants_open then
@@ -304,7 +304,7 @@ function Tooltip:update(dt)
         end
     end
 
-    rawset(self, '_last_open_state', wants_open)
+    self._last_open_state = wants_open
     return self
 end
 
@@ -317,7 +317,7 @@ end
 function Tooltip:on_destroy()
     ControlUtils.remove_control_listeners(self)
     self:_detach_overlay()
-    rawget(self, '_overlay_root'):destroy()
+    self._overlay_root:destroy()
     Container.on_destroy(self)
 end
 

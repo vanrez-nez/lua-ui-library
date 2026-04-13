@@ -82,10 +82,10 @@ function Sprite:constructor(opts)
 
     local clipped = clip_region(texture, region)
 
-    rawset(self, 'texture', texture)
-    rawset(self, 'region', clipped)
-    rawset(self, 'width', clipped.width)
-    rawset(self, 'height', clipped.height)
+    self.texture = texture
+    self.region = clipped
+    self.width = clipped.width
+    self.height = clipped.height
 end
 
 function Sprite.new(opts)
@@ -93,11 +93,11 @@ function Sprite.new(opts)
 end
 
 function Sprite:getWidth()
-    return rawget(self, 'width')
+    return self.width
 end
 
 function Sprite:getHeight()
-    return rawget(self, 'height')
+    return self.height
 end
 
 function Sprite:getIntrinsicDimensions()
@@ -105,11 +105,11 @@ function Sprite:getIntrinsicDimensions()
 end
 
 function Sprite:getTexture()
-    return rawget(self, 'texture')
+    return self.texture
 end
 
 function Sprite:getRegion()
-    local region = rawget(self, 'region')
+    local region = self.region
     return {
         x = region.x,
         y = region.y,
@@ -119,7 +119,7 @@ function Sprite:getRegion()
 end
 
 function Sprite:getRegionRef()
-    return rawget(self, 'region')
+    return self.region
 end
 
 return Sprite

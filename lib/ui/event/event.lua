@@ -25,8 +25,8 @@ local function clone_path(path)
 end
 
 local function update_local_coordinates(self)
-    rawset(self, 'localX', nil)
-    rawset(self, 'localY', nil)
+    self.localX = nil
+    self.localY = nil
 
     if self.pointerType == nil or self.currentTarget == nil then
         return
@@ -40,8 +40,8 @@ local function update_local_coordinates(self)
 
     local local_x, local_y = current_target:worldToLocal(self.x, self.y)
 
-    rawset(self, 'localX', local_x)
-    rawset(self, 'localY', local_y)
+    self.localX = local_x
+    self.localY = local_y
 end
 
 function Event:constructor(opts)
@@ -111,12 +111,12 @@ function Event:_set_phase(phase)
         Assert.fail('phase must be "capture", "target", or "bubble"', 2)
     end
 
-    rawset(self, 'phase', phase)
+    self.phase = phase
     return self
 end
 
 function Event:_set_current_target(current_target)
-    rawset(self, 'currentTarget', current_target)
+    self.currentTarget = current_target
     update_local_coordinates(self)
     return self
 end

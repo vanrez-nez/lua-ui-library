@@ -23,21 +23,21 @@ end
 local function set_pressed(self, value)
     value = value == true
 
-    local controlled = rawget(self, '_pressed_controlled') == true
+    local controlled = self._pressed_controlled == true
     if controlled then
         local on_change = self.onPressedChange
         ControlUtils.call_if_function(on_change, value)
         return
     end
 
-    rawset(self, '_pressed_uncontrolled', value)
+    self._pressed_uncontrolled = value
 end
 
 local function get_pressed(self)
-    if rawget(self, '_pressed_controlled') then
+    if self._pressed_controlled then
         return self.pressed == true
     end
-    return rawget(self, '_pressed_uncontrolled') == true
+    return self._pressed_uncontrolled == true
 end
 
 function Button:constructor(opts)
@@ -52,14 +52,14 @@ function Button:constructor(opts)
     self.onPressedChange = opts.onPressedChange
     self.onActivate = opts.onActivate
     self.disabled = opts.disabled == true
-    rawset(self, 'pointerFocusCoupling', 'before')
+    self.pointerFocusCoupling = 'before'
 
-    rawset(self, '_ui_button_control', true)
+    self._ui_button_control = true
 
-    rawset(self, '_pressed_controlled', opts.pressed ~= nil)
-    rawset(self, '_pressed_uncontrolled', false)
-    rawset(self, '_hovered', false)
-    rawset(self, '_pressing_pointer', false)
+    self._pressed_controlled = opts.pressed ~= nil
+    self._pressed_uncontrolled = false
+    self._hovered = false
+    self._pressing_pointer = false
 
     ControlUtils.assert_controlled_pair('pressed', opts.pressed, 'onPressedChange', opts.onPressedChange, 2)
 
@@ -73,19 +73,19 @@ function Button:constructor(opts)
     Container._allow_fill_from_parent(content, { width = true, height = true })
     Container._allow_child_fill(content, { width = true, height = true })
     Container.addChild(self, content)
-    rawset(self, '_content_slot', content)
+    self._content_slot = content
 
     if opts.content ~= nil then
         self:_set_content_internal(opts.content)
     end
 
-    rawset(self, 'surface', self)
-    rawset(self, 'border', self)
-    rawset(self, '_styling_context', {
+    self.surface = self
+    self.border = self
+    self._styling_context = {
         component = 'button',
         part = 'surface',
-    })
-    rawset(self, '_last_visual_variant', self:_resolve_visual_variant())
+    }
+    self._last_visual_variant = self:_resolve_visual_variant()
 
     ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
         if effective_disabled(self) then return end
@@ -102,7 +102,7 @@ function Button:constructor(opts)
         if effective_disabled(self) then return end
 
         if event.dragPhase == 'start' then
-            rawset(self, '_pressing_pointer', true)
+            self._pressing_pointer = true
             set_pressed(self, true)
             event:stopPropagation()
             return
@@ -116,7 +116,7 @@ function Button:constructor(opts)
         end
 
         if event.dragPhase == 'end' then
-            rawset(self, '_pressing_pointer', false)
+            self._pressing_pointer = false
             set_pressed(self, false)
             event:stopPropagation()
             return
@@ -134,8 +134,8 @@ function Button:_set_content_internal(node)
     end
 
     Assert.table('node', node, 2)
-    local slot = rawget(self, '_content_slot')
-    local children = rawget(slot, '_children')
+    local slot = self._content_slot
+    local children = slot._children
     for i = #children, 1, -1 do
         slot:removeChild(children[i])
     end
@@ -156,11 +156,11 @@ function Button:_resolve_visual_variant()
         return 'pressed'
     end
 
-    if rawget(self, '_hovered') == true then
+    if self._hovered == true then
         return 'hovered'
     end
 
-    if rawget(self, '_focused') == true then
+    if self._focused == true then
         return 'focused'
     end
 
@@ -174,23 +174,23 @@ function Button:update(dt)
     ControlUtils.set_interaction_state(self, not disabled)
 
     if disabled then
-        rawset(self, '_hovered', false)
-        rawset(self, '_pressing_pointer', false)
-        if not rawget(self, '_pressed_controlled') then
-            rawset(self, '_pressed_uncontrolled', false)
+        self._hovered = false
+        self._pressing_pointer = false
+        if not self._pressed_controlled then
+            self._pressed_uncontrolled = false
         end
         return self
     end
 
     if love ~= nil and love.mouse ~= nil and Types.is_function(love.mouse.getPosition) then
         local mx, my = love.mouse.getPosition()
-        rawset(self, '_hovered', self:containsPoint(mx, my))
+        self._hovered = self:containsPoint(mx, my)
     else
-        rawset(self, '_hovered', false)
+        self._hovered = false
     end
 
     local variant = self:_resolve_visual_variant()
-    local previous = rawget(self, '_last_visual_variant')
+    local previous = self._last_visual_variant
     if previous ~= nil and previous ~= variant then
         self:_raise_motion('state-change', {
             defaultTarget = 'surface',
@@ -198,7 +198,7 @@ function Button:update(dt)
             nextValue = variant,
         })
     end
-    rawset(self, '_last_visual_variant', variant)
+    self._last_visual_variant = variant
 
     return self
 end

@@ -294,11 +294,11 @@ function Rule.controlled_pair(value_key, callback_key, opts)
             local current_callback = current_opts[callback_key]
 
             if current_value == nil and ctx ~= nil then
-                current_value = rawget(ctx, value_key)
+                current_value = ctx[value_key]
             end
 
             if current_callback == nil and ctx ~= nil then
-                current_callback = rawget(ctx, callback_key)
+                current_callback = ctx[callback_key]
             end
 
             if current_value ~= nil and not Types.is_function(current_callback) then

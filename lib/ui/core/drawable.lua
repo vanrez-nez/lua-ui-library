@@ -55,7 +55,7 @@ local function get_effective_insets(self, key)
 end
 
 local function get_motion_surface_value(self, key)
-    local motion_state = rawget(self, '_motion_visual_state')
+    local motion_state = self._motion_visual_state
     if motion_state == nil then
         return nil
     end
@@ -69,8 +69,8 @@ end
 
 local function get_local_content_rect(self)
     local padding = get_effective_insets(self, 'padding')
-    local width = rawget(self, '_resolved_width') or 0
-    local height = rawget(self, '_resolved_height') or 0
+    local width = self._resolved_width or 0
+    local height = self._resolved_height or 0
 
     return Rectangle(
         padding.left,
@@ -81,9 +81,9 @@ local function get_local_content_rect(self)
 end
 
 local function get_child_parent_local_bounds(child)
-    local matrix = rawget(child, '_local_transform_cache')
-    local width = rawget(child, '_resolved_width') or 0
-    local height = rawget(child, '_resolved_height') or 0
+    local matrix = child._local_transform_cache
+    local width = child._resolved_width or 0
+    local height = child._resolved_height or 0
     local x1, y1 = matrix:transform_point(0, 0)
     local x2, y2 = matrix:transform_point(width, 0)
     local x3, y3 = matrix:transform_point(width, height)
@@ -222,7 +222,7 @@ local function align_children(self, entries, content_extent)
 end
 
 local function refresh_drawable_content(self)
-    local children = rawget(self, '_children')
+    local children = self._children
 
     assert_no_content_fill_dependency(self, children)
 
@@ -296,8 +296,8 @@ function Drawable:constructor(opts)
         self[key] = value
     end
     self._ui_drawable_instance = true
-    rawset(self, '_motion_visual_state', {})
-    rawset(self, '_motion_last_request', nil)
+    self._motion_visual_state = {}
+    self._motion_last_request = nil
 end
 
 function Drawable.new(opts)
@@ -411,7 +411,7 @@ local function resolve_world_rect(self, local_rect)
 end
 
 function Drawable:_resolve_root_compositing_world_paint_bounds()
-    local local_bounds = rawget(self, '_local_bounds_cache') or self:getLocalBounds()
+    local local_bounds = self._local_bounds_cache or self:getLocalBounds()
     local paint_bounds = local_bounds:clone()
     local border_bounds = resolve_local_border_paint_bounds(self, local_bounds)
     local shadow_bounds = resolve_local_outer_shadow_bounds(self, local_bounds)
@@ -456,7 +456,7 @@ end
 
 function Drawable:_prepare_for_layout_pass()
     Container._prepare_for_layout_pass(self)
-    assert_no_content_fill_dependency(self, rawget(self, '_children'))
+    assert_no_content_fill_dependency(self, self._children)
     return self
 end
 
@@ -517,7 +517,7 @@ function Drawable:_get_motion_surface(target_name)
         return self
     end
 
-    local value = rawget(self, target_name)
+    local value = self[target_name]
     if Types.is_table(value) then
         return value
     end
@@ -531,16 +531,16 @@ function Drawable:_apply_motion_value(target_name, property_name, value)
         Assert.fail('unknown motion surface "' .. tostring(target_name) .. '"', 2)
     end
 
-    local state = rawget(surface, '_motion_visual_state')
+    local state = surface._motion_visual_state
     if state == nil then
         state = {}
-        rawset(surface, '_motion_visual_state', state)
+        surface._motion_visual_state = state
     end
 
     state[property_name] = value
 
     local plan_target = surface
-    if rawget(plan_target, '_ui_container_instance') ~= true then
+    if plan_target._ui_container_instance ~= true then
         plan_target = self
     end
 
@@ -557,7 +557,7 @@ function Drawable:_get_motion_value(target_name, property_name)
         return nil
     end
 
-    local state = rawget(surface, '_motion_visual_state')
+    local state = surface._motion_visual_state
     return state[property_name]
 end
 
@@ -571,7 +571,7 @@ end
 -- handles the empty-props case without painting anything.
 function Drawable:draw(graphics)
     local bounds = self:getWorldBounds()
-    local props = Styling.assemble_props(self, rawget(self, '_styling_context'))
+    local props = Styling.assemble_props(self, self._styling_context)
     Styling.draw(props, bounds, graphics)
 end
 

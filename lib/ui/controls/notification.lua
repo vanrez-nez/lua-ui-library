@@ -23,16 +23,16 @@ Notification._schema = ControlUtils.extend_schema(Container._schema, Notificatio
 Notification:implements(ControlUtils.overlay_mixin)
 
 local function effective_open(self)
-    if rawget(self, '_open_controlled') then
+    if self._open_controlled then
         return self.open == true
     end
-    return rawget(self, '_open_uncontrolled') == true
+    return self._open_uncontrolled == true
 end
 
 local function request_open_change(self, next_value)
     next_value = next_value == true
-    if not rawget(self, '_open_controlled') then
-        rawset(self, '_open_uncontrolled', next_value)
+    if not self._open_controlled then
+        self._open_uncontrolled = next_value
     end
     ControlUtils.call_if_function(self.onOpenChange, next_value)
 end
@@ -54,10 +54,10 @@ local function axis_group_key(self)
 end
 
 local function collect_notification_surfaces(stage, group_key, out)
-    local children = rawget(stage.overlayLayer, '_children')
+    local children = stage.overlayLayer._children
     for index = 1, #children do
         local child = children[index]
-        local owner = rawget(child, '_ui_notification_owner')
+        local owner = child._ui_notification_owner
         if owner ~= nil and effective_open(owner) and axis_group_key(owner) == group_key and owner.stackable == true then
             out[#out + 1] = owner
         end
@@ -67,7 +67,7 @@ end
 
 local function position_surface(self, stage)
     local viewport = self.safeAreaAware and stage:getSafeAreaBounds() or stage:getViewport()
-    local surface = rawget(self, 'surface')
+    local surface = self.surface
     local surface_width = surface:getLocalBounds().width
     local surface_height = surface:getLocalBounds().height
     local margin = 12
@@ -102,7 +102,7 @@ local function position_surface(self, stage)
             if group[index] == self then
                 break
             end
-            local peer_surface = rawget(group[index], 'surface')
+            local peer_surface = group[index].surface
             local peer_bounds = peer_surface:getLocalBounds()
             if self.edge == 'top' then
                 offset = offset + peer_bounds.height + 12
@@ -154,12 +154,12 @@ function Notification:constructor(opts)
     self.align = opts.align or 'center'
     self.safeAreaAware = opts.safeAreaAware ~= false
 
-    rawset(self, '_ui_notification_control', true)
-    rawset(self, '_open_controlled', opts.open ~= nil)
-    rawset(self, '_open_uncontrolled', opts.open == true)
-    rawset(self, '_mounted_stage', nil)
-    rawset(self, '_elapsed_ms', 0)
-    rawset(self, '_last_open_state', effective_open(self))
+    self._ui_notification_control = true
+    self._open_controlled = opts.open ~= nil
+    self._open_uncontrolled = opts.open == true
+    self._mounted_stage = nil
+    self._elapsed_ms = 0
+    self._last_open_state = effective_open(self)
 
     ControlUtils.assert_controlled_pair('open', opts.open, 'onOpenChange', opts.onOpenChange, 2)
 
@@ -185,7 +185,7 @@ function Notification:constructor(opts)
         focusable = false,
     })
     Container._allow_fill_from_parent(overlay_root, { width = true, height = true })
-    rawset(overlay_root, '_ui_notification_owner', self)
+    overlay_root._ui_notification_owner = self
     local surface = Drawable.new({
         tag = (self.tag and (self.tag .. '.surface')) or 'notification.surface',
         internal = true,
@@ -194,10 +194,10 @@ function Notification:constructor(opts)
         interactive = true,
         focusable = false,
     })
-    rawset(surface, '_styling_context', {
+    surface._styling_context = {
         component = 'notification',
         part = 'surface',
-    })
+    }
     local content = Container.new({
         tag = (self.tag and (self.tag .. '.content')) or 'notification.content',
         internal = true,
@@ -211,10 +211,10 @@ function Notification:constructor(opts)
     overlay_root:addChild(surface)
     surface:addChild(content)
 
-    rawset(self, '_overlay_root', overlay_root)
-    rawset(self, 'root', overlay_root)
-    rawset(self, 'surface', surface)
-    rawset(self, 'content', content)
+    self._overlay_root = overlay_root
+    self.root = overlay_root
+    self.surface = surface
+    self.content = content
 
     if opts.content ~= nil then
         content:addChild(opts.content)
@@ -231,7 +231,7 @@ function Notification:constructor(opts)
             end,
         })
         surface:addChild(close_control)
-        rawset(self, 'closeControl', close_control)
+        self.closeControl = close_control
     end
 end
 
@@ -240,11 +240,11 @@ function Notification.new(opts)
 end
 
 function Notification:addChild(child)
-    return rawget(self, 'content'):addChild(child)
+    return self.content:addChild(child)
 end
 
 function Notification:removeChild(child)
-    return rawget(self, 'content'):removeChild(child)
+    return self.content:removeChild(child)
 end
 
 function Notification:update(dt)
@@ -252,43 +252,43 @@ function Notification:update(dt)
 
     local wants_open = effective_open(self)
     local stage = ControlUtils.find_stage(self)
-    local was_open = rawget(self, '_last_open_state')
+    local was_open = self._last_open_state
 
     if wants_open and stage ~= nil then
         self:_attach_overlay(stage)
         position_surface(self, stage)
         if not was_open then
-            rawset(self, '_elapsed_ms', 0)
+            self._elapsed_ms = 0
             self:_raise_motion('enter', { defaultTarget = 'surface' })
         else
             self:_raise_motion('reflow', { defaultTarget = 'surface' })
         end
     else
-        if rawget(self, '_mounted_stage') ~= nil then
+        if self._mounted_stage ~= nil then
             self:_detach_overlay()
         end
         if was_open and not wants_open then
             self:_raise_motion('exit', { defaultTarget = 'surface' })
         end
-        rawset(self, '_elapsed_ms', 0)
+        self._elapsed_ms = 0
     end
 
     if wants_open and self.closeMethod == 'auto-dismiss' then
-        rawset(self, '_elapsed_ms', rawget(self, '_elapsed_ms') + ((dt or 0) * 1000))
+        self._elapsed_ms = self._elapsed_ms + ((dt or 0) * 1000)
         local duration = effective_duration(self)
-        if duration ~= nil and rawget(self, '_elapsed_ms') >= duration then
+        if duration ~= nil and self._elapsed_ms >= duration then
             request_open_change(self, false)
         end
     end
 
-    rawset(self, '_last_open_state', wants_open)
+    self._last_open_state = wants_open
     return self
 end
 
 function Notification:on_destroy()
     ControlUtils.remove_control_listeners(self)
     self:_detach_overlay()
-    rawget(self, '_overlay_root'):destroy()
+    self._overlay_root:destroy()
     Container.on_destroy(self)
 end
 

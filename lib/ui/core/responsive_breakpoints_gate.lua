@@ -10,7 +10,7 @@ function ResponsiveBreakpointsGate.with_peer(peer_key, opts)
             return
         end
 
-        local public_values = rawget(ctx, '_public_values')
+        local public_values = ctx._public_values
         local has_peer = (full_opts and full_opts[peer_key] ~= nil) or
             (public_values and public_values[peer_key] ~= nil)
 
@@ -19,7 +19,7 @@ function ResponsiveBreakpointsGate.with_peer(peer_key, opts)
         end
 
         if opts.require_declared_peer then
-            local allowed_public_keys = rawget(ctx, '_declared_props')
+            local allowed_public_keys = ctx._declared_props
 
             if not (allowed_public_keys and allowed_public_keys[peer_key]) then
                 return

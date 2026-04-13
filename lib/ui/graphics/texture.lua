@@ -45,10 +45,10 @@ function Texture:constructor(opts)
         Assert.fail('Texture height must resolve to a number > 0', 2)
     end
 
-    rawset(self, 'source', source)
-    rawset(self, 'width', width)
-    rawset(self, 'height', height)
-    rawset(self, 'resolvedSourceIdentity', opts.resolvedSourceIdentity or source)
+    self.source = source
+    self.width = width
+    self.height = height
+    self.resolvedSourceIdentity = opts.resolvedSourceIdentity or source
 end
 
 function Texture.new(opts)
@@ -56,11 +56,11 @@ function Texture.new(opts)
 end
 
 function Texture:getWidth()
-    return rawget(self, 'width')
+    return self.width
 end
 
 function Texture:getHeight()
-    return rawget(self, 'height')
+    return self.height
 end
 
 function Texture:getIntrinsicDimensions()
@@ -68,7 +68,7 @@ function Texture:getIntrinsicDimensions()
 end
 
 function Texture:getDrawable()
-    return rawget(self, 'source')
+    return self.source
 end
 
 return Texture

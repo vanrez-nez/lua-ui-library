@@ -47,11 +47,11 @@ local function get_public(self, key)
 end
 
 local function read_content_role(_, _, self)
-    return rawget(self, '_content')
+    return self._content
 end
 
 local function read_viewport_role(_, _, self)
-    return rawget(self, '_viewport')
+    return self._viewport
 end
 
 local function reject_role_node_write(key)
@@ -61,7 +61,7 @@ end
 -- ── Content extent measurement ──────────────────────────────────────────────
 
 local function measure_content_extent(content_node)
-    local children = rawget(content_node, '_children')
+    local children = content_node._children
     local max_right  = 0
     local max_bottom = 0
 
@@ -86,8 +86,8 @@ end
 -- ── Scroll range ────────────────────────────────────────────────────────────
 
 local function compute_scroll_range(self)
-    local viewport_node = rawget(self, '_viewport')
-    local content_node  = rawget(self, '_content')
+    local viewport_node = self._viewport
+    local content_node  = self._content
     if not viewport_node or not content_node then
         return 0, 0, 0, 0
     end
@@ -95,8 +95,8 @@ local function compute_scroll_range(self)
     local vw = viewport_node._resolved_width  or 0
     local vh = viewport_node._resolved_height or 0
     local cw, ch = measure_content_extent(content_node)
-    rawset(self, '_content_width', cw)
-    rawset(self, '_content_height', ch)
+    self._content_width = cw
+    self._content_height = ch
 
     local max_x = max(0, cw - vw)
     local max_y = max(0, ch - vh)
@@ -112,28 +112,28 @@ end
 
 local function clamp_offsets(self, allow_overscroll)
     local max_x, max_y = compute_scroll_range(self)
-    rawset(self, '_max_scroll_x', max_x)
-    rawset(self, '_max_scroll_y', max_y)
+    self._max_scroll_x = max_x
+    self._max_scroll_y = max_y
 
-    local sx = rawget(self, '_scroll_x') or 0
-    local sy = rawget(self, '_scroll_y') or 0
+    local sx = self._scroll_x or 0
+    local sy = self._scroll_y or 0
 
     if not allow_overscroll or not get_public(self, 'overscroll') then
         sx = MathUtils.clamp(sx, 0, max_x)
         sy = MathUtils.clamp(sy, 0, max_y)
     end
 
-    rawset(self, '_scroll_x', sx)
-    rawset(self, '_scroll_y', sy)
+    self._scroll_x = sx
+    self._scroll_y = sy
 end
 
 -- ── Apply scroll offset to content position ─────────────────────────────────
 
 local function apply_content_offset(self)
-    local content_node = rawget(self, '_content')
+    local content_node = self._content
 
-    local sx = rawget(self, '_scroll_x') or 0
-    local sy = rawget(self, '_scroll_y') or 0
+    local sx = self._scroll_x or 0
+    local sy = self._scroll_y or 0
 
     -- Move content in the opposite direction of scroll offset.
     Proxy.raw_set(content_node, 'x', -sx)
@@ -237,10 +237,10 @@ local function update_scrollbar_geometry(self)
     end
 
     if not get_public(self, 'showScrollbars') then
-        local h_track = rawget(self, '_scrollbar_h_track')
-        local h_thumb = rawget(self, '_scrollbar_h_thumb')
-        local v_track = rawget(self, '_scrollbar_v_track')
-        local v_thumb = rawget(self, '_scrollbar_v_thumb')
+        local h_track = self._scrollbar_h_track
+        local h_thumb = self._scrollbar_h_thumb
+        local v_track = self._scrollbar_v_track
+        local v_thumb = self._scrollbar_v_thumb
         set_node_frame(h_track, nil, nil, nil, nil, false)
         set_node_frame(h_thumb, nil, nil, nil, nil, false)
         set_node_frame(v_track, nil, nil, nil, nil, false)
@@ -248,15 +248,15 @@ local function update_scrollbar_geometry(self)
         return
     end
 
-    local viewport = rawget(self, '_viewport')
+    local viewport = self._viewport
     local vw = viewport._resolved_width  or 0
     local vh = viewport._resolved_height or 0
-    local cw = rawget(self, '_content_width')  or 0
-    local ch = rawget(self, '_content_height') or 0
-    local sx = rawget(self, '_scroll_x') or 0
-    local sy = rawget(self, '_scroll_y') or 0
-    local max_sx = rawget(self, '_max_scroll_x') or 0
-    local max_sy = rawget(self, '_max_scroll_y') or 0
+    local cw = self._content_width  or 0
+    local ch = self._content_height or 0
+    local sx = self._scroll_x or 0
+    local sy = self._scroll_y or 0
+    local max_sx = self._max_scroll_x or 0
+    local max_sy = self._max_scroll_y or 0
 
     local show_v = get_public(self, 'scrollYEnabled') and ch > vh
     local show_h = get_public(self, 'scrollXEnabled') and cw > vw
@@ -269,8 +269,8 @@ local function update_scrollbar_geometry(self)
     local h_track_w = max(0, vw - SCROLLBAR_MARGIN * 2 - (show_v and (SCROLLBAR_SIZE + SCROLLBAR_MARGIN) or 0))
 
     -- Vertical scrollbar
-    local v_track = rawget(self, '_scrollbar_v_track')
-    local v_thumb = rawget(self, '_scrollbar_v_thumb')
+    local v_track = self._scrollbar_v_track
+    local v_thumb = self._scrollbar_v_thumb
     if v_track and v_thumb then
         set_node_frame(v_track, v_track_x, v_track_y, SCROLLBAR_SIZE, v_track_h, show_v)
         set_node_frame(v_thumb, 0, nil, SCROLLBAR_SIZE, nil, show_v)
@@ -281,8 +281,8 @@ local function update_scrollbar_geometry(self)
     end
 
     -- Horizontal scrollbar
-    local h_track = rawget(self, '_scrollbar_h_track')
-    local h_thumb = rawget(self, '_scrollbar_h_thumb')
+    local h_track = self._scrollbar_h_track
+    local h_thumb = self._scrollbar_h_thumb
     if h_track and h_thumb then
         set_node_frame(h_track, h_track_x, h_track_y, h_track_w, SCROLLBAR_SIZE, show_h)
         set_node_frame(h_thumb, nil, 0, nil, SCROLLBAR_SIZE, show_h)
@@ -300,10 +300,10 @@ local function apply_scroll(self, dx, dy, allow_overscroll)
     if not get_public(self, 'scrollXEnabled') then dx = 0 end
     if not get_public(self, 'scrollYEnabled') then dy = 0 end
 
-    local sx = rawget(self, '_scroll_x') or 0
-    local sy = rawget(self, '_scroll_y') or 0
-    local max_x = rawget(self, '_max_scroll_x') or 0
-    local max_y = rawget(self, '_max_scroll_y') or 0
+    local sx = self._scroll_x or 0
+    local sy = self._scroll_y or 0
+    local max_x = self._max_scroll_x or 0
+    local max_y = self._max_scroll_y or 0
 
     -- Apply overscroll resistance when beyond bounds
     if allow_overscroll and get_public(self, 'overscroll') then
@@ -326,8 +326,8 @@ local function apply_scroll(self, dx, dy, allow_overscroll)
     local consumed_x = new_sx - sx
     local consumed_y = new_sy - sy
 
-    rawset(self, '_scroll_x', new_sx)
-    rawset(self, '_scroll_y', new_sy)
+    self._scroll_x = new_sx
+    self._scroll_y = new_sy
     apply_content_offset(self)
     update_scrollbar_geometry(self)
     self:invalidate_stage_update_token()
@@ -338,10 +338,10 @@ end
 -- ── Remaining scroll range (for nested consumption) ─────────────────────────
 
 local function has_remaining_range(self, dx, dy)
-    local sx = rawget(self, '_scroll_x') or 0
-    local sy = rawget(self, '_scroll_y') or 0
-    local max_x = rawget(self, '_max_scroll_x') or 0
-    local max_y = rawget(self, '_max_scroll_y') or 0
+    local sx = self._scroll_x or 0
+    local sy = self._scroll_y or 0
+    local max_x = self._max_scroll_x or 0
+    local max_y = self._max_scroll_y or 0
 
     if dx < 0 and sx > 0 then return true end
     if dx > 0 and sx < max_x then return true end
@@ -354,8 +354,8 @@ end
 -- ── Velocity tracking ───────────────────────────────────────────────────────
 
 local function record_velocity(self, dx, dy)
-    rawset(self, '_velocity_x', dx)
-    rawset(self, '_velocity_y', dy)
+    self._velocity_x = dx
+    self._velocity_y = dy
 end
 
 local function is_effectively_integer(value)
@@ -365,10 +365,10 @@ end
 -- ── Overscroll snap-back ────────────────────────────────────────────────────
 
 local function resolve_overscroll(self)
-    local sx = rawget(self, '_scroll_x') or 0
-    local sy = rawget(self, '_scroll_y') or 0
-    local max_x = rawget(self, '_max_scroll_x') or 0
-    local max_y = rawget(self, '_max_scroll_y') or 0
+    local sx = self._scroll_x or 0
+    local sy = self._scroll_y or 0
+    local max_x = self._max_scroll_x or 0
+    local max_y = self._max_scroll_y or 0
     local snapping = false
 
     if sx < 0 then
@@ -403,8 +403,8 @@ local function resolve_overscroll(self)
         end
     end
 
-    rawset(self, '_scroll_x', sx)
-    rawset(self, '_scroll_y', sy)
+    self._scroll_x = sx
+    self._scroll_y = sy
     return snapping
 end
 
@@ -413,11 +413,11 @@ end
 function ScrollableContainer.__index(self, key)
     -- Expose internal role nodes as read-only
     if key == 'content' then
-        return rawget(self, '_content')
+        return self._content
     end
 
     if key == 'viewport' then
-        return rawget(self, '_viewport')
+        return self._viewport
     end
 
     local val = Container._walk_hierarchy(rawget(self, '_pclass') or getmetatable(self), key)
@@ -444,26 +444,26 @@ function ScrollableContainer:constructor(opts)
         self[key] = value
     end
 
-    rawset(self, '_ui_scrollable_instance', true)
+    self._ui_scrollable_instance = true
 
     -- Scroll state
-    rawset(self, '_scroll_x', 0)
-    rawset(self, '_scroll_y', 0)
-    rawset(self, '_velocity_x', 0)
-    rawset(self, '_velocity_y', 0)
-    rawset(self, '_scroll_state', STATE_IDLE)
-    rawset(self, '_max_scroll_x', 0)
-    rawset(self, '_max_scroll_y', 0)
-    rawset(self, '_content_width', 0)
-    rawset(self, '_content_height', 0)
+    self._scroll_x = 0
+    self._scroll_y = 0
+    self._velocity_x = 0
+    self._velocity_y = 0
+    self._scroll_state = STATE_IDLE
+    self._max_scroll_x = 0
+    self._max_scroll_y = 0
+    self._content_width = 0
+    self._content_height = 0
 
     -- Drag tracking
-    rawset(self, '_drag_start_x', 0)
-    rawset(self, '_drag_start_y', 0)
-    rawset(self, '_drag_scroll_start_x', 0)
-    rawset(self, '_drag_scroll_start_y', 0)
-    rawset(self, '_prev_drag_delta_x', 0)
-    rawset(self, '_prev_drag_delta_y', 0)
+    self._drag_start_x = 0
+    self._drag_start_y = 0
+    self._drag_scroll_start_x = 0
+    self._drag_scroll_start_y = 0
+    self._prev_drag_delta_x = 0
+    self._prev_drag_delta_y = 0
 
     -- ── Build anatomy ───────────────────────────────────────────────────
 
@@ -491,8 +491,8 @@ function ScrollableContainer:constructor(opts)
     Container.addChild(viewport, content)
     Container.addChild(self, viewport)
 
-    rawset(self, '_viewport', viewport)
-    rawset(self, '_content', content)
+    self._viewport = viewport
+    self._content = content
     Proxy.on_read(self, 'content', read_content_role)
     Proxy.on_read(self, 'viewport', read_viewport_role)
     Proxy.on_pre_write(self, 'content', reject_role_node_write)
@@ -521,8 +521,8 @@ function ScrollableContainer:constructor(opts)
     })
     Container.addChild(v_track, v_thumb)
     Container.addChild(self, v_track)
-    rawset(self, '_scrollbar_v_track', v_track)
-    rawset(self, '_scrollbar_v_thumb', v_thumb)
+    self._scrollbar_v_track = v_track
+    self._scrollbar_v_thumb = v_thumb
 
     -- Horizontal scrollbar track + thumb
     local h_track = Drawable({
@@ -545,8 +545,8 @@ function ScrollableContainer:constructor(opts)
     })
     Container.addChild(h_track, h_thumb)
     Container.addChild(self, h_track)
-    rawset(self, '_scrollbar_h_track', h_track)
-    rawset(self, '_scrollbar_h_thumb', h_thumb)
+    self._scrollbar_h_track = h_track
+    self._scrollbar_h_thumb = h_thumb
 
     -- ── Wire events ─────────────────────────────────────────────────────
     self:_wire_scroll_events()
@@ -590,7 +590,7 @@ function ScrollableContainer:_wire_scroll_events()
             if not high_resolution_wheel then
                 record_velocity(self_ref, consumed_x, consumed_y)
                 if abs(consumed_x) > 0 or abs(consumed_y) > 0 then
-                    rawset(self_ref, '_scroll_state', STATE_INERTIAL)
+                    self_ref._scroll_state = STATE_INERTIAL
                     self_ref:invalidate_stage_update_token()
                 end
             end
@@ -602,31 +602,31 @@ function ScrollableContainer:_wire_scroll_events()
     -- Drag start
     self:_add_event_listener('ui.drag', function(event)
         if event.dragPhase == 'start' then
-            rawset(self_ref, '_scroll_state', STATE_DRAGGING)
-            rawset(self_ref, '_drag_start_x', event.x or 0)
-            rawset(self_ref, '_drag_start_y', event.y or 0)
-            rawset(self_ref, '_drag_scroll_start_x', rawget(self_ref, '_scroll_x') or 0)
-            rawset(self_ref, '_drag_scroll_start_y', rawget(self_ref, '_scroll_y') or 0)
+            self_ref._scroll_state = STATE_DRAGGING
+            self_ref._drag_start_x = event.x or 0
+            self_ref._drag_start_y = event.y or 0
+            self_ref._drag_scroll_start_x = self_ref._scroll_x or 0
+            self_ref._drag_scroll_start_y = self_ref._scroll_y or 0
             -- Drag deltas are cumulative from gesture origin; seed previous
             -- deltas on start so first move uses only incremental motion.
-            rawset(self_ref, '_prev_drag_delta_x', event.deltaX or 0)
-            rawset(self_ref, '_prev_drag_delta_y', event.deltaY or 0)
+            self_ref._prev_drag_delta_x = event.deltaX or 0
+            self_ref._prev_drag_delta_y = event.deltaY or 0
             record_velocity(self_ref, 0, 0)
             event:stopPropagation()
             return
         end
 
         if event.dragPhase == 'move' then
-            if rawget(self_ref, '_scroll_state') ~= STATE_DRAGGING then return end
+            if self_ref._scroll_state ~= STATE_DRAGGING then return end
 
-            local prev_dx = rawget(self_ref, '_prev_drag_delta_x') or 0
-            local prev_dy = rawget(self_ref, '_prev_drag_delta_y') or 0
+            local prev_dx = self_ref._prev_drag_delta_x or 0
+            local prev_dy = self_ref._prev_drag_delta_y or 0
             local cur_dx = event.deltaX or 0
             local cur_dy = event.deltaY or 0
             local dx = -(cur_dx - prev_dx)
             local dy = -(cur_dy - prev_dy)
-            rawset(self_ref, '_prev_drag_delta_x', cur_dx)
-            rawset(self_ref, '_prev_drag_delta_y', cur_dy)
+            self_ref._prev_drag_delta_x = cur_dx
+            self_ref._prev_drag_delta_y = cur_dy
 
             local can_overscroll = get_public(self_ref, 'overscroll')
             local consumed_x, consumed_y = apply_scroll(self_ref, dx, dy, can_overscroll)
@@ -636,18 +636,18 @@ function ScrollableContainer:_wire_scroll_events()
         end
 
         if event.dragPhase == 'end' then
-            if rawget(self_ref, '_scroll_state') ~= STATE_DRAGGING then return end
+            if self_ref._scroll_state ~= STATE_DRAGGING then return end
 
             if get_public(self_ref, 'momentum') then
-                rawset(self_ref, '_scroll_state', STATE_INERTIAL)
+                self_ref._scroll_state = STATE_INERTIAL
             else
                 -- Clamp and return to idle
                 clamp_offsets(self_ref, false)
                 apply_content_offset(self_ref)
                 update_scrollbar_geometry(self_ref)
-                rawset(self_ref, '_scroll_state', STATE_IDLE)
-                rawset(self_ref, '_velocity_x', 0)
-                rawset(self_ref, '_velocity_y', 0)
+                self_ref._scroll_state = STATE_IDLE
+                self_ref._velocity_x = 0
+                self_ref._velocity_y = 0
             end
             event:stopPropagation()
             return
@@ -658,10 +658,10 @@ end
 -- ── Inertial frame update ───────────────────────────────────────────────────
 
 function ScrollableContainer:_update_inertial()
-    if rawget(self, '_scroll_state') ~= STATE_INERTIAL then return end
+    if self._scroll_state ~= STATE_INERTIAL then return end
 
-    local vx = rawget(self, '_velocity_x') or 0
-    local vy = rawget(self, '_velocity_y') or 0
+    local vx = self._velocity_x or 0
+    local vy = self._velocity_y or 0
     local decay = get_public(self, 'momentumDecay') or 0.95
 
     -- Apply velocity
@@ -680,15 +680,15 @@ function ScrollableContainer:_update_inertial()
 
     -- Stop threshold
     if abs(vx) < VELOCITY_STOP_THRESHOLD and abs(vy) < VELOCITY_STOP_THRESHOLD and not snapping then
-        rawset(self, '_velocity_x', 0)
-        rawset(self, '_velocity_y', 0)
+        self._velocity_x = 0
+        self._velocity_y = 0
         clamp_offsets(self, false)
         apply_content_offset(self)
         update_scrollbar_geometry(self)
-        rawset(self, '_scroll_state', STATE_IDLE)
+        self._scroll_state = STATE_IDLE
     else
-        rawset(self, '_velocity_x', vx)
-        rawset(self, '_velocity_y', vy)
+        self._velocity_x = vx
+        self._velocity_y = vy
     end
 end
 
@@ -698,7 +698,7 @@ end
 -- before each update so that layout children get proper constraints.
 
 local function sync_viewport_size(self)
-    local viewport_node = rawget(self, '_viewport')
+    local viewport_node = self._viewport
 
     local w = self._resolved_width  or 0
     local h = self._resolved_height or 0
@@ -715,13 +715,13 @@ local function sync_viewport_size(self)
         changed = true
     end
 
-    if rawget(viewport_node, '_measurement_context_width') ~= w then
-        rawset(viewport_node, '_measurement_context_width', w)
+    if viewport_node._measurement_context_width ~= w then
+        viewport_node._measurement_context_width = w
         changed = true
     end
 
-    if rawget(viewport_node, '_measurement_context_height') ~= h then
-        rawset(viewport_node, '_measurement_context_height', h)
+    if viewport_node._measurement_context_height ~= h then
+        viewport_node._measurement_context_height = h
         changed = true
     end
 
@@ -735,7 +735,7 @@ local function sync_viewport_size(self)
     viewport_node:invalidate_descendant_geometry()
 
     local function mark_layout_subtree_dirty(node)
-        local children = rawget(node, '_children')
+        local children = node._children
         for i = 1, #children do
             local child = children[i]
             child:mark_layout_node_dirty()
@@ -763,7 +763,7 @@ function ScrollableContainer:update(dt)
     Container.update(self, dt)
 
     -- Recompute content extent and clamp after layout
-    clamp_offsets(self, rawget(self, '_scroll_state') ~= STATE_IDLE)
+    clamp_offsets(self, self._scroll_state ~= STATE_IDLE)
     apply_content_offset(self)
     update_scrollbar_geometry(self)
 
@@ -779,14 +779,14 @@ function ScrollableContainer:_scroll_to(x, y)
     Assert.number('x', x, 2)
     Assert.number('y', y, 2)
 
-    rawset(self, '_scroll_x', x)
-    rawset(self, '_scroll_y', y)
+    self._scroll_x = x
+    self._scroll_y = y
     clamp_offsets(self, false)
     apply_content_offset(self)
     update_scrollbar_geometry(self)
-    rawset(self, '_scroll_state', STATE_IDLE)
-    rawset(self, '_velocity_x', 0)
-    rawset(self, '_velocity_y', 0)
+    self._scroll_state = STATE_IDLE
+    self._velocity_x = 0
+    self._velocity_y = 0
     self:invalidate_stage_update_token()
     return self
 end
@@ -802,21 +802,21 @@ end
 -- ── Query ───────────────────────────────────────────────────────────────────
 
 function ScrollableContainer:_get_scroll_offset()
-    return rawget(self, '_scroll_x') or 0, rawget(self, '_scroll_y') or 0
+    return self._scroll_x or 0, self._scroll_y or 0
 end
 
 function ScrollableContainer:_get_scroll_state()
-    return rawget(self, '_scroll_state') or STATE_IDLE
+    return self._scroll_state or STATE_IDLE
 end
 
 function ScrollableContainer:_cancel_momentum()
-    if rawget(self, '_scroll_state') ~= STATE_INERTIAL then
+    if self._scroll_state ~= STATE_INERTIAL then
         return self
     end
 
-    rawset(self, '_velocity_x', 0)
-    rawset(self, '_velocity_y', 0)
-    rawset(self, '_scroll_state', STATE_IDLE)
+    self._velocity_x = 0
+    self._velocity_y = 0
+    self._scroll_state = STATE_IDLE
     clamp_offsets(self, false)
     apply_content_offset(self)
     update_scrollbar_geometry(self)
@@ -826,11 +826,11 @@ function ScrollableContainer:_cancel_momentum()
 end
 
 function ScrollableContainer:_get_content_extent()
-    return rawget(self, '_content_width') or 0, rawget(self, '_content_height') or 0
+    return self._content_width or 0, self._content_height or 0
 end
 
 function ScrollableContainer:_get_scroll_range()
-    return rawget(self, '_max_scroll_x') or 0, rawget(self, '_max_scroll_y') or 0
+    return self._max_scroll_x or 0, self._max_scroll_y or 0
 end
 
 -- ── TextArea integration boundary ───────────────────────────────────────────

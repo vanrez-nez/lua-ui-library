@@ -137,15 +137,15 @@ local function get_class_root_compositing_capabilities(class)
 end
 
 local function get_node_root_compositing_capabilities(node)
-    return get_class_root_compositing_capabilities(rawget(node, '_pclass') or getmetatable(node))
+    return get_class_root_compositing_capabilities(node._pclass or getmetatable(node))
 end
 
 local function node_uses_root_compositing_extras(node)
-    return rawget(node, '_ui_drawable_instance') == true
+    return node._ui_drawable_instance == true
 end
 
 local function node_uses_shape_result_clip(node)
-    return rawget(node, '_ui_shape_instance') == true
+    return node._ui_shape_instance == true
 end
 
 local function get_motion_surface_value(node, key)
@@ -153,7 +153,7 @@ local function get_motion_surface_value(node, key)
         return nil
     end
 
-    local state = rawget(node, '_motion_visual_state')
+    local state = node._motion_visual_state
     if state == nil then
         return nil
     end
@@ -162,8 +162,8 @@ local function get_motion_surface_value(node, key)
 end
 
 local function get_cached_node_plan(node, runtime)
-    local cached_runtime = rawget(node, '_root_compositing_plan_cache_runtime')
-    local cached_plan = rawget(node, '_root_compositing_plan_cache')
+    local cached_runtime = node._root_compositing_plan_cache_runtime
+    local cached_plan = node._root_compositing_plan_cache
 
     if cached_plan == nil or cached_runtime ~= runtime then
         return nil, false
@@ -177,8 +177,8 @@ local function get_cached_node_plan(node, runtime)
 end
 
 local function set_cached_node_plan(node, runtime, plan)
-    rawset(node, '_root_compositing_plan_cache_runtime', runtime)
-    rawset(node, '_root_compositing_plan_cache', plan or NO_ROOT_COMPOSITING_PLAN)
+    node._root_compositing_plan_cache_runtime = runtime
+    node._root_compositing_plan_cache = plan or NO_ROOT_COMPOSITING_PLAN
     return plan
 end
 
@@ -566,7 +566,7 @@ local function get_full_isolation_canvas_size(node, render_state, runtime, graph
 
     local root = runtime.get_root(node)
 
-    if rawget(root, '_ui_stage_instance') == true then
+    if root._ui_stage_instance == true then
         return max(1, ceil(root.width or 0)),
             max(1, ceil(root.height or 0))
     end
@@ -590,7 +590,7 @@ local function resolve_subtree_world_bounds(node, runtime)
         bounds = bounds:intersection(clip_rect)
     end
 
-    local ordered_children = rawget(node, '_ordered_children')
+    local ordered_children = node._ordered_children
 
     for index = 1, #ordered_children do
         local child_bounds = resolve_subtree_world_bounds(ordered_children[index], runtime)
@@ -1066,7 +1066,7 @@ local function composite_isolated_subtree(node, graphics, canvas, isolation_targ
     local destination_bounds = source_bounds
 
     if draw_x ~= 0 or draw_y ~= 0 or rotation ~= 0 or scale_x ~= 1 or scale_y ~= 1 then
-        local bounds = rawget(node, '_local_bounds_cache') or node:getLocalBounds()
+        local bounds = node._local_bounds_cache or node:getLocalBounds()
         local pivot_x = (runtime.get_effective_value(node, 'pivotX') or 0.5) * bounds.width
         local pivot_y = (runtime.get_effective_value(node, 'pivotY') or 0.5) * bounds.height
         local world_pivot_x, world_pivot_y = node:localToWorld(pivot_x, pivot_y)

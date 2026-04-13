@@ -70,11 +70,11 @@ local function get_effective_open(self)
         return self.open == true
     end
 
-    return rawget(self, '_open_uncontrolled') == true
+    return self._open_uncontrolled == true
 end
 
 local function clear_children(node)
-    local children = rawget(node, '_children')
+    local children = node._children
 
     for index = #children, 1, -1 do
         node:removeChild(children[index])
@@ -85,7 +85,7 @@ local function request_open_change(self, next_value)
     next_value = next_value == true
 
     if self.open == nil then
-        rawset(self, '_open_uncontrolled', next_value)
+        self._open_uncontrolled = next_value
     end
 
     ControlUtils.call_if_function(self.onOpenChange, next_value)
@@ -106,8 +106,8 @@ function Modal:_before_overlay_detach(mounted_stage, overlay_root)
     end
 
     if self.restoreFocus == false then
-        local trap_stack = rawget(mounted_stage, '_focus_trap_stack')
-        local history = rawget(mounted_stage, '_pre_trap_focus_history')
+        local trap_stack = mounted_stage._focus_trap_stack
+        local history = mounted_stage._pre_trap_focus_history
 
         for index = #trap_stack, 1, -1 do
             if trap_stack[index] == overlay_root then
@@ -120,8 +120,8 @@ end
 
 function Modal:_detach_overlay()
     ControlUtils.overlay_mixin._detach_overlay(self)
-    rawset(self, '_opened_once_for_mount', false)
-    rawset(self, '_last_open_state', get_effective_open(self))
+    self._opened_once_for_mount = false
+    self._last_open_state = get_effective_open(self)
 end
 
 function Modal:_overlay_focus_contract()
@@ -138,7 +138,7 @@ function Modal:_overlay_focus_contract()
 end
 
 local function sync_overlay_geometry(self, stage)
-    local overlay_frame = rawget(self, '_overlay_frame')
+    local overlay_frame = self._overlay_frame
     local viewport = stage:getViewport()
     local safe_area_bounds = stage:getSafeAreaBounds()
     local target_bounds = self.safeAreaAware and safe_area_bounds or viewport
@@ -192,10 +192,10 @@ function Modal:constructor(opts)
         self.backdropDismissBehavior = opts.backdropDismissBehavior
     end
 
-    rawset(self, '_ui_modal_control', true)
-    rawset(self, '_open_uncontrolled', opts.open == true)
-    rawset(self, '_mounted_stage', nil)
-    rawset(self, '_opened_once_for_mount', false)
+    self._ui_modal_control = true
+    self._open_uncontrolled = opts.open == true
+    self._mounted_stage = nil
+    self._opened_once_for_mount = false
 
     local overlay_root = Container.new({
         tag = (self.tag and (self.tag .. '.overlay')) or 'modal.overlay',
@@ -213,10 +213,10 @@ function Modal:constructor(opts)
         interactive = true,
     })
     Container._allow_fill_from_parent(backdrop, { width = true, height = true })
-    rawset(backdrop, '_styling_context', {
+    backdrop._styling_context = {
         component = 'modal',
         part = 'backdrop',
-    })
+    }
     local overlay_frame = Container.new({
         tag = (self.tag and (self.tag .. '.frame')) or 'modal.frame',
         internal = true,
@@ -243,10 +243,10 @@ function Modal:constructor(opts)
         alignX = 'stretch',
         alignY = 'stretch',
     })
-    rawset(surface, '_styling_context', {
+    surface._styling_context = {
         component = 'modal',
         part = 'surface',
-    })
+    }
     local content_slot = Container.new({
         tag = (self.tag and (self.tag .. '.content')) or 'modal.content',
         internal = true,
@@ -284,16 +284,16 @@ function Modal:constructor(opts)
         event:stopPropagation()
     end)
 
-    rawset(self, '_overlay_root', overlay_root)
-    rawset(self, '_overlay_backdrop', backdrop)
-    rawset(self, '_overlay_frame', overlay_frame)
-    rawset(self, '_overlay_surface', surface)
-    rawset(self, '_content_slot', content_slot)
+    self._overlay_root = overlay_root
+    self._overlay_backdrop = backdrop
+    self._overlay_frame = overlay_frame
+    self._overlay_surface = surface
+    self._content_slot = content_slot
 
-    rawset(self, 'root', overlay_root)
-    rawset(self, 'backdrop', backdrop)
-    rawset(self, 'surface', surface)
-    rawset(self, 'content', content_slot)
+    self.root = overlay_root
+    self.backdrop = backdrop
+    self.surface = surface
+    self.content = content_slot
 
     if content ~= nil then
         self:addChild(content)
@@ -305,15 +305,15 @@ function Modal.new(opts)
 end
 
 function Modal:addChild(child)
-    return rawget(self, '_content_slot'):addChild(child)
+    return self._content_slot:addChild(child)
 end
 
 function Modal:removeChild(child)
-    return rawget(self, '_content_slot'):removeChild(child)
+    return self._content_slot:removeChild(child)
 end
 
 function Modal:removeAllChildren()
-    clear_children(rawget(self, '_content_slot'))
+    clear_children(self._content_slot)
     return self
 end
 
@@ -333,7 +333,7 @@ end
 
 function Modal:_sync_overlay_mount()
     local stage = ControlUtils.find_stage(self)
-    local mounted_stage = rawget(self, '_mounted_stage')
+    local mounted_stage = self._mounted_stage
     local wants_open = get_effective_open(self)
 
     if mounted_stage ~= nil and mounted_stage ~= stage then
@@ -353,16 +353,16 @@ function Modal:_sync_overlay_mount()
 
     if mounted_stage == nil then
         self:_attach_overlay(stage)
-        rawset(self, '_opened_once_for_mount', true)
+        self._opened_once_for_mount = true
     else
-        stage:_set_focus_contract_internal(rawget(self, '_overlay_root'), self:_overlay_focus_contract())
+        stage:_set_focus_contract_internal(self._overlay_root, self:_overlay_focus_contract())
     end
 
     return self
 end
 
 function Modal:update(dt)
-    local was_open = rawget(self, '_last_open_state')
+    local was_open = self._last_open_state
     self:_sync_overlay_mount()
     Container.update(self, dt)
     local is_open = get_effective_open(self)
@@ -371,7 +371,7 @@ function Modal:update(dt)
             defaultTarget = 'surface',
         })
     end
-    rawset(self, '_last_open_state', is_open)
+    self._last_open_state = is_open
     return self
 end
 
@@ -379,7 +379,7 @@ function Modal:on_destroy()
     ControlUtils.remove_control_listeners(self)
     self:_detach_overlay()
 
-    rawget(self, '_overlay_root'):destroy()
+    self._overlay_root:destroy()
 
     Container.on_destroy(self)
 end

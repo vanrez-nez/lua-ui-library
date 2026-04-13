@@ -23,7 +23,7 @@ function Theme:constructor(opts)
     local tokens = opts.tokens or {}
     Assert.table('tokens', tokens, 2)
 
-    rawset(self, 'tokens', copy_tokens(tokens))
+    self.tokens = copy_tokens(tokens)
 end
 
 function Theme.new(opts)

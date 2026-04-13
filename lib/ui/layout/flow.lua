@@ -347,7 +347,7 @@ function Flow:_apply_layout(stage)
     local ok, result = xpcall(function()
         local gap, wrap, justify, _, direction = validate_effective_props(self)
         local effective_values = effective_values(self)
-        local children = rawget(self, '_children')
+        local children = self._children
         local content_rect
         local available_width
         local available_height

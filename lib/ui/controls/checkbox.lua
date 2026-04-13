@@ -108,12 +108,12 @@ function Checkbox:constructor(opts)
     self.description = opts.description
     self.toggleOrder = opts.toggleOrder
     ControlUtils.validate_control_schema(self, opts, Checkbox._control_schema, 2)
-    rawset(self, 'pointerFocusCoupling', 'before')
+    self.pointerFocusCoupling = 'before'
 
-    rawset(self, '_ui_checkbox_control', true)
+    self._ui_checkbox_control = true
 
-    rawset(self, '_checked_controlled', opts.checked ~= nil)
-    rawset(self, '_checked_uncontrolled', normalize_state(opts.checked) or 'unchecked')
+    self._checked_controlled = opts.checked ~= nil
+    self._checked_uncontrolled = normalize_state(opts.checked) or 'unchecked'
 
     local box = Drawable.new({
         tag = (self.tag and (self.tag .. '.box')) or 'checkbox.box',
@@ -131,18 +131,18 @@ function Checkbox:constructor(opts)
         interactive = false,
         focusable = false,
     })
-    rawset(box, '_styling_context', {
+    box._styling_context = {
         component = 'checkbox',
         part = 'box',
-    })
-    rawset(indicator, '_styling_context', {
+    }
+    indicator._styling_context = {
         component = 'checkbox',
         part = 'indicator',
-    })
+    }
     box:addChild(indicator)
     Container.addChild(self, box)
-    rawset(self, 'box', box)
-    rawset(self, 'indicator', indicator)
+    self.box = box
+    self.indicator = indicator
 
     ControlUtils.assert_controlled_pair('checked', opts.checked, 'onCheckedChange', opts.onCheckedChange, 2)
 
@@ -177,7 +177,7 @@ function Checkbox:_resolve_visual_variant()
         return 'checked'
     end
 
-    if rawget(self, '_focused') == true then
+    if self._focused == true then
         return 'focused'
     end
 
@@ -190,10 +190,10 @@ function Checkbox:update(dt)
     local disabled = self.disabled == true
     ControlUtils.set_interaction_state(self, not disabled)
 
-    local box = rawget(self, 'box')
-    local indicator = rawget(self, 'indicator')
-    local width = rawget(self, '_resolved_width') or 0
-    local height = rawget(self, '_resolved_height') or 0
+    local box = self.box
+    local indicator = self.indicator
+    local width = self._resolved_width or 0
+    local height = self._resolved_height or 0
     local box_size = math.min(width, height, 20)
     local indicator_size = math.max(0, box_size - 8)
     local variant = self:_resolve_visual_variant()
@@ -203,7 +203,7 @@ function Checkbox:update(dt)
         box.y = (height - box_size) * 0.5
         box.width = box_size
         box.height = box_size
-        rawset(box, '_styling_variant', variant)
+        box._styling_variant = variant
         box:markDirty()
     end
 
@@ -215,7 +215,7 @@ function Checkbox:update(dt)
         indicator.x = (box_size - indicator_size) * 0.5
         indicator.y = (box_size - indicator_size) * 0.5
         indicator.visible = show_indicator
-        rawset(indicator, '_styling_variant', variant)
+        indicator._styling_variant = variant
         indicator:markDirty()
     end
 

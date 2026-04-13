@@ -20,7 +20,7 @@ local SCENE_PUBLIC_KEYS = {
 
 local function get_public_value(self, key)
     if key == 'params' then
-        return rawget(self, '_scene_params')
+        return self._scene_params
     end
 
     return Proxy.raw_get(self, key)
@@ -65,12 +65,12 @@ local function set_params(self, value, level)
         return normalized
     end
 
-    rawset(self, '_scene_params', normalized)
+    self._scene_params = normalized
     return normalized
 end
 
 local function read_scene_params(_, _, target)
-    return rawget(target, '_scene_params')
+    return target._scene_params
 end
 
 local function validate_scene_params_write(_, value)
@@ -78,14 +78,14 @@ local function validate_scene_params_write(_, value)
 end
 
 local function store_scene_params_write(value, _, target)
-    rawset(target, '_scene_params', value)
+    target._scene_params = value
 end
 
 local function is_runtime_utility(node)
     return Types.is_table(node) and (
-        rawget(node, '_ui_stage_instance') == true or
-        rawget(node, '_ui_scene_instance') == true or
-        rawget(node, '_ui_composer_instance') == true
+        node._ui_stage_instance == true or
+        node._ui_scene_instance == true or
+        node._ui_composer_instance == true
     )
 end
 
@@ -94,7 +94,7 @@ local function subtree_contains_runtime_utility(node)
         return true
     end
 
-    local children = rawget(node, '_children')
+    local children = node._children
 
     if not Types.is_table(children) then
         return false
@@ -110,17 +110,17 @@ local function subtree_contains_runtime_utility(node)
 end
 
 local function is_base_scene_layer(parent)
-    if not Types.is_table(parent) or rawget(parent, '_ui_container_instance') ~= true then
+    if not Types.is_table(parent) or parent._ui_container_instance ~= true then
         return false
     end
 
-    local stage = rawget(parent, 'parent')
+    local stage = parent.parent
 
-    if not Types.is_table(stage) or rawget(stage, '_ui_stage_instance') ~= true then
+    if not Types.is_table(stage) or stage._ui_stage_instance ~= true then
         return false
     end
 
-    return rawget(stage, 'baseSceneLayer') == parent
+    return stage.baseSceneLayer == parent
 end
 
 local function assert_runtime_parent(parent, level)
@@ -134,7 +134,7 @@ end
 
 local function validate_scene_parent_write(_, value, target)
     if value ~= nil then
-        if not rawget(target, '_allow_runtime_parent_assignment') then
+        if not target._allow_runtime_parent_assignment then
             Assert.fail('Scene parent ownership is Composer-managed', 2)
         end
 
@@ -146,8 +146,8 @@ end
 
 local function store_scene_parent_write(value, _, target)
     if value == nil then
-        rawset(target, '_scene_active', false)
-        rawset(target, '_scene_runtime_owner', nil)
+        target._scene_active = false
+        target._scene_runtime_owner = nil
         Proxy.raw_set(target, 'enabled', false)
     end
 
@@ -155,8 +155,8 @@ local function store_scene_parent_write(value, _, target)
 end
 
 local function can_receive_input(self)
-    return rawget(self, '_scene_active') == true and
-        rawget(self, '_scene_runtime_owner') ~= nil and
+    return self._scene_active == true and
+        self._scene_runtime_owner ~= nil and
         is_base_scene_layer(self.parent)
 end
 
@@ -174,7 +174,7 @@ function Scene:__index(key)
         return get_public_value(self, 'params')
     end
 
-    local declared_props = rawget(self, '_declared_props')
+    local declared_props = self._declared_props
     if declared_props and declared_props[key] then
         return Container._get_public_read_value(self, key)
     end
@@ -185,14 +185,14 @@ end
 function Scene:__newindex(key, value)
     if key == 'parent' then
         if value ~= nil then
-            if not rawget(self, '_allow_runtime_parent_assignment') then
+            if not self._allow_runtime_parent_assignment then
                 Assert.fail('Scene parent ownership is Composer-managed', 2)
             end
 
             assert_runtime_parent(value, 2)
         else
-            rawset(self, '_scene_active', false)
-            rawset(self, '_scene_runtime_owner', nil)
+            self._scene_active = false
+            self._scene_runtime_owner = nil
             Proxy.raw_set(self, 'enabled', false)
         end
 
@@ -205,7 +205,7 @@ function Scene:__newindex(key, value)
         return
     end
 
-    local allowed_public_keys = rawget(self, '_declared_props')
+    local allowed_public_keys = self._declared_props
     if allowed_public_keys and allowed_public_keys[key] then
         Assert.fail(
             'Scene does not support prop "' .. tostring(key) .. '"',
@@ -245,11 +245,11 @@ function Scene:constructor(opts)
     self.params = opts.params
     Proxy.raw_set(self, 'enabled', false)
 
-    rawset(self, '_ui_scene_instance', true)
-    rawset(self, '_scene_created', false)
-    rawset(self, '_scene_active', false)
-    rawset(self, '_scene_runtime_owner', nil)
-    rawset(self, '_allow_runtime_parent_assignment', false)
+    self._ui_scene_instance = true
+    self._scene_created = false
+    self._scene_active = false
+    self._scene_runtime_owner = nil
+    self._allow_runtime_parent_assignment = false
 end
 
 function Scene.new(opts)
@@ -279,36 +279,36 @@ function Scene:onDestroy()
 end
 
 function Scene:_is_created()
-    return rawget(self, '_scene_created') == true
+    return self._scene_created == true
 end
 
 function Scene:_is_runtime_managed()
-    return rawget(self, '_scene_runtime_owner') ~= nil and self.parent ~= nil
+    return self._scene_runtime_owner ~= nil and self.parent ~= nil
 end
 
 function Scene:_is_runtime_active()
-    return rawget(self, '_scene_active') == true
+    return self._scene_active == true
 end
 
 function Scene:_set_runtime_owner(owner)
-    rawset(self, '_scene_runtime_owner', owner)
+    self._scene_runtime_owner = owner
     return self
 end
 
 function Scene:_mount_to_runtime(parent, owner)
     assert_runtime_parent(parent, 2)
 
-    rawset(self, '_allow_runtime_parent_assignment', true)
+    self._allow_runtime_parent_assignment = true
 
     local ok, result = pcall(Container.addChild, parent, self)
 
-    rawset(self, '_allow_runtime_parent_assignment', false)
+    self._allow_runtime_parent_assignment = false
 
     if not ok then
         error(result, 0)
     end
 
-    rawset(self, '_scene_runtime_owner', owner or true)
+    self._scene_runtime_owner = owner or true
     return self
 end
 
@@ -327,12 +327,12 @@ function Scene:_create_if_needed(params)
         set_params(self, params, 2)
     end
 
-    if rawget(self, '_scene_created') then
+    if self._scene_created then
         return self
     end
 
     self:onCreate(get_public_value(self, 'params'))
-    rawset(self, '_scene_created', true)
+    self._scene_created = true
     return self
 end
 
@@ -365,7 +365,7 @@ function Scene:_set_runtime_active(active)
     end
 
     Proxy.raw_set(self, 'enabled', active)
-    rawset(self, '_scene_active', active)
+    self._scene_active = active
     return self
 end
 

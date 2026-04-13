@@ -36,7 +36,7 @@ local function raise_unusable_texture_source(source_prop)
 end
 
 local function get_renderer_scratch(shape)
-    local scratch = rawget(shape, '_fill_renderer_scratch')
+    local scratch = shape._fill_renderer_scratch
 
     if scratch == nil then
         -- Non-flat fill scratch stays shape-local because mesh builders mutate it between tiles/stops.
@@ -45,7 +45,7 @@ local function get_renderer_scratch(shape)
             gradient_vertices = {},
             textured_tile_vertices = {},
         }
-        rawset(shape, '_fill_renderer_scratch', scratch)
+        shape._fill_renderer_scratch = scratch
     end
 
     return scratch

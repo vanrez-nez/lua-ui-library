@@ -17,8 +17,8 @@ local max = math.max
 local min = math.min
 
 local function unwrap_canvas(canvas)
-    if Types.is_table(canvas) and rawget(canvas, 'handle') ~= nil then
-        return rawget(canvas, 'handle')
+    if Types.is_table(canvas) and canvas.handle ~= nil then
+        return canvas.handle
     end
 
     return canvas
@@ -187,14 +187,14 @@ end
 
 function Composer:__index(key)
     if key == 'stage' then
-        return rawget(self, '_stage')
+        return self._stage
     end
 
     if key == 'transitionState' then
-        return rawget(self, '_transition_state')
+        return self._transition_state
     end
 
-    local current = rawget(self, '_pclass') or getmetatable(self)
+    local current = self._pclass or getmetatable(self)
     while current ~= nil do
         local method = rawget(current, key)
         if method ~= nil then
@@ -233,15 +233,15 @@ function Composer:constructor(opts)
         self[key] = value
     end
 
-    rawset(self, '_scene_registry', {})
-    rawset(self, '_current_scene', nil)
-    rawset(self, '_current_scene_name', nil)
-    rawset(self, '_transition_state', nil)
-    rawset(self, '_suppressed_leave_scene', nil)
-    rawset(self, '_running_lifecycle_hook', false)
+    self._scene_registry = {}
+    self._current_scene = nil
+    self._current_scene_name = nil
+    self._transition_state = nil
+    self._suppressed_leave_scene = nil
+    self._running_lifecycle_hook = false
 
-    rawset(self, '_ui_composer_instance', true)
-    rawset(self, '_stage', Stage.new())
+    self._ui_composer_instance = true
+    self._stage = Stage.new()
 end
 
 function Composer.new(opts)
@@ -254,15 +254,15 @@ end
 
 function Composer:_run_lifecycle(callback)
 
-    if rawget(self, '_running_lifecycle_hook') then
+    if self._running_lifecycle_hook then
         Assert.fail('Composer lifecycle hooks must not recurse', 2)
     end
 
-    rawset(self, '_running_lifecycle_hook', true)
+    self._running_lifecycle_hook = true
 
     local ok, err = xpcall(callback, debug.traceback)
 
-    rawset(self, '_running_lifecycle_hook', false)
+    self._running_lifecycle_hook = false
 
     if not ok then
         error(err, 0)
@@ -274,7 +274,7 @@ end
 function Composer:_resolve_registered_entry(name)
     assert_scene_name(name, 2)
 
-    local registry = rawget(self, '_scene_registry')
+    local registry = self._scene_registry
     local entry = registry[name]
 
     if entry == nil then
@@ -298,7 +298,7 @@ function Composer:_instantiate_scene(entry)
         Assert.fail('registered scene factory must return a Scene instance', 2)
     end
 
-    if scene.parent ~= nil or rawget(scene, '_scene_runtime_owner') ~= nil then
+    if scene.parent ~= nil or scene._scene_runtime_owner ~= nil then
         Assert.fail(
             'registered scenes must be detached before Composer ownership begins',
             2
@@ -373,7 +373,7 @@ end
 
 function Composer:_commit_navigation(outgoing_scene, target_name, target_scene, suppress_leave_hooks)
 
-    local transition_state = rawget(self, '_transition_state')
+    local transition_state = self._transition_state
     local same_scene = outgoing_scene ~= nil and outgoing_scene == target_scene
 
     if outgoing_scene ~= nil then
@@ -392,10 +392,10 @@ function Composer:_commit_navigation(outgoing_scene, target_name, target_scene, 
     target_scene:_set_runtime_active(true)
     self:_run_scene_enter_after(target_scene)
 
-    rawset(self, '_current_scene', target_scene)
-    rawset(self, '_current_scene_name', target_name)
-    rawset(self, '_transition_state', nil)
-    rawset(self, '_suppressed_leave_scene', nil)
+    self._current_scene = target_scene
+    self._current_scene_name = target_name
+    self._transition_state = nil
+    self._suppressed_leave_scene = nil
 
     if transition_state ~= nil then
         transition_state.outgoing_canvas = nil
@@ -420,7 +420,7 @@ function Composer:_initialize_transition(
 
     self:_mount_scene(target_scene)
 
-    rawset(self, '_transition_state', {
+    self._transition_state = {
         outgoing_name = outgoing_name,
         outgoing_scene = outgoing_scene,
         incoming_name = target_name,
@@ -432,7 +432,7 @@ function Composer:_initialize_transition(
         suppress_outgoing_leave_hooks = suppress_leave_hooks == true,
         outgoing_canvas = nil,
         incoming_canvas = nil,
-    })
+    }
 
     return self
 end
@@ -441,11 +441,11 @@ function Composer:_begin_navigation(target_name, options)
 
     local target_scene = self:_resolve_scene_instance(target_name)
     local navigation = resolve_navigation_configuration(self, options)
-    local current_scene = rawget(self, '_current_scene')
-    local current_name = rawget(self, '_current_scene_name')
+    local current_scene = self._current_scene
+    local current_name = self._current_scene_name
     local suppress_leave_hooks =
         current_scene ~= nil and
-        current_scene == rawget(self, '_suppressed_leave_scene')
+        current_scene == self._suppressed_leave_scene
 
     if current_scene ~= nil and not suppress_leave_hooks then
         self:_run_scene_leave_before(current_scene)
@@ -474,7 +474,7 @@ end
 
 function Composer:_interrupt_transition(commit_incoming_scene)
 
-    local transition_state = rawget(self, '_transition_state')
+    local transition_state = self._transition_state
 
     if transition_state == nil then
         return self
@@ -501,16 +501,16 @@ function Composer:_interrupt_transition(commit_incoming_scene)
     transition_state.outgoing_canvas = nil
     transition_state.incoming_canvas = nil
 
-    rawset(self, '_current_scene', incoming_scene)
-    rawset(self, '_current_scene_name', transition_state.incoming_name)
-    rawset(self, '_transition_state', nil)
+    self._current_scene = incoming_scene
+    self._current_scene_name = transition_state.incoming_name
+    self._transition_state = nil
 
     if commit_incoming_scene == true then
-        rawset(self, '_suppressed_leave_scene', nil)
+        self._suppressed_leave_scene = nil
     elseif incoming_scene ~= nil and incoming_scene ~= outgoing_scene then
-        rawset(self, '_suppressed_leave_scene', incoming_scene)
+        self._suppressed_leave_scene = incoming_scene
     else
-        rawset(self, '_suppressed_leave_scene', nil)
+        self._suppressed_leave_scene = nil
     end
 
     return self
@@ -518,7 +518,7 @@ end
 
 function Composer:_process_navigation_request(target_name, options)
 
-    if rawget(self, '_transition_state') ~= nil then
+    if self._transition_state ~= nil then
         self:_interrupt_transition(false)
     end
 
@@ -551,7 +551,7 @@ end
 
 function Composer:_draw_transition(graphics, draw_callback)
 
-    local transition_state = rawget(self, '_transition_state')
+    local transition_state = self._transition_state
 
     if transition_state == nil then
         return self
@@ -613,7 +613,7 @@ end
 
 function Composer:_advance_transition(dt)
 
-    local transition_state = rawget(self, '_transition_state')
+    local transition_state = self._transition_state
 
     if transition_state == nil then
         return self
@@ -657,7 +657,7 @@ function Composer:register(name, definition)
         )
     end
 
-    local registry = rawget(self, '_scene_registry')
+    local registry = self._scene_registry
 
     if registry[name] ~= nil then
         Assert.fail('scene "' .. name .. '" is already registered', 2)
@@ -674,7 +674,7 @@ end
 function Composer:gotoScene(name, options)
     assert_scene_name(name, 2)
 
-    if rawget(self, '_running_lifecycle_hook') then
+    if self._running_lifecycle_hook then
         Assert.fail(
             'Composer navigation is invalid during scene enter/leave lifecycle hooks',
             2
@@ -697,7 +697,7 @@ function Composer:update(dt)
         validate_duration('dt', dt, 2)
     end
 
-    if rawget(self, '_transition_state') ~= nil then
+    if self._transition_state ~= nil then
         self.stage:_queue_state_change(function()
             self:_advance_transition(dt or 0)
         end)
@@ -709,7 +709,7 @@ end
 
 function Composer:draw(graphics, draw_callback)
 
-    if rawget(self, '_transition_state') == nil then
+    if self._transition_state == nil then
         self.stage:draw(graphics, draw_callback)
         return self
     end
@@ -723,7 +723,7 @@ end
 
 function Composer:resize(width, height, safe_area_insets)
 
-    if rawget(self, '_transition_state') ~= nil then
+    if self._transition_state ~= nil then
         self:_interrupt_transition(true)
     end
 
@@ -737,7 +737,7 @@ end
 
 function Composer:on_destroy()
     local destroyed = {}
-    local registry = rawget(self, '_scene_registry')
+    local registry = self._scene_registry
 
     for _, entry in pairs(registry) do
         local scene = entry.instance
@@ -755,18 +755,18 @@ function Composer:on_destroy()
 
     self.stage:destroy()
 
-    rawset(self, '_current_scene', nil)
-    rawset(self, '_current_scene_name', nil)
+    self._current_scene = nil
+    self._current_scene_name = nil
 
-    local transition_state = rawget(self, '_transition_state')
+    local transition_state = self._transition_state
 
     if transition_state ~= nil then
         transition_state.outgoing_canvas = nil
         transition_state.incoming_canvas = nil
     end
 
-    rawset(self, '_transition_state', nil)
-    rawset(self, '_suppressed_leave_scene', nil)
+    self._transition_state = nil
+    self._suppressed_leave_scene = nil
     Container.on_destroy(self)
 end
 

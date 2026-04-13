@@ -52,8 +52,8 @@ function Atlas:constructor(opts)
         normalized[name] = normalize_region(name, default_texture, region)
     end
 
-    rawset(self, 'texture', default_texture)
-    rawset(self, 'regions', normalized)
+    self.texture = default_texture
+    self.regions = normalized
 end
 
 function Atlas.new(opts)
@@ -61,7 +61,7 @@ function Atlas.new(opts)
 end
 
 function Atlas:resolve(name)
-    local region = rawget(self, 'regions')[name]
+    local region = self.regions[name]
     if region == nil then
         Assert.fail('Unknown atlas region "' .. tostring(name) .. '"', 2)
     end

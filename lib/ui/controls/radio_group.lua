@@ -8,12 +8,12 @@ local Rule = require('lib.ui.utils.rule')
 local RadioGroup = Drawable:extends('RadioGroup')
 
 local function collect_radios(node, out)
-    if rawget(node, '_ui_radio_control') == true then
+    if node._ui_radio_control == true then
         out[#out + 1] = node
         return out
     end
 
-    local children = rawget(node, '_children')
+    local children = node._children
     for index = 1, #children do
         collect_radios(children[index], out)
     end
@@ -50,12 +50,12 @@ local function order_and_validate(self)
         by_value[value] = radio
     end
 
-    rawset(self, '_radio_order', radios)
-    rawset(self, '_radio_by_value', by_value)
+    self._radio_order = radios
+    self._radio_by_value = by_value
 end
 
 local function is_disabled_value(self, value)
-    local map = rawget(self, '_disabled_value_map')
+    local map = self._disabled_value_map
     return map[tostring(value)] == true
 end
 
@@ -64,7 +64,7 @@ local function is_radio_enabled(self, radio)
 end
 
 local function first_enabled_value(self)
-    local radios = rawget(self, '_radio_order')
+    local radios = self._radio_order
     for index = 1, #radios do
         if is_radio_enabled(self, radios[index]) then
             return radios[index].value
@@ -74,7 +74,7 @@ local function first_enabled_value(self)
 end
 
 local function normalize_value(self, current)
-    local by_value = rawget(self, '_radio_by_value')
+    local by_value = self._radio_by_value
     local radio = by_value[current]
     if radio ~= nil and is_radio_enabled(self, radio) then
         return current
@@ -109,10 +109,10 @@ local function focused_radio(self)
     local focus_owner = ControlUtils.stage_focus_owner(self)
     local current = focus_owner
     while current ~= nil and current ~= self do
-        if rawget(current, '_ui_radio_control') == true then
+        if current._ui_radio_control == true then
             return current
         end
-        current = rawget(current, 'parent')
+        current = current.parent
     end
     return nil
 end
@@ -131,7 +131,7 @@ function RadioGroup:constructor(opts)
     self.disabledValues = opts.disabledValues
     ControlUtils.validate_control_schema(self, opts, RadioGroup._control_schema, 2)
 
-    rawset(self, '_ui_radio_group_control', true)
+    self._ui_radio_group_control = true
 
     if self.orientation ~= 'horizontal' and self.orientation ~= 'vertical' then
         Assert.fail('RadioGroup.orientation must be "horizontal" or "vertical"', 2)
@@ -139,11 +139,11 @@ function RadioGroup:constructor(opts)
 
     ControlUtils.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
 
-    rawset(self, '_value_controlled', opts.value ~= nil)
-    rawset(self, '_value_uncontrolled', opts.value)
-    rawset(self, '_disabled_value_map', normalize_disabled_values(opts.disabledValues))
-    rawset(self, '_radio_order', {})
-    rawset(self, '_radio_by_value', {})
+    self._value_controlled = opts.value ~= nil
+    self._value_uncontrolled = opts.value
+    self._disabled_value_map = normalize_disabled_values(opts.disabledValues)
+    self._radio_order = {}
+    self._radio_by_value = {}
 
     ControlUtils.add_control_listener(self, self, 'ui.navigate', function(event)
         if event.navigationMode ~= 'directional' then
@@ -158,7 +158,7 @@ function RadioGroup:constructor(opts)
             return
         end
 
-        local radios = rawget(self, '_radio_order')
+        local radios = self._radio_order
         local current = focused_radio(self)
         local current_index = 0
         if current ~= nil then
@@ -214,12 +214,12 @@ end
 function RadioGroup:update(dt)
     Drawable.update(self, dt)
 
-    rawset(self, '_disabled_value_map', normalize_disabled_values(self.disabledValues))
+    self._disabled_value_map = normalize_disabled_values(self.disabledValues)
     order_and_validate(self)
 
     local resolved = effective_value(self)
-    if rawget(self, '_value_controlled') == false then
-        rawset(self, '_value_uncontrolled', resolved)
+    if self._value_controlled == false then
+        self._value_uncontrolled = resolved
     elseif self.value ~= resolved and resolved ~= nil then
         ControlUtils.call_if_function(self.onValueChange, resolved)
     end

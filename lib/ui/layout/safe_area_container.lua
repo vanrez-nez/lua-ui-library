@@ -35,9 +35,9 @@ local function child_is_visible(child)
 end
 
 local function get_child_parent_local_bounds(child)
-    local matrix = rawget(child, '_local_transform_cache')
-    local width = rawget(child, '_resolved_width') or 0
-    local height = rawget(child, '_resolved_height') or 0
+    local matrix = child._local_transform_cache
+    local width = child._resolved_width or 0
+    local height = child._resolved_height or 0
     local x1, y1 = matrix:transform_point(0, 0)
     local x2, y2 = matrix:transform_point(width, 0)
     local x3, y3 = matrix:transform_point(width, height)
@@ -52,7 +52,7 @@ local function get_child_parent_local_bounds(child)
 end
 
 local function place_children(self, content_rect)
-    local children = rawget(self, '_children')
+    local children = self._children
 
     for index = 1, #children do
         local child = children[index]
@@ -102,7 +102,7 @@ local function measure_content_extent(children, content_rect)
 end
 
 local function resolve_stage(node, stage)
-    if stage ~= nil and rawget(stage, '_ui_stage_instance') == true then
+    if stage ~= nil and stage._ui_stage_instance == true then
         return stage
     end
 
@@ -112,7 +112,7 @@ local function resolve_stage(node, stage)
         current = current.parent
     end
 
-    if current ~= nil and rawget(current, '_ui_stage_instance') == true then
+    if current ~= nil and current._ui_stage_instance == true then
         return current
     end
 
@@ -121,12 +121,12 @@ end
 
 local function resolve_layout_world_rect(node)
     local values = effective_values(node)
-    local width = rawget(node, '_resolved_width') or 0
-    local height = rawget(node, '_resolved_height') or 0
+    local width = node._resolved_width or 0
+    local height = node._resolved_height or 0
     local parent_width = 0
     local parent_height = 0
-    local world_x = rawget(node, '_layout_offset_x') or 0
-    local world_y = rawget(node, '_layout_offset_y') or 0
+    local world_x = node._layout_offset_x or 0
+    local world_y = node._layout_offset_y or 0
 
     if node.parent ~= nil then
         local parent_world_rect = resolve_layout_world_rect(node.parent)
@@ -151,7 +151,7 @@ local function resolve_safe_area_insets(self, stage)
         return 0, 0, 0, 0
     end
 
-    local safe_area_bounds = rawget(stage_root, '_safe_area_bounds_cache')
+    local safe_area_bounds = stage_root._safe_area_bounds_cache
 
     if not Rectangle.is_rectangle(safe_area_bounds) then
         return 0, 0, 0, 0
@@ -222,7 +222,7 @@ local function resize_to_safe_area_content(self, content_width, content_height, 
 end
 
 local function mark_children_parent_region_dirty(self)
-    local children = rawget(self, '_children')
+    local children = self._children
 
     for index = 1, #children do
         local child = children[index]
@@ -257,11 +257,11 @@ function SafeAreaContainer.new(opts)
 end
 
 function SafeAreaContainer:_refresh_layout_content_rect(stage)
-    local width = rawget(self, '_resolved_width') or 0
-    local height = rawget(self, '_resolved_height') or 0
+    local width = self._resolved_width or 0
+    local height = self._resolved_height or 0
     local left_inset, top_inset, right_inset, bottom_inset =
         resolve_content_edge_insets(self, stage)
-    local previous_rect = rawget(self, '_layout_content_rect_cache')
+    local previous_rect = self._layout_content_rect_cache
     local next_rect = Rectangle(
         left_inset,
         top_inset,
@@ -269,7 +269,7 @@ function SafeAreaContainer:_refresh_layout_content_rect(stage)
         max(0, height - top_inset - bottom_inset)
     )
 
-    rawset(self, '_layout_content_rect_cache', next_rect)
+    self._layout_content_rect_cache = next_rect
 
     if previous_rect ~= nil and not previous_rect:equals(next_rect, 1e-9) then
         mark_children_parent_region_dirty(self)

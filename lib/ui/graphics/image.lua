@@ -152,7 +152,7 @@ local function resolve_quad(self, texture, region_x, region_y, region_width, reg
         return nil
     end
 
-    local cached = rawget(self, '_cached_quad')
+    local cached = self._cached_quad
     if cached ~= nil and
         cached.texture == texture and
         cached.x == region_x and
@@ -177,7 +177,7 @@ local function resolve_quad(self, texture, region_x, region_y, region_width, reg
         texture_height
     )
 
-    rawset(self, '_cached_quad', {
+    self._cached_quad = {
         texture = texture,
         x = region_x,
         y = region_y,
@@ -186,7 +186,7 @@ local function resolve_quad(self, texture, region_x, region_y, region_width, reg
         texture_width = texture_width,
         texture_height = texture_height,
         quad = quad,
-    })
+    }
 
     return quad
 end
@@ -196,13 +196,13 @@ local function apply_sampling(texture, drawable, sampling)
         return
     end
 
-    local applied_sampling = rawget(texture, '_ui_applied_sampling')
+    local applied_sampling = texture._ui_applied_sampling
     if applied_sampling == sampling then
         return
     end
 
     drawable:setFilter(sampling, sampling)
-    rawset(texture, '_ui_applied_sampling', sampling)
+    texture._ui_applied_sampling = sampling
 end
 
 function Image:constructor(opts)
@@ -222,9 +222,9 @@ function Image:constructor(opts)
 
     Drawable.constructor(self, drawable_opts)
 
-    rawset(self, '_ui_image_control', true)
-    rawset(self, 'root', self)
-    rawset(self, 'content', self)
+    self._ui_image_control = true
+    self.root = self
+    self.content = self
 end
 
 function Image.new(opts)
@@ -271,9 +271,9 @@ function Image:draw()
 end
 
 function Image:update(dt)
-    local root = rawget(self, '_attachment_root')
+    local root = self._attachment_root
 
-    if root ~= nil and rawget(root, '_ui_stage_instance') == true and rawget(root, '_updating') == true then
+    if root ~= nil and root._ui_stage_instance == true and root._updating == true then
         self:_refresh_if_dirty()
         return self
     end
@@ -293,7 +293,7 @@ function Image:_draw_control(graphics)
         return
     end
 
-    local effective_values = rawget(self, '_effective_values')
+    local effective_values = self._effective_values
     local padding_left, padding_top, padding_right, padding_bottom = resolve_padding_edges(effective_values.padding)
     local world_bounds = self:getWorldBounds()
     local content_x = world_bounds.x + padding_left

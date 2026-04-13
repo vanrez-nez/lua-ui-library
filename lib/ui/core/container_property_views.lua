@@ -5,7 +5,7 @@ local ContainerPropertyViews = {}
 local DECLARED_PROPS = '_declared_props'
 
 local function has_declared_prop(instance, key)
-    local declared_props = rawget(instance, DECLARED_PROPS)
+    local declared_props = instance[DECLARED_PROPS]
     return declared_props ~= nil and declared_props[key] ~= nil
 end
 
@@ -30,8 +30,8 @@ function ContainerPropertyViews.install(instance, readers)
 end
 
 function ContainerPropertyViews.write_extra(instance, key, value)
-    local public_values = rawget(instance, '_public_values')
-    local effective_values = rawget(instance, '_effective_values')
+    local public_values = instance._public_values
+    local effective_values = instance._effective_values
 
     if public_values ~= nil then
         public_values[key] = value

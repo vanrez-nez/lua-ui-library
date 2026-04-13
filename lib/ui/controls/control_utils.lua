@@ -81,10 +81,10 @@ end
 function Utils.find_stage(node)
     local current = node
     while current ~= nil do
-        if rawget(current, '_ui_stage_instance') == true then
+        if current._ui_stage_instance == true then
             return current
         end
-        current = rawget(current, 'parent')
+        current = current.parent
     end
     return nil
 end
@@ -94,7 +94,7 @@ function Utils.stage_focus_owner(node)
     if stage == nil then
         return nil
     end
-    return rawget(stage, '_focus_owner')
+    return stage._focus_owner
 end
 
 function Utils.request_focus(node)
@@ -103,7 +103,7 @@ function Utils.request_focus(node)
         return nil
     end
 
-    local req = rawget(stage, '_request_focus_internal') or stage._request_focus_internal
+    local req = stage._request_focus_internal or stage._request_focus_internal
     if Types.is_function(req) then
         req(stage, node)
     end
@@ -116,7 +116,7 @@ function Utils.clear_focus(node)
         return nil
     end
 
-    local req = rawget(stage, '_request_focus_internal') or stage._request_focus_internal
+    local req = stage._request_focus_internal or stage._request_focus_internal
     if Types.is_function(req) then
         req(stage, nil)
     end
@@ -171,10 +171,10 @@ function Utils.controlled_value(prop_name, default_value, config)
 
     local function get_effective(self)
         local current
-        if rawget(self, controlled_key) then
+        if self[controlled_key] then
             current = self[prop_name]
         else
-            current = rawget(self, internal_key)
+            current = self[internal_key]
             if current == nil then
                 current = Proxy.raw_get(self, internal_key)
             end
@@ -184,17 +184,17 @@ function Utils.controlled_value(prop_name, default_value, config)
 
     local function request(self, next_value)
         next_value = coerce(self, next_value)
-        if rawget(self, controlled_key) then
+        if self[controlled_key] then
             Utils.call_if_function(self[callback_name], next_value)
             return next_value
         end
 
-        rawset(self, internal_key, next_value)
-        local props = rawget(self, 'props')
+        self[internal_key] = next_value
+        local props = self.props
         if props ~= nil and Types.is_function(props.raw_set) then
             props:raw_set(internal_key, next_value)
         end
-        local mark_dirty = rawget(self, 'markDirty') or self.markDirty
+        local mark_dirty = self.markDirty
         if Types.is_function(mark_dirty) then
             mark_dirty(self)
         end
@@ -213,10 +213,10 @@ function Utils.add_control_listener(owner, target, event_type, listener, phase)
 
     target:_add_event_listener(event_type, listener, phase)
 
-    local registrations = rawget(owner, '_control_listener_registrations')
+    local registrations = owner._control_listener_registrations
     if registrations == nil then
         registrations = {}
-        rawset(owner, '_control_listener_registrations', registrations)
+        owner._control_listener_registrations = registrations
     end
 
     registrations[#registrations + 1] = {
@@ -230,7 +230,7 @@ function Utils.add_control_listener(owner, target, event_type, listener, phase)
 end
 
 function Utils.remove_control_listeners(owner)
-    local registrations = rawget(owner, '_control_listener_registrations') or {}
+    local registrations = owner._control_listener_registrations or {}
     for index = #registrations, 1, -1 do
         local registration = registrations[index]
         local target = registration.target
@@ -258,7 +258,7 @@ Utils.overlay_mixin = {
 }
 
 function Utils.overlay_mixin:_get_overlay_root()
-    return rawget(self, rawget(self, '_overlay_root_key') or self._overlay_root_key or '_overlay_root')
+    return self[self._overlay_root_key or '_overlay_root']
 end
 
 function Utils.overlay_mixin:_overlay_focus_contract()
@@ -280,10 +280,9 @@ function Utils.overlay_mixin:_attach_overlay(stage)
         stage:_set_focus_contract_internal(overlay_root, contract)
     end
 
-    rawset(self, rawget(self, '_overlay_mounted_stage_key') or self._overlay_mounted_stage_key or '_mounted_stage', stage)
+    self[self._overlay_mounted_stage_key or '_mounted_stage'] = stage
 
-    local on_opened = rawget(self, '_handle_overlay_opened_internal') or
-        self._handle_overlay_opened_internal
+    local on_opened = self._handle_overlay_opened_internal
     if Types.is_function(on_opened) then
         on_opened(self, stage)
     end
@@ -292,10 +291,10 @@ function Utils.overlay_mixin:_attach_overlay(stage)
 end
 
 function Utils.overlay_mixin:_detach_overlay()
-    local mounted_stage = rawget(self, rawget(self, '_overlay_mounted_stage_key') or self._overlay_mounted_stage_key or '_mounted_stage')
+    local mounted_stage = self[self._overlay_mounted_stage_key or '_mounted_stage']
     local overlay_root = self:_get_overlay_root()
 
-    local before_detach = rawget(self, '_before_overlay_detach') or self._before_overlay_detach
+    local before_detach = self._before_overlay_detach
     if Types.is_function(before_detach) then
         before_detach(self, mounted_stage, overlay_root)
     elseif mounted_stage ~= nil and overlay_root ~= nil then
@@ -306,7 +305,7 @@ function Utils.overlay_mixin:_detach_overlay()
         overlay_root.parent:removeChild(overlay_root)
     end
 
-    rawset(self, rawget(self, '_overlay_mounted_stage_key') or self._overlay_mounted_stage_key or '_mounted_stage', nil)
+    self[self._overlay_mounted_stage_key or '_mounted_stage'] = nil
     return self
 end
 

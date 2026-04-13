@@ -17,12 +17,12 @@ local function copy_array(values)
 end
 
 local function collect_options(node, out)
-    if rawget(node, '_ui_option_control') == true then
+    if node._ui_option_control == true then
         out[#out + 1] = node
         return out
     end
 
-    local children = rawget(node, '_children')
+    local children = node._children
     for index = 1, #children do
         collect_options(children[index], out)
     end
@@ -61,16 +61,16 @@ local function validate_value_shape(opts)
 end
 
 local function effective_open(self)
-    if rawget(self, '_open_controlled') then
+    if self._open_controlled then
         return self.open == true
     end
-    return rawget(self, '_open_uncontrolled') == true
+    return self._open_uncontrolled == true
 end
 
 local function request_open_change(self, next_value)
     next_value = next_value == true
-    if not rawget(self, '_open_controlled') then
-        rawset(self, '_open_uncontrolled', next_value)
+    if not self._open_controlled then
+        self._open_uncontrolled = next_value
     end
 
     ControlUtils.call_if_function(self.onOpenChange, next_value)
@@ -105,7 +105,7 @@ Select._overlay_root_key = '_popup_root'
 Select:implements(ControlUtils.overlay_mixin)
 
 local function sync_option_registry(self)
-    local options = collect_options(rawget(self, '_popup_slot'), {})
+    local options = collect_options(self._popup_slot, {})
     if #options == 0 then
         Assert.fail('zero registered options within one Select root are invalid', 3)
     end
@@ -120,15 +120,15 @@ local function sync_option_registry(self)
         by_value[value] = option
     end
 
-    rawset(self, '_option_order', options)
-    rawset(self, '_option_by_value', by_value)
+    self._option_order = options
+    self._option_by_value = by_value
 end
 
 local function option_is_enabled(self, option)
     if option == nil then
         return false
     end
-    return option.disabled ~= true and not rawget(self, '_disabled_value_map')[tostring(option.value)]
+    return option.disabled ~= true and not self._disabled_value_map[tostring(option.value)]
 end
 
 local function effective_selected_order(self)
@@ -147,7 +147,7 @@ local function effective_selected_order(self)
         end
     end
 
-    local options = rawget(self, '_option_order')
+    local options = self._option_order
     for index = 1, #options do
         local value = options[index].value
         if selected[value] == true and option_is_enabled(self, options[index]) then
@@ -161,14 +161,14 @@ end
 local function commit_effective_value(self)
     local ordered = effective_selected_order(self)
     if self.selectionMode == 'single' then
-        if rawget(self, '_value_controlled') == false then
-            rawset(self, '_value_uncontrolled', ordered[1])
+        if self._value_controlled == false then
+            self._value_uncontrolled = ordered[1]
         end
         return ordered[1]
     end
 
-    if rawget(self, '_value_controlled') == false then
-        rawset(self, '_value_uncontrolled', (#ordered > 0) and ordered or nil)
+    if self._value_controlled == false then
+        self._value_uncontrolled = (#ordered > 0) and ordered or nil
     end
 
     return (#ordered > 0) and ordered or nil
@@ -181,9 +181,9 @@ local function summary_text(self)
     end
 
     if self.selectionMode == 'single' then
-        local option = rawget(self, '_option_by_value')[ordered[1]]
-        local label_slot = option and rawget(option, 'label') or nil
-        local label = label_slot and rawget(label_slot, 'text') or nil
+        local option = self._option_by_value[ordered[1]]
+        local label_slot = option and option.label or nil
+        local label = label_slot and label_slot.text or nil
         return label or ordered[1]
     end
 
@@ -191,19 +191,19 @@ local function summary_text(self)
 end
 
 local function sync_summary(self)
-    local summary = rawget(self, '_summary_text')
+    local summary = self._summary_text
     if summary ~= nil then
         summary:setText(summary_text(self))
     end
 end
 
 local function position_popup(self, stage)
-    local trigger = rawget(self, 'trigger')
-    local popup = rawget(self, 'popup')
+    local trigger = self.trigger
+    local popup = self.popup
     local trigger_bounds = trigger:getWorldBounds()
     local viewport = stage:getViewport()
 
-    popup.width = math.max(trigger_bounds.width, rawget(popup, '_resolved_width') or 0)
+    popup.width = math.max(trigger_bounds.width, popup._resolved_width or 0)
     popup.x = math.max(viewport.x, math.min(trigger_bounds.x, viewport.width - popup.width))
     popup.y = math.min(viewport.height - popup.height, trigger_bounds.y + trigger_bounds.height)
     popup:markDirty()
@@ -211,7 +211,7 @@ end
 
 local function next_enabled_option(self, direction)
     local current_focus = ControlUtils.stage_focus_owner(self)
-    local options = rawget(self, '_option_order')
+    local options = self._option_order
     local current_index = 0
 
     for index = 1, #options do
@@ -254,20 +254,20 @@ function Select:constructor(opts)
     self.disabledValues = opts.disabledValues
     ControlUtils.validate_control_schema(self, opts, Select._control_schema, 2)
 
-    rawset(self, '_ui_select_control', true)
+    self._ui_select_control = true
 
     ControlUtils.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
     ControlUtils.assert_controlled_pair('open', opts.open, 'onOpenChange', opts.onOpenChange, 2)
 
-    rawset(self, '_value_controlled', opts.value ~= nil)
-    rawset(self, '_value_uncontrolled', opts.value)
-    rawset(self, '_open_controlled', opts.open ~= nil)
-    rawset(self, '_open_uncontrolled', opts.open == true)
-    rawset(self, '_disabled_value_map', normalize_disabled_values(opts.disabledValues))
-    rawset(self, '_option_order', {})
-    rawset(self, '_option_by_value', {})
-    rawset(self, '_mounted_stage', nil)
-    rawset(self, '_last_open_state', effective_open(self))
+    self._value_controlled = opts.value ~= nil
+    self._value_uncontrolled = opts.value
+    self._open_controlled = opts.open ~= nil
+    self._open_uncontrolled = opts.open == true
+    self._disabled_value_map = normalize_disabled_values(opts.disabledValues)
+    self._option_order = {}
+    self._option_by_value = {}
+    self._mounted_stage = nil
+    self._last_open_state = effective_open(self)
 
     local trigger = Drawable.new({
         tag = (self.tag and (self.tag .. '.trigger')) or 'select.trigger',
@@ -278,11 +278,11 @@ function Select:constructor(opts)
         focusable = true,
     })
     Container._allow_fill_from_parent(trigger, { width = true })
-    rawset(trigger, 'pointerFocusCoupling', 'before')
-    rawset(trigger, '_styling_context', {
+    trigger.pointerFocusCoupling = 'before'
+    trigger._styling_context = {
         component = 'select',
         part = 'trigger',
-    })
+    }
 
     local summary = Text.new({
         tag = (self.tag and (self.tag .. '.summary')) or 'select.summary',
@@ -311,10 +311,10 @@ function Select:constructor(opts)
         interactive = true,
         focusable = false,
     })
-    rawset(popup, '_styling_context', {
+    popup._styling_context = {
         component = 'select',
         part = 'popup',
-    })
+    }
     local popup_slot = Container.new({
         tag = (self.tag and (self.tag .. '.popup_slot')) or 'select.popup_slot',
         internal = true,
@@ -325,20 +325,20 @@ function Select:constructor(opts)
     })
     Container._allow_fill_from_parent(popup_slot, { width = true, height = true })
     Container._allow_child_fill(popup_slot, { width = true, height = true })
-    rawset(popup_slot, '_ui_select_popup_slot', true)
-    rawset(popup_slot, '_ui_select_owner', self)
+    popup_slot._ui_select_popup_slot = true
+    popup_slot._ui_select_owner = self
 
     popup_root:addChild(popup)
     popup:addChild(popup_slot)
 
-    rawset(self, 'root', self)
-    rawset(self, 'trigger', trigger)
-    rawset(self, 'summary', summary)
-    rawset(self, 'placeholderRegion', summary)
-    rawset(self, 'popup', popup)
-    rawset(self, '_popup_root', popup_root)
-    rawset(self, '_popup_slot', popup_slot)
-    rawset(self, '_summary_text', summary)
+    self.root = self
+    self.trigger = trigger
+    self.summary = summary
+    self.placeholderRegion = summary
+    self.popup = popup
+    self._popup_root = popup_root
+    self._popup_slot = popup_slot
+    self._summary_text = summary
 
     ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
         if self.disabled then
@@ -352,7 +352,7 @@ function Select:constructor(opts)
                 event:stopPropagation()
                 return
             end
-            current = rawget(current, 'parent')
+            current = current.parent
         end
     end)
 
@@ -382,14 +382,14 @@ function Select.new(opts)
 end
 
 function Select:addChild(child)
-    if rawget(child, '_ui_option_control') ~= true then
+    if child._ui_option_control ~= true then
         Assert.fail('Select accepts only Option descendants through addChild in this revision', 2)
     end
-    return rawget(self, '_popup_slot'):addChild(child)
+    return self._popup_slot:addChild(child)
 end
 
 function Select:removeChild(child)
-    return rawget(self, '_popup_slot'):removeChild(child)
+    return self._popup_slot:removeChild(child)
 end
 
 function Select:_is_option_disabled(option)
@@ -421,7 +421,7 @@ function Select:_activate_option(option)
         end
         request_value_change(self, value)
         request_open_change(self, false)
-        ControlUtils.request_focus(rawget(self, 'trigger'))
+        ControlUtils.request_focus(self.trigger)
         return
     end
 
@@ -437,7 +437,7 @@ function Select:_activate_option(option)
     end
 
     local next_values = {}
-    local options = rawget(self, '_option_order')
+    local options = self._option_order
     for index = 1, #options do
         local option_value = options[index].value
         if selected[option_value] == true then
@@ -451,27 +451,27 @@ end
 function Select:update(dt)
     Drawable.update(self, dt)
 
-    rawset(self, '_disabled_value_map', normalize_disabled_values(self.disabledValues))
+    self._disabled_value_map = normalize_disabled_values(self.disabledValues)
     sync_option_registry(self)
     commit_effective_value(self)
     sync_summary(self)
 
     local wants_open = effective_open(self)
     local stage = ControlUtils.find_stage(self)
-    local was_open = rawget(self, '_last_open_state')
+    local was_open = self._last_open_state
 
     if wants_open and stage ~= nil then
         self:_attach_overlay(stage)
         position_popup(self, stage)
         if not was_open then
             self:_raise_motion('open', { defaultTarget = 'popup' })
-            local first = next_enabled_option(self, 'down') or rawget(self, '_option_order')[1]
+            local first = next_enabled_option(self, 'down') or self._option_order[1]
             if first ~= nil then
                 ControlUtils.request_focus(first)
             end
         end
     else
-        if rawget(self, '_mounted_stage') ~= nil then
+        if self._mounted_stage ~= nil then
             self:_detach_overlay()
         end
         if was_open and not wants_open then
@@ -479,9 +479,9 @@ function Select:update(dt)
         end
     end
 
-    rawset(self, '_last_open_state', wants_open)
-    rawset(rawget(self, 'trigger'), '_styling_variant', wants_open and 'open' or 'base')
-    rawset(rawget(self, 'popup'), '_styling_variant', wants_open and 'open' or 'base')
+    self._last_open_state = wants_open
+    self.trigger._styling_variant = wants_open and 'open' or 'base'
+    self.popup._styling_variant = wants_open and 'open' or 'base'
     return self
 end
 
@@ -501,7 +501,7 @@ end
 function Select:on_destroy()
     ControlUtils.remove_control_listeners(self)
     self:_detach_overlay()
-    rawget(self, '_popup_root'):destroy()
+    self._popup_root:destroy()
     Container.on_destroy(self)
 end
 

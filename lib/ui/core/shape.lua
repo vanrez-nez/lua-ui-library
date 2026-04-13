@@ -185,20 +185,20 @@ function Shape:constructor(opts)
     end
 
     self.shape_dirty:mark('paint', 'geometry')
-    rawset(self, '_ui_shape_instance', true)
-    rawset(self, '_fill_surface_cache', nil)
-    rawset(self, '_fill_active_descriptor_cache', nil)
-    rawset(self, '_fill_active_descriptor_cache_surface', nil)
-    rawset(self, '_fill_placement_cache', nil)
-    rawset(self, '_local_points', {})
-    rawset(self, '_world_points', {})
-    rawset(self, '_stroke_options', {})
-    rawset(self, '_local_points_scratch', rawget(self, '_local_points'))
-    rawset(self, '_world_bounds_points_scratch', nil)
-    rawset(self, '_transformed_points_scratch', rawget(self, '_world_points'))
-    rawset(self, '_flattened_points_scratch', nil)
-    rawset(self, '_polygon_stroke_options_scratch', rawget(self, '_stroke_options'))
-    rawset(self, '_polygon_stroke_mask_options_scratch', nil)
+    self._ui_shape_instance = true
+    self._fill_surface_cache = nil
+    self._fill_active_descriptor_cache = nil
+    self._fill_active_descriptor_cache_surface = nil
+    self._fill_placement_cache = nil
+    self._local_points = {}
+    self._world_points = {}
+    self._stroke_options = {}
+    self._local_points_scratch = self._local_points
+    self._world_bounds_points_scratch = nil
+    self._transformed_points_scratch = self._world_points
+    self._flattened_points_scratch = nil
+    self._polygon_stroke_options_scratch = self._stroke_options
+    self._polygon_stroke_mask_options_scratch = nil
 end
 
 function Shape.new(opts)
@@ -214,41 +214,41 @@ function Shape:removeChild()
 end
 
 function Shape:_get_shape_local_bounds()
-    return rawget(self, '_local_bounds_cache') or self:getLocalBounds()
+    return self._local_bounds_cache or self:getLocalBounds()
 end
 
 function Shape:_get_local_point_buffer(count, target)
-    local points = target or rawget(self, '_local_points')
+    local points = target or self._local_points
 
     if points == nil then
         points = {}
-        rawset(self, '_local_points', points)
+        self._local_points = points
     end
 
-    rawset(self, '_local_points_scratch', points)
+    self._local_points_scratch = points
 
     return ensure_indexed_point_buffer(points, count)
 end
 
 function Shape:_transform_local_points(local_points, target)
-    local points = target or rawget(self, '_world_points')
+    local points = target or self._world_points
 
     if points == nil then
         points = {}
-        rawset(self, '_world_points', points)
+        self._world_points = points
     end
 
-    rawset(self, '_transformed_points_scratch', points)
+    self._transformed_points_scratch = points
 
     return DrawHelpers.transform_local_points(self, local_points, points)
 end
 
 function Shape:_flatten_points(points)
-    local flattened = rawget(self, '_flattened_points_scratch')
+    local flattened = self._flattened_points_scratch
 
     if flattened == nil then
         flattened = {}
-        rawset(self, '_flattened_points_scratch', flattened)
+        self._flattened_points_scratch = flattened
     end
 
     return DrawHelpers.flatten_points(points, flattened)
@@ -271,13 +271,13 @@ function Shape:_get_local_points(out_table)
 end
 
 function Shape:_get_world_bounds_points()
-    local matrix = rawget(self, '_world_transform_cache')
+    local matrix = self._world_transform_cache
     local local_points = self:_get_local_points()
-    local world_points = rawget(self, '_world_bounds_points_scratch')
+    local world_points = self._world_bounds_points_scratch
 
     if world_points == nil then
         world_points = {}
-        rawset(self, '_world_bounds_points_scratch', world_points)
+        self._world_bounds_points_scratch = world_points
     end
 
     if matrix == nil then
@@ -300,36 +300,36 @@ function Shape:_get_world_bounds_points()
 end
 
 function Shape:_invalidate_fill_resolution_cache()
-    rawset(self, '_fill_surface_cache', nil)
-    rawset(self, '_fill_active_descriptor_cache', nil)
-    rawset(self, '_fill_active_descriptor_cache_surface', nil)
-    rawset(self, '_fill_placement_cache', nil)
+    self._fill_surface_cache = nil
+    self._fill_active_descriptor_cache = nil
+    self._fill_active_descriptor_cache_surface = nil
+    self._fill_placement_cache = nil
     return self
 end
 
 function Shape:_resolve_fill_surface()
-    local cached_surface = rawget(self, '_fill_surface_cache')
+    local cached_surface = self._fill_surface_cache
 
     if cached_surface ~= nil then
         return cached_surface
     end
 
     local surface = ShapeFillSource.resolve_surface(self)
-    rawset(self, '_fill_surface_cache', surface)
+    self._fill_surface_cache = surface
     return surface
 end
 
 function Shape:_resolve_active_fill_source()
     local fill_surface = self:_resolve_fill_surface()
-    local cached_descriptor = rawget(self, '_fill_active_descriptor_cache')
+    local cached_descriptor = self._fill_active_descriptor_cache
 
-    if cached_descriptor ~= nil and rawget(self, '_fill_active_descriptor_cache_surface') == fill_surface then
+    if cached_descriptor ~= nil and self._fill_active_descriptor_cache_surface == fill_surface then
         return cached_descriptor
     end
 
     local descriptor = ShapeFillSource.resolve_active_descriptor(fill_surface)
-    rawset(self, '_fill_active_descriptor_cache_surface', fill_surface)
-    rawset(self, '_fill_active_descriptor_cache', descriptor)
+    self._fill_active_descriptor_cache_surface = fill_surface
+    self._fill_active_descriptor_cache = descriptor
     return descriptor
 end
 
@@ -337,7 +337,7 @@ function Shape:_resolve_active_fill_placement(local_bounds, active_fill)
     local profile_token = RuntimeProfiler.push_zone('Shape._resolve_active_fill_placement')
     local resolved_bounds = local_bounds or self:getLocalBounds()
     active_fill = active_fill or self:_resolve_active_fill_source()
-    local cached_placement = rawget(self, '_fill_placement_cache')
+    local cached_placement = self._fill_placement_cache
 
     if cached_placement ~= nil and
         cached_placement.active_fill == active_fill and
@@ -354,7 +354,7 @@ function Shape:_resolve_active_fill_placement(local_bounds, active_fill)
     placement_cache.active_fill = active_fill
     placement_cache.bounds = copy_bounds_into(placement_cache.bounds, resolved_bounds)
     placement_cache.placement = placement
-    rawset(self, '_fill_placement_cache', placement_cache)
+    self._fill_placement_cache = placement_cache
     RuntimeProfiler.pop_zone(profile_token)
     return placement
 end
@@ -386,14 +386,14 @@ end
 
 function Shape:_resolve_polygon_stroke_options(target)
     local profile_token = RuntimeProfiler.push_zone('Shape._resolve_polygon_stroke_options')
-    local stroke = target or rawget(self, '_stroke_options')
+    local stroke = target or self._stroke_options
 
     if stroke == nil then
         stroke = {}
-        rawset(self, '_stroke_options', stroke)
+        self._stroke_options = stroke
     end
 
-    rawset(self, '_polygon_stroke_options_scratch', stroke)
+    self._polygon_stroke_options_scratch = stroke
 
     stroke.color = self.strokeColor
     stroke.opacity = self.strokeOpacity or 1
@@ -452,13 +452,13 @@ function Shape:_render_active_fill(graphics, local_points, world_points, active_
 end
 
 function Shape:_refresh_shape_geometry()
-    local local_points = self:_get_local_points(rawget(self, '_local_points'))
-    self:_transform_local_points(local_points, rawget(self, '_world_points'))
-    return local_points, rawget(self, '_world_points')
+    local local_points = self:_get_local_points(self._local_points)
+    self:_transform_local_points(local_points, self._world_points)
+    return local_points, self._world_points
 end
 
 function Shape:_refresh_shape_paint()
-    return self:_resolve_polygon_stroke_options(rawget(self, '_stroke_options'))
+    return self:_resolve_polygon_stroke_options(self._stroke_options)
 end
 
 function Shape:_draw_rect_fallback(graphics, active_fill)
@@ -491,8 +491,8 @@ function Shape:_draw_fill(graphics, active_fill)
 
     return self:_render_active_fill(
         graphics,
-        rawget(self, '_local_points'),
-        rawget(self, '_world_points'),
+        self._local_points,
+        self._world_points,
         active_fill
     )
 end
@@ -500,8 +500,8 @@ end
 function Shape:_draw_stroke(graphics)
     return DrawHelpers.draw_polygon_stroke(
         graphics,
-        rawget(self, '_world_points'),
-        rawget(self, '_stroke_options')
+        self._world_points,
+        self._stroke_options
     )
 end
 
@@ -563,9 +563,9 @@ function Shape:_resolve_root_compositing_result_clip()
 end
 
 function Shape:_draw_root_compositing_result_stroke_mask(graphics, world_points)
-    local stroke = self:_resolve_polygon_stroke_options(rawget(self, '_polygon_stroke_mask_options_scratch'))
-    if rawget(self, '_polygon_stroke_mask_options_scratch') == nil then
-        rawset(self, '_polygon_stroke_mask_options_scratch', stroke)
+    local stroke = self:_resolve_polygon_stroke_options(self._polygon_stroke_mask_options_scratch)
+    if self._polygon_stroke_mask_options_scratch == nil then
+        self._polygon_stroke_mask_options_scratch = stroke
     end
     stroke.color = WHITE_COLOR
     stroke.opacity = 1

@@ -35,7 +35,7 @@ function EventDispatcher:_add_event_listener(event_type, listener, phase)
 
     phase = validate_listener_phase(phase or 'bubble', 2)
 
-    local event_listeners = rawget(self, '_event_listeners')
+    local event_listeners = self._event_listeners
     local listeners_by_type = event_listeners[phase]
     local listeners = listeners_by_type[event_type]
 
@@ -65,7 +65,7 @@ function EventDispatcher:_remove_event_listener(event_type, listener, phase)
         phases = { phase }
     end
 
-    local event_listeners = rawget(self, '_event_listeners')
+    local event_listeners = self._event_listeners
     for index = 1, #phases do
         local listeners = event_listeners[phases[index]][event_type]
 
@@ -89,7 +89,7 @@ function EventDispatcher:_get_event_listener_snapshot(event_type, phase)
     Assert.string('event_type', event_type, 2)
     phase = validate_listener_phase(phase, 2)
 
-    local event_listeners = rawget(self, '_event_listeners')
+    local event_listeners = self._event_listeners
     local listeners = event_listeners[phase][event_type]
 
     if listeners == nil then
@@ -106,7 +106,7 @@ function EventDispatcher:_set_event_default_action(event_type, handler)
         Assert.fail('handler must be a function or nil', 2)
     end
 
-    local event_default_actions = rawget(self, '_event_default_actions')
+    local event_default_actions = self._event_default_actions
     event_default_actions[event_type] = handler
 
     return self
@@ -114,7 +114,7 @@ end
 
 function EventDispatcher:_get_event_default_action(event_type)
     Assert.string('event_type', event_type, 2)
-    local event_default_actions = rawget(self, '_event_default_actions')
+    local event_default_actions = self._event_default_actions
     return event_default_actions and event_default_actions[event_type]
 end
 

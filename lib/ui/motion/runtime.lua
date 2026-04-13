@@ -369,12 +369,12 @@ function Runtime.request(instance, phase, payload)
         completed[#completed + 1] = result
     end
 
-    rawset(instance, '_motion_last_request', {
+    instance._motion_last_request = {
         phase = phase,
         payload = payload,
         descriptors = descriptors,
         completed = completed,
-    })
+    }
 
     return completed
 end

@@ -24,12 +24,12 @@ local function normalize_disabled_values(values)
 end
 
 local function trigger_is_disabled(self, value)
-    local disabled_map = rawget(self, '_disabled_map')
+    local disabled_map = self._disabled_map
     return disabled_map[tostring(value)] == true
 end
 
 local function ordered_enabled_values(self)
-    local order = rawget(self, '_trigger_order')
+    local order = self._trigger_order
     local out = {}
     for i = 1, #order do
         local v = order[i]
@@ -50,8 +50,8 @@ end
 
 local function is_value_mapped(self, value)
     if value == nil then return false end
-    local triggers = rawget(self, '_trigger_nodes')
-    local panels = rawget(self, '_panel_nodes')
+    local triggers = self._trigger_nodes
+    local panels = self._panel_nodes
     return triggers[value] ~= nil and panels[value] ~= nil
 end
 
@@ -83,37 +83,37 @@ Tabs._schema = ControlUtils.extend_schema(Drawable._schema, TabsSchema)
 local function find_trigger_value_from_target(self, target)
     local current = target
     while current ~= nil and current ~= self do
-        local val = rawget(current, '_tab_trigger_value')
+        local val = current._tab_trigger_value
         if val ~= nil then
             return val
         end
-        current = rawget(current, 'parent')
+        current = current.parent
     end
     return nil
 end
 
 local function sync_visual_state(self)
     local value = effective_value(self)
-    rawset(self, '_effective_tab_value', value)
+    self._effective_tab_value = value
 
-    local triggers = rawget(self, '_trigger_nodes')
-    local panels = rawget(self, '_panel_nodes')
+    local triggers = self._trigger_nodes
+    local panels = self._panel_nodes
 
     for key, node in pairs(triggers) do
         local disabled = trigger_is_disabled(self, key)
         local active = (value == key)
         ControlUtils.set_interaction_state(node, not disabled)
-        rawset(node, '_tab_active', active)
-        rawset(node, '_tab_disabled', disabled)
-        rawset(node, '_styling_variant', self:_resolve_trigger_variant(node))
+        node._tab_active = active
+        node._tab_disabled = disabled
+        node._styling_variant = self:_resolve_trigger_variant(node)
     end
 
     for key, node in pairs(panels) do
         local active = (value == key)
         node.props:raw_set('visible', active)
         ControlUtils.set_interaction_state(node, active)
-        rawset(node, '_tab_active', active)
-        rawset(node, '_styling_variant', self:_resolve_panel_variant(node))
+        node._tab_active = active
+        node._styling_variant = self:_resolve_panel_variant(node)
     end
 end
 
@@ -182,9 +182,9 @@ local function build_list_layout(orientation)
 end
 
 local function sync_indicator_geometry(self)
-    local indicator = rawget(self, 'indicator')
+    local indicator = self.indicator
     local active_value = effective_value(self)
-    local trigger = active_value and rawget(self, '_trigger_nodes')[active_value] or nil
+    local trigger = active_value and self._trigger_nodes[active_value] or nil
     local orientation = self.orientation
 
     if indicator == nil then
@@ -198,11 +198,11 @@ local function sync_indicator_geometry(self)
     end
 
     local trigger_bounds = {
-        width = rawget(trigger, '_resolved_width') or 0,
-        height = rawget(trigger, '_resolved_height') or 0,
+        width = trigger._resolved_width or 0,
+        height = trigger._resolved_height or 0,
     }
-    local origin_x = (rawget(trigger, '_layout_offset_x') or 0) + (trigger.x or 0)
-    local origin_y = (rawget(trigger, '_layout_offset_y') or 0) + (trigger.y or 0)
+    local origin_x = (trigger._layout_offset_x or 0) + (trigger.x or 0)
+    local origin_y = (trigger._layout_offset_y or 0) + (trigger.y or 0)
 
     indicator.visible = true
     if orientation == 'vertical' then
@@ -235,7 +235,7 @@ function Tabs:constructor(opts)
     self.loopFocus = opts.loopFocus ~= false
     self.disabledValues = opts.disabledValues
 
-    rawset(self, '_ui_tabs_control', true)
+    self._ui_tabs_control = true
 
     if self.orientation ~= 'horizontal' and self.orientation ~= 'vertical' then
         Assert.fail('Tabs.orientation must be "horizontal" or "vertical"', 2)
@@ -247,13 +247,13 @@ function Tabs:constructor(opts)
 
     ControlUtils.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
 
-    rawset(self, '_value_controlled', opts.value ~= nil)
-    rawset(self, '_value_uncontrolled', opts.value)
-    rawset(self, '_disabled_map', normalize_disabled_values(opts.disabledValues))
-    rawset(self, '_trigger_nodes', {})
-    rawset(self, '_panel_nodes', {})
-    rawset(self, '_trigger_order', {})
-    rawset(self, '_last_motion_value', opts.value)
+    self._value_controlled = opts.value ~= nil
+    self._value_uncontrolled = opts.value
+    self._disabled_map = normalize_disabled_values(opts.disabledValues)
+    self._trigger_nodes = {}
+    self._panel_nodes = {}
+    self._trigger_order = {}
+    self._last_motion_value = opts.value
 
     local list_root
     local list_region = build_list_layout(self.orientation)
@@ -273,14 +273,14 @@ function Tabs:constructor(opts)
         interactive = false,
         focusable = false,
     })
-    rawset(list_surface, '_styling_context', {
+    list_surface._styling_context = {
         component = 'tabs',
         part = 'list',
-    })
-    rawset(indicator, '_styling_context', {
+    }
+    indicator._styling_context = {
         component = 'tabs',
         part = 'indicator',
-    })
+    }
     list_surface:addChild(list_region)
     list_surface:addChild(indicator)
     Container._allow_fill_from_parent(list_surface, { width = true, height = true })
@@ -295,7 +295,7 @@ function Tabs:constructor(opts)
         })
         Container._allow_fill_from_parent(list_root, { width = true })
         Container.addChild(self, list_root)
-        rawset(self, '_list_root', list_root)
+        self._list_root = list_root
         list_root.content:addChild(list_surface)
     else
         list_root = list_surface
@@ -305,19 +305,19 @@ function Tabs:constructor(opts)
             list_root.height = 44
         end
         Container.addChild(self, list_root)
-    rawset(self, '_list_root', list_root)
-    rawset(self, '_list_region', list_region)
+    self._list_root = list_root
+    self._list_region = list_region
     end
 
     local panels = Container({ tag = 'tabs_panels', internal = true, width = 'fill', height = 'fill', y = 52, interactive = false })
     Container._allow_fill_from_parent(panels, { width = true, height = true })
     Container.addChild(self, panels)
-    rawset(self, '_panels_region', panels)
-    rawset(self, '_list_surface', list_surface)
-    rawset(self, '_list_region', list_region)
-    rawset(self, 'list', list_surface)
-    rawset(self, 'indicator', indicator)
-    rawset(self, 'panel', panels)
+    self._panels_region = panels
+    self._list_surface = list_surface
+    self._list_region = list_region
+    self.list = list_surface
+    self.indicator = indicator
+    self.panel = panels
 
     ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
         local val = find_trigger_value_from_target(self, event.target)
@@ -356,7 +356,7 @@ function Tabs:constructor(opts)
             return
         end
 
-        local trigger = rawget(self, '_trigger_nodes')[next_value]
+        local trigger = self._trigger_nodes[next_value]
         if trigger ~= nil then
             ControlUtils.request_focus(trigger)
             event:preventDefault()
@@ -374,15 +374,15 @@ function Tabs:_resolve_trigger_variant(trigger)
         return 'base'
     end
 
-    if rawget(trigger, '_tab_disabled') == true then
+    if trigger._tab_disabled == true then
         return 'disabled'
     end
 
-    if rawget(trigger, '_tab_active') == true then
+    if trigger._tab_active == true then
         return 'active'
     end
 
-    if rawget(trigger, '_focused') == true then
+    if trigger._focused == true then
         return 'focused'
     end
 
@@ -390,7 +390,7 @@ function Tabs:_resolve_trigger_variant(trigger)
 end
 
 function Tabs:_resolve_panel_variant(panel)
-    if panel ~= nil and rawget(panel, '_tab_active') == true then
+    if panel ~= nil and panel._tab_active == true then
         return 'active'
     end
 
@@ -402,8 +402,8 @@ function Tabs:_register_tab(value, trigger_node, panel_node)
     Assert.table('trigger_node', trigger_node, 2)
     Assert.table('panel_node', panel_node, 2)
 
-    local triggers = rawget(self, '_trigger_nodes')
-    local panels = rawget(self, '_panel_nodes')
+    local triggers = self._trigger_nodes
+    local panels = self._panel_nodes
 
     if triggers[value] ~= nil or panels[value] ~= nil then
         Assert.fail('duplicate trigger values within one Tabs root are invalid', 2)
@@ -417,12 +417,12 @@ function Tabs:_register_tab(value, trigger_node, panel_node)
         interactive = true,
         focusable = true,
     })
-    rawset(trigger, 'pointerFocusCoupling', 'before')
-    rawset(trigger, '_tab_trigger_value', value)
-    rawset(trigger, '_styling_context', {
+    trigger.pointerFocusCoupling = 'before'
+    trigger._tab_trigger_value = value
+    trigger._styling_context = {
         component = 'tabs',
         part = 'trigger',
-    })
+    }
     trigger:addChild(trigger_node)
 
     local panel = Drawable({
@@ -434,23 +434,23 @@ function Tabs:_register_tab(value, trigger_node, panel_node)
         focusable = false,
     })
     Container._allow_fill_from_parent(panel, { width = true, height = true })
-    rawset(panel, '_tab_panel_value', value)
-    rawset(panel, '_styling_context', {
+    panel._tab_panel_value = value
+    panel._styling_context = {
         component = 'tabs',
         part = 'panel',
-    })
+    }
     panel:addChild(panel_node)
 
-    rawget(self, '_list_region'):addChild(trigger)
-    rawget(self, '_panels_region'):addChild(panel)
+    self._list_region:addChild(trigger)
+    self._panels_region:addChild(panel)
 
     triggers[value] = trigger
     panels[value] = panel
-    local order = rawget(self, '_trigger_order')
+    local order = self._trigger_order
     order[#order + 1] = value
 
-    if rawget(self, '_value_controlled') == false and rawget(self, '_value_uncontrolled') == nil then
-        rawset(self, '_value_uncontrolled', find_fallback_value(self))
+    if self._value_controlled == false and self._value_uncontrolled == nil then
+        self._value_uncontrolled = find_fallback_value(self)
     end
 
     sync_visual_state(self)
@@ -460,17 +460,17 @@ end
 function Tabs:update(dt)
     Drawable.update(self, dt)
 
-    rawset(self, '_disabled_map', normalize_disabled_values(self.disabledValues))
+    self._disabled_map = normalize_disabled_values(self.disabledValues)
 
     local value = effective_value(self)
-    if rawget(self, '_value_controlled') == false and rawget(self, '_value_uncontrolled') ~= value then
-        rawset(self, '_value_uncontrolled', value)
+    if self._value_controlled == false and self._value_uncontrolled ~= value then
+        self._value_uncontrolled = value
     end
 
     sync_visual_state(self)
     sync_indicator_geometry(self)
 
-    local previous = rawget(self, '_last_motion_value')
+    local previous = self._last_motion_value
     if previous ~= value then
         self:_raise_motion('value', {
             defaultTarget = 'indicator',
@@ -478,7 +478,7 @@ function Tabs:update(dt)
             nextValue = value,
         })
     end
-    rawset(self, '_last_motion_value', value)
+    self._last_motion_value = value
     return self
 end
 
