@@ -40,7 +40,7 @@ local function get_child_parent_local_bounds(child)
 end
 
 local function place_children(self, content_rect)
-    local children = rawget(self, '_children') or {}
+    local children = rawget(self, '_children')
 
     for index = 1, #children do
         local child = children[index]
@@ -116,7 +116,7 @@ end
 
 function Stack:_apply_layout(_)
     local values = effective_values(self)
-    local children = rawget(self, '_children') or {}
+    local children = rawget(self, '_children')
     local width_mode = values.width
     local height_mode = values.height
     local content_rect

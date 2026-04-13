@@ -74,7 +74,7 @@ local function get_effective_open(self)
 end
 
 local function clear_children(node)
-    local children = rawget(node, '_children') or {}
+    local children = rawget(node, '_children')
 
     for index = #children, 1, -1 do
         node:removeChild(children[index])
@@ -106,8 +106,8 @@ function Modal:_before_overlay_detach(mounted_stage, overlay_root)
     end
 
     if self.restoreFocus == false then
-        local trap_stack = rawget(mounted_stage, '_focus_trap_stack') or {}
-        local history = rawget(mounted_stage, '_pre_trap_focus_history') or {}
+        local trap_stack = rawget(mounted_stage, '_focus_trap_stack')
+        local history = rawget(mounted_stage, '_pre_trap_focus_history')
 
         for index = #trap_stack, 1, -1 do
             if trap_stack[index] == overlay_root then

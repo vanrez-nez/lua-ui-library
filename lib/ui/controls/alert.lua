@@ -161,7 +161,7 @@ local function collect_action_nodes(node, out)
         out[#out + 1] = node
     end
 
-    local children = rawget(node, '_children') or {}
+    local children = rawget(node, '_children')
 
     for index = 1, #children do
         collect_action_nodes(children[index], out)

@@ -136,7 +136,7 @@ local function collect_child_entries(children)
         local child = children[index]
 
         child:_set_layout_offset(0, 0)
-        rawset(child, '_measurement_dirty', true)
+        child.dirty:mark('measurement')
         child:_refresh_if_dirty()
 
         if child_is_visible(child) then
@@ -226,7 +226,7 @@ local function align_children(self, entries, content_extent)
 end
 
 local function refresh_drawable_content(self)
-    local children = rawget(self, '_children') or {}
+    local children = rawget(self, '_children')
 
     assert_no_content_fill_dependency(self, children)
 
@@ -460,7 +460,7 @@ end
 
 function Drawable:_prepare_for_layout_pass()
     Container._prepare_for_layout_pass(self)
-    assert_no_content_fill_dependency(self, rawget(self, '_children') or {})
+    assert_no_content_fill_dependency(self, rawget(self, '_children'))
     return self
 end
 
@@ -561,7 +561,7 @@ function Drawable:_get_motion_value(target_name, property_name)
         return nil
     end
 
-    local state = rawget(surface, '_motion_visual_state') or {}
+    local state = rawget(surface, '_motion_visual_state')
     return state[property_name]
 end
 

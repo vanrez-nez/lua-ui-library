@@ -194,7 +194,7 @@ local function run_safe_area_change_tests()
     stage:update()
     stage:resize(300, 200, { 10, 5, 15, 25 })
 
-    assert_true(safe._layout_dirty,
+    assert_true(safe.dirty:is_dirty('layout'),
         'Safe-area changes should dirty SafeAreaContainer for the next layout pass')
 
     stage:update()

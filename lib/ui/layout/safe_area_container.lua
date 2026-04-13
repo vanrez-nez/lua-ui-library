@@ -52,7 +52,7 @@ local function get_child_parent_local_bounds(child)
 end
 
 local function place_children(self, content_rect)
-    local children = rawget(self, '_children') or {}
+    local children = rawget(self, '_children')
 
     for index = 1, #children do
         local child = children[index]
@@ -224,13 +224,11 @@ local function resize_to_safe_area_content(self, content_width, content_height, 
 end
 
 local function mark_children_parent_region_dirty(self)
-    local children = rawget(self, '_children') or {}
+    local children = rawget(self, '_children')
 
     for index = 1, #children do
         local child = children[index]
-        if rawget(child, 'dirty') ~= nil then
-            rawget(child, 'dirty'):mark('responsive')
-        end
+        child.dirty:mark('responsive')
         child:_mark_parent_layout_dependency_dirty()
     end
 end
@@ -291,12 +289,9 @@ end
 function SafeAreaContainer:_run_layout_pass(stage)
     self:_refresh_layout_content_rect(stage)
 
-    if rawget(self, '_layout_dirty') then
+    if self.dirty:is_dirty('layout') then
         self:_apply_layout(stage)
-        rawset(self, '_layout_dirty', false)
-        if rawget(self, 'dirty') ~= nil then
-            rawget(self, 'dirty'):clear('layout')
-        end
+        self.dirty:clear('layout')
     end
 
     return self

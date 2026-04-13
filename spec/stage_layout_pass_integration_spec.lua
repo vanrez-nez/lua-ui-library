@@ -84,7 +84,7 @@ local function run_update_layout_order_tests()
     layout:addChild(child)
     stage.baseSceneLayer:addChild(layout)
 
-    assert_true(layout._layout_dirty,
+    assert_true(layout.dirty:is_dirty('layout'),
         'Layout nodes should begin dirty until the first Stage update')
 
     stage:update()
@@ -93,7 +93,7 @@ local function run_update_layout_order_tests()
 
     assert_equal(layout.layout_passes, 1,
         'Stage.update should run the layout pass once for a dirty layout root')
-    assert_true(not layout._layout_dirty,
+    assert_true(not layout.dirty:is_dirty('layout'),
         'Stage.update should leave the layout root clean after layout resolution')
     assert_equal(world_x, 24,
         'Layout placement must resolve before downstream transform reads in the same update')
@@ -128,34 +128,34 @@ local function run_layout_dirty_propagation_tests()
     stage:update()
 
     child.width = 60
-    assert_true(layout._layout_dirty,
+    assert_true(layout.dirty:is_dirty('layout'),
         'Child size mutation should dirty ancestor layout roots')
     stage:update()
-    assert_true(not layout._layout_dirty,
+    assert_true(not layout.dirty:is_dirty('layout'),
         'Stage.update should clean layout roots dirtied by child size mutation')
 
     child.visible = false
-    assert_true(layout._layout_dirty,
+    assert_true(layout.dirty:is_dirty('layout'),
         'Child visibility mutation should dirty ancestor layout roots')
     stage:update()
-    assert_true(not layout._layout_dirty,
+    assert_true(not layout.dirty:is_dirty('layout'),
         'Stage.update should clean layout roots dirtied by child visibility mutation')
 
     child.visible = true
     stage:update()
 
     layout:addChild(added_child)
-    assert_true(layout._layout_dirty,
+    assert_true(layout.dirty:is_dirty('layout'),
         'Child addition should dirty the affected layout root')
     stage:update()
-    assert_true(not layout._layout_dirty,
+    assert_true(not layout.dirty:is_dirty('layout'),
         'Stage.update should clean layout roots dirtied by child addition')
 
     layout:removeChild(added_child)
-    assert_true(layout._layout_dirty,
+    assert_true(layout.dirty:is_dirty('layout'),
         'Child removal should dirty the affected layout root')
     stage:update()
-    assert_true(not layout._layout_dirty,
+    assert_true(not layout.dirty:is_dirty('layout'),
         'Stage.update should clean layout roots dirtied by child removal')
 
     child.breakpoints = {
@@ -166,17 +166,17 @@ local function run_layout_dirty_propagation_tests()
             },
         },
     }
-    assert_true(layout._layout_dirty,
+    assert_true(layout.dirty:is_dirty('layout'),
         'Breakpoint mutation should dirty ancestor layout roots')
     stage:update()
-    assert_true(not layout._layout_dirty,
+    assert_true(not layout.dirty:is_dirty('layout'),
         'Stage.update should clean layout roots dirtied by breakpoint mutation')
 
     stage:resize(180, 180)
-    assert_true(layout._layout_dirty,
+    assert_true(layout.dirty:is_dirty('layout'),
         'Stage resize should dirty layout roots for the next update traversal')
     stage:update()
-    assert_true(not layout._layout_dirty,
+    assert_true(not layout.dirty:is_dirty('layout'),
         'Stage.update should clean layout roots dirtied by viewport changes')
 
     stage:destroy()
@@ -246,10 +246,10 @@ local function run_ancestor_size_mutation_descendant_layout_tests()
 
     page.width = '50%'
 
-    assert_true(body._layout_dirty,
+    assert_true(body.dirty:is_dirty('layout'),
         'Ancestor width mutation should dirty descendant layout nodes that own child distribution')
     stage:update()
-    assert_true(not body._layout_dirty,
+    assert_true(not body.dirty:is_dirty('layout'),
         'Stage.update should clean descendant layout nodes dirtied by ancestor size mutation')
 
     local body_width = body:getLocalBounds().width
@@ -284,7 +284,7 @@ local function run_draw_read_only_tests()
     stage:update()
 
     child.width = 80
-    assert_true(layout._layout_dirty,
+    assert_true(layout.dirty:is_dirty('layout'),
         'Child size mutation should leave the layout root dirty until Stage.update runs')
 
     assert_error(function()
@@ -293,7 +293,7 @@ local function run_draw_read_only_tests()
     end, 'Stage.draw() called without a preceding Stage.update() in this frame',
         'Draw should reject frames that still have deferred update work pending')
 
-    assert_true(layout._layout_dirty,
+    assert_true(layout.dirty:is_dirty('layout'),
         'A rejected draw must not resolve deferred layout work')
     assert_equal(layout.layout_passes, 1,
         'A rejected draw must not run the layout pass')
@@ -302,7 +302,7 @@ local function run_draw_read_only_tests()
     stage:draw({}, function()
     end)
 
-    assert_true(not layout._layout_dirty,
+    assert_true(not layout.dirty:is_dirty('layout'),
         'Layout should be clean again after the required update pass')
     assert_equal(layout.layout_passes, 2,
         'Only Stage.update should run the layout pass after a mutation')

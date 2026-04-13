@@ -281,7 +281,7 @@ end
 function Composer:_resolve_registered_entry(name)
     assert_scene_name(name, 2)
 
-    local registry = rawget(self, '_scene_registry') or {}
+    local registry = rawget(self, '_scene_registry')
     local entry = registry[name]
 
     if entry == nil then
@@ -689,7 +689,7 @@ function Composer:register(name, definition)
         )
     end
 
-    local registry = rawget(self, '_scene_registry') or {}
+    local registry = rawget(self, '_scene_registry')
 
     if registry[name] ~= nil then
         Assert.fail('scene "' .. name .. '" is already registered', 2)
@@ -776,7 +776,7 @@ function Composer:destroy()
     assert_not_destroyed(self, 2)
 
     local destroyed = {}
-    local registry = rawget(self, '_scene_registry') or {}
+    local registry = rawget(self, '_scene_registry')
 
     for _, entry in pairs(registry) do
         local scene = entry.instance

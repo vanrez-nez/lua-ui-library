@@ -46,10 +46,22 @@ local function get_public(self, key)
     return self[key]
 end
 
+local function read_content_role(_, _, self)
+    return rawget(self, '_content')
+end
+
+local function read_viewport_role(_, _, self)
+    return rawget(self, '_viewport')
+end
+
+local function reject_role_node_write(key)
+    Assert.fail('ScrollableContainer.' .. key .. ' is read-only', 2)
+end
+
 -- ── Content extent measurement ──────────────────────────────────────────────
 
 local function measure_content_extent(content_node)
-    local children = rawget(content_node, '_children') or {}
+    local children = rawget(content_node, '_children')
     local max_right  = 0
     local max_bottom = 0
 
@@ -119,7 +131,6 @@ end
 
 local function apply_content_offset(self)
     local content_node = rawget(self, '_content')
-    if not content_node then return end
 
     local sx = rawget(self, '_scroll_x') or 0
     local sy = rawget(self, '_scroll_y') or 0
@@ -127,10 +138,7 @@ local function apply_content_offset(self)
     -- Move content in the opposite direction of scroll offset.
     Proxy.raw_set(content_node, 'x', -sx)
     Proxy.raw_set(content_node, 'y', -sy)
-    rawset(content_node, '_local_transform_dirty', true)
-    if rawget(content_node, 'dirty') ~= nil then
-        rawget(content_node, 'dirty'):mark('local_transform')
-    end
+    content_node.dirty:mark('local_transform')
     content_node:invalidate_world()
     content_node:invalidate_descendant_world()
 end
@@ -139,20 +147,12 @@ end
 
 local function update_scrollbar_geometry(self)
     local function mark_node_geometry_dirty(node)
-        if not node then return end
-        rawset(node, '_measurement_dirty', true)
-        rawset(node, '_local_transform_dirty', true)
-        rawset(node, '_bounds_dirty', true)
-        if rawget(node, 'dirty') ~= nil then
-            rawget(node, 'dirty'):mark('measurement', 'local_transform', 'bounds')
-        end
+        node.dirty:mark('measurement', 'local_transform', 'bounds')
         node:invalidate_world()
         node:invalidate_descendant_world()
     end
 
     local function set_node_frame(node, x, y, width, height, visible)
-        if not node then return end
-
         local changed = false
 
         if x ~= nil then
@@ -248,8 +248,9 @@ local function update_scrollbar_geometry(self)
         return
     end
 
-    local vw = (rawget(self, '_viewport') or {})._resolved_width  or 0
-    local vh = (rawget(self, '_viewport') or {})._resolved_height or 0
+    local viewport = rawget(self, '_viewport')
+    local vw = viewport._resolved_width  or 0
+    local vh = viewport._resolved_height or 0
     local cw = rawget(self, '_content_width')  or 0
     local ch = rawget(self, '_content_height') or 0
     local sx = rawget(self, '_scroll_x') or 0
@@ -492,6 +493,10 @@ function ScrollableContainer:constructor(opts)
 
     rawset(self, '_viewport', viewport)
     rawset(self, '_content', content)
+    Proxy.on_read(self, 'content', read_content_role)
+    Proxy.on_read(self, 'viewport', read_viewport_role)
+    Proxy.on_pre_write(self, 'content', reject_role_node_write)
+    Proxy.on_pre_write(self, 'viewport', reject_role_node_write)
 
     -- ── Scrollbar parts (optional) ──────────────────────────────────────
 
@@ -698,7 +703,6 @@ end
 
 local function sync_viewport_size(self)
     local viewport_node = rawget(self, '_viewport')
-    if not viewport_node then return end
 
     local w = self._resolved_width  or 0
     local h = self._resolved_height or 0
@@ -729,18 +733,13 @@ local function sync_viewport_size(self)
         return
     end
 
-    rawset(viewport_node, '_measurement_dirty', true)
-    rawset(viewport_node, '_local_transform_dirty', true)
-    rawset(viewport_node, '_bounds_dirty', true)
-    if rawget(viewport_node, 'dirty') ~= nil then
-        rawget(viewport_node, 'dirty'):mark('measurement', 'local_transform', 'bounds')
-    end
+    viewport_node.dirty:mark('measurement', 'local_transform', 'bounds')
     viewport_node:_apply_resolved_size(w, h)
     viewport_node:invalidate_world()
     viewport_node:invalidate_descendant_geometry()
 
     local function mark_layout_subtree_dirty(node)
-        local children = rawget(node, '_children') or {}
+        local children = rawget(node, '_children')
         for i = 1, #children do
             local child = children[i]
             child:mark_layout_node_dirty()

@@ -73,10 +73,7 @@ function LayoutNode:constructor(opts, schema, config)
 
     rawset(self, '_ui_layout_kind', 'LayoutNode')
     rawset(self, '_ui_layout_instance', true)
-    rawset(self, '_layout_dirty', true)
-    if rawget(self, 'dirty') ~= nil then
-        rawget(self, 'dirty'):mark('layout')
-    end
+    self.dirty:mark('layout')
     rawset(self, '_layout_content_rect_cache', Rectangle(0, 0, 0, 0))
 end
 
@@ -89,19 +86,13 @@ function LayoutNode.is_layout_node(value)
 end
 
 function LayoutNode:markDirty()
-    self._layout_dirty = true
-    if self.dirty ~= nil then
-        self.dirty:mark('layout')
-    end
+    self.dirty:mark('layout')
 
     local current = self.parent
 
     while current ~= nil do
         if current._ui_layout_instance == true then
-            current._layout_dirty = true
-            if current.dirty ~= nil then
-                current.dirty:mark('layout')
-            end
+            current.dirty:mark('layout')
         end
 
         current = current.parent
@@ -148,12 +139,9 @@ function LayoutNode:_run_layout_pass(stage)
     self:_prepare_for_layout_pass(stage)
     self:_refresh_layout_content_rect()
 
-    if self._layout_dirty then
+    if self.dirty:is_dirty('layout') then
         self:_apply_layout(stage)
-        self._layout_dirty = false
-        if self.dirty ~= nil then
-            self.dirty:clear('layout')
-        end
+        self.dirty:clear('layout')
     end
 
     return self

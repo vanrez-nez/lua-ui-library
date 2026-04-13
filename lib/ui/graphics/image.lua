@@ -293,7 +293,7 @@ function Image:_draw_control(graphics)
         return
     end
 
-    local effective_values = rawget(self, '_effective_values') or {}
+    local effective_values = rawget(self, '_effective_values')
     local padding_left, padding_top, padding_right, padding_bottom = resolve_padding_edges(effective_values.padding)
     local world_bounds = self:getWorldBounds()
     local content_x = world_bounds.x + padding_left

@@ -54,7 +54,7 @@ local function axis_group_key(self)
 end
 
 local function collect_notification_surfaces(stage, group_key, out)
-    local children = rawget(stage.overlayLayer, '_children') or {}
+    local children = rawget(stage.overlayLayer, '_children')
     for index = 1, #children do
         local child = children[index]
         local owner = rawget(child, '_ui_notification_owner')

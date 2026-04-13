@@ -26,7 +26,7 @@ local function collect_options(node, out)
         return out
     end
 
-    local children = rawget(node, '_children') or {}
+    local children = rawget(node, '_children')
     for index = 1, #children do
         collect_options(children[index], out)
     end
@@ -132,7 +132,7 @@ local function option_is_enabled(self, option)
     if option == nil then
         return false
     end
-    return option.disabled ~= true and not (rawget(self, '_disabled_value_map') or {})[tostring(option.value)]
+    return option.disabled ~= true and not rawget(self, '_disabled_value_map')[tostring(option.value)]
 end
 
 local function effective_selected_order(self)
@@ -151,7 +151,7 @@ local function effective_selected_order(self)
         end
     end
 
-    local options = rawget(self, '_option_order') or {}
+    local options = rawget(self, '_option_order')
     for index = 1, #options do
         local value = options[index].value
         if selected[value] == true and option_is_enabled(self, options[index]) then
@@ -185,7 +185,7 @@ local function summary_text(self)
     end
 
     if self.selectionMode == 'single' then
-        local option = (rawget(self, '_option_by_value') or {})[ordered[1]]
+        local option = rawget(self, '_option_by_value')[ordered[1]]
         local label_slot = option and rawget(option, 'label') or nil
         local label = label_slot and rawget(label_slot, 'text') or nil
         return label or ordered[1]
@@ -215,7 +215,7 @@ end
 
 local function next_enabled_option(self, direction)
     local current_focus = ControlUtils.stage_focus_owner(self)
-    local options = rawget(self, '_option_order') or {}
+    local options = rawget(self, '_option_order')
     local current_index = 0
 
     for index = 1, #options do
@@ -441,7 +441,7 @@ function Select:_activate_option(option)
     end
 
     local next_values = {}
-    local options = rawget(self, '_option_order') or {}
+    local options = rawget(self, '_option_order')
     for index = 1, #options do
         local option_value = options[index].value
         if selected[option_value] == true then
@@ -469,7 +469,7 @@ function Select:update(dt)
         position_popup(self, stage)
         if not was_open then
             self:_raise_motion('open', { defaultTarget = 'popup' })
-            local first = next_enabled_option(self, 'down') or (rawget(self, '_option_order') or {})[1]
+            local first = next_enabled_option(self, 'down') or rawget(self, '_option_order')[1]
             if first ~= nil then
                 ControlUtils.request_focus(first)
             end

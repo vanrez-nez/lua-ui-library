@@ -9,6 +9,7 @@ local Object = require('lib.cls')
 local Types = require('lib.ui.utils.types')
 local Proxy = require('lib.ui.utils.proxy')
 local RuntimeProfiler = require('profiler.runtime_profiler')
+local CallCounterProfiler = require('profiler.call_counter_profiler')
 
 local max = math.max
 local huge = math.huge
@@ -16,6 +17,14 @@ local huge = math.huge
 local Stage = Container:extends('Stage')
 local StageSchema = require('lib.ui.scene.stage_schema')
 Stage._schema = StageSchema
+
+CallCounterProfiler.start_from_env({
+    name = 'stage',
+    target = 'lib/ui/scene/stage.lua',
+    enabled_env = 'UI_CALL_PROFILE_STAGE',
+    output_env = 'UI_CALL_PROFILE_STAGE_OUTPUT',
+    prefix = 'stage-call-count-profile',
+})
 
 local DRAG_THRESHOLD = 4
 local DRAG_THRESHOLD_SQUARED = DRAG_THRESHOLD * DRAG_THRESHOLD
@@ -183,7 +192,7 @@ local function collect_active_focus_traps(self, node, traps)
         traps[#traps + 1] = node
     end
 
-    local children = rawget(node, '_children') or {}
+    local children = rawget(node, '_children')
 
     for index = 1, #children do
         collect_active_focus_traps(self, children[index], traps)
@@ -193,12 +202,12 @@ local function collect_active_focus_traps(self, node, traps)
 end
 
 local function get_active_focus_scope(self)
-    local chain = rawget(self, '_active_focus_scope_chain') or { self }
+    local chain = rawget(self, '_active_focus_scope_chain')
     return chain[#chain] or self
 end
 
 local function get_innermost_focus_trap(self)
-    local traps = rawget(self, '_focus_trap_stack') or {}
+    local traps = rawget(self, '_focus_trap_stack')
     return traps[#traps]
 end
 
@@ -291,7 +300,7 @@ local function collect_focus_candidates(self, scope_root, node, candidates)
         candidates[#candidates + 1] = node
     end
 
-    local children = rawget(node, '_children') or {}
+    local children = rawget(node, '_children')
 
     for index = 1, #children do
         collect_focus_candidates(self, scope_root, children[index], candidates)
@@ -378,6 +387,18 @@ local function normalize_safe_area_insets(value, level)
     return insets
 end
 
+local function reject_stage_parent_write(_, value)
+    if value ~= nil then
+        fail('Stage must not have a parent', 2)
+    end
+
+    return value
+end
+
+local function reject_stage_prop_write(key)
+    fail('Stage does not support prop "' .. key .. '"', 2)
+end
+
 local function derive_safe_area_insets(viewport_width, viewport_height, bounds)
     if bounds == nil then
         return Insets.zero()
@@ -437,6 +458,42 @@ local function refresh_environment_bounds(self)
     local viewport = Rectangle(0, 0, w, h)
     rawset(self, '_viewport_bounds_cache', viewport)
     rawset(self, '_safe_area_bounds_cache', viewport:inset(safe_area_insets))
+end
+
+local function synchronize_stage_for_read(target)
+    if rawget(target, '_ui_stage_instance') == true and
+        not rawget(target, '_destroyed') then
+        if not rawget(target, '_updating') and
+            not rawget(target, '_synchronizing') then
+            Stage._synchronize_for_read(target)
+        end
+    end
+end
+
+local function read_stage_width(value, _, target)
+    synchronize_stage_for_read(target)
+
+    if value == nil or value <= 0 then
+        local cache = rawget(target, '_viewport_bounds_cache')
+        if cache ~= nil then
+            return cache.width
+        end
+    end
+
+    return value
+end
+
+local function read_stage_height(value, _, target)
+    synchronize_stage_for_read(target)
+
+    if value == nil or value <= 0 then
+        local cache = rawget(target, '_viewport_bounds_cache')
+        if cache ~= nil then
+            return cache.height
+        end
+    end
+
+    return value
 end
 
 local function set_safe_area_insets(self, value, level)
@@ -1471,7 +1528,7 @@ local function prepare_layout_subtree(stage, node)
     stage:_resolve_responsive_for_node(node)
     node:_prepare_for_layout_pass(stage)
 
-    local children = rawget(node, '_children') or {}
+    local children = rawget(node, '_children')
 
     for index = 1, #children do
         prepare_layout_subtree(stage, children[index])
@@ -1484,7 +1541,7 @@ local function run_layout_subtree(stage, node)
         node:_run_layout_pass(stage)
     end
 
-    local children = rawget(node, '_children') or {}
+    local children = rawget(node, '_children')
 
     for index = 1, #children do
         run_layout_subtree(stage, children[index])
@@ -1494,7 +1551,7 @@ end
 local function refresh_geometry_subtree(node)
     node:_refresh_if_dirty()
 
-    local children = rawget(node, '_children') or {}
+    local children = rawget(node, '_children')
 
     for index = 1, #children do
         refresh_geometry_subtree(children[index])
@@ -1576,39 +1633,15 @@ function Stage:constructor(opts)
     Container.constructor(self, {}, StageSchema)
     self.schema:define(StageSchema)
 
-    Proxy.on_read(self, 'width', function(value, _, target)
-        if rawget(target, '_ui_stage_instance') == true and not rawget(target, '_destroyed') then
-            if not rawget(target, '_updating') and not rawget(target, '_synchronizing') then
-                Stage._synchronize_for_read(target)
-            end
+    Proxy.on_pre_write(self, 'parent', reject_stage_parent_write)
+    for key in pairs(Container._schema) do
+        if StageSchema[key] == nil then
+            Proxy.on_pre_write(self, key, reject_stage_prop_write)
         end
+    end
 
-        if value == nil or value <= 0 then
-            local cache = rawget(target, '_viewport_bounds_cache')
-            if cache ~= nil then
-                return cache.width
-            end
-        end
-
-        return value
-    end)
-
-    Proxy.on_read(self, 'height', function(value, _, target)
-        if rawget(target, '_ui_stage_instance') == true and not rawget(target, '_destroyed') then
-            if not rawget(target, '_updating') and not rawget(target, '_synchronizing') then
-                Stage._synchronize_for_read(target)
-            end
-        end
-
-        if value == nil or value <= 0 then
-            local cache = rawget(target, '_viewport_bounds_cache')
-            if cache ~= nil then
-                return cache.height
-            end
-        end
-
-        return value
-    end)
+    Proxy.on_read(self, 'width', read_stage_width)
+    Proxy.on_read(self, 'height', read_stage_height)
 
     for key, value in pairs(opts) do
         self[key] = value
@@ -1970,19 +2003,19 @@ end
 function Stage:_get_active_focus_scope_chain_internal()
     assert_not_destroyed(self, 2)
     self:_synchronize_for_read()
-    return copy_array(rawget(self, '_active_focus_scope_chain') or { self })
+    return copy_array(rawget(self, '_active_focus_scope_chain'))
 end
 
 function Stage:_get_focus_trap_stack_internal()
     assert_not_destroyed(self, 2)
     self:_synchronize_for_read()
-    return copy_array(rawget(self, '_focus_trap_stack') or {})
+    return copy_array(rawget(self, '_focus_trap_stack'))
 end
 
 function Stage:_get_pre_trap_focus_history_internal()
     assert_not_destroyed(self, 2)
     self:_synchronize_for_read()
-    return copy_array(rawget(self, '_pre_trap_focus_history') or {})
+    return copy_array(rawget(self, '_pre_trap_focus_history'))
 end
 
 function Stage:_handle_attached_subtree(_, _)
@@ -2028,8 +2061,8 @@ function Stage:_refresh_focus_runtime_state(previous_owner_override)
     end
 
     local active_traps = collect_active_focus_traps(self, self.overlayLayer, {})
-    local previous_stack = rawget(self, '_focus_trap_stack') or {}
-    local previous_history = rawget(self, '_pre_trap_focus_history') or {}
+    local previous_stack = rawget(self, '_focus_trap_stack')
+    local previous_history = rawget(self, '_pre_trap_focus_history')
     local prefix_length = 0
     local next_stack = {}
     local next_history = {}
@@ -2087,7 +2120,7 @@ function Stage:_refresh_focus_runtime_state(previous_owner_override)
     set_stored_focus_owner(self, focus_owner)
 
     local active_chain = { self }
-    local trap_stack = rawget(self, '_focus_trap_stack') or {}
+    local trap_stack = rawget(self, '_focus_trap_stack')
     
     for i = 1, #trap_stack do
         active_chain[#active_chain + 1] = trap_stack[i]
@@ -2120,12 +2153,8 @@ function Stage:_refresh_focus_runtime_state(previous_owner_override)
 end
 
 local function dirty_subtree(node)
-    if node == nil then
-        return
-    end
-
     node:markDirty()
-    local children = rawget(node, '_children') or {}
+    local children = rawget(node, '_children')
     for i = 1, #children do
         dirty_subtree(children[i])
     end
@@ -2134,8 +2163,10 @@ end
 function Stage:_mark_layout_subtree_dirty()
     assert_not_destroyed(self, 2)
     Container.markDirty(self)
-    dirty_subtree(self.baseSceneLayer)
-    dirty_subtree(self.overlayLayer)
+    local children = rawget(self, '_children')
+    for i = 1, #children do
+        dirty_subtree(children[i])
+    end
     return self
 end
 

@@ -3,6 +3,7 @@ local Proxy = {}
 local PDATA  = '_pdata'
 local PHOOKS = '_phooks'
 local PCLASS = '_pclass'
+local PRFNS  = '_prfns'
 
 local function get_or_create_hook(hooks, key)
   local h = hooks[key]
@@ -10,123 +11,67 @@ local function get_or_create_hook(hooks, key)
   return h
 end
 
-local function read_declared(instance, key)
-  local hooks = rawget(instance, PHOOKS)
-  local h = hooks and hooks[key]
-  if not h then
-    return false, nil
-  end
-
-  local v = rawget(instance, PDATA)[key]
-  if h.read then
-    return true, h.read(v, key, instance)
-  end
-
-  return true, v
-end
-
-local function write_declared(instance, key, value)
-  local hooks = rawget(instance, PHOOKS)
-  local h = hooks and hooks[key]
-  if not h then
-    return false, value
-  end
-
-  local data = rawget(instance, PDATA)
-  local old = data[key]
-  local v = value
-
-  local pre = h.pre_write
-  if pre then
-    for i = 1, #pre do
-      v = pre[i](key, v, instance) or v
-    end
-  end
-
-  data[key] = v
-
-  local ow = h.on_write
-  if ow then
-    for i = 1, #ow do
-      ow[i](v, key, instance)
-    end
-  end
-
-  local oc = h.on_change
-  if oc and v ~= old then
-    for i = 1, #oc do
-      oc[i](v, old, key, instance)
-    end
-  end
-
-  return true, v
-end
-
-local function resolve_class_lookup(instance, key, cls)
-  if cls == nil then
-    return nil
-  end
-
-  local class_index = rawget(cls, '__index')
-  if type(class_index) == 'function' and class_index ~= cls then
-    local value = class_index(instance, key)
-    if value ~= nil then
-      return value
-    end
-  end
-
-  local current = cls
-  while current do
-    local value = rawget(current, key)
-    if value ~= nil then
-      return value
-    end
-    current = rawget(current, 'super') or getmetatable(current)
-  end
-
-  return nil
-end
-
 local function install(instance)
   if rawget(instance, PDATA) then return end
-  rawset(instance, PDATA,  {})
-  rawset(instance, PHOOKS, {})
-  rawset(instance, PCLASS, getmetatable(instance))
 
-  local proxy_meta = {
+  local data     = {}
+  local hooks    = {}
+  local read_fns = {}
+  local cls      = getmetatable(instance)
+
+  rawset(instance, PDATA,  data)
+  rawset(instance, PHOOKS, hooks)
+  rawset(instance, PRFNS,  read_fns)
+  rawset(instance, PCLASS, cls)
+
+  local proxy_mt = {
     __index = function(t, k)
-      local handled, value = read_declared(t, k)
-      if handled then
-        return value
+      local rf = read_fns[k]
+      if rf ~= nil then
+        local v = data[k]
+        if rf then return rf(v, k, t) end
+        return v
       end
-      local direct = rawget(t, k)
-      if direct ~= nil then
-        return direct
-      end
-      return resolve_class_lookup(t, k, rawget(t, PCLASS))
+      return cls[k]
     end,
 
     __newindex = function(t, k, v)
-      local handled = write_declared(t, k, v)
-      if not handled then
-        local cls = rawget(t, PCLASS)
-        local class_newindex = cls and rawget(cls, '__newindex') or nil
-        if type(class_newindex) == 'function' and class_newindex ~= cls then
-          class_newindex(t, k, v)
-        else
-          rawset(t, k, v)
-        end
+      local h = hooks[k]
+      if not h then rawset(t, k, v); return end
+
+      local old = data[k]
+
+      local pre = h.pre_write
+      if pre then
+        for i = 1, #pre do v = pre[i](k, v, t) or v end
+      end
+
+      data[k] = v
+
+      local ow = h.on_write
+      if ow then
+        for i = 1, #ow do ow[i](v, k, t) end
+      end
+
+      local oc = h.on_change
+      if oc and v ~= old then
+        for i = 1, #oc do oc[i](v, old, k, t) end
       end
     end,
   }
 
-  setmetatable(proxy_meta, rawget(instance, PCLASS))
-  setmetatable(instance, proxy_meta)
+  if cls ~= nil then
+    setmetatable(proxy_mt, cls)
+  end
+
+  setmetatable(instance, proxy_mt)
 end
 
 function Proxy.declare(instance, key, opts)
   install(instance)
   get_or_create_hook(rawget(instance, PHOOKS), key)
+  local read_fns = rawget(instance, PRFNS)
+  if read_fns[key] == nil then read_fns[key] = false end
   if opts and opts.default ~= nil then
     local data = rawget(instance, PDATA)
     if data[key] == nil then instance[key] = opts.default end
@@ -135,7 +80,8 @@ end
 
 function Proxy.on_read(instance, key, fn)
   install(instance)
-  get_or_create_hook(rawget(instance, PHOOKS), key).read = fn
+  get_or_create_hook(rawget(instance, PHOOKS), key)
+  rawget(instance, PRFNS)[key] = fn
 end
 
 function Proxy.on_pre_write(instance, key, fn)
@@ -183,11 +129,41 @@ function Proxy.is_installed(instance)
 end
 
 function Proxy.read(instance, key)
-  return read_declared(instance, key)
+  local read_fns = rawget(instance, PRFNS)
+  local rf = read_fns and read_fns[key]
+  if rf == nil then return false, nil end
+  local v = rawget(instance, PDATA)[key]
+  if rf then return true, rf(v, key, instance) end
+  return true, v
 end
 
 function Proxy.write(instance, key, value)
-  return write_declared(instance, key, value)
+  local hooks = rawget(instance, PHOOKS)
+  local h = hooks and hooks[key]
+  if not h then return false end
+
+  local data = rawget(instance, PDATA)
+  local old  = data[key]
+  local v    = value
+
+  local pre = h.pre_write
+  if pre then
+    for i = 1, #pre do v = pre[i](key, v, instance) or v end
+  end
+
+  data[key] = v
+
+  local ow = h.on_write
+  if ow then
+    for i = 1, #ow do ow[i](v, key, instance) end
+  end
+
+  local oc = h.on_change
+  if oc and v ~= old then
+    for i = 1, #oc do oc[i](v, old, key, instance) end
+  end
+
+  return true
 end
 
 return Proxy

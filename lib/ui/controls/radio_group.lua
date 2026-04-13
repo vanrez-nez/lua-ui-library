@@ -17,7 +17,7 @@ local function collect_radios(node, out)
         return out
     end
 
-    local children = rawget(node, '_children') or {}
+    local children = rawget(node, '_children')
     for index = 1, #children do
         collect_radios(children[index], out)
     end
@@ -59,7 +59,7 @@ local function order_and_validate(self)
 end
 
 local function is_disabled_value(self, value)
-    local map = rawget(self, '_disabled_value_map') or {}
+    local map = rawget(self, '_disabled_value_map')
     return map[tostring(value)] == true
 end
 
@@ -68,7 +68,7 @@ local function is_radio_enabled(self, radio)
 end
 
 local function first_enabled_value(self)
-    local radios = rawget(self, '_radio_order') or {}
+    local radios = rawget(self, '_radio_order')
     for index = 1, #radios do
         if is_radio_enabled(self, radios[index]) then
             return radios[index].value
@@ -78,7 +78,7 @@ local function first_enabled_value(self)
 end
 
 local function normalize_value(self, current)
-    local by_value = rawget(self, '_radio_by_value') or {}
+    local by_value = rawget(self, '_radio_by_value')
     local radio = by_value[current]
     if radio ~= nil and is_radio_enabled(self, radio) then
         return current
@@ -162,7 +162,7 @@ function RadioGroup:constructor(opts)
             return
         end
 
-        local radios = rawget(self, '_radio_order') or {}
+        local radios = rawget(self, '_radio_order')
         local current = focused_radio(self)
         local current_index = 0
         if current ~= nil then

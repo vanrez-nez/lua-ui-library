@@ -24,12 +24,12 @@ local function normalize_disabled_values(values)
 end
 
 local function trigger_is_disabled(self, value)
-    local disabled_map = rawget(self, '_disabled_map') or {}
+    local disabled_map = rawget(self, '_disabled_map')
     return disabled_map[tostring(value)] == true
 end
 
 local function ordered_enabled_values(self)
-    local order = rawget(self, '_trigger_order') or {}
+    local order = rawget(self, '_trigger_order')
     local out = {}
     for i = 1, #order do
         local v = order[i]
@@ -50,8 +50,8 @@ end
 
 local function is_value_mapped(self, value)
     if value == nil then return false end
-    local triggers = rawget(self, '_trigger_nodes') or {}
-    local panels = rawget(self, '_panel_nodes') or {}
+    local triggers = rawget(self, '_trigger_nodes')
+    local panels = rawget(self, '_panel_nodes')
     return triggers[value] ~= nil and panels[value] ~= nil
 end
 
@@ -96,8 +96,8 @@ local function sync_visual_state(self)
     local value = effective_value(self)
     rawset(self, '_effective_tab_value', value)
 
-    local triggers = rawget(self, '_trigger_nodes') or {}
-    local panels = rawget(self, '_panel_nodes') or {}
+    local triggers = rawget(self, '_trigger_nodes')
+    local panels = rawget(self, '_panel_nodes')
 
     for key, node in pairs(triggers) do
         local disabled = trigger_is_disabled(self, key)
@@ -184,7 +184,7 @@ end
 local function sync_indicator_geometry(self)
     local indicator = rawget(self, 'indicator')
     local active_value = effective_value(self)
-    local trigger = active_value and (rawget(self, '_trigger_nodes') or {})[active_value] or nil
+    local trigger = active_value and rawget(self, '_trigger_nodes')[active_value] or nil
     local orientation = self.orientation
 
     if indicator == nil then
@@ -356,7 +356,7 @@ function Tabs:constructor(opts)
             return
         end
 
-        local trigger = (rawget(self, '_trigger_nodes') or {})[next_value]
+        local trigger = rawget(self, '_trigger_nodes')[next_value]
         if trigger ~= nil then
             ControlUtils.request_focus(trigger)
             event:preventDefault()

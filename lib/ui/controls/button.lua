@@ -135,7 +135,7 @@ function Button:_set_content_internal(node)
 
     Assert.table('node', node, 2)
     local slot = rawget(self, '_content_slot')
-    local children = rawget(slot, '_children') or {}
+    local children = rawget(slot, '_children')
     for i = #children, 1, -1 do
         slot:removeChild(children[i])
     end

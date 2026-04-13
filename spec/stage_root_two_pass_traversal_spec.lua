@@ -420,9 +420,9 @@ local function run_queued_state_change_tests()
         'Queued state changes should commit authoritative mutations during update')
     assert_equal(child.y, 12,
         'Nested queued state changes should commit authoritative mutations during update')
-    assert_true(not child._world_transform_dirty,
+    assert_true(not child.dirty:is_dirty('world_transform'),
         'Queued state changes should leave geometry resolved before Stage.update returns')
-    assert_true(not child._bounds_dirty,
+    assert_true(not child.dirty:is_dirty('bounds'),
         'Queued state changes should leave bounds resolved before Stage.update returns')
 
     stage:draw()

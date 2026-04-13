@@ -590,7 +590,7 @@ local function resolve_subtree_world_bounds(node, runtime)
         bounds = bounds:intersection(clip_rect)
     end
 
-    local ordered_children = rawget(node, '_ordered_children') or rawget(node, '_children') or {}
+    local ordered_children = rawget(node, '_ordered_children')
 
     for index = 1, #ordered_children do
         local child_bounds = resolve_subtree_world_bounds(ordered_children[index], runtime)

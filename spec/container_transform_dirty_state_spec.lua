@@ -124,11 +124,11 @@ local function run_parent_transform_invalidation_tests()
 
     root.x = 25
 
-    assert_true(root._local_transform_dirty,
+    assert_true(root.dirty:is_dirty('local_transform'),
         'Direct geometry mutation should invalidate the local transform cache')
-    assert_true(child._world_transform_dirty,
+    assert_true(child.dirty:is_dirty('world_transform'),
         'Parent transform changes should invalidate descendant world transforms')
-    assert_true(not child._measurement_dirty,
+    assert_true(not child.dirty:is_dirty('measurement'),
         'Pure parent transform changes should not invalidate descendant measurement')
 
     root:update()
@@ -137,7 +137,7 @@ local function run_parent_transform_invalidation_tests()
 
     assert_true(not before:equals(after, 1e-9),
         'Descendant world transforms should change after parent transform mutation')
-    assert_true(not child._world_transform_dirty,
+    assert_true(not child.dirty:is_dirty('world_transform'),
         'The update pass should clear descendant world-transform dirtiness')
 end
 
@@ -161,9 +161,9 @@ local function run_parent_measurement_invalidation_tests()
 
     root.width = 320
 
-    assert_true(child._measurement_dirty,
+    assert_true(child.dirty:is_dirty('measurement'),
         'Parent size changes should invalidate descendant measurement caches')
-    assert_true(child._local_transform_dirty,
+    assert_true(child.dirty:is_dirty('local_transform'),
         'Parent size changes should invalidate descendant local transforms')
 
     root:update()
@@ -252,11 +252,11 @@ local function run_breakpoint_placeholder_tests()
 
     child:_set_resolved_responsive_overrides('compact', overrides)
 
-    assert_true(child._responsive_dirty,
+    assert_true(child.dirty:is_dirty('responsive'),
         'Breakpoint-resolution changes should participate in the dirty-state model')
-    assert_true(child._measurement_dirty,
+    assert_true(child.dirty:is_dirty('measurement'),
         'Breakpoint-resolution changes should invalidate measurement')
-    assert_true(child._local_transform_dirty,
+    assert_true(child.dirty:is_dirty('local_transform'),
         'Breakpoint-resolution changes should invalidate transforms')
 
     root:update()
@@ -272,7 +272,7 @@ local function run_breakpoint_placeholder_tests()
 
     child:_set_resolved_responsive_overrides('compact', overrides)
 
-    assert_true(not child._responsive_dirty,
+    assert_true(not child.dirty:is_dirty('responsive'),
         'Reapplying the same breakpoint token and override reference should be stable')
     assert_true(rawequal(before_cache, child._world_transform_cache),
         'A clean node should not drop cached world transforms when nothing changed')

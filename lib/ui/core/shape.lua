@@ -153,6 +153,18 @@ local function bounds_match(cached_bounds, bounds)
         cached_bounds.height == (bounds.height or 0)
 end
 
+local function handle_paint_prop_change(_, _, watched_key, target)
+    target.shape_dirty:mark('paint')
+
+    if FILL_CACHE_KEYS[watched_key] then
+        target:_invalidate_fill_resolution_cache()
+    end
+end
+
+local function handle_geometry_prop_change(_, _, _, target)
+    target.shape_dirty:mark('geometry')
+end
+
 Shape.__index = Shape
 
 function Shape:constructor(opts)
@@ -161,25 +173,11 @@ function Shape:constructor(opts)
     self.schema:define(ShapeSchema)
 
     for key in pairs(PAINT_KEYS) do
-        self.props:watch(key, function(_, _, watched_key, target)
-            local dirty = rawget(target, 'shape_dirty')
-            if dirty ~= nil then
-                dirty:mark('paint')
-            end
-
-            if FILL_CACHE_KEYS[watched_key] then
-                target:_invalidate_fill_resolution_cache()
-            end
-        end)
+        self.props:watch(key, handle_paint_prop_change)
     end
 
     for key in pairs(GEOMETRY_KEYS) do
-        self.props:watch(key, function(_, _, _, target)
-            local dirty = rawget(target, 'shape_dirty')
-            if dirty ~= nil then
-                dirty:mark('geometry')
-            end
-        end)
+        self.props:watch(key, handle_geometry_prop_change)
     end
 
     for key, value in pairs(opts or {}) do
@@ -372,21 +370,17 @@ function Shape:_apply_motion_value(target_name, property_name, value)
 end
 
 function Shape:_refresh_if_dirty()
-    local dirty = rawget(self, 'dirty')
-    local geometry_was_dirty = dirty ~= nil and (
-        dirty:is_dirty('measurement') or
-        dirty:is_dirty('local_transform') or
-        dirty:is_dirty('world_transform') or
-        dirty:is_dirty('bounds')
+    local geometry_was_dirty = self.dirty:is_any(
+        'measurement',
+        'local_transform',
+        'world_transform',
+        'bounds'
     )
 
     Container._refresh_if_dirty(self)
 
     if geometry_was_dirty then
-        local shape_dirty = rawget(self, 'shape_dirty')
-        if shape_dirty ~= nil then
-            shape_dirty:mark('geometry')
-        end
+        self.shape_dirty:mark('geometry')
     end
 end
 
@@ -527,12 +521,7 @@ function Shape:draw(graphics)
         return
     end
 
-    local shape_dirty = rawget(self, 'shape_dirty')
-    if shape_dirty == nil then
-        shape_dirty = DirtyState({ 'paint', 'geometry' })
-        rawset(self, 'shape_dirty', shape_dirty)
-        shape_dirty:mark('paint', 'geometry')
-    end
+    local shape_dirty = self.shape_dirty
 
     if shape_dirty:is_dirty('geometry') then
         self:_refresh_shape_geometry()
