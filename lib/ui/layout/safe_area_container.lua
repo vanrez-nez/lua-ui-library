@@ -102,8 +102,7 @@ local function measure_content_extent(children, content_rect)
 end
 
 local function resolve_stage(node, stage)
-    if stage ~= nil and rawget(stage, '_ui_stage_instance') == true and
-        not rawget(stage, '_destroyed') then
+    if stage ~= nil and rawget(stage, '_ui_stage_instance') == true then
         return stage
     end
 
@@ -113,8 +112,7 @@ local function resolve_stage(node, stage)
         current = current.parent
     end
 
-    if current ~= nil and rawget(current, '_ui_stage_instance') == true and
-        not rawget(current, '_destroyed') then
+    if current ~= nil and rawget(current, '_ui_stage_instance') == true then
         return current
     end
 

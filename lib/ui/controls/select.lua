@@ -17,10 +17,6 @@ local function copy_array(values)
 end
 
 local function collect_options(node, out)
-    if rawget(node, '_destroyed') then
-        return out
-    end
-
     if rawget(node, '_ui_option_control') == true then
         out[#out + 1] = node
         return out
@@ -502,19 +498,11 @@ function Select:_overlay_focus_contract()
     }
 end
 
-function Select:destroy()
-    if rawget(self, '_destroyed') then
-        return
-    end
-
-    rawset(self, '_destroyed', true)
+function Select:on_destroy()
     ControlUtils.remove_control_listeners(self)
     self:_detach_overlay()
-    if not rawget(rawget(self, '_popup_root'), '_destroyed') then
-        rawget(self, '_popup_root'):destroy()
-    end
-    rawset(self, '_destroyed', false)
-    Container.destroy(self)
+    rawget(self, '_popup_root'):destroy()
+    Container.on_destroy(self)
 end
 
 return Select

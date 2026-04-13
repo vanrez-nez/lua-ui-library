@@ -37,11 +37,4 @@ function Types.is_instance(value, class_obj)
     return Object.is(value, class_obj)
 end
 
-function Types.not_destroyed(value)
-    if type(value) ~= 'table' then
-        return true
-    end
-    return not rawget(value, '_destroyed')
-end
-
 return Types

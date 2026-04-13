@@ -195,7 +195,7 @@ function Utils.controlled_value(prop_name, default_value, config)
             props:raw_set(internal_key, next_value)
         end
         local mark_dirty = rawget(self, 'markDirty') or self.markDirty
-        if Types.is_function(mark_dirty) and rawget(self, '_destroyed') ~= true then
+        if Types.is_function(mark_dirty) then
             mark_dirty(self)
         end
         Utils.call_if_function(self[callback_name], next_value)
@@ -205,23 +205,13 @@ function Utils.controlled_value(prop_name, default_value, config)
     return get_effective, request
 end
 
-function Utils._destroyed_guard(owner, fn)
-    if not Types.is_function(fn) then
+function Utils.add_control_listener(owner, target, event_type, listener, phase)
+    Assert.table('target', target, 2)
+    if not Types.is_function(listener) then
         Assert.fail('listener must be a function', 2)
     end
 
-    return function(...)
-        if rawget(owner, '_destroyed') then
-            return nil
-        end
-        return fn(...)
-    end
-end
-
-function Utils.add_control_listener(owner, target, event_type, listener, phase)
-    Assert.table('target', target, 2)
-    local guarded = Utils._destroyed_guard(owner, listener)
-    target:_add_event_listener(event_type, guarded, phase)
+    target:_add_event_listener(event_type, listener, phase)
 
     local registrations = rawget(owner, '_control_listener_registrations')
     if registrations == nil then
@@ -232,11 +222,11 @@ function Utils.add_control_listener(owner, target, event_type, listener, phase)
     registrations[#registrations + 1] = {
         target = target,
         event_type = event_type,
-        listener = guarded,
+        listener = listener,
         phase = phase,
     }
 
-    return guarded
+    return listener
 end
 
 function Utils.remove_control_listeners(owner)

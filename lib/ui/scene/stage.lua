@@ -46,11 +46,6 @@ end
 
 
 
-local function assert_not_destroyed(self, level)
-    if rawget(self, '_destroyed') then
-        fail('cannot use a destroyed Stage', (level or 1) + 1)
-    end
-end
 
 local function assert_table(name, value, level)
     if not Types.is_table(value) then
@@ -120,7 +115,7 @@ local function get_runtime_value(node, key)
 end
 
 local function is_attached_visible_to_stage(self, node)
-    if node == nil or rawget(node, '_destroyed') or not is_descendant_or_same(self, node) then
+    if node == nil or not is_descendant_or_same(self, node) then
         return false
     end
 
@@ -142,7 +137,7 @@ local function is_attached_visible_to_stage(self, node)
 end
 
 local function is_attached_enabled_to_stage(self, node)
-    if node == nil or rawget(node, '_destroyed') or not is_descendant_or_same(self, node) then
+    if node == nil or not is_descendant_or_same(self, node) then
         return false
     end
 
@@ -241,7 +236,6 @@ end
 
 local function is_focus_eligible(self, node)
     return node ~= nil and
-        not rawget(node, '_destroyed') and
         is_descendant_or_same(self, node) and
         get_runtime_value(node, 'focusable') == true and
         is_attached_visible_to_stage(self, node) and
@@ -257,7 +251,7 @@ local function is_focus_owner_target(self, node)
         return true
     end
 
-    if rawget(node, '_destroyed') or not is_descendant_or_same(self, node) or
+    if not is_descendant_or_same(self, node) or
         not is_attached_visible_to_stage(self, node) or
         not is_attached_enabled_to_stage(self, node) then
         return false
@@ -461,8 +455,7 @@ local function refresh_environment_bounds(self)
 end
 
 local function synchronize_stage_for_read(target)
-    if rawget(target, '_ui_stage_instance') == true and
-        not rawget(target, '_destroyed') then
+    if rawget(target, '_ui_stage_instance') == true then
         if not rawget(target, '_updating') and
             not rawget(target, '_synchronizing') then
             Stage._synchronize_for_read(target)
@@ -549,10 +542,6 @@ local function resolve_draw_args(graphics, draw_callback)
 end
 
 local function draw_node_default(node, graphics)
-    if rawget(node, '_destroyed') then
-        return
-    end
-
     local draw_method = node.draw
     if Types.is_function(draw_method) then
         draw_method(node, graphics)
@@ -572,7 +561,7 @@ local function create_focus_aware_draw_callback(self, draw_callback)
     end
 
     local function decorate_focused_drawable(node, graphics)
-        if rawget(node, '_destroyed') or not Drawable.is_drawable(node) then
+        if not Drawable.is_drawable(node) then
             return
         end
 
@@ -1118,7 +1107,7 @@ local function is_mouse_pointer_sequence_active(self)
 end
 
 local function deliver_internal_hover_notification(node, handler_name, payload)
-    if node == nil or rawget(node, '_destroyed') then
+    if node == nil then
         return
     end
 
@@ -1140,7 +1129,7 @@ local function set_hover_target(self, next_target, payload)
         return next_target, false
     end
 
-    if previous_target ~= nil and not rawget(previous_target, '_destroyed') then
+    if previous_target ~= nil then
         rawset(previous_target, '_hovered', false)
         deliver_internal_hover_notification(
             previous_target,
@@ -1293,8 +1282,7 @@ local function stop_inertial_scroll_in_path(path)
     for index = 1, #path do
         local node = path[index]
 
-        if node ~= nil and rawget(node, '_ui_scrollable_instance') == true and
-            not rawget(node, '_destroyed') then
+        if node ~= nil and rawget(node, '_ui_scrollable_instance') == true then
             local cancel = rawget(node, '_cancel_momentum') or node._cancel_momentum
             if Types.is_function(cancel) then
                 cancel(node)
@@ -1648,7 +1636,7 @@ function Stage:constructor(opts)
     end
 
     -- Enforce singleton contract with "self-healing" for cross-file cascades.
-    if active_stage ~= nil and not rawget(active_stage, '_destroyed') then
+    if active_stage ~= nil then
         local current_source = debug.getinfo(3, 'S').source
         local old_source = rawget(active_stage, '_creation_source')
 
@@ -1704,7 +1692,6 @@ function Stage.is_stage(value)
 end
 
 function Stage:_sync_environment_from_host()
-    assert_not_destroyed(self, 2)
 
     local width, height = read_host_viewport()
 
@@ -1724,7 +1711,6 @@ function Stage:_sync_environment_from_host()
 end
 
 function Stage:_resolve_responsive_for_node(node)
-    assert_not_destroyed(self, 2)
 
     local responsive = Proxy.raw_get(node, 'responsive')
     local breakpoints = Proxy.raw_get(node, 'breakpoints')
@@ -1778,12 +1764,10 @@ function Stage:_resolve_responsive_for_node(node)
 end
 
 function Stage:_get_focus_scope_root()
-    assert_not_destroyed(self, 2)
     return self
 end
 
 function Stage:_set_focus_contract_internal(node, contract)
-    assert_not_destroyed(self, 2)
     assert_container_node('node', node, 2)
 
     if contract == nil then
@@ -1851,12 +1835,11 @@ function Stage:_set_focus_contract_internal(node, contract)
 end
 
 function Stage:_set_focus_owner_internal(node)
-    assert_not_destroyed(self, 2)
 
     if node ~= nil then
         assert_container_node('node', node, 2)
 
-        if not is_descendant_or_same(self, node) or rawget(node, '_destroyed') then
+        if not is_descendant_or_same(self, node) then
             return nil
         end
     end
@@ -1870,7 +1853,6 @@ end
 -- Internal runtime/test support for explicit focus requests. This is not a
 -- stabilized public Stage API surface.
 function Stage:_request_focus_internal(node)
-    assert_not_destroyed(self, 2)
     self:_synchronize_for_read()
 
     if node ~= nil then
@@ -1885,7 +1867,6 @@ function Stage:_request_focus_internal(node)
 end
 
 function Stage:_move_focus_sequential_internal(direction)
-    assert_not_destroyed(self, 2)
 
     if direction ~= 'next' and direction ~= 'previous' then
         fail('direction must be "next" or "previous"', 2)
@@ -1939,7 +1920,6 @@ function Stage:_move_focus_sequential_internal(direction)
 end
 
 function Stage:_move_focus_directional_internal(direction)
-    assert_not_destroyed(self, 2)
 
     if direction ~= 'up' and direction ~= 'down' and direction ~= 'left' and
         direction ~= 'right' then
@@ -1995,43 +1975,31 @@ function Stage:_move_focus_directional_internal(direction)
 end
 
 function Stage:_get_focus_owner_internal()
-    assert_not_destroyed(self, 2)
     self:_synchronize_for_read()
     return get_stored_focus_owner(self)
 end
 
 function Stage:_get_active_focus_scope_chain_internal()
-    assert_not_destroyed(self, 2)
     self:_synchronize_for_read()
     return copy_array(rawget(self, '_active_focus_scope_chain'))
 end
 
 function Stage:_get_focus_trap_stack_internal()
-    assert_not_destroyed(self, 2)
     self:_synchronize_for_read()
     return copy_array(rawget(self, '_focus_trap_stack'))
 end
 
 function Stage:_get_pre_trap_focus_history_internal()
-    assert_not_destroyed(self, 2)
     self:_synchronize_for_read()
     return copy_array(rawget(self, '_pre_trap_focus_history'))
 end
 
 function Stage:_handle_attached_subtree(_, _)
-    if rawget(self, '_destroyed') then
-        return self
-    end
-
     self:_refresh_focus_runtime_state()
     return self
 end
 
 function Stage:_handle_detached_subtree(node, _)
-    if rawget(self, '_destroyed') then
-        return self
-    end
-
     local focus_owner = get_stored_focus_owner(self)
     local previous_owner = focus_owner
 
@@ -2044,10 +2012,6 @@ function Stage:_handle_detached_subtree(node, _)
 end
 
 function Stage:_refresh_focus_runtime_state(previous_owner_override)
-    if rawget(self, '_destroyed') then
-        return self
-    end
-
     local previous_owner = previous_owner_override
 
     if previous_owner == nil then
@@ -2161,7 +2125,6 @@ local function dirty_subtree(node)
 end
 
 function Stage:_mark_layout_subtree_dirty()
-    assert_not_destroyed(self, 2)
     Container.markDirty(self)
     local children = rawget(self, '_children')
     for i = 1, #children do
@@ -2171,7 +2134,6 @@ function Stage:_mark_layout_subtree_dirty()
 end
 
 local function synchronize_for_read(self)
-    assert_not_destroyed(self, 2)
 
     -- Draw pass must remain read-only. Stage:update() is responsible for
     -- producing a frame-current tree before Stage:draw() begins.
@@ -2216,7 +2178,6 @@ function Stage._synchronize_for_read(self)
 end
 
 function Stage:_queue_state_change(handler)
-    assert_not_destroyed(self, 2)
 
     if not Types.is_function(handler) then
         fail('handler must be a function', 2)
@@ -2254,24 +2215,20 @@ function Stage:removeAllChildren()
 end
 
 function Stage:getSafeAreaBounds()
-    assert_not_destroyed(self, 2)
     return rawget(self, '_safe_area_bounds_cache'):clone()
 end
 
 function Stage:resize(width, height, safe_area_insets)
-    assert_not_destroyed(self, 2)
     apply_environment(self, width, height, safe_area_insets)
     return self
 end
 
 function Stage:resolveTarget(x, y)
-    assert_not_destroyed(self, 2)
     self:_synchronize_for_read()
     return resolve_target_resolved(self, x, y)
 end
 
 function Stage:deliverInput(raw_event)
-    assert_not_destroyed(self, 2)
     Assert.table('raw_event', raw_event, 2)
 
     local intent = translate_raw_input(raw_event)
@@ -2408,7 +2365,6 @@ function Stage:deliverInput(raw_event)
 end
 
 function Stage:update(_)
-    assert_not_destroyed(self, 2)
 
     if rawget(self, '_updating') then
         return self
@@ -2466,7 +2422,6 @@ function Stage:_draw_overlay_layer_resolved(graphics, draw_callback)
 end
 
 function Stage:draw(graphics, draw_callback)
-    assert_not_destroyed(self, 2)
 
     local profile_token = RuntimeProfiler.push_zone('Stage.draw')
     graphics, draw_callback = self:_prepare_draw(graphics, draw_callback)
@@ -2501,16 +2456,12 @@ function Stage:draw(graphics, draw_callback)
     return self
 end
 
-function Stage:destroy()
-    if rawget(self, '_destroyed') then
-        return
-    end
-
+function Stage:on_destroy()
     if active_stage == self then
         active_stage = nil
     end
 
-    Container.destroy(self)
+    Container.on_destroy(self)
 end
 
 return Stage

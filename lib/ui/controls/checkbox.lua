@@ -222,14 +222,9 @@ function Checkbox:update(dt)
     return self
 end
 
-function Checkbox:destroy()
-    if rawget(self, '_destroyed') then
-        return
-    end
-    rawset(self, '_destroyed', true)
+function Checkbox:on_destroy()
     ControlUtils.remove_control_listeners(self)
-    rawset(self, '_destroyed', false)
-    Container.destroy(self)
+    Container.on_destroy(self)
 end
 
 return Checkbox

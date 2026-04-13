@@ -285,18 +285,11 @@ function Notification:update(dt)
     return self
 end
 
-function Notification:destroy()
-    if rawget(self, '_destroyed') then
-        return
-    end
-    rawset(self, '_destroyed', true)
+function Notification:on_destroy()
     ControlUtils.remove_control_listeners(self)
     self:_detach_overlay()
-    if not rawget(rawget(self, '_overlay_root'), '_destroyed') then
-        rawget(self, '_overlay_root'):destroy()
-    end
-    rawset(self, '_destroyed', false)
-    Container.destroy(self)
+    rawget(self, '_overlay_root'):destroy()
+    Container.on_destroy(self)
 end
 
 return Notification

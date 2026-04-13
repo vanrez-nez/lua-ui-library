@@ -41,10 +41,4 @@ function Assert.is_instance(name, value, class_obj, class_name, level)
     end
 end
 
-function Assert.not_destroyed(name, value, level)
-    if not Types.not_destroyed(value) then
-        error(name .. ' must not be destroyed', (level or 1) + 1)
-    end
-end
-
 return Assert

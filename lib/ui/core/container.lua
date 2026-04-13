@@ -151,7 +151,7 @@ local get_stencil_test = GraphicsState.get_stencil_test
 local set_stencil_test = GraphicsState.set_stencil_test
 
 local function is_layout_node(node)
-    return (Object.is(node, "LayoutNode") or rawget(node, '_ui_layout_instance') == true) and not rawget(node, '_destroyed')
+    return Object.is(node, "LayoutNode") or rawget(node, '_ui_layout_instance') == true
 end
 
 local default = MathUtils.default
@@ -226,17 +226,6 @@ local function assert_live_container(node, name, level)
     if not is_container then
         Assert.fail(name .. ' must be a Container', level or 1)
     end
-
-    if rawget(node, '_destroyed') then
-        Assert.fail(name .. ' must not be destroyed', level or 1)
-    end
-end
-
-
-local function assert_not_destroyed(self, level)
-    if rawget(self, '_destroyed') then
-        Assert.fail('cannot use a destroyed Container', level or 1)
-    end
 end
 
 local function assert_no_cycle(parent, child, level)
@@ -256,7 +245,7 @@ end
 
 local function get_root(node)
     local attachment_root = rawget(node, '_attachment_root')
-    if attachment_root ~= nil and not rawget(attachment_root, '_destroyed') then
+    if attachment_root ~= nil then
         return attachment_root
     end
 
@@ -298,7 +287,7 @@ local function is_internal_node(node)
 end
 
 local function is_public_node(node)
-    return not rawget(node, '_destroyed') and not is_internal_node(node)
+    return not is_internal_node(node)
 end
 
 local function is_strict_descendant_of(node, ancestor)
@@ -561,7 +550,7 @@ local function find_by_tag_bounded(node, tag, depth, results)
 end
 
 function Container:notify_stage_subtree_change(stage, handler_name, child, parent)
-    if not Object.is(stage, "Stage") or rawget(stage, '_destroyed') then
+    if not Object.is(stage, "Stage") then
         return
     end
 
@@ -579,7 +568,7 @@ end
 function Container:invalidate_stage_update_token()
     local root = get_root(self)
 
-    if rawget(root, '_ui_stage_instance') == true and not rawget(root, '_destroyed') then
+    if rawget(root, '_ui_stage_instance') == true then
         rawset(root, '_update_ran', false)
     end
 end
@@ -1599,10 +1588,6 @@ local function detach_child(parent, child)
 end
 
 local function destroy_subtree(node)
-    if rawget(node, '_destroyed') then
-        return
-    end
-
     if node.parent then
         detach_child(node.parent, node)
     end
@@ -1610,13 +1595,12 @@ local function destroy_subtree(node)
     local children = rawget(node, '_children')
     for index = #children, 1, -1 do
         local child = children[index]
-        destroy_subtree(child)
+        child:destroy()
     end
 
     rawset(node, '_ordered_children', nil)
     rawset(node, '_id_index', nil)
     rawset(node, '_attachment_root', nil)
-    rawset(node, '_destroyed', true)
 end
 
 function Container:_initialize(opts, extra_public_keys, config)
@@ -1661,7 +1645,6 @@ function Container:_initialize(opts, extra_public_keys, config)
     rawset(self, '_declared_props', declared_props)
     rawset(self, '_resolved_responsive_overrides', {})
 
-    rawset(self, '_destroyed', false)
     rawset(self, '_motion_visual_state', {})
     rawset(self, '_motion_last_request', nil)
 
@@ -1814,7 +1797,6 @@ function Container:_apply_content_measurement(width, height)
 end
 
 function Container:_refresh_if_dirty()
-    assert_not_destroyed(self, 2)
 
     if self.dirty:is_dirty('responsive') then
         refresh_responsive(self)
@@ -1842,7 +1824,6 @@ function Container:_refresh_if_dirty()
 end
 
 function Container:_prepare_for_layout_pass()
-    assert_not_destroyed(self, 2)
 
     if self.dirty:is_dirty('responsive') then
         refresh_responsive(self)
@@ -1860,7 +1841,6 @@ function Container:_prepare_for_layout_pass()
 end
 
 function Container:update(_)
-    assert_not_destroyed(self, 2)
 
     local root = get_root(self)
     local resolve_responsive_for_node = rawget(root, '_resolve_responsive_for_node')
@@ -1882,7 +1862,7 @@ function Container:update(_)
     for index = 1, #snapshot do
         local child = snapshot[index]
 
-        if child ~= nil and child.parent == self and not rawget(child, '_destroyed') then
+        if child ~= nil and child.parent == self then
             child:update()
         end
     end
@@ -1895,7 +1875,6 @@ function Container:update(_)
 end
 
 function Container:addChild(child)
-    assert_not_destroyed(self, 2)
     assert_live_container(child, 'child', 2)
     assert_no_cycle(self, child, 2)
 
@@ -1933,7 +1912,6 @@ function Container:addChild(child)
 end
 
 function Container:removeChild(child)
-    assert_not_destroyed(self, 2)
     assert_live_container(child, 'child', 2)
 
     return detach_child(self, child)
@@ -1944,7 +1922,6 @@ function Container:getChildren()
 end
 
 function Container:findById(id, depth)
-    assert_not_destroyed(self, 2)
     ensure_current(self)
 
     validate_lookup_key('Container.findById', 'id', id)
@@ -1971,7 +1948,6 @@ function Container:findById(id, depth)
 end
 
 function Container:findByTag(tag, depth)
-    assert_not_destroyed(self, 2)
     ensure_current(self)
 
     validate_lookup_key('Container.findByTag', 'tag', tag)
@@ -2032,7 +2008,6 @@ function Container:containsPoint(x, y)
 end
 
 function Container:_is_effectively_targetable(x, y, state)
-    assert_not_destroyed(self, 2)
 
     state = state or {}
 
@@ -2069,14 +2044,12 @@ function Container:_is_effectively_targetable(x, y, state)
 end
 
 function Container:_hit_test(x, y, state)
-    assert_not_destroyed(self, 2)
     ensure_current(self)
 
     return self:_hit_test_resolved(x, y, state)
 end
 
 function Container:_hit_test_resolved(x, y, state)
-    assert_not_destroyed(self, 2)
 
     state = state or {}
 
@@ -2089,7 +2062,6 @@ function Container:_hit_test_resolved(x, y, state)
 end
 
 function Container:_draw_subtree(graphics, draw_callback)
-    assert_not_destroyed(self, 2)
 
     if draw_callback == nil and Types.is_function(graphics) then
         draw_callback = graphics
@@ -2121,7 +2093,6 @@ function Container:_draw_subtree(graphics, draw_callback)
 end
 
 function Container:_draw_subtree_resolved(graphics, draw_callback)
-    assert_not_destroyed(self, 2)
 
     if not Types.is_table(graphics) then
         Assert.fail('graphics must be a graphics adapter table', 2)
@@ -2146,7 +2117,6 @@ function Container:_draw_subtree_resolved(graphics, draw_callback)
 end
 
 function Container:markDirty()
-    assert_not_destroyed(self, 2)
     self:invalidate_stage_update_token()
     self.dirty:mark('responsive', 'measurement', 'local_transform')
     self:invalidate_world()
@@ -2155,7 +2125,6 @@ function Container:markDirty()
 end
 
 function Container:_set_layout_offset(x, y)
-    assert_not_destroyed(self, 2)
     Assert.number('x', x, 2)
     Assert.number('y', y, 2)
 
@@ -2172,7 +2141,6 @@ function Container:_set_layout_offset(x, y)
 end
 
 function Container:_mark_parent_layout_dependency_dirty()
-    assert_not_destroyed(self, 2)
     self:mark_layout_node_dirty()
     self.dirty:mark('measurement', 'local_transform')
     self:invalidate_world()
@@ -2181,7 +2149,6 @@ function Container:_mark_parent_layout_dependency_dirty()
 end
 
 function Container:_get_effective_content_rect()
-    assert_not_destroyed(self, 2)
     return Rectangle(
         0,
         0,
@@ -2191,7 +2158,6 @@ function Container:_get_effective_content_rect()
 end
 
 function Container:_set_measurement_context(width, height)
-    assert_not_destroyed(self, 2)
 
     if width ~= nil then
         Assert.number('width', width, 2)
@@ -2217,7 +2183,6 @@ function Container:_set_measurement_context(width, height)
 end
 
 function Container:_set_resolved_responsive_overrides(token, overrides)
-    assert_not_destroyed(self, 2)
 
     if rawget(self, '_responsive_token') == token and
         rawget(self, '_resolved_responsive_overrides_source') == overrides then
@@ -2266,7 +2231,7 @@ function Container:_set_resolved_responsive_overrides(token, overrides)
     return self
 end
 
-function Container:destroy()
+function Container:on_destroy()
     destroy_subtree(self)
 end
 

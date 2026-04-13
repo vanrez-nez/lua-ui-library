@@ -30,10 +30,6 @@ local DEFAULT_FOCUS_RING_WIDTH = 2
 local get_effective_value
 local resolve_content_rect
 
-
-
-
-
 local function copy_options(opts)
     if opts == nil then
         return {}

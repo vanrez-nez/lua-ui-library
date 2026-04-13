@@ -332,10 +332,6 @@ function Modal:close_internal()
 end
 
 function Modal:_sync_overlay_mount()
-    if rawget(self, '_destroyed') then
-        return self
-    end
-
     local stage = ControlUtils.find_stage(self)
     local mounted_stage = rawget(self, '_mounted_stage')
     local wants_open = get_effective_open(self)
@@ -379,21 +375,13 @@ function Modal:update(dt)
     return self
 end
 
-function Modal:destroy()
-    if rawget(self, '_destroyed') then
-        return
-    end
-
-    rawset(self, '_destroyed', true)
+function Modal:on_destroy()
     ControlUtils.remove_control_listeners(self)
     self:_detach_overlay()
 
-    if not rawget(rawget(self, '_overlay_root'), '_destroyed') then
-        rawget(self, '_overlay_root'):destroy()
-    end
+    rawget(self, '_overlay_root'):destroy()
 
-    rawset(self, '_destroyed', false)
-    Container.destroy(self)
+    Container.on_destroy(self)
 end
 
 return Modal

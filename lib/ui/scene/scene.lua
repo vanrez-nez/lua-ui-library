@@ -26,11 +26,6 @@ local function get_public_value(self, key)
     return Proxy.raw_get(self, key)
 end
 
-local function assert_not_destroyed(self, level)
-    if rawget(self, '_destroyed') then
-        Assert.fail('cannot use a destroyed Scene', level or 1)
-    end
-end
 
 local function copy_options(opts)
     if opts == nil then
@@ -206,7 +201,6 @@ function Scene:__newindex(key, value)
     end
 
     if key == 'params' then
-        assert_not_destroyed(self, 2)
         set_params(self, value, 2)
         return
     end
@@ -285,28 +279,23 @@ function Scene:onDestroy()
 end
 
 function Scene:_is_created()
-    assert_not_destroyed(self, 2)
     return rawget(self, '_scene_created') == true
 end
 
 function Scene:_is_runtime_managed()
-    assert_not_destroyed(self, 2)
     return rawget(self, '_scene_runtime_owner') ~= nil and self.parent ~= nil
 end
 
 function Scene:_is_runtime_active()
-    assert_not_destroyed(self, 2)
     return rawget(self, '_scene_active') == true
 end
 
 function Scene:_set_runtime_owner(owner)
-    assert_not_destroyed(self, 2)
     rawset(self, '_scene_runtime_owner', owner)
     return self
 end
 
 function Scene:_mount_to_runtime(parent, owner)
-    assert_not_destroyed(self, 2)
     assert_runtime_parent(parent, 2)
 
     rawset(self, '_allow_runtime_parent_assignment', true)
@@ -324,7 +313,6 @@ function Scene:_mount_to_runtime(parent, owner)
 end
 
 function Scene:_detach_from_runtime()
-    assert_not_destroyed(self, 2)
 
     if self.parent ~= nil then
         Container.removeChild(self.parent, self)
@@ -334,7 +322,6 @@ function Scene:_detach_from_runtime()
 end
 
 function Scene:_create_if_needed(params)
-    assert_not_destroyed(self, 2)
 
     if params ~= nil then
         set_params(self, params, 2)
@@ -350,32 +337,27 @@ function Scene:_create_if_needed(params)
 end
 
 function Scene:_run_enter_before()
-    assert_not_destroyed(self, 2)
     self:_create_if_needed()
     self:onEnterBefore()
     return self
 end
 
 function Scene:_run_enter_after()
-    assert_not_destroyed(self, 2)
     self:onEnterAfter()
     return self
 end
 
 function Scene:_run_leave_before()
-    assert_not_destroyed(self, 2)
     self:onLeaveBefore()
     return self
 end
 
 function Scene:_run_leave_after()
-    assert_not_destroyed(self, 2)
     self:onLeaveAfter()
     return self
 end
 
 function Scene:_set_runtime_active(active)
-    assert_not_destroyed(self, 2)
     Assert.boolean('active', active, 2)
 
     if active and self.parent == nil then
@@ -388,7 +370,6 @@ function Scene:_set_runtime_active(active)
 end
 
 function Scene:_is_effectively_targetable(x, y, state)
-    assert_not_destroyed(self, 2)
 
     if not can_receive_input(self) then
         return false
@@ -398,7 +379,6 @@ function Scene:_is_effectively_targetable(x, y, state)
 end
 
 function Scene:_hit_test_resolved(x, y, state)
-    assert_not_destroyed(self, 2)
 
     if not can_receive_input(self) then
         return nil
@@ -408,7 +388,6 @@ function Scene:_hit_test_resolved(x, y, state)
 end
 
 function Scene:addChild(child)
-    assert_not_destroyed(self, 2)
 
     if Scene.is_scene(child) then
         Assert.fail('Scene cannot contain direct child scenes', 2)
@@ -424,10 +403,9 @@ function Scene:addChild(child)
     return Container.addChild(self, child)
 end
 
-function Scene:destroy()
-    assert_not_destroyed(self, 2)
+function Scene:on_destroy()
     self:onDestroy()
-    Container.destroy(self)
+    Container.on_destroy(self)
 end
 
 return Scene

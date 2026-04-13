@@ -8,10 +8,6 @@ local Rule = require('lib.ui.utils.rule')
 local RadioGroup = Drawable:extends('RadioGroup')
 
 local function collect_radios(node, out)
-    if rawget(node, '_destroyed') then
-        return out
-    end
-
     if rawget(node, '_ui_radio_control') == true then
         out[#out + 1] = node
         return out
@@ -231,14 +227,9 @@ function RadioGroup:update(dt)
     return self
 end
 
-function RadioGroup:destroy()
-    if rawget(self, '_destroyed') then
-        return
-    end
-    rawset(self, '_destroyed', true)
+function RadioGroup:on_destroy()
     ControlUtils.remove_control_listeners(self)
-    rawset(self, '_destroyed', false)
-    Container.destroy(self)
+    Container.on_destroy(self)
 end
 
 return RadioGroup

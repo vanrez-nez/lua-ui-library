@@ -26,6 +26,11 @@ local METAMETHODS = {
 function Object:constructor() end
 
 
+-- Default no-op destroy hook. Override in subclasses to release resources.
+-- Called once by destroy() before the dead proxy is installed.
+function Object:on_destroy() end
+
+
 -- Creates a named subclass. name is optional but recommended for debugging.
 function Object:extends(name)
   local cls      = {}
@@ -57,6 +62,44 @@ function Object:implements(...)
       end
     end
   end
+end
+
+
+-- Marks the instance as destroyed and replaces its metatable with a dead
+-- proxy that errors on any further access. Idempotent: safe to call twice.
+-- Calls on_destroy() before installing the dead proxy, giving subclasses
+-- a chance to release resources, unregister watchers, etc.
+function Object:destroy()
+  if rawget(self, '_destroyed') then return end
+  rawset(self, '_destroyed', true)
+
+  if type(self.on_destroy) == 'function' then
+    self:on_destroy()
+  end
+
+  -- Capture name before the metatable swap makes it inaccessible normally.
+  local name = tostring(rawget(self, '__name') or 'Object')
+
+  setmetatable(self, {
+    __index = function(_, k)
+      -- Allow internal liveness checks to pass through without erroring.
+      if k == '_destroyed' then return true end
+      error(('attempt to access "%s" on destroyed %s'):format(tostring(k), name), 2)
+    end,
+    __newindex = function(_, k, _)
+      error(('attempt to write "%s" on destroyed %s'):format(tostring(k), name), 2)
+    end,
+    __tostring = function()
+      return ('destroyed:%s'):format(name)
+    end,
+  })
+end
+
+
+-- Returns true if obj has been destroyed.
+-- Safe to call on any value including nil — never errors.
+function Object.is_destroyed(obj)
+  return type(obj) == 'table' and rawget(obj, '_destroyed') == true
 end
 
 
@@ -99,7 +142,6 @@ function Object.is(obj, T)
 
   return false
 end
-
 
 
 -- Returns the class name. Resolves correctly for both instances and classes.

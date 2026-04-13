@@ -563,8 +563,6 @@ function ScrollableContainer:_wire_scroll_events()
 
     -- Wheel / keyboard scroll
     self:_add_event_listener('ui.scroll', function(event)
-        if rawget(self_ref, '_destroyed') then return end
-
         local dx = event.deltaX or 0
         local dy = event.deltaY or 0
         local step = get_public(self_ref, 'scrollStep') or 40
@@ -603,8 +601,6 @@ function ScrollableContainer:_wire_scroll_events()
 
     -- Drag start
     self:_add_event_listener('ui.drag', function(event)
-        if rawget(self_ref, '_destroyed') then return end
-
         if event.dragPhase == 'start' then
             rawset(self_ref, '_scroll_state', STATE_DRAGGING)
             rawset(self_ref, '_drag_start_x', event.x or 0)

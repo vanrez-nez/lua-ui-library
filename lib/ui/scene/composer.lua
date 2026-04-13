@@ -82,11 +82,6 @@ local function get_public_value(self, key)
     return Proxy.raw_get(self, key)
 end
 
-local function assert_not_destroyed(self, level)
-    if rawget(self, '_destroyed') then
-        Assert.fail('cannot use a destroyed Composer', level or 1)
-    end
-end
 
 local function assert_scene_name(name, level)
     Assert.string('name', name, level or 1)
@@ -244,7 +239,6 @@ function Composer:constructor(opts)
     rawset(self, '_transition_state', nil)
     rawset(self, '_suppressed_leave_scene', nil)
     rawset(self, '_running_lifecycle_hook', false)
-    rawset(self, '_destroyed', false)
 
     rawset(self, '_ui_composer_instance', true)
     rawset(self, '_stage', Stage.new())
@@ -259,7 +253,6 @@ function Composer.is_composer(value)
 end
 
 function Composer:_run_lifecycle(callback)
-    assert_not_destroyed(self, 2)
 
     if rawget(self, '_running_lifecycle_hook') then
         Assert.fail('Composer lifecycle hooks must not recurse', 2)
@@ -305,10 +298,6 @@ function Composer:_instantiate_scene(entry)
         Assert.fail('registered scene factory must return a Scene instance', 2)
     end
 
-    if rawget(scene, '_destroyed') then
-        Assert.fail('registered scene factory must not return a destroyed Scene', 2)
-    end
-
     if scene.parent ~= nil or rawget(scene, '_scene_runtime_owner') ~= nil then
         Assert.fail(
             'registered scenes must be detached before Composer ownership begins',
@@ -321,15 +310,9 @@ function Composer:_instantiate_scene(entry)
 end
 
 function Composer:_resolve_scene_instance(name)
-    assert_not_destroyed(self, 2)
 
     local entry = self:_resolve_registered_entry(name)
     local scene = entry.instance
-
-    if scene ~= nil and rawget(scene, '_destroyed') then
-        entry.instance = nil
-        scene = nil
-    end
 
     if scene == nil then
         scene = self:_instantiate_scene(entry)
@@ -339,7 +322,6 @@ function Composer:_resolve_scene_instance(name)
 end
 
 function Composer:_mount_scene(scene)
-    assert_not_destroyed(self, 2)
 
     if scene.parent == self.stage.baseSceneLayer then
         scene:_set_runtime_owner(self)
@@ -351,7 +333,6 @@ function Composer:_mount_scene(scene)
 end
 
 function Composer:_detach_scene(scene)
-    assert_not_destroyed(self, 2)
 
     if scene.parent ~= nil then
         scene:_detach_from_runtime()
@@ -361,7 +342,6 @@ function Composer:_detach_scene(scene)
 end
 
 function Composer:_run_scene_enter_before(scene, params)
-    assert_not_destroyed(self, 2)
 
     scene:_create_if_needed(params)
 
@@ -371,7 +351,6 @@ function Composer:_run_scene_enter_before(scene, params)
 end
 
 function Composer:_run_scene_enter_after(scene)
-    assert_not_destroyed(self, 2)
 
     return self:_run_lifecycle(function()
         scene:_run_enter_after()
@@ -379,7 +358,6 @@ function Composer:_run_scene_enter_after(scene)
 end
 
 function Composer:_run_scene_leave_before(scene)
-    assert_not_destroyed(self, 2)
 
     return self:_run_lifecycle(function()
         scene:_run_leave_before()
@@ -387,7 +365,6 @@ function Composer:_run_scene_leave_before(scene)
 end
 
 function Composer:_run_scene_leave_after(scene)
-    assert_not_destroyed(self, 2)
 
     return self:_run_lifecycle(function()
         scene:_run_leave_after()
@@ -395,7 +372,6 @@ function Composer:_run_scene_leave_after(scene)
 end
 
 function Composer:_commit_navigation(outgoing_scene, target_name, target_scene, suppress_leave_hooks)
-    assert_not_destroyed(self, 2)
 
     local transition_state = rawget(self, '_transition_state')
     local same_scene = outgoing_scene ~= nil and outgoing_scene == target_scene
@@ -437,7 +413,6 @@ function Composer:_initialize_transition(
     navigation,
     suppress_leave_hooks
 )
-    assert_not_destroyed(self, 2)
 
     if outgoing_scene ~= nil then
         self:_mount_scene(outgoing_scene)
@@ -463,7 +438,6 @@ function Composer:_initialize_transition(
 end
 
 function Composer:_begin_navigation(target_name, options)
-    assert_not_destroyed(self, 2)
 
     local target_scene = self:_resolve_scene_instance(target_name)
     local navigation = resolve_navigation_configuration(self, options)
@@ -499,7 +473,6 @@ function Composer:_begin_navigation(target_name, options)
 end
 
 function Composer:_interrupt_transition(commit_incoming_scene)
-    assert_not_destroyed(self, 2)
 
     local transition_state = rawget(self, '_transition_state')
 
@@ -544,7 +517,6 @@ function Composer:_interrupt_transition(commit_incoming_scene)
 end
 
 function Composer:_process_navigation_request(target_name, options)
-    assert_not_destroyed(self, 2)
 
     if rawget(self, '_transition_state') ~= nil then
         self:_interrupt_transition(false)
@@ -554,7 +526,6 @@ function Composer:_process_navigation_request(target_name, options)
 end
 
 function Composer:_render_scene_to_canvas(scene, graphics, draw_callback, canvas)
-    assert_not_destroyed(self, 2)
 
     local previous_canvas = get_current_canvas(graphics)
 
@@ -579,7 +550,6 @@ function Composer:_render_scene_to_canvas(scene, graphics, draw_callback, canvas
 end
 
 function Composer:_draw_transition(graphics, draw_callback)
-    assert_not_destroyed(self, 2)
 
     local transition_state = rawget(self, '_transition_state')
 
@@ -642,7 +612,6 @@ function Composer:_draw_transition(graphics, draw_callback)
 end
 
 function Composer:_advance_transition(dt)
-    assert_not_destroyed(self, 2)
 
     local transition_state = rawget(self, '_transition_state')
 
@@ -677,7 +646,6 @@ function Composer:_advance_transition(dt)
 end
 
 function Composer:register(name, definition)
-    assert_not_destroyed(self, 2)
     assert_scene_name(name, 2)
 
     if not Types.is_function(definition) and not (
@@ -704,7 +672,6 @@ function Composer:register(name, definition)
 end
 
 function Composer:gotoScene(name, options)
-    assert_not_destroyed(self, 2)
     assert_scene_name(name, 2)
 
     if rawget(self, '_running_lifecycle_hook') then
@@ -725,7 +692,6 @@ function Composer:gotoScene(name, options)
 end
 
 function Composer:update(dt)
-    assert_not_destroyed(self, 2)
 
     if dt ~= nil then
         validate_duration('dt', dt, 2)
@@ -742,7 +708,6 @@ function Composer:update(dt)
 end
 
 function Composer:draw(graphics, draw_callback)
-    assert_not_destroyed(self, 2)
 
     if rawget(self, '_transition_state') == nil then
         self.stage:draw(graphics, draw_callback)
@@ -757,7 +722,6 @@ function Composer:draw(graphics, draw_callback)
 end
 
 function Composer:resize(width, height, safe_area_insets)
-    assert_not_destroyed(self, 2)
 
     if rawget(self, '_transition_state') ~= nil then
         self:_interrupt_transition(true)
@@ -768,20 +732,17 @@ function Composer:resize(width, height, safe_area_insets)
 end
 
 function Composer:deliverInput(raw_event)
-    assert_not_destroyed(self, 2)
     return self.stage:deliverInput(raw_event)
 end
 
-function Composer:destroy()
-    assert_not_destroyed(self, 2)
-
+function Composer:on_destroy()
     local destroyed = {}
     local registry = rawget(self, '_scene_registry')
 
     for _, entry in pairs(registry) do
         local scene = entry.instance
 
-        if scene ~= nil and not destroyed[scene] and not rawget(scene, '_destroyed') then
+        if scene ~= nil and not destroyed[scene] then
             destroyed[scene] = true
 
             run_protected(function()
@@ -792,9 +753,7 @@ function Composer:destroy()
         entry.instance = nil
     end
 
-    if not rawget(self.stage, '_destroyed') then
-        self.stage:destroy()
-    end
+    self.stage:destroy()
 
     rawset(self, '_current_scene', nil)
     rawset(self, '_current_scene_name', nil)
@@ -808,9 +767,7 @@ function Composer:destroy()
 
     rawset(self, '_transition_state', nil)
     rawset(self, '_suppressed_leave_scene', nil)
-    rawset(self, '_destroyed', true)
-
-    return nil
+    Container.on_destroy(self)
 end
 
 return Composer

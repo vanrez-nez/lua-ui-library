@@ -148,7 +148,7 @@ local function build_actions_container(actions)
 end
 
 local function collect_action_nodes(node, out)
-    if node == nil or rawget(node, '_destroyed') then
+    if node == nil then
         return out
     end
 
