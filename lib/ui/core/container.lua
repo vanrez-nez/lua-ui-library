@@ -250,16 +250,8 @@ local function get_root(node)
     end
 
     local current = node
-    local parent = current.parent
-    while parent ~= nil do
-        current = parent
-        parent = current.parent
-    end
+    while current.parent do current = current.parent end
     return current
-end
-
-local function get_public_value(self, key)
-    return Proxy.raw_get(self, key)
 end
 
 local function responsive_overrides_affect_root_compositing_plan(self, previous_overrides, next_overrides)
@@ -283,7 +275,7 @@ local function responsive_overrides_affect_root_compositing_plan(self, previous_
 end
 
 local function is_internal_node(node)
-    return get_public_value(node, 'internal') == true
+    return Proxy.raw_get(node, 'internal') == true
 end
 
 local function is_public_node(node)
@@ -326,7 +318,7 @@ local function register_node_id_with_root(node, attachment_root)
         return
     end
 
-    local id = get_public_value(node, 'id')
+    local id = Proxy.raw_get(node, 'id')
     if id == nil then
         return
     end
@@ -365,7 +357,7 @@ local function deregister_node_id_from_root_value(node, attachment_root, id)
 end
 
 local function deregister_node_id_from_root(node, attachment_root)
-    deregister_node_id_from_root_value(node, attachment_root, get_public_value(node, 'id'))
+    deregister_node_id_from_root_value(node, attachment_root, Proxy.raw_get(node, 'id'))
 end
 
 local function deregister_subtree_ids(node, attachment_root)
@@ -391,7 +383,7 @@ local function find_sibling_name_collision(node, name, parent)
     local children = parent._children
     for index = 1, #children do
         local sibling = children[index]
-        if sibling ~= node and is_public_node(sibling) and get_public_value(sibling, 'name') == name then
+        if sibling ~= node and is_public_node(sibling) and Proxy.raw_get(sibling, 'name') == name then
             return sibling
         end
     end
@@ -418,7 +410,7 @@ local function collect_public_subtree_identity(node, state)
     state.nodes[node] = true
 
     if is_public_node(node) then
-        local id = get_public_value(node, 'id')
+        local id = Proxy.raw_get(node, 'id')
         if id ~= nil then
             local existing = state.ids[id]
             if existing ~= nil and existing ~= node then
@@ -460,7 +452,7 @@ local function validate_subtree_attach_identity(parent, child, level)
     end
 
     if is_public_node(child) then
-        validate_name_uniqueness(child, get_public_value(child, 'name'), parent, level)
+        validate_name_uniqueness(child, Proxy.raw_get(child, 'name'), parent, level)
     end
 end
 
@@ -507,7 +499,7 @@ local function find_by_id_bounded(node, id, depth)
     local children = node._children
     for index = 1, #children do
         local child = children[index]
-        if is_public_node(child) and get_public_value(child, 'id') == id then
+        if is_public_node(child) and Proxy.raw_get(child, 'id') == id then
             return child
         end
 
@@ -527,7 +519,7 @@ local function find_by_tag_bounded(node, tag, depth, results)
     results = results or {}
 
     if depth == 0 then
-        if is_public_node(node) and get_public_value(node, 'tag') == tag then
+        if is_public_node(node) and Proxy.raw_get(node, 'tag') == tag then
             results[#results + 1] = node
         end
         return results
@@ -536,7 +528,7 @@ local function find_by_tag_bounded(node, tag, depth, results)
     local children = node._children
     for index = 1, #children do
         local child = children[index]
-        if is_public_node(child) and get_public_value(child, 'tag') == tag then
+        if is_public_node(child) and Proxy.raw_get(child, 'tag') == tag then
             results[#results + 1] = child
         end
 
@@ -561,11 +553,6 @@ function Container:notify_stage_subtree_change(stage, handler_name, child, paren
     end
 
     local handler = stage[handler_name]
-
-    if handler == nil then
-        handler = stage[handler_name]
-    end
-
     if Types.is_function(handler) then
         handler(stage, child, parent)
     end
@@ -1453,14 +1440,14 @@ local function validate_internal_write(_, value, target)
     local attachment_root = get_root(target)
     validate_id_uniqueness_against_root(
         target,
-        get_public_value(target, 'id'),
+        Proxy.raw_get(target, 'id'),
         attachment_root,
         { [target] = true },
         4
     )
     validate_name_uniqueness(
         target,
-        get_public_value(target, 'name'),
+        Proxy.raw_get(target, 'name'),
         target.parent,
         4
     )
@@ -1476,7 +1463,7 @@ local function handle_internal_change(new, old, _, target)
         return
     end
 
-    local id = get_public_value(target, 'id')
+    local id = Proxy.raw_get(target, 'id')
     if was_internal and not is_internal then
         if id ~= nil then
             register_node_id_with_root(target, attachment_root)
@@ -1605,7 +1592,7 @@ local function destroy_subtree(node)
         local child = children[index]
         child:destroy()
     end
-
+    node._children = nil
     node._ordered_children = nil
     node._id_index = nil
     node._attachment_root = nil
@@ -1870,7 +1857,7 @@ function Container:update(_)
     for index = 1, #snapshot do
         local child = snapshot[index]
 
-        if child ~= nil and child.parent == self then
+        if child.parent == self then
             child:update()
         end
     end
@@ -1936,7 +1923,7 @@ function Container:findById(id, depth)
     depth = validate_depth_argument('Container.findById', depth, -1)
 
     if depth == 0 then
-        if is_public_node(self) and get_public_value(self, 'id') == id then
+        if is_public_node(self) and Proxy.raw_get(self, 'id') == id then
             return self
         end
         return nil
