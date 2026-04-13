@@ -74,7 +74,7 @@ function Schema:define(prop_defs)
         Assert.table('schema rule "' .. tostring(key) .. '"', rule, 2)
 
         bound_rules[key] = rule
-        Proxy.declare(instance, key)
+        Proxy.declare(instance, key, { deferred = rule.deferred })
 
         Proxy.on_pre_write(instance, key, validate_schema_write)
 

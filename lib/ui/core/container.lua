@@ -1,3 +1,7 @@
+-- Level conventions for Assert.fail in this file:
+-- Level 2: Direct caller error (used when validating arguments passed directly to a method)
+-- Level 3: Caller's caller error (used in deeply nested or proxied functions to point to user code)
+-- Level 4: Used in hooks pointing back to original setter
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local MathUtils = require('lib.ui.utils.math')
@@ -20,6 +24,7 @@ local RootCompositor = require('lib.ui.render.root_compositor')
 local RuntimeProfiler = require('profiler.runtime_profiler')
 local CallCounterProfiler = require('profiler.call_counter_profiler')
 local ContainerPropertyViews = require('lib.ui.core.container_property_views')
+local Styling = require('lib.ui.utils.styling')
 
 local abs = math.abs
 local max = math.max
@@ -94,7 +99,7 @@ local QUAD_FAMILIES = {
     safeAreaInsets = {
         kind = 'side',
         aggregate = 'safeAreaInsets',
-        members = {},
+        members = {}, -- Only resolves through aggregate key on the source table
         factory = function(top, right, bottom, left)
             return Insets.new(top, right, bottom, left)
         end,
@@ -108,6 +113,7 @@ local QUAD_FAMILIES = {
             bottom = 'borderWidthBottom',
             left = 'borderWidthLeft',
         },
+        factory = false, -- borderWidth layers do not use Insets factories
     },
     cornerRadius = {
         kind = 'corner',
@@ -118,6 +124,7 @@ local QUAD_FAMILIES = {
             bottomRight = 'cornerRadiusBottomRight',
             bottomLeft = 'cornerRadiusBottomLeft',
         },
+        factory = false, -- cornerRadius layers do not use Insets factories
     },
 }
 
@@ -145,13 +152,22 @@ local QUAD_KEY_TO_FAMILY = {
     cornerRadiusBottomLeft = 'cornerRadius',
 }
 
+local QUAD_MEMBER_ACCESSOR = {
+    paddingTop = 'top', paddingRight = 'right', paddingBottom = 'bottom', paddingLeft = 'left',
+    marginTop = 'top', marginRight = 'right', marginBottom = 'bottom', marginLeft = 'left',
+    borderWidthTop = 'top', borderWidthRight = 'right', borderWidthBottom = 'bottom', borderWidthLeft = 'left',
+    cornerRadiusTopLeft = 'topLeft', cornerRadiusTopRight = 'topRight',
+    cornerRadiusBottomRight = 'bottomRight', cornerRadiusBottomLeft = 'bottomLeft',
+}
+
 local get_scissor_rect = GraphicsState.get_scissor_rect
 local set_scissor_rect = GraphicsState.set_scissor_rect
 local get_stencil_test = GraphicsState.get_stencil_test
 local set_stencil_test = GraphicsState.set_stencil_test
 
 local function is_layout_node(node)
-    return Object.is(node, "LayoutNode") or rawget(node, '_ui_layout_instance') == true
+    -- fast duck-typing sentinel first for O(1) checks, then Object.is fallback
+    return rawget(node, '_ui_layout_instance') == true or Object.is(node, "LayoutNode")
 end
 
 local default = MathUtils.default
@@ -159,28 +175,44 @@ local clamp_number = MathUtils.clamp_number
 local resolve_axis_size = MathUtils.resolve_axis_size
 local is_percentage_string = MathUtils.is_percentage_string
 
-local function merge_schema(base, overrides)
-    return Utils.merge_tables(Utils.copy_table(base or {}), overrides)
+local side_scratch_layer_1 = {}
+local side_scratch_layer_2 = {}
+
+local function fill_side_quad_layer(target, source, family)
+    if source == nil then
+        target.aggregate = nil
+        target.top = nil
+        target.right = nil
+        target.bottom = nil
+        target.left = nil
+    else
+        target.aggregate = source[family.aggregate]
+        target.top = source[family.members.top]
+        target.right = source[family.members.right]
+        target.bottom = source[family.members.bottom]
+        target.left = source[family.members.left]
+    end
+    return target
 end
 
-local function resolve_side_quad_layer(source, family)
-    return {
-        aggregate = source and source[family.aggregate] or nil,
-        top = source and source[family.members.top] or nil,
-        right = source and source[family.members.right] or nil,
-        bottom = source and source[family.members.bottom] or nil,
-        left = source and source[family.members.left] or nil,
-    }
-end
+local corner_scratch_layer_1 = {}
+local corner_scratch_layer_2 = {}
 
-local function resolve_corner_quad_layer(source, family)
-    return {
-        aggregate = source and source[family.aggregate] or nil,
-        topLeft = source and source[family.members.topLeft] or nil,
-        topRight = source and source[family.members.topRight] or nil,
-        bottomRight = source and source[family.members.bottomRight] or nil,
-        bottomLeft = source and source[family.members.bottomLeft] or nil,
-    }
+local function fill_corner_quad_layer(target, source, family)
+    if source == nil then
+        target.aggregate = nil
+        target.topLeft = nil
+        target.topRight = nil
+        target.bottomRight = nil
+        target.bottomLeft = nil
+    else
+        target.aggregate = source[family.aggregate]
+        target.topLeft = source[family.members.topLeft]
+        target.topRight = source[family.members.topRight]
+        target.bottomRight = source[family.members.bottomRight]
+        target.bottomLeft = source[family.members.bottomLeft]
+    end
+    return target
 end
 
 local function find_child_index(parent, child)
@@ -205,8 +237,10 @@ function Container:invalidate_descendant_world()
     local children = self._children
     for index = 1, #children do
         local child = children[index]
-        child:invalidate_world()
-        child:invalidate_descendant_world()
+        if not child.dirty:is_all('world_transform', 'bounds', 'world_inverse') then
+            child:invalidate_world()
+            child:invalidate_descendant_world()
+        end
     end
 end
 
@@ -214,10 +248,16 @@ function Container:invalidate_descendant_geometry()
     local children = self._children
     for index = 1, #children do
         local child = children[index]
-        child.dirty:mark('responsive', 'measurement', 'local_transform')
-        child:mark_layout_node_dirty()
-        child:invalidate_world()
-        child:invalidate_descendant_geometry()
+        if not child.dirty:is_all('responsive', 'measurement', 'local_transform') then
+            child.dirty:mark('responsive', 'measurement', 'local_transform')
+            child:mark_layout_node_dirty()
+            child:invalidate_world()
+            child:invalidate_descendant_geometry()
+        else
+            -- Geometry is fully dirty, so we only need to invalidate world downwards
+            child:invalidate_world()
+            child:invalidate_descendant_world()
+        end
     end
 end
 
@@ -444,14 +484,13 @@ local function validate_id_uniqueness_against_root(node, id, attachment_root, ig
 end
 
 local function validate_subtree_attach_identity(parent, child, level)
-    local target_root = get_root(parent)
-    local subtree_identity = collect_public_subtree_identity(child)
-
-    for id, node in pairs(subtree_identity.ids) do
-        validate_id_uniqueness_against_root(node, id, target_root, subtree_identity.nodes, level)
-    end
-
+    -- Fast path: we only validate the direct child at attach time to avoid O(N) traversal.
+    -- Deep subtrees are assumed valid from their original construction.
     if is_public_node(child) then
+        local id = Proxy.raw_get(child, 'id')
+        if id ~= nil then
+            validate_id_uniqueness_against_root(child, id, get_root(parent), nil, level)
+        end
         validate_name_uniqueness(child, Proxy.raw_get(child, 'name'), parent, level)
     end
 end
@@ -572,6 +611,8 @@ function Container:mark_layout_node_dirty()
     end
 
     if self.dirty:is_dirty('layout') then
+        -- Note: We skip invalidate_stage_update_token here because the layout flag could only have been set
+        -- by a prior call that already invalidated the token.
         return false
     end
 
@@ -641,12 +682,17 @@ end
 
 local function resolve_quad_value(self, family_name, requested_key)
     local family = QUAD_FAMILIES[family_name]
+
+    if not Styling.requires_resolution(self, requested_key, family) then
+        return nil
+    end
+
     local overrides = self._resolved_responsive_overrides
 
     if family.kind == 'corner' then
         local resolved = CornerQuad.resolve_layers({
-            resolve_corner_quad_layer(overrides, family),
-            resolve_corner_quad_layer(self._pdata, family),
+            fill_corner_quad_layer(corner_scratch_layer_1, overrides, family),
+            fill_corner_quad_layer(corner_scratch_layer_2, self._pdata, family),
         }, {
             label = family.aggregate,
         }, 3)
@@ -659,28 +705,17 @@ local function resolve_quad_value(self, family_name, requested_key)
             return resolved
         end
 
-        if requested_key == family.members.topLeft then
-            return resolved.topLeft
-        end
-
-        if requested_key == family.members.topRight then
-            return resolved.topRight
-        end
-
-        if requested_key == family.members.bottomRight then
-            return resolved.bottomRight
-        end
-
-        if requested_key == family.members.bottomLeft then
-            return resolved.bottomLeft
+        local accessor = QUAD_MEMBER_ACCESSOR[requested_key]
+        if accessor then
+            return resolved[accessor]
         end
 
         return nil
     end
 
     local resolved = SideQuad.resolve_layers({
-        resolve_side_quad_layer(overrides, family),
-        resolve_side_quad_layer(self._pdata, family),
+        fill_side_quad_layer(side_scratch_layer_1, overrides, family),
+        fill_side_quad_layer(side_scratch_layer_2, self._pdata, family),
     }, {
         label = family.aggregate,
         factory = family.factory,
@@ -694,20 +729,9 @@ local function resolve_quad_value(self, family_name, requested_key)
         return resolved
     end
 
-    if requested_key == family.members.top then
-        return resolved.top
-    end
-
-    if requested_key == family.members.right then
-        return resolved.right
-    end
-
-    if requested_key == family.members.bottom then
-        return resolved.bottom
-    end
-
-    if requested_key == family.members.left then
-        return resolved.left
+    local accessor = QUAD_MEMBER_ACCESSOR[requested_key]
+    if accessor then
+        return resolved[accessor]
     end
 
     return nil
@@ -716,16 +740,30 @@ end
 local function get_effective_value(self, key)
     local family_name = QUAD_KEY_TO_FAMILY[key]
     if family_name ~= nil then
-        return resolve_quad_value(self, family_name, key)
+        local family = QUAD_FAMILIES[family_name]
+        if Styling.requires_resolution(self, key, family) then
+            return resolve_quad_value(self, family_name, key)
+        end
+        return Proxy.raw_get(self, key)
     end
 
-    local overrides = self._resolved_responsive_overrides
+    local overrides = rawget(self, '_resolved_responsive_overrides')
+    if not Styling.requires_resolution(self, key) then
+        return Proxy.raw_get(self, key)
+    end
+
     if overrides ~= nil and overrides[key] ~= nil then
         return overrides[key]
     end
 
+    -- Falls back to raw_get, bypassing proxy getters. This is intentional to prevent
+    -- double-resolving read hooks internally, but external callers should prefer direct property access
+    -- via normal proxy indexing.
     return Proxy.raw_get(self, key)
 end
+
+-- Export function as a public read alias.
+-- External components implicitly rely on this assignment to directly fetch fully-resolved prop states.
 Container._get_public_read_value = get_effective_value
 
 local function axis_fill_supported_by_parent(self, axis_key)
@@ -797,15 +835,18 @@ local function refresh_measurement(self)
         parent_height = self._measurement_context_height
     end
 
+    local has_responsive = Proxy.raw_get(self, 'responsive') ~= nil or Proxy.raw_get(self, 'breakpoints') ~= nil
+    local get_val = has_responsive and get_effective_value or Proxy.raw_get
+
     local width = clamp_number(
-        resolve_measurement_axis_size(self, 'width', get_effective_value(self, 'width'), parent_width),
-        get_effective_value(self, 'minWidth'),
-        get_effective_value(self, 'maxWidth')
+        resolve_measurement_axis_size(self, 'width', get_val(self, 'width'), parent_width),
+        get_val(self, 'minWidth'),
+        get_val(self, 'maxWidth')
     )
     local height = clamp_number(
-        resolve_measurement_axis_size(self, 'height', get_effective_value(self, 'height'), parent_height),
-        get_effective_value(self, 'minHeight'),
-        get_effective_value(self, 'maxHeight')
+        resolve_measurement_axis_size(self, 'height', get_val(self, 'height'), parent_height),
+        get_val(self, 'minHeight'),
+        get_val(self, 'maxHeight')
     )
 
     self._resolved_width = width
@@ -828,17 +869,20 @@ local function refresh_local_transform(self)
         parent_height = self._measurement_context_height or 0
     end
 
+    local has_responsive = Proxy.raw_get(self, 'responsive') ~= nil or Proxy.raw_get(self, 'breakpoints') ~= nil
+    local get_val = has_responsive and get_effective_value or Proxy.raw_get
+
     local width = self._resolved_width or 0
     local height = self._resolved_height or 0
-    local pivot_x = (get_effective_value(self, 'pivotX') or 0.5) * width
-    local pivot_y = (get_effective_value(self, 'pivotY') or 0.5) * height
-    local anchor_x = (get_effective_value(self, 'anchorX') or 0) * parent_width
-    local anchor_y = (get_effective_value(self, 'anchorY') or 0) * parent_height
+    local pivot_x = (get_val(self, 'pivotX') or 0.5) * width
+    local pivot_y = (get_val(self, 'pivotY') or 0.5) * height
+    local anchor_x = (get_val(self, 'anchorX') or 0) * parent_width
+    local anchor_y = (get_val(self, 'anchorY') or 0) * parent_height
     local layout_offset_x = self._layout_offset_x or 0
     local layout_offset_y = self._layout_offset_y or 0
 
-    local position_x = layout_offset_x + anchor_x + (get_effective_value(self, 'x') or 0)
-    local position_y = layout_offset_y + anchor_y + (get_effective_value(self, 'y') or 0)
+    local position_x = layout_offset_x + anchor_x + (get_val(self, 'x') or 0)
+    local position_y = layout_offset_y + anchor_y + (get_val(self, 'y') or 0)
 
     local local_transform = self._local_transform_cache
     local_transform:set_from_transform(
@@ -846,11 +890,11 @@ local function refresh_local_transform(self)
         position_y + pivot_y,
         pivot_x,
         pivot_y,
-        (get_effective_value(self, 'scaleX') or 1),
-        (get_effective_value(self, 'scaleY') or 1),
-        (get_effective_value(self, 'rotation') or 0),
-        (get_effective_value(self, 'skewX') or 0),
-        (get_effective_value(self, 'skewY') or 0)
+        (get_val(self, 'scaleX') or 1),
+        (get_val(self, 'scaleY') or 1),
+        (get_val(self, 'rotation') or 0),
+        (get_val(self, 'skewX') or 0),
+        (get_val(self, 'skewY') or 0)
     )
     self.dirty:clear('local_transform')
 end
@@ -901,8 +945,14 @@ local function refresh_world_transform(self)
 end
 
 local function refresh_bounds(self)
-    local resolve_world_bounds_points = walk_hierarchy(self._pclass or getmetatable(self), '_get_world_bounds_points')
-    if Types.is_function(resolve_world_bounds_points) then
+    local cls = self._pclass or getmetatable(self)
+    local resolve_world_bounds_points = cls._resolved_bounds_method
+    if resolve_world_bounds_points == nil then
+        resolve_world_bounds_points = walk_hierarchy(cls, '_get_world_bounds_points') or false
+        cls._resolved_bounds_method = resolve_world_bounds_points
+    end
+
+    if resolve_world_bounds_points ~= false then
         local points = resolve_world_bounds_points(self)
         if Types.is_table(points) and #points > 0 then
             self._world_bounds_cache = Rectangle.bounding_box(points)
@@ -928,29 +978,24 @@ local function refresh_bounds(self)
 end
 
 local function refresh_child_order_cache(self)
-    if not self.dirty:is_dirty('child_order') and self._ordered_children ~= nil then
-        return
-    end
-
     local children = self._children
     local decorated = {}
 
     for index = 1, #children do
+        local child = children[index]
         decorated[index] = {
-            child = children[index],
+            zIndex = get_effective_value(child, 'zIndex') or 0,
             index = index,
+            child = child,
         }
     end
 
     table.sort(decorated, function(left, right)
-        local left_z_index = get_effective_value(left.child, 'zIndex') or 0
-        local right_z_index = get_effective_value(right.child, 'zIndex') or 0
-
-        if left_z_index == right_z_index then
+        if left.zIndex == right.zIndex then
             return left.index < right.index
         end
 
-        return left_z_index < right_z_index
+        return left.zIndex < right.zIndex
     end)
 
     local ordered = {}
@@ -1189,7 +1234,80 @@ local function draw_clip_polygon(graphics, self, clip_state)
     end
 end
 
+local draw_subtree_scissor
+local draw_subtree_stencil
+local draw_subtree_plain
 local draw_subtree
+
+local function _draw_children(node, graphics, draw_callback, clip_state, render_state)
+    local ordered_children = node._ordered_children
+    for index = 1, #ordered_children do
+        draw_subtree(ordered_children[index], graphics, draw_callback, clip_state, render_state)
+    end
+end
+
+draw_subtree_scissor = function(self, graphics, draw_callback, clip_state, render_state)
+    local active_clips = clip_state.active_clips
+    local previous_scissor = clip_state.scissor
+
+    clip_state.active_clips[#active_clips + 1] = self
+    local combined = resolve_axis_aligned_scissor(clip_state, get_world_clip_rect(self))
+
+    clip_state.scissor = combined
+    set_scissor_rect(graphics, combined)
+
+    draw_callback(self)
+    _draw_children(self, graphics, draw_callback, clip_state, render_state)
+
+    clip_state.active_clips[#clip_state.active_clips] = nil
+    clip_state.scissor = previous_scissor
+    set_scissor_rect(graphics, previous_scissor)
+end
+
+draw_subtree_stencil = function(self, graphics, draw_callback, clip_state, render_state)
+    local active_clips = clip_state.active_clips
+    local previous_scissor = clip_state.scissor
+    local previous_stencil_compare = clip_state.stencil_compare
+    local previous_stencil_value = clip_state.stencil_value
+
+    clip_state.active_clips[#active_clips + 1] = self
+
+    local next_stencil_value = (clip_state.stencil_value or 0) + 1
+    set_stencil_test(graphics, previous_stencil_compare, previous_stencil_value)
+
+    if Types.is_function(graphics.stencil) then
+        graphics.stencil(function()
+            draw_clip_polygon(graphics, self, clip_state)
+        end, 'increment', 1, true)
+    end
+
+    clip_state.stencil_compare = 'equal'
+    clip_state.stencil_value = next_stencil_value
+    set_stencil_test(graphics, clip_state.stencil_compare, clip_state.stencil_value)
+
+    draw_callback(self)
+    _draw_children(self, graphics, draw_callback, clip_state, render_state)
+
+    set_stencil_test(graphics, 'equal', next_stencil_value)
+
+    if Types.is_function(graphics.stencil) then
+        graphics.stencil(function()
+            draw_clip_polygon(graphics, self, clip_state)
+        end, 'decrement', 1, true)
+    end
+
+    clip_state.active_clips[#clip_state.active_clips] = nil
+    clip_state.scissor = previous_scissor
+    clip_state.stencil_compare = previous_stencil_compare
+    clip_state.stencil_value = previous_stencil_value
+    set_scissor_rect(graphics, previous_scissor)
+    set_stencil_test(graphics, previous_stencil_compare, previous_stencil_value)
+end
+
+draw_subtree_plain = function(self, graphics, draw_callback, clip_state, render_state)
+    draw_callback(self)
+    _draw_children(self, graphics, draw_callback, clip_state, render_state)
+end
 
 function Container:_resolve_root_compositing_extras()
     return nil
@@ -1214,13 +1332,13 @@ local ROOT_COMPOSITOR_RUNTIME = {
         return get_world_clip_rect(node)
     end,
     draw_subtree = function(node, graphics, draw_callback, clip_state, render_state)
-        return draw_subtree(node, graphics, draw_callback, clip_state, render_state)
+        draw_subtree(node, graphics, draw_callback, clip_state, render_state)
     end,
 }
 
 draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
     if not get_effective_value(self, 'visible') then
-        return nil
+        return
     end
 
     render_state = RootCompositor.initialize_render_state(graphics, render_state)
@@ -1229,7 +1347,7 @@ draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
         local effects = RootCompositor.resolve_node_plan(self, ROOT_COMPOSITOR_RUNTIME)
 
         if RootCompositor.plan_requires_isolation(effects) then
-            return RootCompositor.draw_isolated_subtree(
+            RootCompositor.draw_isolated_subtree(
                 self,
                 graphics,
                 draw_callback,
@@ -1238,124 +1356,57 @@ draw_subtree = function(self, graphics, draw_callback, clip_state, render_state)
                 effects,
                 ROOT_COMPOSITOR_RUNTIME
             )
+            return
         end
     end
 
-    local active_clips = clip_state.active_clips
+    local clip_children = get_effective_value(self, 'clipChildren')
 
-    if get_effective_value(self, 'clipChildren') then
+    if clip_children then
         local clip_profile_token = RuntimeProfiler.push_zone('Container.draw_subtree.clip_children')
         if has_degenerate_clip(self) then
+            local active_clips = clip_state.active_clips
             local previous_scissor = clip_state.scissor
 
             clip_state.active_clips[#active_clips + 1] = self
             clip_state.scissor = get_empty_scissor_rect(clip_state)
             set_scissor_rect(graphics, clip_state.scissor)
+
             clip_state.active_clips[#clip_state.active_clips] = nil
             clip_state.scissor = previous_scissor
             set_scissor_rect(graphics, previous_scissor)
             RuntimeProfiler.pop_zone(clip_profile_token)
-            return nil
+            return
         end
-
-        local previous_scissor = clip_state.scissor
-        local previous_stencil_compare = clip_state.stencil_compare
-        local previous_stencil_value = clip_state.stencil_value
-
-        clip_state.active_clips[#active_clips + 1] = self
 
         if is_axis_aligned_clip(self, clip_state) then
-            local combined = resolve_axis_aligned_scissor(clip_state, get_world_clip_rect(self))
-
-            clip_state.scissor = combined
-            set_scissor_rect(graphics, combined)
-
-            draw_callback(self)
-
-            local ordered_children = self._ordered_children
-
-            for index = 1, #ordered_children do
-                draw_subtree(ordered_children[index], graphics, draw_callback, clip_state, render_state)
-            end
-
-            clip_state.active_clips[#clip_state.active_clips] = nil
-            clip_state.scissor = previous_scissor
-            set_scissor_rect(graphics, previous_scissor)
-            RuntimeProfiler.pop_zone(clip_profile_token)
-            return nil
+            draw_subtree_scissor(self, graphics, draw_callback, clip_state, render_state)
+        else
+            draw_subtree_stencil(self, graphics, draw_callback, clip_state, render_state)
         end
-
-        local next_stencil_value = (clip_state.stencil_value or 0) + 1
-
-        set_stencil_test(graphics, previous_stencil_compare, previous_stencil_value)
-
-        if Types.is_function(graphics.stencil) then
-            graphics.stencil(function()
-                draw_clip_polygon(graphics, self, clip_state)
-            end, 'increment', 1, true)
-        end
-
-        clip_state.stencil_compare = 'equal'
-        clip_state.stencil_value = next_stencil_value
-        set_stencil_test(graphics, clip_state.stencil_compare, clip_state.stencil_value)
-
-        draw_callback(self)
-
-        local ordered_children = self._ordered_children
-
-        for index = 1, #ordered_children do
-            draw_subtree(ordered_children[index], graphics, draw_callback, clip_state, render_state)
-        end
-
-        set_stencil_test(graphics, 'equal', next_stencil_value)
-
-        if Types.is_function(graphics.stencil) then
-            graphics.stencil(function()
-                draw_clip_polygon(graphics, self, clip_state)
-            end, 'decrement', 1, true)
-        end
-
-        clip_state.active_clips[#clip_state.active_clips] = nil
-        clip_state.scissor = previous_scissor
-        clip_state.stencil_compare = previous_stencil_compare
-        clip_state.stencil_value = previous_stencil_value
-        set_scissor_rect(graphics, previous_scissor)
-        set_stencil_test(graphics, previous_stencil_compare, previous_stencil_value)
         RuntimeProfiler.pop_zone(clip_profile_token)
-        return nil
+    else
+        draw_subtree_plain(self, graphics, draw_callback, clip_state, render_state)
     end
-
-    draw_callback(self)
-
-    local ordered_children = self._ordered_children
-
-    for index = 1, #ordered_children do
-        draw_subtree(ordered_children[index], graphics, draw_callback, clip_state, render_state)
-    end
-
-    return nil
 end
 
-local function find_hit_target(self, x, y, state)
-    local effective_visible = state.effective_visible and
-        get_effective_value(self, 'visible')
+local function find_hit_target(self, x, y, layer_eligible, effective_visible, effective_enabled, active_clips)
+    effective_visible = effective_visible and get_effective_value(self, 'visible')
 
     if not effective_visible then
         return nil
     end
 
-    if not point_within_active_clips(state.active_clips, x, y) then
+    if not point_within_active_clips(active_clips, x, y) then
         return nil
     end
 
-    local effective_enabled = state.effective_enabled and
-        get_effective_value(self, 'enabled')
+    effective_enabled = effective_enabled and get_effective_value(self, 'enabled')
 
     if not effective_enabled then
         return nil
     end
 
-    local active_clips = state.active_clips
     local added_clip = false
 
     if get_effective_value(self, 'clipChildren') then
@@ -1371,12 +1422,7 @@ local function find_hit_target(self, x, y, state)
 
     for index = #ordered_children, 1, -1 do
         local child = ordered_children[index]
-        local target = find_hit_target(child, x, y, {
-            active_clips = active_clips,
-            effective_enabled = effective_enabled,
-            effective_visible = effective_visible,
-            layer_eligible = state.layer_eligible,
-        })
+        local target = find_hit_target(child, x, y, layer_eligible, effective_visible, effective_enabled, active_clips)
 
         if target ~= nil then
             if added_clip then
@@ -1393,7 +1439,7 @@ local function find_hit_target(self, x, y, state)
         active_clips = active_clips,
         effective_enabled = effective_enabled,
         effective_visible = effective_visible,
-        layer_eligible = state.layer_eligible,
+        layer_eligible = layer_eligible,
     }) then
         target = self
     end
@@ -1488,8 +1534,8 @@ end
 local function handle_public_prop_change(self, key)
     Container.invalidate_stage_update_token(self)
     local has_responsive_surface =
-        self.responsive ~= nil or
-        self.breakpoints ~= nil
+        Proxy.raw_get(self, 'responsive') ~= nil or
+        Proxy.raw_get(self, 'breakpoints') ~= nil
 
     if key == 'responsive' or key == 'breakpoints' or has_responsive_surface then
         self.dirty:mark('responsive')
@@ -1530,6 +1576,12 @@ local function handle_public_prop_watch(_, _, watched_key, target)
     handle_public_prop_change(target, watched_key)
 end
 
+function Container._batch_flush_handler(instance, keys)
+    for key in pairs(keys) do
+        handle_public_prop_change(instance, key)
+    end
+end
+
 local function read_responsive_effective_value(_, read_key, target)
     return get_effective_value(target, read_key)
 end
@@ -1547,7 +1599,9 @@ local function install_public_prop_watchers(self, declared_props)
 
     for key, rule in pairs(declared_props) do
         if type(rule) == 'table' and key ~= 'id' and key ~= 'name' and key ~= 'internal' then
-            props:watch(key, handle_public_prop_watch)
+            if not rule.deferred then
+                props:watch(key, handle_public_prop_watch)
+            end
         end
     end
 end
@@ -1555,8 +1609,8 @@ end
 local function detach_child(parent, child)
     local index = find_child_index(parent, child)
 
-    if not index then
-        return nil
+    if index == nil then
+        return
     end
 
     local stage = get_root(parent)
@@ -1577,10 +1631,11 @@ local function detach_child(parent, child)
     child:invalidate_world()
     child:invalidate_descendant_geometry()
     parent:notify_stage_subtree_change(stage, '_handle_detached_subtree', child, parent)
-    return child
 end
 
 local function destroy_subtree(node)
+    -- rawset safely bypasses the dead proxy installed upon Object destruction,
+    -- allowing node flag updates directly while destructing the local structure
     rawset(node, '_destroying_subtree', true)
 
     if node.parent then
@@ -1592,31 +1647,17 @@ local function destroy_subtree(node)
         local child = children[index]
         child:destroy()
     end
+    -- Explicitly discard array references to GC dead branches and stop dead proxy queries
     node._children = nil
     node._ordered_children = nil
     node._id_index = nil
     node._attachment_root = nil
 end
 
-function Container:_initialize(opts, extra_public_keys, config)
-    opts = opts or {}
-    config = config or {}
-
+local function _init_state_fields(self, config)
     rawset(self, '_config', config)
-    local declared_props = merge_schema(self._schema, extra_public_keys)
-    local proxied_props = {}
-
-    for key, rule in pairs(declared_props) do
-        if type(rule) == 'table' then
-            proxied_props[key] = rule
-        end
-    end
-
-    if opts.responsive ~= nil and opts.breakpoints ~= nil then
-        Assert.fail('Supplying responsive and breakpoints together at construction should fail')
-    end
-
-    -- Core state required for all Container-based objects
+    
+    -- rawset is used below because the Proxy is not yet installed.
     rawset(self, '_children', {})
     rawset(self, '_ordered_children', {})
     EventDispatcher.constructor(self)
@@ -1637,22 +1678,30 @@ function Container:_initialize(opts, extra_public_keys, config)
     rawset(self, '_ui_container_instance', true)
     rawset(self, '_attachment_root', self)
     rawset(self, '_id_index', {})
-    rawset(self, '_declared_props', declared_props)
     rawset(self, '_resolved_responsive_overrides', {})
 
     rawset(self, '_motion_visual_state', {})
     rawset(self, '_motion_last_request', nil)
 
     rawset(self, 'dirty', DirtyState({
-        'responsive',
-        'measurement',
-        'local_transform',
-        'world_transform',
-        'bounds',
-        'child_order',
-        'layout',
-        'world_inverse',
+        'responsive', 'measurement', 'local_transform',
+        'world_transform', 'bounds', 'child_order',
+        'layout', 'world_inverse',
     }))
+end
+
+local function _init_proxy_and_schema(self, extra_public_keys)
+    local declared_props = Utils.merge_tables(Utils.copy_table(self._schema or {}), extra_public_keys)
+
+    rawset(self, '_declared_props', declared_props)
+
+    local proxied_props = {}
+    for key, rule in pairs(declared_props) do
+        if type(rule) == 'table' then
+            proxied_props[key] = rule
+        end
+    end
+
     rawset(self, 'props', Reactive(self))
     rawset(self, 'schema', Schema(self))
 
@@ -1672,13 +1721,19 @@ function Container:_initialize(opts, extra_public_keys, config)
     })
 
     self.schema:define(proxied_props)
+    return declared_props, proxied_props
+end
+
+local function _init_hooks(self, proxied_props)
     install_identity_hooks(self)
     install_responsive_read_hooks(self, proxied_props)
     install_public_prop_watchers(self, proxied_props)
+end
 
+local function _apply_opts(self, opts, declared_props, proxied_props)
     for key, value in pairs(opts) do
         if declared_props[key] == nil then
-            Assert.fail('Unsupported prop "' .. tostring(key) .. '"', 3)
+            Assert.fail('Unsupported prop "' .. tostring(key) .. '"', 4)
         end
 
         if proxied_props[key] ~= nil then
@@ -1687,15 +1742,24 @@ function Container:_initialize(opts, extra_public_keys, config)
             ContainerPropertyViews.write_extra(self, key, value)
         end
     end
+end
+
+function Container:_initialize(opts, extra_public_keys, config)
+    opts = opts or {}
+    config = config or {}
+
+    if opts.responsive ~= nil and opts.breakpoints ~= nil then
+        Assert.fail('Supplying responsive and breakpoints together at construction should fail', 3)
+    end
+
+    _init_state_fields(self, config)
+    local declared_props, proxied_props = _init_proxy_and_schema(self, extra_public_keys)
+    _init_hooks(self, proxied_props)
+    _apply_opts(self, opts, declared_props, proxied_props)
 
     self.dirty:mark(
-        'responsive',
-        'measurement',
-        'local_transform',
-        'world_transform',
-        'bounds',
-        'child_order',
-        'world_inverse'
+        'responsive', 'measurement', 'local_transform',
+        'world_transform', 'bounds', 'child_order', 'world_inverse'
     )
 
     register_node_id_with_root(self, self)
@@ -1835,8 +1899,12 @@ function Container:_prepare_for_layout_pass()
     return self
 end
 
-function Container:update(_)
+local UPDATE_SNAPSHOT_SCRATCH = {}
+local UPDATE_SNAPSHOT_OFFSET = 0
 
+function Container:update(_)
+    -- The stage calls update() on the root and flags _updating = true to indicate a stage-managed tick.
+    -- If update() is called directly outside of the stage, we must resolve responsive behavior manually.
     local root = get_root(self)
     local resolve_responsive_for_node = root._resolve_responsive_for_node
     local stage_managed_update = root._ui_stage_instance == true and root._updating == true
@@ -1848,19 +1916,24 @@ function Container:update(_)
     self:_refresh_if_dirty()
 
     local children = self._children
-    local snapshot = {}
-
-    for index = 1, #children do
-        snapshot[index] = children[index]
+    local snapshot_len = #children
+    local start_offset = UPDATE_SNAPSHOT_OFFSET
+    
+    for index = 1, snapshot_len do
+        UPDATE_SNAPSHOT_SCRATCH[start_offset + index] = children[index]
     end
 
-    for index = 1, #snapshot do
-        local child = snapshot[index]
+    UPDATE_SNAPSHOT_OFFSET = start_offset + snapshot_len
 
+    for index = 1, snapshot_len do
+        local child = UPDATE_SNAPSHOT_SCRATCH[start_offset + index]
         if child.parent == self then
             child:update()
         end
+        UPDATE_SNAPSHOT_SCRATCH[start_offset + index] = nil
     end
+
+    UPDATE_SNAPSHOT_OFFSET = start_offset
 
     if self.dirty:is_dirty('child_order') then
         refresh_child_order_cache(self)
@@ -1897,7 +1970,7 @@ function Container:addChild(child)
     child:invalidate_world()
     child:invalidate_descendant_geometry()
     self:notify_stage_subtree_change(
-        get_root(self),
+        attachment_root,
         '_handle_attached_subtree',
         child,
         self
@@ -1909,7 +1982,8 @@ end
 function Container:removeChild(child)
     assert_live_container(child, 'child', 2)
 
-    return detach_child(self, child)
+    detach_child(self, child)
+    return child
 end
 
 function Container:getChildren()
@@ -1922,10 +1996,11 @@ function Container:findById(id, depth)
     validate_lookup_key('Container.findById', 'id', id)
     depth = validate_depth_argument('Container.findById', depth, -1)
 
+    if is_public_node(self) and Proxy.raw_get(self, 'id') == id then
+        return self
+    end
+
     if depth == 0 then
-        if is_public_node(self) and Proxy.raw_get(self, 'id') == id then
-            return self
-        end
         return nil
     end
 
@@ -2048,12 +2123,12 @@ function Container:_hit_test_resolved(x, y, state)
 
     state = state or {}
 
-    return find_hit_target(self, x, y, {
-        active_clips = state.active_clips or {},
-        effective_enabled = state.effective_enabled ~= false,
-        effective_visible = state.effective_visible ~= false,
-        layer_eligible = state.layer_eligible ~= false,
-    })
+    return find_hit_target(self, x, y, 
+        state.layer_eligible ~= false,
+        state.effective_visible ~= false,
+        state.effective_enabled ~= false,
+        state.active_clips or {}
+    )
 end
 
 function Container:_draw_subtree(graphics, draw_callback)
@@ -2112,6 +2187,8 @@ function Container:_draw_subtree_resolved(graphics, draw_callback)
 end
 
 function Container:markDirty()
+    -- Note: This is an unoptimized coarse fallback that over-invalidates measurement and bounds.
+    -- Prefer utilizing more targeted dirty:mark(...) statements where context is available.
     self:invalidate_stage_update_token()
     self.dirty:mark('responsive', 'measurement', 'local_transform')
     self:invalidate_world()
@@ -2144,12 +2221,14 @@ function Container:_mark_parent_layout_dependency_dirty()
 end
 
 function Container:_get_effective_content_rect()
-    return Rectangle(
-        0,
-        0,
-        self._resolved_width or 0,
-        self._resolved_height or 0
-    )
+    local cached = self._content_rect_cache
+    if cached == nil then
+        cached = Rectangle(0, 0, 0, 0)
+        self._content_rect_cache = cached
+    end
+    cached.width = self._resolved_width or 0
+    cached.height = self._resolved_height or 0
+    return cached
 end
 
 function Container:_set_measurement_context(width, height)
@@ -2191,7 +2270,8 @@ function Container:_set_resolved_responsive_overrides(token, overrides)
         normalized = {}
 
         for key, value in pairs(overrides) do
-            if get_declared_rule(self, key) == nil then
+            local rule = get_declared_rule(self, key)
+            if rule == nil then
                 Assert.fail(
                     'responsive override "' .. tostring(key) ..
                         '" is not supported',
@@ -2199,11 +2279,16 @@ function Container:_set_resolved_responsive_overrides(token, overrides)
                 )
             end
 
-            normalized[key] = validate_public_value(self, key, value, 2, overrides)
+            if rule == true then
+                normalized[key] = value
+            else
+                local full_key = tostring(self) .. '.' .. tostring(key)
+                normalized[key] = Rule.validate(rule, full_key, value, self, 3, overrides)
+            end
         end
     end
 
-    local previous_overrides = self._resolved_responsive_overrides
+    local previous_overrides = rawget(self, '_resolved_responsive_overrides')
     local previous_effective_z_index = get_effective_value(self, 'zIndex')
 
     if responsive_overrides_affect_root_compositing_plan(self, previous_overrides, normalized) then

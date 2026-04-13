@@ -5,6 +5,19 @@ local PHOOKS = '_phooks'
 local PCLASS = '_pclass'
 local PRFNS  = '_prfns'
 
+local queue    = {}
+local flushing = false
+setmetatable(queue, { __mode = 'k' })
+
+local function enqueue(instance, key)
+  local entry = queue[instance]
+  if not entry then
+    entry = {}
+    queue[instance] = entry
+  end
+  entry[key] = true
+end
+
 local function get_or_create_hook(hooks, key)
   local h = hooks[key]
   if not h then h = {}; hooks[key] = h end
@@ -53,9 +66,13 @@ local function install(instance)
         for i = 1, #ow do ow[i](v, k, t) end
       end
 
-      local oc = h.on_change
-      if oc and v ~= old then
-        for i = 1, #oc do oc[i](v, old, k, t) end
+      if h.deferred then
+        enqueue(t, k)
+      else
+        local oc = h.on_change
+        if oc and v ~= old then
+          for i = 1, #oc do oc[i](v, old, k, t) end
+        end
       end
     end,
   }
@@ -69,7 +86,8 @@ end
 
 function Proxy.declare(instance, key, opts)
   install(instance)
-  get_or_create_hook(rawget(instance, PHOOKS), key)
+  local h = get_or_create_hook(rawget(instance, PHOOKS), key)
+  if opts and opts.deferred then h.deferred = true end
   local read_fns = rawget(instance, PRFNS)
   if read_fns[key] == nil then read_fns[key] = false end
   if opts and opts.default ~= nil then
@@ -158,12 +176,26 @@ function Proxy.write(instance, key, value)
     for i = 1, #ow do ow[i](v, key, instance) end
   end
 
-  local oc = h.on_change
-  if oc and v ~= old then
-    for i = 1, #oc do oc[i](v, old, key, instance) end
+  if h.deferred then
+    enqueue(instance, key)
+  else
+    local oc = h.on_change
+    if oc and v ~= old then
+      for i = 1, #oc do oc[i](v, old, key, instance) end
+    end
   end
 
   return true
+end
+
+function Proxy.flush(handler)
+  if flushing then return end
+  flushing = true
+  for instance, keys in pairs(queue) do
+    queue[instance] = nil
+    handler(instance, keys)
+  end
+  flushing = false
 end
 
 return Proxy

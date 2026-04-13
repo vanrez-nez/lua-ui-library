@@ -2372,6 +2372,9 @@ function Stage:update(_)
 
     local profile_token = RuntimeProfiler.push_zone('Stage.update')
     self._updating = true
+    
+    Proxy.flush(Container._batch_flush_handler)
+    
     refresh_environment_bounds(self)
 
     local queue = self._queued_state_changes

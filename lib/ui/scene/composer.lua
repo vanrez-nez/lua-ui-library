@@ -194,7 +194,7 @@ function Composer:__index(key)
         return self._transition_state
     end
 
-    local current = self._pclass or getmetatable(self)
+    local current = rawget(self, '_pclass') or getmetatable(self)
     while current ~= nil do
         local method = rawget(current, key)
         if method ~= nil then

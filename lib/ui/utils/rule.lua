@@ -17,6 +17,7 @@ local function apply_side_fields(rule, opts, default_tier)
     rule.default = opts.default
     rule.set = opts.set
     rule.required = opts.required
+    rule.deferred = opts.deferred
     rule.tier = opts.tier or default_tier
     return rule
 end
