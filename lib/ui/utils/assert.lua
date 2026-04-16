@@ -17,6 +17,29 @@ function Assert.number(name, value, level)
     end
 end
 
+function Assert.integer(name, value, level)
+    if not Types.is_number(value) or math.floor(value) ~= value then
+        error(name .. ' must be an integer', (level or 1) + 1)
+    end
+end
+
+function Assert.finite(name, value, level)
+    if not Types.is_number(value) or value ~= value or math.abs(value) == math.huge then
+        error(name .. ' must be a finite number', (level or 1) + 1)
+    end
+end
+
+function Assert.range(name, value, min, max, level)
+    if min ~= nil and value < min then error(name .. ' must be >= ' .. min, (level or 1) + 1) end
+    if max ~= nil and value > max then error(name .. ' must be <= ' .. max, (level or 1) + 1) end
+end
+
+function Assert.pattern(name, value, pattern, level)
+    if not Types.is_string(value) or not value:match(pattern) then
+        error(name .. ' must match: ' .. pattern, (level or 1) + 1)
+    end
+end
+
 function Assert.string(name, value, level)
     if not Types.is_string(value) then
         error(name .. ' must be a string', (level or 1) + 1)
