@@ -17,7 +17,10 @@ local state = {
   started_at = nil,
   trace = nil,
   stack = nil,
-  zone_stack = nil
+  zone_stack = nil,
+  pending = nil,
+  capture_frames = nil,
+  captured_frames = 0
 }
 
 local function current_zone()
@@ -124,12 +127,76 @@ local function start_hook()
   return true
 end
 
+local function start_now(config, output)
+  local ok, err = start_hook()
+  if not ok then
+    return nil, err
+  end
+
+  state.active = true
+  state.config = config
+  state.counters = Counters.new()
+  state.output = output or config.output or Config.default_output(config)
+  state.last_output = state.output
+  state.started_at = Utils.now_seconds()
+  state.trace = Trace.new()
+  state.stack = {}
+  state.zone_stack = {}
+  state.captured_frames = 0
+
+  print(string.format('[profile] started output=%s', state.output))
+  return state.output
+end
+
+local function install_frame_tick()
+  if love == nil or love.update == nil then
+    return
+  end
+
+  local original = love.update
+  love.update = function(...)
+    Profiler.frame()
+    original(...)
+  end
+end
+
+local function schedule_start(config)
+  if config.profile_frames ~= nil and config.profile_frames <= 0 then
+    return nil
+  end
+
+  local output = config.output or Config.default_output(config)
+  state.pending = {
+    config = config,
+    output = output,
+    start_at = Utils.now_seconds() + (config.delay_seconds or 0),
+    delay_seconds = config.delay_seconds or 0,
+    profile_frames = config.profile_frames
+  }
+  state.last_output = output
+
+  install_frame_tick()
+
+  print(string.format(
+    '[profile] scheduled delay_seconds=%.3f profile_frames=%d output=%s',
+    state.pending.delay_seconds,
+    state.pending.profile_frames,
+    output
+  ))
+
+  return output
+end
+
 function Profiler.is_available()
   return debug ~= nil and type(debug.sethook) == 'function'
 end
 
 function Profiler.is_active()
   return state.active
+end
+
+function Profiler.is_pending()
+  return state.pending ~= nil
 end
 
 function Profiler.default_output(opts)
@@ -154,23 +221,11 @@ function Profiler.start(opts)
     return nil
   end
 
-  local ok, err = start_hook()
-  if not ok then
-    return nil, err
+  if config.profile_frames ~= nil then
+    return schedule_start(config)
   end
 
-  state.active = true
-  state.config = config
-  state.counters = Counters.new()
-  state.output = config.output or Config.default_output(config)
-  state.last_output = state.output
-  state.started_at = Utils.now_seconds()
-  state.trace = Trace.new()
-  state.stack = {}
-  state.zone_stack = {}
-
-  print(string.format('[profile] started output=%s', state.output))
-  return state.output
+  return start_now(config)
 end
 
 function Profiler.start_from_env(opts)
@@ -183,6 +238,13 @@ function Profiler.start_from_env(opts)
 end
 
 function Profiler.stop()
+  if state.pending ~= nil and not state.active then
+    state.pending = nil
+    state.capture_frames = nil
+    state.captured_frames = 0
+    return state.last_output
+  end
+
   if not state.active then
     return state.last_output
   end
@@ -211,13 +273,46 @@ function Profiler.stop()
   state.trace = nil
   state.stack = nil
   state.zone_stack = nil
+  state.capture_frames = nil
+  state.captured_frames = 0
 
   print(string.format('[profile] stopped output=%s', output or 'nil'))
   return output
 end
 
+function Profiler.frame()
+  if state.active and state.capture_frames ~= nil then
+    state.captured_frames = state.captured_frames + 1
+
+    if state.captured_frames >= state.capture_frames then
+      Profiler.stop()
+
+      if love ~= nil and love.event ~= nil and love.event.quit ~= nil then
+        love.event.quit()
+      end
+
+      return state.last_output
+    end
+  end
+
+  local pending = state.pending
+  if pending == nil then
+    return state.output
+  end
+
+  if Utils.now_seconds() < pending.start_at then
+    return nil
+  end
+
+  state.pending = nil
+  state.capture_frames = pending.profile_frames
+  state.captured_frames = 0
+
+  return start_now(pending.config, pending.output)
+end
+
 function Profiler.toggle(opts)
-  if state.active then
+  if state.active or state.pending ~= nil then
     return Profiler.stop()
   end
 
@@ -291,7 +386,25 @@ end
 
 function Profiler.status_text()
   if state.active then
+    if state.capture_frames ~= nil then
+      return string.format(
+        'profile on frame %d/%d -> %s',
+        state.captured_frames,
+        state.capture_frames,
+        state.output or '?'
+      )
+    end
+
     return string.format('profile on -> %s', state.output or '?')
+  end
+
+  if state.pending ~= nil then
+    return string.format(
+      'profile pending delay=%.2fs frames=%d -> %s',
+      math.max(0, state.pending.start_at - Utils.now_seconds()),
+      state.pending.profile_frames,
+      state.pending.output or '?'
+    )
   end
 
   if state.last_output ~= nil then

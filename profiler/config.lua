@@ -29,7 +29,47 @@ local function split_csv(value)
   return result
 end
 
+local function parse_nonnegative_number(value)
+  if value == nil or value == '' then
+    return nil
+  end
+
+  value = tonumber(value)
+  if value == nil then
+    return nil
+  end
+
+  if value < 0 then
+    return 0
+  end
+
+  return value
+end
+
+local function parse_frame_count(value)
+  value = parse_nonnegative_number(value)
+  if value == nil then
+    return nil
+  end
+
+  return math.floor(value)
+end
+
 local function feature_map(features)
+  if type(features) == 'table' and
+    features.calls ~= nil and
+    features.time ~= nil and
+    features.memory ~= nil and
+    features.zones ~= nil
+  then
+    return {
+      calls = features.calls == true,
+      time = features.time == true,
+      memory = features.memory == true,
+      zones = features.zones == true
+    }
+  end
+
   local map = {
     calls = false,
     time = false,
@@ -98,6 +138,8 @@ function Config.from_env(opts)
   local output = os.getenv('PROFILE_OUTPUT')
   local output_dir = os.getenv('PROFILE_OUTPUT_DIR')
   local targets = split_csv(os.getenv('PROFILE_TARGETS'))
+  local delay_seconds = parse_nonnegative_number(os.getenv('PROFILE_DELAY'))
+  local profile_frames = parse_frame_count(os.getenv('PROFILE_FRAMES'))
 
   if format == '' then
     format = nil
@@ -117,6 +159,8 @@ function Config.from_env(opts)
     format = format or opts.format,
     features = #features > 0 and features or opts.features,
     targets = #targets > 0 and targets or opts.targets,
+    delay_seconds = delay_seconds or opts.delay_seconds or opts.delay,
+    profile_frames = profile_frames or opts.profile_frames or opts.frames,
     include_profiler = truthy(os.getenv('PROFILE_INCLUDE_PROFILER')) or opts.include_profiler
   })
 end
@@ -127,6 +171,13 @@ function Config.normalize(opts)
   local features = opts.features
   if type(features) == 'string' then
     features = split_csv(features)
+  elseif type(features) == 'table' and
+    features.calls ~= nil and
+    features.time ~= nil and
+    features.memory ~= nil and
+    features.zones ~= nil
+  then
+    features = features
   else
     features = copy_array(features)
   end
@@ -144,6 +195,9 @@ function Config.normalize(opts)
     format = DEFAULT_FORMAT
   end
 
+  local delay_seconds = parse_nonnegative_number(opts.delay_seconds or opts.delay)
+  local profile_frames = parse_frame_count(opts.profile_frames or opts.frames)
+
   return {
     enabled = opts.enabled ~= false,
     output = opts.output,
@@ -152,6 +206,8 @@ function Config.normalize(opts)
     format = format,
     features = feature_map(features),
     targets = targets,
+    delay_seconds = delay_seconds or 0,
+    profile_frames = profile_frames,
     include_profiler = opts.include_profiler == true
   }
 end

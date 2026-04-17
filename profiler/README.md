@@ -33,6 +33,8 @@ Profiler.stop()
 | `PROFILE_FEATURES` | `calls,time` | Comma-separated features to collect (see below) |
 | `PROFILE_TARGETS` | all files | Comma-separated file path suffixes to filter |
 | `PROFILE_INCLUDE_PROFILER` | — | Set to `1` to include profiler internals in results |
+| `PROFILE_DELAY` | `0` | Seconds to wait before a frame-limited capture starts |
+| `PROFILE_FRAMES` | — | Positive frame count to capture before automatically stopping |
 
 ### Features
 
@@ -88,6 +90,18 @@ Returns the output path, or `nil` if profiling is disabled.
 ### `Profiler.stop()` → `output_path`
 
 Stops profiling, writes the report, and returns the output path.
+
+### `Profiler.frame()` → `output_path`
+
+Advances the profiler frame gate. Call this once per frame at a stable frame
+boundary when using `PROFILE_DELAY` / `PROFILE_FRAMES` or the equivalent
+`delay_seconds` / `profile_frames` options.
+
+When `PROFILE_FRAMES` is set, `start()` schedules profiling instead of enabling
+the debug hook immediately. `frame()` waits until `PROFILE_DELAY` seconds have
+elapsed, starts the capture, counts captured frames, then stops automatically
+after the positive `PROFILE_FRAMES` count has completed. `PROFILE_FRAMES=0`
+schedules no capture.
 
 ### `Profiler.toggle(opts)` → `output_path`
 
