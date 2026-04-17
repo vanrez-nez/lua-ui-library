@@ -212,23 +212,3 @@ A comment is warranted when:
 - A workaround exists for an external constraint (engine bug, API limitation)
 
 Use `---@param` / `---@return` only for primitive types (`number`, `boolean`, `string`) and known classes. Do not annotate plain table shapes — they drift and mislead. A missing annotation loses nothing; a wrong one actively misleads.
-
----
-
-## Performance
-
-Profile first — never optimize without measuring. `jit.p` for trace-level, `love.timer.getTime()` for coarse deltas.
-
-**Locals over globals.** VM stores locals in registers; globals cost a table lookup. Alias anything accessed in a hot path: `local floor = math.floor`.
-
-**Minimize allocations in loops.** Tables, strings, and closures created per-frame feed the GC. Reuse and pre-allocate.
-
-**String operations are expensive.** Never concatenate in a loop — build a table and `table.concat` at the end.
-
-**Numeric `for` over `pairs`/`ipairs` in hot paths.** Generic iterators carry overhead; a numeric loop is a tight VM counter.
-
-**Flatten abstraction in critical paths.** Function calls have overhead. Inline trivial logic where profiling shows it matters — not preemptively.
-
-**Metamethods add dispatch cost.** Avoid `__index`/`__newindex` chains in tight loops.
-
-**Tables with predictable structure JIT better.** Mixing array and hash usage, or mutating the shape of a table after construction, degrades JIT trace quality.
