@@ -1,13 +1,9 @@
-local JitProfiler = require('profiler.jit_profiler')
-local TimingProfiler = require('profiler.timing_profiler')
-local MemoryProfiler = require('profiler.memory_profiler')
+local Profiler = require('profiler')
 
 local RuntimeProfiler = {}
 
 function RuntimeProfiler.is_active()
-    return JitProfiler.is_active() or
-        TimingProfiler.is_active() or
-        MemoryProfiler.is_active()
+    return Profiler.is_active()
 end
 
 function RuntimeProfiler.push_zone(name)
@@ -16,9 +12,7 @@ function RuntimeProfiler.push_zone(name)
     end
 
     return {
-        jit = JitProfiler.push_zone(name),
-        timing = TimingProfiler.push_zone(name),
-        memory = MemoryProfiler.push_zone(name),
+        profile = Profiler.push_zone(name),
     }
 end
 
@@ -27,9 +21,7 @@ function RuntimeProfiler.pop_zone(token)
         return nil
     end
 
-    MemoryProfiler.pop_zone(token.memory)
-    TimingProfiler.pop_zone(token.timing)
-    JitProfiler.pop_zone(token.jit)
+    Profiler.pop_zone(token.profile)
     return nil
 end
 
