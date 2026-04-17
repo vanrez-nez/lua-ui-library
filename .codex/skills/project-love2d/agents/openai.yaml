@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Love2D"
+  short_description: "Repo-specific Lua UI Library conventions"
+  default_prompt: "Use $project-love2d with $lua-love2d for work in this Lua UI Library repo."
