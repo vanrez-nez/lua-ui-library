@@ -130,8 +130,28 @@ function Config.default_output(opts)
   return string.format('%s/%s-%s.%s', output_dir, prefix, Config.make_timestamp(), extension)
 end
 
+local ENV_KEYS = {
+  'PROFILE',
+  'PROFILE_FEATURES',
+  'PROFILE_FORMAT',
+  'PROFILE_OUTPUT',
+  'PROFILE_OUTPUT_DIR',
+  'PROFILE_TARGETS',
+  'PROFILE_DELAY',
+  'PROFILE_FRAMES',
+  'PROFILE_INCLUDE_PROFILER'
+}
+
 function Config.from_env(opts)
   opts = opts or {}
+
+  local env = {}
+  for _, key in ipairs(ENV_KEYS) do
+    local value = os.getenv(key)
+    if value ~= nil and value ~= '' then
+      env[#env + 1] = key .. '=' .. value
+    end
+  end
 
   local features = split_csv(os.getenv('PROFILE_FEATURES'))
   local format = os.getenv('PROFILE_FORMAT')
@@ -151,7 +171,7 @@ function Config.from_env(opts)
     output_dir = nil
   end
 
-  return Config.normalize({
+  local config = Config.normalize({
     enabled = truthy(os.getenv('PROFILE')) or opts.enabled == true,
     output = output or opts.output,
     output_dir = output_dir or opts.output_dir,
@@ -163,6 +183,10 @@ function Config.from_env(opts)
     profile_frames = profile_frames or opts.profile_frames or opts.frames,
     include_profiler = truthy(os.getenv('PROFILE_INCLUDE_PROFILER')) or opts.include_profiler
   })
+
+  config.env = env
+
+  return config
 end
 
 function Config.normalize(opts)
@@ -200,6 +224,7 @@ function Config.normalize(opts)
 
   return {
     enabled = opts.enabled ~= false,
+    env = opts.env,
     output = opts.output,
     output_dir = output_dir,
     prefix = opts.prefix or 'profile',

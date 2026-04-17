@@ -250,6 +250,7 @@ function Profiler.stop()
   end
 
   local output = state.output
+  local config = state.config
   local elapsed_seconds = Utils.now_seconds() - (state.started_at or Utils.now_seconds())
 
   stop_hook()
@@ -259,8 +260,13 @@ function Profiler.stop()
 
   Reporter.write(output, {
     elapsed_seconds = elapsed_seconds,
-    format = state.config.format,
-    features = state.config.features,
+    format = config.format,
+    features = config.features,
+    env = config.env or {},
+    targets = config.targets,
+    profile_frames = config.profile_frames,
+    delay_seconds = config.delay_seconds,
+    include_profiler = config.include_profiler,
     counters = state.counters,
     trace = state.trace:snapshot()
   })

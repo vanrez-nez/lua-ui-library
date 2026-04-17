@@ -58,6 +58,14 @@ function TextFormatter.write(handle, report, context)
   handle:write('profiler report\n')
   handle:write(string.format('seconds: %.6f\n', report.elapsed_seconds or 0))
   handle:write(string.format('output: %s\n', tostring(context.output or 'stdout')))
+
+  if report.env ~= nil and #report.env > 0 then
+    handle:write('env:\n')
+    for _, entry in ipairs(report.env) do
+      handle:write(string.format('  %s\n', entry))
+    end
+  end
+
   handle:write(string.format(
     'features: calls=%s time=%s memory=%s zones=%s\n',
     tostring(report.features.calls),
@@ -65,6 +73,22 @@ function TextFormatter.write(handle, report, context)
     tostring(report.features.memory),
     tostring(report.features.zones)
   ))
+
+  if report.targets ~= nil and #report.targets > 0 then
+    handle:write(string.format('targets: %s\n', table.concat(report.targets, ', ')))
+  end
+
+  if report.profile_frames ~= nil then
+    handle:write(string.format('profile_frames: %d\n', report.profile_frames))
+  end
+
+  if report.delay_seconds ~= nil and report.delay_seconds > 0 then
+    handle:write(string.format('delay_seconds: %.3f\n', report.delay_seconds))
+  end
+
+  if report.include_profiler then
+    handle:write('include_profiler: true\n')
+  end
 
   write_section(handle, 'files', report.counters:rows('file'))
   write_section(handle, 'functions', report.counters:rows('function'))
