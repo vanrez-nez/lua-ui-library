@@ -93,11 +93,11 @@ end
 function Config.from_env(opts)
   opts = opts or {}
 
-  local features = split_csv(os.getenv('UI_PROFILE_FEATURES'))
-  local format = os.getenv('UI_PROFILE_FORMAT')
-  local output = os.getenv('UI_PROFILE_OUTPUT')
-  local output_dir = os.getenv('UI_PROFILE_OUTPUT_DIR')
-  local targets = split_csv(os.getenv('UI_PROFILE_TARGETS'))
+  local features = split_csv(os.getenv('PROFILE_FEATURES'))
+  local format = os.getenv('PROFILE_FORMAT')
+  local output = os.getenv('PROFILE_OUTPUT')
+  local output_dir = os.getenv('PROFILE_OUTPUT_DIR')
+  local targets = split_csv(os.getenv('PROFILE_TARGETS'))
 
   if format == '' then
     format = nil
@@ -110,14 +110,14 @@ function Config.from_env(opts)
   end
 
   return Config.normalize({
-    enabled = truthy(os.getenv('UI_PROFILE')) or opts.enabled == true,
+    enabled = truthy(os.getenv('PROFILE')) or opts.enabled == true,
     output = output or opts.output,
     output_dir = output_dir or opts.output_dir,
     prefix = opts.prefix,
     format = format or opts.format,
     features = #features > 0 and features or opts.features,
     targets = #targets > 0 and targets or opts.targets,
-    include_profiler = truthy(os.getenv('UI_PROFILE_INCLUDE_PROFILER')) or opts.include_profiler
+    include_profiler = truthy(os.getenv('PROFILE_INCLUDE_PROFILER')) or opts.include_profiler
   })
 end
 

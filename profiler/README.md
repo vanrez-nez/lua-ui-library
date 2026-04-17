@@ -7,7 +7,7 @@ Runtime profiler for the Love2D UI library. Instruments Lua call stacks via `deb
 ### Via environment variables (recommended)
 
 ```sh
-UI_PROFILE=1 love .
+PROFILE=1 love .
 ```
 
 The report is written to `/tmp/profiler/profile-<timestamp>.txt` when profiling stops.
@@ -26,13 +26,13 @@ Profiler.stop()
 
 | Variable | Default | Description |
 |---|---|---|
-| `UI_PROFILE` | — | Set to `1` to enable profiling |
-| `UI_PROFILE_FORMAT` | `text` | Output format: `text` or `speedscope` |
-| `UI_PROFILE_OUTPUT` | auto | Full output file path (overrides dir/prefix) |
-| `UI_PROFILE_OUTPUT_DIR` | `/tmp/profiler` | Directory for auto-named output files |
-| `UI_PROFILE_FEATURES` | `calls,time` | Comma-separated features to collect (see below) |
-| `UI_PROFILE_TARGETS` | all files | Comma-separated file path suffixes to filter |
-| `UI_PROFILE_INCLUDE_PROFILER` | — | Set to `1` to include profiler internals in results |
+| `PROFILE` | — | Set to `1` to enable profiling |
+| `PROFILE_FORMAT` | `text` | Output format: `text` or `speedscope` |
+| `PROFILE_OUTPUT` | auto | Full output file path (overrides dir/prefix) |
+| `PROFILE_OUTPUT_DIR` | `/tmp/profiler` | Directory for auto-named output files |
+| `PROFILE_FEATURES` | `calls,time` | Comma-separated features to collect (see below) |
+| `PROFILE_TARGETS` | all files | Comma-separated file path suffixes to filter |
+| `PROFILE_INCLUDE_PROFILER` | — | Set to `1` to include profiler internals in results |
 
 ### Features
 
@@ -44,10 +44,10 @@ Profiler.stop()
 | `zones` | Collect manual zone data |
 | `all` | Enable all of the above |
 
-Default when `UI_PROFILE_FEATURES` is unset: `calls,time`.
+Default when `PROFILE_FEATURES` is unset: `calls,time`.
 
 ```sh
-UI_PROFILE=1 UI_PROFILE_FEATURES=all love .
+PROFILE=1 PROFILE_FEATURES=all love .
 ```
 
 ### Targeting specific files
@@ -55,13 +55,13 @@ UI_PROFILE=1 UI_PROFILE_FEATURES=all love .
 Restrict profiling to files whose paths end with the given suffix:
 
 ```sh
-UI_PROFILE=1 UI_PROFILE_TARGETS=lib/ui/core/container.lua,lib/ui/scene love .
+PROFILE=1 PROFILE_TARGETS=lib/ui/core/container.lua,lib/ui/scene love .
 ```
 
 ### Speedscope output
 
 ```sh
-UI_PROFILE=1 UI_PROFILE_FORMAT=speedscope love .
+PROFILE=1 PROFILE_FORMAT=speedscope love .
 ```
 
 Open the resulting `.speedscope.json` file at [speedscope.app](https://speedscope.app) for an interactive flame graph.
