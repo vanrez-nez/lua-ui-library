@@ -1,75 +1,80 @@
 local Memoize = {}
 
-local NIL    = {}
-local RESULT = {}
+local NIL = {}
 
-local function walk(cache, ...)
-  local n    = select('#', ...)
-  local node = cache
-  for i = 1, n do
-    local k = select(i, ...)
-    if k == nil then k = NIL end
-    local child = node[k]
-    if not child then
-      child = {}
-      node[k] = child
-    end
-    node = child
-  end
-  return node
-end
-
--- Single return value. No allocation on hit or miss (beyond trie nodes).
--- Use this for everything unless you explicitly need multiple returns.
-function Memoize.memoize(fn)
+local function make1(fn)
   local cache = {}
-  return function(...)
-    local node = walk(cache, ...)
-    local r = node[RESULT]
+  return function(a)
+    local key = a
+    if key == nil then key = NIL end
+    local r = cache[key]
     if r == nil then
-      r = fn(...)
-      node[RESULT] = r == nil and NIL or r
+      r = fn(a)
+      if r == nil then
+        cache[key] = NIL
+      else
+        cache[key] = r
+      end
     end
-    return r == NIL and nil or r
+    if r == NIL then return nil end
+    return r
   end
 end
 
--- Multi return value. Allocates one table per unique arg combination.
--- Only pay this cost when you actually need it.
-function Memoize.memoize_multi(fn)
+local function make2(fn)
   local cache = {}
-  local pack  = function(...) return { n = select('#', ...), ... } end
-  return function(...)
-    local node = walk(cache, ...)
-    if not node[RESULT] then
-      node[RESULT] = pack(fn(...))
+  return function(a, b)
+    local ka = a; if ka == nil then ka = NIL end
+    local kb = b; if kb == nil then kb = NIL end
+    local sub = cache[ka]
+    if not sub then
+      sub = {}
+      cache[ka] = sub
     end
-    return unpack(node[RESULT], 1, node[RESULT].n)
-  end
-end
-
-local current_tick = 0
-
-function Memoize.memoize_tick(fn)
-  local cache     = {}
-  local last_tick = -1
-  return function(...)
-    if current_tick ~= last_tick then
-      cache     = {}
-      last_tick = current_tick
-    end
-    local node = walk(cache, ...)
-    local r = node[RESULT]
+    local r = sub[kb]
     if r == nil then
-      r = fn(...)
-      node[RESULT] = r == nil and NIL or r
+      r = fn(a, b)
+      if r == nil then
+        sub[kb] = NIL
+      else
+        sub[kb] = r
+      end
     end
-    return r == NIL and nil or r
+    if r == NIL then return nil end
+    return r
   end
 end
 
-function Memoize.tick()
-  current_tick = current_tick + 1
+local function make3(fn)
+  local cache = {}
+  return function(a, b, c)
+    local ka = a; if ka == nil then ka = NIL end
+    local kb = b; if kb == nil then kb = NIL end
+    local kc = c; if kc == nil then kc = NIL end
+    local s1 = cache[ka]
+    if not s1 then s1 = {}; cache[ka] = s1 end
+    local s2 = s1[kb]
+    if not s2 then s2 = {}; s1[kb] = s2 end
+    local r = s2[kc]
+    if r == nil then
+      r = fn(a, b, c)
+      if r == nil then
+        s2[kc] = NIL
+      else
+        s2[kc] = r
+      end
+    end
+    if r == NIL then return nil end
+    return r
+  end
+end
+
+function Memoize.memoize(fn, n)
+  n = n or 1
+  if n == 1 then return make1(fn) end
+  if n == 2 then return make2(fn) end
+  if n == 3 then return make3(fn) end
+  error("memoize: arity must be 1, 2, or 3, got " .. tostring(n), 2)
 end
 
 return Memoize
