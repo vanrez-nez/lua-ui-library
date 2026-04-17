@@ -3,3 +3,5 @@ external
 tmp
 love2d.log
 _test
+/lua_modules
+/.luarocks
