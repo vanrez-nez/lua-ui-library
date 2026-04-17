@@ -1,105 +1,61 @@
 # Lua UI Library
 
-Standalone LÖVE project for the extracted `lib/ui` package from `idle-game`.
+## Testing
 
-## Run
-
-From the project root:
+Run the current headless spec module with the project LuaJIT wrapper:
 
 ```bash
-love .
+./lua -e 'require("spec.core_math_spec").run()'
 ```
 
-That opens the default scene showcase with three library-focused scenes:
-
-- `home`
-- `components`
-- `transforms`
-
-## Manual Demos
-
-The original focused demos were copied over so component work can stay isolated:
+Smoke-check LuaUnit availability:
 
 ```bash
-love _test/phase1
-love _test/ui
-love _test/button
-love _test/text
-love _test/scene
+./lua -e 'local luaunit = require("luaunit"); print(luaunit.VERSION or "luaunit ok")'
 ```
 
-## Focused Component Demos
+LuaUnit is installed as a project-local development dependency for new tests.
+Existing specs are not migrated to LuaUnit yet.
 
-The rebuilt demos under `demos/` are component-centered and follow the shared demo shell in `demos/common/`:
+## Tooling
+
+Install the system bootstrap tools:
 
 ```bash
-love demos/01-container
-love demos/02-shape
-love demos/03-drawable
-love demos/03-graphics
+brew install luarocks luajit
 ```
 
-`01-container` covers retained tree, bounds, sizing, clamp, and visibility behavior.
-`02-shape` covers `CircleShape` fill and stroke behavior.
-`03-drawable` covers the `Drawable` layout and styling surface not already proven by `01-container`: alignments, padding, margin, retained child layout, skin, and borders.
-`03-graphics` covers retained opacity, blend mode, and render-effect compositing across `Drawable` and shape content. The demo does not currently include a dedicated shader screen, and mask rendering still fails deterministically until a concrete mask asset contract is implemented.
-
-## Unit Tests
-
-The non-graphics core has a lightweight Lua test suite:
+Initialize the LuaRocks project files for LuaJIT/Lua 5.1:
 
 ```bash
-lua scripts/run_unit_tests.lua
+luarocks --lua-version=5.1 init --lua-versions=5.1 lua-ui-library 0.1
 ```
 
-## Project Layout
-
-- `lib/ui`: extracted library code
-- `scenes`: default showcase scenes for day-to-day iteration
-- `_test`: manual LÖVE demos copied from the source project
-- `test`: intentionally empty staging area for rebuilt demos
-- `spec`: headless unit tests for core math and layout behavior
-- `assets`: demo font and image dependencies
-
-## Profiling
-
-The `demos/03-graphics` demo includes three profiling modes for the retained render pipeline:
-
-- `P`: sampled `jit.p` hotspot profiling
-- `T`: wall-time profiling in milliseconds
-- `Y`: Lua heap memory profiling with `collectgarbage("count")`
-
-Reports are written to `tmp/`.
-
-Interactive use:
+Use the project wrappers from the repository root:
 
 ```bash
-love demos/03-graphics
+./lua -v
+./luarocks --version
 ```
 
-Then press:
-
-- `P` to start/stop the sampled profiler
-- `T` to start/stop the timing profiler
-- `Y` to start/stop the memory profiler
-
-Non-interactive capture:
+Install project-local development rocks:
 
 ```bash
-UI_JIT_PROFILE=1 UI_PROFILE_SCREEN=1 UI_JIT_PROFILE_SECONDS=3 love demos/03-graphics
-UI_TIME_PROFILE=1 UI_PROFILE_SCREEN=1 UI_TIME_PROFILE_SECONDS=3 love demos/03-graphics
-UI_MEMORY_PROFILE=1 UI_PROFILE_SCREEN=1 UI_TIME_PROFILE_SECONDS=3 love demos/03-graphics
+./luarocks install luacheck
+./luarocks install luaunit
 ```
 
-Useful environment variables:
+Verify installed rocks:
 
-- `UI_PROFILE_SCREEN`: screen index to open before capture
-- `UI_JIT_PROFILE_OUTPUT`: explicit output path for the sampled report
-- `UI_TIME_PROFILE_OUTPUT`: explicit output path for the timing report
-- `UI_MEMORY_PROFILE_OUTPUT`: explicit output path for the memory report
+```bash
+./luarocks list
+```
 
-Output types:
+Run Luacheck:
 
-- `jit.p`: sampled hotspots by zone and stack
-- `timing`: `total_ms`, `self_ms`, `avg_ms`, `max_ms`, and call counts per zone
-- `memory`: Lua heap churn by zone; signed `net` columns may be negative when a zone frees more heap than it retains
+```bash
+./lua_modules/bin/luacheck .
+```
+
+The Luacheck configuration targets LuaJIT and excludes generated, vendor, output,
+and ignored manual-test paths.
