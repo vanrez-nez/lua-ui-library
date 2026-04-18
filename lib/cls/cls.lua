@@ -23,12 +23,12 @@ local METAMETHODS = {
 
 
 -- Default no-op constructor. Override in subclasses.
-function Object:constructor() end
+function Object.constructor() end
 
 
 -- Default no-op destroy hook. Override in subclasses to release resources.
 -- Called once by destroy() before the dead proxy is installed.
-function Object:on_destroy() end
+function Object.on_destroy() end
 
 
 -- Creates a named subclass. name is optional but recommended for debugging.

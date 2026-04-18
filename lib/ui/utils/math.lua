@@ -4,6 +4,8 @@ local tonumber = tonumber
 
 local MathUtils = {}
 
+--- @param value string
+--- @return boolean
 function MathUtils.is_percentage_string(value)
     if not Types.is_string(value) then
         return false
@@ -12,6 +14,9 @@ function MathUtils.is_percentage_string(value)
     return value:match('^[+-]?%d*%.?%d+%%$') ~= nil
 end
 
+--- @param value any
+--- @param fallback any
+--- @return any
 function MathUtils.default(value, fallback)
     if value == nil then
         return fallback
@@ -20,6 +25,10 @@ function MathUtils.default(value, fallback)
     return value
 end
 
+--- @param value number
+--- @param min_value number
+--- @param max_value number
+--- @return number
 function MathUtils.clamp(value, min_value, max_value)
     if min_value ~= nil and max_value ~= nil and min_value > max_value then
         return min_value
@@ -36,6 +45,10 @@ function MathUtils.clamp(value, min_value, max_value)
     return value
 end
 
+--- @param value number
+--- @param min_value number
+--- @param max_value number
+--- @return number
 function MathUtils.clamp_number(value, min_value, max_value)
     if min_value ~= nil and value < min_value then
         value = min_value
@@ -48,6 +61,9 @@ function MathUtils.clamp_number(value, min_value, max_value)
     return max(0, value)
 end
 
+--- @param value number
+--- @param modulus number
+--- @return number
 function MathUtils.positive_mod(value, modulus)
     if modulus == nil or modulus <= 0 then
         return 0
@@ -69,6 +85,9 @@ function MathUtils.parse_percentage(value)
     return tonumber(value:sub(1, -2)) / 100
 end
 
+--- @param configured number|string
+--- @param parent_size number
+--- @return number
 function MathUtils.resolve_axis_size(configured, parent_size)
     if Types.is_number(configured) then
         return configured

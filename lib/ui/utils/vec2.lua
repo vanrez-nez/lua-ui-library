@@ -7,6 +7,8 @@ local sqrt = math.sqrt
 
 local Vec2 = Object:extends('Vec2')
 
+--- @param x number
+--- @param y number
 function Vec2:constructor(x, y)
     x = x or 0
     y = y or 0
@@ -18,18 +20,26 @@ function Vec2:constructor(x, y)
     self.y = y
 end
 
+--- @param x number
+--- @param y number
+--- @return Vec2
 function Vec2.new(x, y)
     return Vec2(x, y)
 end
 
+--- @param value any
+--- @return boolean
 function Vec2.is_vec2(value)
     return Types.is_instance(value, Vec2)
 end
 
+--- @return Vec2
 function Vec2:clone()
     return Vec2(self.x, self.y)
 end
 
+--- @param other Vec2
+--- @return Vec2
 function Vec2:add(other)
     if not Vec2.is_vec2(other) then
         Assert.fail('other must be a Vec2', 2)
@@ -37,6 +47,8 @@ function Vec2:add(other)
     return Vec2(self.x + other.x, self.y + other.y)
 end
 
+--- @param other Vec2
+--- @return Vec2
 function Vec2:subtract(other)
     if not Vec2.is_vec2(other) then
         Assert.fail('other must be a Vec2', 2)
@@ -44,11 +56,15 @@ function Vec2:subtract(other)
     return Vec2(self.x - other.x, self.y - other.y)
 end
 
+--- @param scalar number
+--- @return Vec2
 function Vec2:scale(scalar)
     Assert.number('scalar', scalar, 2)
     return Vec2(self.x * scalar, self.y * scalar)
 end
 
+--- @param other Vec2|number
+--- @return Vec2
 function Vec2:multiply(other)
     if Types.is_number(other) then
         return self:scale(other)
@@ -60,6 +76,8 @@ function Vec2:multiply(other)
     return Vec2(self.x * other.x, self.y * other.y)
 end
 
+--- @param other Vec2
+--- @return number
 function Vec2:dot(other)
     if not Vec2.is_vec2(other) then
         Assert.fail('other must be a Vec2', 2)
@@ -67,14 +85,17 @@ function Vec2:dot(other)
     return self.x * other.x + self.y * other.y
 end
 
+--- @return number
 function Vec2:length_squared()
     return self.x * self.x + self.y * self.y
 end
 
+--- @return number
 function Vec2:length()
     return sqrt(self:length_squared())
 end
 
+--- @return Vec2
 function Vec2:normalize()
     local length = self:length()
 
@@ -85,6 +106,8 @@ function Vec2:normalize()
     return Vec2(self.x / length, self.y / length)
 end
 
+--- @param other Vec2
+--- @return number
 function Vec2:distance_squared(other)
     if not Vec2.is_vec2(other) then
         Assert.fail('other must be a Vec2', 2)
@@ -95,10 +118,15 @@ function Vec2:distance_squared(other)
     return dx * dx + dy * dy
 end
 
+--- @param other Vec2
+--- @return number
 function Vec2:distance(other)
     return sqrt(self:distance_squared(other))
 end
 
+--- @param other Vec2
+--- @param t number
+--- @return Vec2
 function Vec2:lerp(other, t)
     if not Vec2.is_vec2(other) then
         Assert.fail('other must be a Vec2', 2)
@@ -111,6 +139,9 @@ function Vec2:lerp(other, t)
     )
 end
 
+--- @param other Vec2
+--- @param epsilon number
+--- @return boolean
 function Vec2:equals(other, epsilon)
     if not Vec2.is_vec2(other) then
         return false

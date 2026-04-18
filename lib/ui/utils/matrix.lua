@@ -8,6 +8,12 @@ local sin = math.sin
 
 local Matrix = Object:extends('Matrix')
 
+--- @param a number
+--- @param b number
+--- @param c number
+--- @param d number
+--- @param tx number
+--- @param ty number
 function Matrix:constructor(a, b, c, d, tx, ty)
     a = a == nil and 1 or a
     b = b or 0
@@ -31,14 +37,32 @@ function Matrix:constructor(a, b, c, d, tx, ty)
     self.ty = ty
 end
 
+--- @param a number
+--- @param b number
+--- @param c number
+--- @param d number
+--- @param tx number
+--- @param ty number
+--- @return Matrix
 function Matrix.new(a, b, c, d, tx, ty)
     return Matrix(a, b, c, d, tx, ty)
 end
 
+--- @return Matrix
 function Matrix.identity()
     return Matrix(1, 0, 0, 1, 0, 0)
 end
 
+--- @param x number
+--- @param y number
+--- @param pivot_x number
+--- @param pivot_y number
+--- @param scale_x number
+--- @param scale_y number
+--- @param rotation number
+--- @param skew_x number
+--- @param skew_y number
+--- @return Matrix
 function Matrix.from_transform(
     x,
     y,
@@ -80,14 +104,23 @@ function Matrix.from_transform(
     return Matrix(a, b, c, d, tx, ty)
 end
 
+--- @param value any
+--- @return boolean
 function Matrix.is_matrix(value)
     return Types.is_instance(value, Matrix)
 end
 
+--- @return Matrix
 function Matrix:clone()
     return Matrix(self.a, self.b, self.c, self.d, self.tx, self.ty)
 end
 
+--- @param a number
+--- @param b number
+--- @param c number
+--- @param d number
+--- @param tx number
+--- @param ty number
 function Matrix:set(a, b, c, d, tx, ty)
     Assert.number('a', a, 2)
     Assert.number('b', b, 2)
@@ -106,6 +139,12 @@ function Matrix:set(a, b, c, d, tx, ty)
     return self
 end
 
+--- @param scale_x number
+--- @param scale_y number
+--- @param rotation number
+--- @param skew_x number
+--- @param skew_y number
+--- @return Matrix
 function Matrix:set_linear_from_transform(scale_x, scale_y, rotation, skew_x, skew_y)
     scale_x = scale_x == nil and 1 or scale_x
     scale_y = scale_y == nil and 1 or scale_y
@@ -127,6 +166,9 @@ function Matrix:set_linear_from_transform(scale_x, scale_y, rotation, skew_x, sk
     return self
 end
 
+--- @param tx number
+--- @param ty number
+--- @return Matrix
 function Matrix:set_translation(tx, ty)
     tx = tx or 0
     ty = ty or 0
@@ -140,6 +182,15 @@ function Matrix:set_translation(tx, ty)
     return self
 end
 
+--- @param x number
+--- @param y number
+--- @param pivot_x number
+--- @param pivot_y number
+--- @param x number
+--- @param y number
+--- @param pivot_x number
+--- @param pivot_y number
+--- @return Matrix
 function Matrix:set_transform_translation(x, y, pivot_x, pivot_y)
     x = x or 0
     y = y or 0
@@ -157,6 +208,16 @@ function Matrix:set_transform_translation(x, y, pivot_x, pivot_y)
     return self
 end
 
+--- @param x number
+--- @param y number
+--- @param pivot_x number
+--- @param pivot_y number
+--- @param scale_x number
+--- @param scale_y number
+--- @param rotation number
+--- @param skew_x number
+--- @param skew_y number
+--- @return Matrix
 function Matrix:set_from_transform(
     x,
     y,
@@ -193,6 +254,8 @@ function Matrix:set_from_transform(
         :set_transform_translation(x, y, pivot_x, pivot_y)
 end
 
+--- @param epsilon number
+--- @return boolean
 function Matrix:is_identity(epsilon)
     epsilon = epsilon or 0
     Assert.number('epsilon', epsilon, 2)
@@ -205,16 +268,21 @@ function Matrix:is_identity(epsilon)
         abs(self.ty) <= epsilon
 end
 
+--- @return number
 function Matrix:determinant()
     return self.a * self.d - self.b * self.c
 end
 
+--- @param epsilon number
+--- @return boolean
 function Matrix:is_invertible(epsilon)
     epsilon = epsilon or 1e-12
     Assert.number('epsilon', epsilon, 2)
     return abs(self:determinant()) > epsilon
 end
 
+--- @param other Matrix
+--- @return Matrix
 function Matrix:multiply(other)
     if not Matrix.is_matrix(other) then
         Assert.fail('other must be a Matrix', 2)
@@ -230,6 +298,8 @@ function Matrix:multiply(other)
     )
 end
 
+--- @param epsilon number
+--- @return Matrix|nil, string
 function Matrix:inverse(epsilon)
     epsilon = epsilon or 1e-12
     Assert.number('epsilon', epsilon, 2)
@@ -250,6 +320,9 @@ function Matrix:inverse(epsilon)
     )
 end
 
+--- @param x number
+--- @param y number
+--- @return number, number
 function Matrix:transform_point(x, y)
     Assert.number('x', x, 2)
     Assert.number('y', y, 2)
@@ -258,6 +331,9 @@ function Matrix:transform_point(x, y)
         self.b * x + self.d * y + self.ty
 end
 
+--- @param other Matrix
+--- @param epsilon number
+--- @return boolean
 function Matrix:equals(other, epsilon)
     if not Matrix.is_matrix(other) then
         return false
