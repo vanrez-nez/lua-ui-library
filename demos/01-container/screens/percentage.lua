@@ -1,4 +1,3 @@
-local ScreenHelper = require('demos.common.screen_helper')
 local UI = require('lib.ui')
 
 local Container = UI.Container
@@ -38,7 +37,10 @@ return function(owner, helpers)
 
         return {
             title = 'Nested Percentage Sizing',
-            description = 'Shows percentage sizing recalculating from the effective parent region while the root container moves in a circular path.',
+            description = table.concat({
+                'Shows percentage sizing recalculating from the effective parent region',
+                'while the root container moves in a circular path.',
+            }, ' '),
         }
     end)
 end

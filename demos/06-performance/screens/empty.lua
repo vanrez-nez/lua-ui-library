@@ -13,7 +13,7 @@ return function(owner)
         local texture = Texture.new({
             source = DemoAssets.load_image('assets/images/image.png'),
         })
-        local initial_count = Env.parse_positive_integer('UI_PERF_IMAGE_COUNT', 300)
+        local initial_count = Env.parse_positive_integer('UI_PERF_IMAGE_COUNT', 3000)
         local spawn_batch = Env.parse_positive_integer('UI_PERF_IMAGE_SPAWN_BATCH', 100)
         local model = ImageBounceModel.new({
             item_width = 50,

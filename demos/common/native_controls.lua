@@ -213,7 +213,16 @@ function NativeControls.build_centered_navigator_layout(screen_width, top_y, fon
     }
 end
 
-function NativeControls.draw_navigator(graphics, font, layout, text, hovered_left, hovered_right, body_line_color, disabled)
+function NativeControls.draw_navigator(
+    graphics,
+    font,
+    layout,
+    text,
+    hovered_left,
+    hovered_right,
+    body_line_color,
+    disabled
+)
     local fill_color = disabled and DemoColors.roles.surface or DemoColors.roles.surface_alt
     local line_color = disabled and DemoColors.roles.border or (body_line_color or DemoColors.roles.border_light)
     local text_color = disabled and DemoColors.roles.text_muted or DemoColors.roles.text

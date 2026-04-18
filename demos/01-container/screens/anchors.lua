@@ -1,4 +1,3 @@
-local ScreenHelper = require('demos.common.screen_helper')
 local UI = require('lib.ui')
 
 local Container = UI.Container
@@ -66,7 +65,10 @@ return function(owner, helpers)
 
         return {
             title = 'Anchor Placement',
-            description = 'Parents resize while anchorX and anchorY keep direct and nested children attached to parent-relative positions.',
+            description = table.concat({
+                'Parents resize while anchorX and anchorY keep direct and nested children',
+                'attached to parent-relative positions.',
+            }, ' '),
         }
     end)
 end

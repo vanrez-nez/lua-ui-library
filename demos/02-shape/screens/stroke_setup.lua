@@ -174,7 +174,7 @@ end
 local function attach_stroke_hint(helpers, node, case)
     helpers.set_hint_name(node, case.label)
     helpers.set_hint(node, function(current)
-        local detail_badges = {}
+        local detail_badges
 
         if current.strokePattern == 'dashed' then
             detail_badges = make_badges(helpers, {
@@ -235,12 +235,26 @@ local function build_selector_layouts(root, title_font)
     local first_row_x = math.floor((viewport.width - first_row_width) * 0.5)
     local second_row_x = math.floor((viewport.width - second_row_width) * 0.5)
     local first_row_y = control_top
-    local second_row_y = first_row_y + probe_layout.body.height + title_font:getHeight() + CONTROL_LABEL_GAP + CONTROL_ROW_GAP
+    local second_row_y = first_row_y
+        + probe_layout.body.height
+        + title_font:getHeight()
+        + CONTROL_LABEL_GAP
+        + CONTROL_ROW_GAP
 
     return {
         style = build_navigator_layout(first_row_x, first_row_y, body_width, title_font),
-        pattern = build_navigator_layout(first_row_x + control_width + CONTROL_GAP, first_row_y, body_width, title_font),
-        width = build_navigator_layout(first_row_x + ((control_width + CONTROL_GAP) * 2), first_row_y, body_width, title_font),
+        pattern = build_navigator_layout(
+            first_row_x + control_width + CONTROL_GAP,
+            first_row_y,
+            body_width,
+            title_font
+        ),
+        width = build_navigator_layout(
+            first_row_x + ((control_width + CONTROL_GAP) * 2),
+            first_row_y,
+            body_width,
+            title_font
+        ),
         dash = build_navigator_layout(second_row_x, second_row_y, body_width, title_font),
         gap = build_navigator_layout(second_row_x + control_width + CONTROL_GAP, second_row_y, body_width, title_font),
         bottom = second_row_y + probe_layout.body.height,

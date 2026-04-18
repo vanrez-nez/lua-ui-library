@@ -1,4 +1,3 @@
-local ScreenHelper = require('demos.common.screen_helper')
 local UI = require('lib.ui')
 
 local Container = UI.Container
@@ -63,7 +62,10 @@ return function(owner, helpers)
 
         return {
             title = 'Pivot Rotation',
-            description = 'Rotation stays tied to pivotX and pivotY, first on a single node and then through a nested transform chain.',
+            description = table.concat({
+                'Rotation stays tied to pivotX and pivotY, first on a single node',
+                'and then through a nested transform chain.',
+            }, ' '),
         }
     end)
 end

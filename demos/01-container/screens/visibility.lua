@@ -1,4 +1,3 @@
-local ScreenHelper = require('demos.common.screen_helper')
 local UI = require('lib.ui')
 
 local Container = UI.Container

@@ -33,7 +33,8 @@ return function(owner, helpers)
                     height = 160,
                     padding = 10,
                     skin = case.skin,
-                }, case.label, DemoColors.rgba(DemoColors.roles.accent_red_fill, 0.18), DemoColors.roles.accent_red_line)
+                }, case.label, DemoColors.rgba(DemoColors.roles.accent_red_fill, 0.18),
+                    DemoColors.roles.accent_red_line)
                 helpers.show_content(node, 88, 44)
                 helpers.set_hint(node, {
                     {

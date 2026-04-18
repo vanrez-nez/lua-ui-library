@@ -1,7 +1,6 @@
 local DemoColors = require('demos.common.colors')
 local Hint = require('demos.common.hint')
 local ScreenHelper = require('demos.common.screen_helper')
-local Motion = require('lib.ui.motion')
 local UI = require('lib.ui')
 
 local Drawable = UI.Drawable
@@ -244,10 +243,7 @@ function ScreenHelpers.draw_demo_node(graphics, node)
     local label_inset_y = rawget(node, '_demo_label_inset_y') or 8
     local label_align = rawget(node, '_demo_label_align') or 'start'
     local label_valign = rawget(node, '_demo_label_valign') or 'start'
-    local is_hovered = false
-
     if draw_context ~= nil and node:containsPoint(draw_context.mouse_x, draw_context.mouse_y) then
-        is_hovered = true
         local area = math.max(1, bounds.width * bounds.height)
         if draw_context.hovered_area == nil or area <= draw_context.hovered_area then
             draw_context.hovered_area = area

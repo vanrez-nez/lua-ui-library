@@ -1,5 +1,3 @@
-local DemoInstruments = require('demos.common.drawable_demo_instruments')
-
 local GRID_STEP_X = 310
 local GRID_STEP_Y = 180
 local SAMPLE_WIDTH = 72
@@ -72,7 +70,10 @@ function Setup.install(args)
                 {
                     label = 'rect.sample',
                     badges = {
-                        helpers.badge('sample', helpers.format_rect(current:resolveContentRect(SAMPLE_WIDTH, SAMPLE_HEIGHT))),
+                        helpers.badge(
+                            'sample',
+                            helpers.format_rect(current:resolveContentRect(SAMPLE_WIDTH, SAMPLE_HEIGHT))
+                        ),
                     },
                 },
             }

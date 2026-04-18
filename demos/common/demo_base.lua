@@ -93,7 +93,7 @@ function DemoBase:toggle_info_sidebar()
     self.info_sidebar:toggle()
 end
 
-function DemoBase:_reset_global_state()
+function DemoBase._reset_global_state()
     if love.audio ~= nil and love.audio.stop ~= nil then
         love.audio.stop()
     end
@@ -226,7 +226,7 @@ function DemoBase:handle_mousepressed(x, y, button)
     return false
 end
 
-function DemoBase:get_content_rect()
+function DemoBase.get_content_rect()
     local width, height = love.graphics.getDimensions()
 
     return {
@@ -237,7 +237,7 @@ function DemoBase:get_content_rect()
     }
 end
 
-function DemoBase:begin_frame()
+function DemoBase.begin_frame()
     love.graphics.clear(DemoColors.roles.background)
 end
 
@@ -282,7 +282,11 @@ function DemoBase:draw()
 
     g.setFont(self.footer_font)
     g.setColor(DemoColors.roles.text)
-    g.print('[Left/Right] switch screen  [R] reset screen  [H] toggle navigation  [M] memory  [Esc] quit', self.padding, footer_y + 15)
+    g.print(
+        '[Left/Right] switch screen  [R] reset screen  [H] toggle navigation  [M] memory  [Esc] quit',
+        self.padding,
+        footer_y + 15
+    )
 
     local metrics = string.format(
         'Screen %d/%d   %dx%d   %d fps',

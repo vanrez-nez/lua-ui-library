@@ -288,7 +288,9 @@ function ScreenHelper.get_hint_entries(node)
         local local_bounds = current:getLocalBounds()
         local world_bounds = current:getWorldBounds()
         local hint_fields = rawget(current, '_demo_hint_fields') or {}
-        local inspect_props = rawget(current, '_demo_inspect_props') or hint_fields.props or { 'x', 'y', 'width', 'height' }
+            local inspect_props = rawget(current, '_demo_inspect_props')
+                or hint_fields.props
+                or { 'x', 'y', 'width', 'height' }
         local sources = {
             opts = opts,
             local_bounds = {
@@ -442,7 +444,10 @@ function ScreenHelper.screen_wrapper(owner, helpers, build)
     end
 
     if type(build) ~= 'function' then
-        error('screen_wrapper no longer accepts a description argument; return description from the screen state table', 2)
+        error(
+            'screen_wrapper no longer accepts a description argument; return description from the screen state table',
+            2
+        )
     end
 
     return function(index)

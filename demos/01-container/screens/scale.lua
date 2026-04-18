@@ -1,4 +1,3 @@
-local ScreenHelper = require('demos.common.screen_helper')
 local UI = require('lib.ui')
 
 local Container = UI.Container
@@ -66,7 +65,10 @@ return function(owner, helpers)
 
         return {
             title = 'Scaling',
-            description = 'scaleX and scaleY stretch direct and nested nodes while the cases translate to keep the transforms easy to read.',
+            description = table.concat({
+                'scaleX and scaleY stretch direct and nested nodes',
+                'while the cases translate to keep the transforms easy to read.',
+            }, ' '),
         }
     end)
 end

@@ -1,4 +1,3 @@
-local ScreenHelper = require('demos.common.screen_helper')
 local UI = require('lib.ui')
 
 local Container = UI.Container
@@ -55,7 +54,10 @@ return function(owner, helpers)
 
         return {
             title = 'Parent / Child Bounds',
-            description = 'Verifies world coordinates across direct children and nested descendants while local bounds remain container-relative.',
+            description = table.concat({
+                'Verifies world coordinates across direct children and nested descendants',
+                'while local bounds remain container-relative.',
+            }, ' '),
         }
     end)
 end

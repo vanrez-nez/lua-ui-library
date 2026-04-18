@@ -1,4 +1,3 @@
-local ScreenHelper = require('demos.common.screen_helper')
 local UI = require('lib.ui')
 
 local Container = UI.Container
@@ -71,7 +70,10 @@ return function(owner, helpers)
 
         return {
             title = 'Min / Max Clamps',
-            description = 'Each parent resizes while its child uses percentage sizing plus min and max clamps, so the child visibly hits clamp limits as the parent changes.',
+            description = table.concat({
+                'Each parent resizes while its child uses percentage sizing plus min and max clamps,',
+                'so the child visibly hits clamp limits as the parent changes.',
+            }, ' '),
         }
     end)
 end

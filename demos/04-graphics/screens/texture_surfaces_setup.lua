@@ -137,7 +137,18 @@ local function set_preview_hint(helpers, node, source_selector, region_selector)
     end)
 end
 
-local function set_surface_hint(helpers, node, name, source_selector, region_selector, repeat_selector, align_x_selector, align_y_selector, offset_x_selector, offset_y_selector)
+local function set_surface_hint(
+    helpers,
+    node,
+    name,
+    source_selector,
+    region_selector,
+    repeat_selector,
+    align_x_selector,
+    align_y_selector,
+    offset_x_selector,
+    offset_y_selector
+)
     helpers.set_hint_name(node, name)
     helpers.set_hint(node, function()
         return {
@@ -179,11 +190,14 @@ function Setup.install(args)
     local root = args.root
     local stage = args.stage
     local font = love.graphics.newFont(12)
-    local drawable_frame = TextureCommon.find_required(root, 'texture-surfaces-drawable-frame', 'texture_surfaces_setup')
-    local drawable_group = TextureCommon.find_required(root, 'texture-surfaces-drawable-group', 'texture_surfaces_setup')
-    local drawable_target = TextureCommon.find_required(root, 'texture-surfaces-drawable-target', 'texture_surfaces_setup')
-    local rect_frame = TextureCommon.find_required(root, 'texture-surfaces-rect-frame', 'texture_surfaces_setup')
-    local rect_group = TextureCommon.find_required(root, 'texture-surfaces-rect-group', 'texture_surfaces_setup')
+    local function find_texture_node(id)
+        return TextureCommon.find_required(root, id, 'texture_surfaces_setup')
+    end
+    local drawable_frame = find_texture_node('texture-surfaces-drawable-frame')
+    local drawable_group = find_texture_node('texture-surfaces-drawable-group')
+    local drawable_target = find_texture_node('texture-surfaces-drawable-target')
+    local rect_frame = find_texture_node('texture-surfaces-rect-frame')
+    local rect_group = find_texture_node('texture-surfaces-rect-group')
     local rect_target = TextureCommon.find_required(root, 'texture-surfaces-rect-target', 'texture_surfaces_setup')
     local circle_frame = TextureCommon.find_required(root, 'texture-surfaces-circle-frame', 'texture_surfaces_setup')
     local circle_group = TextureCommon.find_required(root, 'texture-surfaces-circle-group', 'texture_surfaces_setup')
@@ -340,7 +354,9 @@ function Setup.install(args)
         local screen_height = stage.height
         local grid_width = preview_frame.width + FRAME_GAP_X + drawable_frame.width
         local grid_height = preview_frame.height + FRAME_GAP_Y + rect_frame.height
-        local selector_probe_width = layout_width(build_navigator_layout(0, 0, font, resolve_selectors_body_width(font, selectors)))
+        local selector_probe_width = layout_width(
+            build_navigator_layout(0, 0, font, resolve_selectors_body_width(font, selectors))
+        )
         local selector_probe_height = (#selectors * selector_step_height(font)) + ((#selectors - 1) * CONTROL_ROW_GAP)
         local total_width = grid_width + CONTROL_COLUMN_GAP + selector_probe_width
         local total_height = math.max(grid_height, selector_probe_height)

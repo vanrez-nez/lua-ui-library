@@ -1,4 +1,3 @@
-local ScreenHelper = require('demos.common.screen_helper')
 local UI = require('lib.ui')
 
 local Container = UI.Container
@@ -65,7 +64,11 @@ return function(owner, helpers)
 
         return {
             title = 'Overflow / Clipping',
-            description = 'Click any visible box to toggle its clipChildren value. Compare the same overflowing subtree with clipping enabled or disabled at parent, child, and grandchild levels.',
+            description = table.concat({
+                'Click any visible box to toggle its clipChildren value.',
+                'Compare the same overflowing subtree with clipping enabled or disabled',
+                'at parent, child, and grandchild levels.',
+            }, ' '),
         }
     end)
 end

@@ -73,9 +73,18 @@ return function(owner, helpers)
                         helpers.badge('borderWidth',   helpers.format_scalar(current.borderWidthTop or 0)),
                     }
                     if current.borderPattern == 'dashed' then
-                        badges[#badges + 1] = helpers.badge('borderDashLength', helpers.format_scalar(current.borderDashLength or 8))
-                        badges[#badges + 1] = helpers.badge('borderGapLength',  helpers.format_scalar(current.borderGapLength  or 6))
-                        badges[#badges + 1] = helpers.badge('borderDashOffset', helpers.format_scalar(current.borderDashOffset or 0))
+                        badges[#badges + 1] = helpers.badge(
+                            'borderDashLength',
+                            helpers.format_scalar(current.borderDashLength or 8)
+                        )
+                        badges[#badges + 1] = helpers.badge(
+                            'borderGapLength',
+                            helpers.format_scalar(current.borderGapLength or 6)
+                        )
+                        badges[#badges + 1] = helpers.badge(
+                            'borderDashOffset',
+                            helpers.format_scalar(current.borderDashOffset or 0)
+                        )
                     end
                     return {
                         {
