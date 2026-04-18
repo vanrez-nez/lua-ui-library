@@ -50,11 +50,11 @@ DirtyProps.__index = DirtyProps
 local ACCESSOR = {}
 
 local function get_state(obj)
-  return rawget(obj, ACCESSOR)
+  return rawget(obj, ACCESSOR) -- rawget: ACCESSOR is a hidden key, must bypass __index
 end
 
 local function ensure_state(obj)
-  local s = rawget(obj, ACCESSOR)
+  local s = rawget(obj, ACCESSOR) -- rawget: ACCESSOR is a hidden key, must bypass __index
   if not s then
     s = {
       props = {},
@@ -63,7 +63,7 @@ local function ensure_state(obj)
       dirty_mask = 0,
       bit_count = 0,
     }
-    rawset(obj, ACCESSOR, s)
+    rawset(obj, ACCESSOR, s) -- rawset: stores private state under a hidden key, bypassing any __newindex
   end
   return s
 end
@@ -74,7 +74,7 @@ local function define(obj, key, def)
   assert(state.bit_count < 31, 'DirtyProps: max 31 props per object')
   local b = lshift(1, state.bit_count)
   state.bit_count = state.bit_count + 1
-  rawset(obj, key, def.val)
+  rawset(obj, key, def.val) -- rawset: initializes tracked prop value, bypassing any __newindex on the host
   state.props[key] = { b, def.val }
   state.properties[#state.properties + 1] = key
   for _, g in ipairs(groups) do
@@ -82,15 +82,32 @@ local function define(obj, key, def)
   end
 end
 
+--- Standalone mode: returns a self-contained tracked object.
+function DirtyProps.create(definitions)
+  local obj = setmetatable({}, DirtyProps)
+  for key, def in pairs(definitions) do
+    define(obj, key, def)
+  end
+  return obj
+end
+
+--- cls.lua mixin mode: defines props on an existing instance.
+--- Does NOT touch the metatable. Call once in constructor, then self:reset_dirty_props().
+function DirtyProps.init(obj, definitions)
+  for key, def in pairs(definitions) do
+    define(obj, key, def)
+  end
+end
+
 function DirtyProps:sync_dirty_props()
   local state = get_state(self)
   local props = state.props
   local properties = state.properties
-  local mask = 0
+  local mask = state.dirty_mask
   for i = 1, #properties do
     local key = properties[i]
     local p = props[key]
-    local cur = rawget(self, key)
+    local cur = rawget(self, key) -- rawget: reads the raw field, bypassing __index which may resolve effective values
     if cur ~= p[2] then
       p[2] = cur
       mask = bor(mask, p[1])
@@ -103,6 +120,7 @@ function DirtyProps:reset_dirty_props()
   local state = get_state(self)
   local props = state.props
   for _, key in ipairs(state.properties) do
+    -- rawget: reads the raw field, bypassing __index which may resolve effective values
     props[key][2] = rawget(self, key)
   end
   state.dirty_mask = 0
@@ -116,6 +134,18 @@ function DirtyProps:mark_dirty(...)
   for i = 1, select('#', ...) do
     local m = gm[select(i, ...)]
     if m then mask = bor(mask, m) end
+  end
+  state.dirty_mask = mask
+  return self
+end
+
+function DirtyProps:clear_dirty(...)
+  local state = get_state(self)
+  local gm   = state.group_masks
+  local mask = state.dirty_mask
+  for i = 1, select('#', ...) do
+    local m = gm[select(i, ...)]
+    if m then mask = band(mask, bit.bnot(m)) end
   end
   state.dirty_mask = mask
   return self
@@ -203,23 +233,6 @@ function DirtyProps:get_dirty_groups()
     result[name] = band(mask, m) ~= 0
   end
   return result
-end
-
---- Standalone mode: returns a self-contained tracked object.
-function DirtyProps.create(definitions)
-  local obj = setmetatable({}, DirtyProps)
-  for key, def in pairs(definitions) do
-    define(obj, key, def)
-  end
-  return obj
-end
-
---- cls.lua mixin mode: defines props on an existing instance.
---- Does NOT touch the metatable. Call once in constructor, then self:reset_dirty_props().
-function DirtyProps.init(obj, definitions)
-  for key, def in pairs(definitions) do
-    define(obj, key, def)
-  end
 end
 
 return DirtyProps

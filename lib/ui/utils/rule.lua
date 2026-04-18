@@ -92,6 +92,17 @@ validators.all_of = function(r, name, v)
   for _, inner in ipairs(r.rules) do Rule.validate(inner, name, v) end
 end
 
+--- Delegates to a custom validation function.
+validators.custom = function(r, name, v)
+  r.validate(name, v)
+end
+
+--- Runs a predicate, then delegates to an inner rule.
+validators.gate = function(r, name, v)
+  r.predicate(name, v)
+  Rule.validate(r.inner_rule, name, v)
+end
+
 --- Validates `value` against `rule`, raising on failure.
 --- nil is accepted when the rule is optional or has a default; otherwise raises.
 --- @param rule   table   a Rule descriptor
@@ -312,6 +323,40 @@ function Rule.all_of(rules, opts)
     has_default = opts.default ~= nil,
     default = opts.default,
     rules = rules,
+  }
+end
+
+--- Creates a rule with a custom validation function.
+--- The function receives (name, value) and should raise on failure.
+--- @param fn   function  validator: (name, value) → raises on failure
+--- @param opts table?    optional, default
+--- @return table
+function Rule.custom(fn, opts)
+  opts = opts or {}
+  check_opts(opts, BASE_OPTS)
+  return {
+    kind = 'custom',
+    optional = opts.optional or false,
+    has_default = opts.default ~= nil,
+    default = opts.default,
+    validate = fn,
+  }
+end
+
+--- Creates a rule that runs a predicate before delegating to an inner rule.
+--- The predicate receives (name, value) and should raise on failure.
+--- If the predicate passes, validation continues with the inner rule.
+--- @param predicate  function  (name, value) → raises to reject
+--- @param inner_rule table     any Rule descriptor
+--- @return table
+function Rule.gate(predicate, inner_rule)
+  return {
+    kind = 'gate',
+    optional = inner_rule.optional,
+    has_default = inner_rule.has_default,
+    default = inner_rule.default,
+    predicate = predicate,
+    inner_rule = inner_rule,
   }
 end
 
