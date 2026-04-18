@@ -1,13 +1,4 @@
-local Proxy = require('lib.ui.utils.proxy')
-
 local ContainerPropertyViews = {}
-
-local DECLARED_PROPS = '_declared_props'
-
-local function has_declared_prop(instance, key)
-    local declared_props = instance[DECLARED_PROPS]
-    return declared_props ~= nil and declared_props[key] ~= nil
-end
 
 local function install_view(instance, field_name, reader)
     rawset(instance, field_name, setmetatable({}, {
@@ -15,11 +6,7 @@ local function install_view(instance, field_name, reader)
             return reader(instance, key)
         end,
         __newindex = function(_, key, value)
-            if has_declared_prop(instance, key) then
-                Proxy.raw_set(instance, key, value)
-            else
-                rawset(instance, key, value)
-            end
+            rawset(instance, key, value)
         end,
     }))
 end

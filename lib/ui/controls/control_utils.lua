@@ -1,7 +1,6 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
-local Container = require('lib.ui.core.container')
-local Proxy = require('lib.ui.utils.proxy')
+-- Proxy removed
 local Rule = require('lib.ui.utils.rule')
 local Common = require('lib.ui.utils.common')
 
@@ -176,7 +175,7 @@ function Utils.controlled_value(prop_name, default_value, config)
         else
             current = self[internal_key]
             if current == nil then
-                current = Proxy.raw_get(self, internal_key)
+                current = rawget(self, internal_key)
             end
         end
         return coerce(self, current)
@@ -190,10 +189,6 @@ function Utils.controlled_value(prop_name, default_value, config)
         end
 
         self[internal_key] = next_value
-        local props = self.props
-        if props ~= nil and Types.is_function(props.raw_set) then
-            props:raw_set(internal_key, next_value)
-        end
         local mark_dirty = self.markDirty
         if Types.is_function(mark_dirty) then
             mark_dirty(self)
@@ -247,9 +242,9 @@ end
 
 function Utils.set_interaction_state(node, enabled)
     enabled = enabled == true
-    Proxy.raw_set(node, 'enabled', enabled)
-    Proxy.raw_set(node, 'interactive', enabled)
-    Proxy.raw_set(node, 'focusable', enabled)
+    rawset(node, 'enabled', enabled)
+    rawset(node, 'interactive', enabled)
+    rawset(node, 'focusable', enabled)
 end
 
 Utils.overlay_mixin = {

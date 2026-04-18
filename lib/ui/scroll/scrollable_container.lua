@@ -2,7 +2,7 @@ local Container = require('lib.ui.core.container')
 local Drawable = require('lib.ui.core.drawable')
 local Assert = require('lib.ui.utils.assert')
 local MathUtils = require('lib.ui.utils.math')
-local Proxy = require('lib.ui.utils.proxy')
+-- Proxy removed: DirtyProps sync handles change detection
 local ScrollableContainerSchema = require('lib.ui.scroll.scrollable_container_schema')
 
 local max = math.max
@@ -46,17 +46,6 @@ local function get_public(self, key)
     return self[key]
 end
 
-local function read_content_role(_, _, self)
-    return self._content
-end
-
-local function read_viewport_role(_, _, self)
-    return self._viewport
-end
-
-local function reject_role_node_write(key)
-    Assert.fail('ScrollableContainer.' .. key .. ' is read-only', 2)
-end
 
 -- ── Content extent measurement ──────────────────────────────────────────────
 
@@ -136,9 +125,9 @@ local function apply_content_offset(self)
     local sy = self._scroll_y or 0
 
     -- Move content in the opposite direction of scroll offset.
-    Proxy.raw_set(content_node, 'x', -sx)
-    Proxy.raw_set(content_node, 'y', -sy)
-    content_node.dirty:mark('local_transform')
+    content_node.x = -sx
+    content_node.y = -sy
+    content_node:mark_dirty('local_transform')
     content_node:invalidate_world()
     content_node:invalidate_descendant_world()
 end
@@ -147,7 +136,7 @@ end
 
 local function update_scrollbar_geometry(self)
     local function mark_node_geometry_dirty(node)
-        node.dirty:mark('measurement', 'local_transform', 'bounds')
+        node:mark_dirty('measurement', 'local_transform', 'bounds')
         node:invalidate_world()
         node:invalidate_descendant_world()
     end
@@ -156,36 +145,36 @@ local function update_scrollbar_geometry(self)
         local changed = false
 
         if x ~= nil then
-            if Proxy.raw_get(node, 'x') ~= x then
-                Proxy.raw_set(node, 'x', x)
+            if node.x ~= x then
+                node.x = x
                 changed = true
             end
         end
 
         if y ~= nil then
-            if Proxy.raw_get(node, 'y') ~= y then
-                Proxy.raw_set(node, 'y', y)
+            if node.y ~= y then
+                node.y = y
                 changed = true
             end
         end
 
         if width ~= nil then
-            if Proxy.raw_get(node, 'width') ~= width then
-                Proxy.raw_set(node, 'width', width)
+            if node.width ~= width then
+                node.width = width
                 changed = true
             end
         end
 
         if height ~= nil then
-            if Proxy.raw_get(node, 'height') ~= height then
-                Proxy.raw_set(node, 'height', height)
+            if node.height ~= height then
+                node.height = height
                 changed = true
             end
         end
 
         if visible ~= nil then
-            if Proxy.raw_get(node, 'visible') ~= visible then
-                Proxy.raw_set(node, 'visible', visible)
+            if node.visible ~= visible then
+                node.visible = visible
                 changed = true
             end
         end
@@ -493,10 +482,6 @@ function ScrollableContainer:constructor(opts)
 
     self._viewport = viewport
     self._content = content
-    Proxy.on_read(self, 'content', read_content_role)
-    Proxy.on_read(self, 'viewport', read_viewport_role)
-    Proxy.on_pre_write(self, 'content', reject_role_node_write)
-    Proxy.on_pre_write(self, 'viewport', reject_role_node_write)
 
     -- ── Scrollbar parts (optional) ──────────────────────────────────────
 
@@ -705,13 +690,13 @@ local function sync_viewport_size(self)
 
     local changed = false
 
-    if Proxy.raw_get(viewport_node, 'width') ~= w then
-        Proxy.raw_set(viewport_node, 'width', w)
+    if viewport_node.width ~= w then
+        viewport_node.width = w
         changed = true
     end
 
-    if Proxy.raw_get(viewport_node, 'height') ~= h then
-        Proxy.raw_set(viewport_node, 'height', h)
+    if viewport_node.height ~= h then
+        viewport_node.height = h
         changed = true
     end
 
@@ -729,10 +714,9 @@ local function sync_viewport_size(self)
         return
     end
 
-    viewport_node.dirty:mark('measurement', 'local_transform', 'bounds')
+    viewport_node:mark_dirty('measurement', 'local_transform', 'bounds')
     viewport_node:_apply_resolved_size(w, h)
     viewport_node:invalidate_world()
-    viewport_node:invalidate_descendant_geometry()
 
     local function mark_layout_subtree_dirty(node)
         local children = node._children

@@ -5,7 +5,7 @@ local Stage = require('lib.ui.scene.stage')
 local Transitions = require('lib.ui.scene.transitions')
 local Types = require('lib.ui.utils.types')
 local Rule = require('lib.ui.utils.rule')
-local Proxy = require('lib.ui.utils.proxy')
+-- Proxy removed
 local ComposerSchema = require('lib.ui.scene.composer_schema')
 
 local Composer = Container:extends('Composer')
@@ -79,7 +79,7 @@ local function clear_transition_canvas(graphics)
 end
 
 local function get_public_value(self, key)
-    return Proxy.raw_get(self, key)
+    return rawget(self, key)
 end
 
 

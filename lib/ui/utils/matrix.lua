@@ -106,6 +106,57 @@ function Matrix:set(a, b, c, d, tx, ty)
     return self
 end
 
+function Matrix:set_linear_from_transform(scale_x, scale_y, rotation, skew_x, skew_y)
+    scale_x = scale_x == nil and 1 or scale_x
+    scale_y = scale_y == nil and 1 or scale_y
+    rotation = rotation or 0
+    skew_x = skew_x or 0
+    skew_y = skew_y or 0
+
+    Assert.number('scale_x', scale_x, 2)
+    Assert.number('scale_y', scale_y, 2)
+    Assert.number('rotation', rotation, 2)
+    Assert.number('skew_x', skew_x, 2)
+    Assert.number('skew_y', skew_y, 2)
+
+    self.a = cos(rotation + skew_y) * scale_x
+    self.b = sin(rotation + skew_y) * scale_x
+    self.c = -sin(rotation - skew_x) * scale_y
+    self.d = cos(rotation - skew_x) * scale_y
+
+    return self
+end
+
+function Matrix:set_translation(tx, ty)
+    tx = tx or 0
+    ty = ty or 0
+
+    Assert.number('tx', tx, 2)
+    Assert.number('ty', ty, 2)
+
+    self.tx = tx
+    self.ty = ty
+
+    return self
+end
+
+function Matrix:set_transform_translation(x, y, pivot_x, pivot_y)
+    x = x or 0
+    y = y or 0
+    pivot_x = pivot_x or 0
+    pivot_y = pivot_y or 0
+
+    Assert.number('x', x, 2)
+    Assert.number('y', y, 2)
+    Assert.number('pivot_x', pivot_x, 2)
+    Assert.number('pivot_y', pivot_y, 2)
+
+    self.tx = x - (pivot_x * self.a + pivot_y * self.c)
+    self.ty = y - (pivot_x * self.b + pivot_y * self.d)
+
+    return self
+end
+
 function Matrix:set_from_transform(
     x,
     y,
@@ -137,14 +188,9 @@ function Matrix:set_from_transform(
     Assert.number('skew_x', skew_x, 2)
     Assert.number('skew_y', skew_y, 2)
 
-    local a = cos(rotation + skew_y) * scale_x
-    local b = sin(rotation + skew_y) * scale_x
-    local c = -sin(rotation - skew_x) * scale_y
-    local d = cos(rotation - skew_x) * scale_y
-    local tx = x - (pivot_x * a + pivot_y * c)
-    local ty = y - (pivot_x * b + pivot_y * d)
-
-    return self:set(a, b, c, d, tx, ty)
+    return self
+        :set_linear_from_transform(scale_x, scale_y, rotation, skew_x, skew_y)
+        :set_transform_translation(x, y, pivot_x, pivot_y)
 end
 
 function Matrix:is_identity(epsilon)

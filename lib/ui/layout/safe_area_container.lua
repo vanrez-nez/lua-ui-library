@@ -226,7 +226,7 @@ local function mark_children_parent_region_dirty(self)
 
     for index = 1, #children do
         local child = children[index]
-        child.dirty:mark('responsive')
+        child:mark_dirty('responsive')
         child:_mark_parent_layout_dependency_dirty()
     end
 end
@@ -287,9 +287,9 @@ end
 function SafeAreaContainer:_run_layout_pass(stage)
     self:_refresh_layout_content_rect(stage)
 
-    if self.dirty:is_dirty('layout') then
+    if self:group_dirty('layout') then
         self:_apply_layout(stage)
-        self.dirty:clear('layout')
+        self:clear_dirty('layout')
     end
 
     return self
@@ -298,9 +298,9 @@ end
 function SafeAreaContainer:_apply_layout(stage)
     local content_rect = self:_refresh_layout_content_rect(stage)
     local children = place_children(self, content_rect)
-    local effective_values = effective_values(self)
-    local width_mode = effective_values.width
-    local height_mode = effective_values.height
+    local node_values = effective_values(self)
+    local width_mode = node_values.width
+    local height_mode = node_values.height
 
     if width_mode ~= 'content' and height_mode ~= 'content' then
         return self

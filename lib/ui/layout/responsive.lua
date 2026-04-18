@@ -1,7 +1,7 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Rule = require('lib.ui.utils.rule')
-local Proxy = require('lib.ui.utils.proxy')
+-- Proxy removed
 
 local Responsive = {}
 
@@ -292,8 +292,8 @@ local function normalize_source(node, source_kind, source)
 end
 
 local function get_source(node)
-    local responsive = Proxy.raw_get(node, 'responsive')
-    local breakpoints = Proxy.raw_get(node, 'breakpoints')
+    local responsive = rawget(node, 'responsive')
+    local breakpoints = rawget(node, 'breakpoints')
 
     if responsive ~= nil and breakpoints ~= nil then
         Assert.fail(

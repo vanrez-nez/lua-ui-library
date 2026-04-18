@@ -4,7 +4,7 @@ local Types = require('lib.ui.utils.types')
 local Rectangle = require('lib.ui.core.rectangle')
 local Utils = require('lib.ui.utils.common')
 local LayoutNodeSchema = require('lib.ui.layout.layout_node_schema')
-local Proxy = require('lib.ui.utils.proxy')
+-- Proxy removed: DirtyProps sync handles change detection
 
 local max = math.max
 
@@ -24,11 +24,6 @@ local function assert_no_dual_responsive_breakpoints(responsive, breakpoints, le
 end
 
 function LayoutNode.__index(self, key)
-    local handled, value = Proxy.read(self, key)
-    if handled then
-        return value
-    end
-
     local current = rawget(self, '_pclass') or getmetatable(self)
     while current ~= nil do
         local method = rawget(current, key)
@@ -73,7 +68,7 @@ function LayoutNode:constructor(opts, schema, config)
 
     self._ui_layout_kind = 'LayoutNode'
     self._ui_layout_instance = true
-    self.dirty:mark('layout')
+    self:mark_dirty('layout')
     self._layout_content_rect_cache = Rectangle(0, 0, 0, 0)
 end
 
@@ -86,13 +81,13 @@ function LayoutNode.is_layout_node(value)
 end
 
 function LayoutNode:markDirty()
-    self.dirty:mark('layout')
+    self:mark_dirty('layout')
 
     local current = self.parent
 
     while current ~= nil do
         if current._ui_layout_instance == true then
-            current.dirty:mark('layout')
+            current:mark_dirty('layout')
         end
 
         current = current.parent
@@ -139,9 +134,9 @@ function LayoutNode:_run_layout_pass(stage)
     self:_prepare_for_layout_pass(stage)
     self:_refresh_layout_content_rect()
 
-    if self.dirty:is_dirty('layout') then
+    if self:group_dirty('layout') then
         self:_apply_layout(stage)
-        self.dirty:clear('layout')
+        self:clear_dirty('layout')
     end
 
     return self

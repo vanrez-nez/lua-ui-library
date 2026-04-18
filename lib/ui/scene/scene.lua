@@ -1,18 +1,9 @@
 local Assert = require('lib.ui.utils.assert')
 local Container = require('lib.ui.core.container')
 local Types = require('lib.ui.utils.types')
-local Proxy = require('lib.ui.utils.proxy')
-local CallCounterProfiler = require('profiler.call_counter_profiler')
+-- Proxy removed
 
 local Scene = Container:extends('Scene')
-
-CallCounterProfiler.start_from_env({
-    name = 'scene',
-    target = 'lib/ui/scene/scene.lua',
-    enabled_env = 'UI_CALL_PROFILE_SCENE',
-    output_env = 'UI_CALL_PROFILE_SCENE_OUTPUT',
-    prefix = 'scene-call-count-profile',
-})
 
 local SCENE_PUBLIC_KEYS = {
     params = true,
@@ -23,7 +14,7 @@ local function get_public_value(self, key)
         return self._scene_params
     end
 
-    return Proxy.raw_get(self, key)
+    return rawget(self, key)
 end
 
 
@@ -69,17 +60,6 @@ local function set_params(self, value, level)
     return normalized
 end
 
-local function read_scene_params(_, _, target)
-    return target._scene_params
-end
-
-local function validate_scene_params_write(_, value)
-    return validate_params(value, 2)
-end
-
-local function store_scene_params_write(value, _, target)
-    target._scene_params = value
-end
 
 local function is_runtime_utility(node)
     return Types.is_table(node) and (
@@ -132,27 +112,6 @@ local function assert_runtime_parent(parent, level)
     end
 end
 
-local function validate_scene_parent_write(_, value, target)
-    if value ~= nil then
-        if not target._allow_runtime_parent_assignment then
-            Assert.fail('Scene parent ownership is Composer-managed', 2)
-        end
-
-        assert_runtime_parent(value, 2)
-    end
-
-    return value
-end
-
-local function store_scene_parent_write(value, _, target)
-    if value == nil then
-        target._scene_active = false
-        target._scene_runtime_owner = nil
-        Proxy.raw_set(target, 'enabled', false)
-    end
-
-    rawset(target, 'parent', value)
-end
 
 local function can_receive_input(self)
     return self._scene_active == true and
@@ -193,7 +152,7 @@ function Scene:__newindex(key, value)
         else
             self._scene_active = false
             self._scene_runtime_owner = nil
-            Proxy.raw_set(self, 'enabled', false)
+            rawset(self, 'enabled', false)
         end
 
         rawset(self, key, value)
@@ -216,13 +175,6 @@ function Scene:__newindex(key, value)
     rawset(self, key, value)
 end
 
-local function reject_scene_prop_write(key)
-    Assert.fail(
-        'Scene does not support prop "' .. tostring(key) .. '"',
-        2
-    )
-end
-
 function Scene:constructor(opts)
     opts = copy_options(opts)
 
@@ -232,18 +184,8 @@ function Scene:constructor(opts)
     }, SCENE_PUBLIC_KEYS)
     Container._allow_fill_from_parent(self, { width = true, height = true })
 
-    for key in pairs(Container._schema) do
-        Proxy.on_pre_write(self, key, reject_scene_prop_write)
-    end
-
-    Proxy.on_read(self, 'params', read_scene_params)
-    Proxy.on_pre_write(self, 'params', validate_scene_params_write)
-    Proxy.on_write(self, 'params', store_scene_params_write)
-    Proxy.on_pre_write(self, 'parent', validate_scene_parent_write)
-    Proxy.on_write(self, 'parent', store_scene_parent_write)
-
     self.params = opts.params
-    Proxy.raw_set(self, 'enabled', false)
+    rawset(self, 'enabled', false)
 
     self._ui_scene_instance = true
     self._scene_created = false
@@ -364,7 +306,7 @@ function Scene:_set_runtime_active(active)
         Assert.fail('Scene must be mounted before it can become active', 2)
     end
 
-    Proxy.raw_set(self, 'enabled', active)
+    self.enabled = active
     self._scene_active = active
     return self
 end

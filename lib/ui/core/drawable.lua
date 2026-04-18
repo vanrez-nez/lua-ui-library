@@ -10,7 +10,6 @@ local Styling = require('lib.ui.render.styling')
 local DrawableSchema = require('lib.ui.core.drawable_schema')
 
 local max = math.max
-local min = math.min
 
 local Drawable = Container:extends('Drawable')
 
@@ -30,23 +29,6 @@ local DEFAULT_FOCUS_RING_WIDTH = 2
 local get_effective_value
 local resolve_content_rect
 
-local function copy_options(opts)
-    if opts == nil then
-        return {}
-    end
-
-    if not Types.is_table(opts) then
-        Assert.fail('opts must be a table', 2)
-    end
-
-    local copy = {}
-
-    for key, value in pairs(opts) do
-        copy[key] = value
-    end
-
-    return copy
-end
 
 
 
@@ -104,7 +86,8 @@ local function assert_no_content_fill_dependency(self, children)
 
             if child_is_visible(child) and child.width == 'fill' then
                 Assert.fail(
-                    'Drawable has a circular measurement dependency because width = "content" and a visible child has width = "fill"',
+                    'Drawable has a circular measurement dependency because '
+                        .. 'width = "content" and a visible child has width = "fill"',
                     3
                 )
             end
@@ -117,7 +100,8 @@ local function assert_no_content_fill_dependency(self, children)
 
             if child_is_visible(child) and child.height == 'fill' then
                 Assert.fail(
-                    'Drawable has a circular measurement dependency because height = "content" and a visible child has height = "fill"',
+                    'Drawable has a circular measurement dependency because '
+                        .. 'height = "content" and a visible child has height = "fill"',
                     3
                 )
             end
@@ -132,7 +116,7 @@ local function collect_child_entries(children)
         local child = children[index]
 
         child:_set_layout_offset(0, 0)
-        child.dirty:mark('measurement')
+        child:mark_dirty('measurement')
         child:_refresh_if_dirty()
 
         if child_is_visible(child) then

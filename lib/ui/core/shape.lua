@@ -7,7 +7,7 @@ local ShapeFillSource = require('lib.ui.shapes.fill_source')
 local ShapeFillPlacement = require('lib.ui.shapes.fill_placement')
 local ShapeFillRenderer = require('lib.ui.shapes.fill_renderer')
 local RuntimeProfiler = require('profiler.runtime_profiler')
-local DirtyState = require('lib.ui.utils.dirty_state')
+local DirtyProps = require('lib.ui.utils.dirty_props')
 local ShapeSchema = require('lib.ui.core.shape_schema')
 
 local Shape = Container:extends('Shape')
@@ -24,19 +24,6 @@ Shape._schema = Utils.merge_tables(
     ShapeSchema
 )
 
-local FILL_CACHE_KEYS = {
-    fillColor = true,
-    fillOpacity = true,
-    fillGradient = true,
-    fillTexture = true,
-    fillRepeatX = true,
-    fillRepeatY = true,
-    fillOffsetX = true,
-    fillOffsetY = true,
-    fillAlignX = true,
-    fillAlignY = true,
-}
-
 local FILL_MOTION_CACHE_KEYS = {
     fillColor = true,
     fillOpacity = true,
@@ -48,58 +35,6 @@ local FILL_MOTION_CACHE_KEYS = {
     fillOffsetY = true,
     fillAlignX = true,
     fillAlignY = true,
-}
-
-local PAINT_KEYS = {
-    fillColor = true,
-    fillOpacity = true,
-    fillGradient = true,
-    fillTexture = true,
-    fillRepeatX = true,
-    fillRepeatY = true,
-    fillOffsetX = true,
-    fillOffsetY = true,
-    fillAlignX = true,
-    fillAlignY = true,
-    strokeColor = true,
-    strokeOpacity = true,
-    strokeWidth = true,
-    strokeStyle = true,
-    strokeJoin = true,
-    strokeMiterLimit = true,
-    strokePattern = true,
-    strokeDashLength = true,
-    strokeGapLength = true,
-    strokeDashOffset = true,
-    shader = true,
-    opacity = true,
-    blendMode = true,
-}
-
-local GEOMETRY_KEYS = {
-    width = true,
-    height = true,
-    minWidth = true,
-    minHeight = true,
-    maxWidth = true,
-    maxHeight = true,
-    x = true,
-    y = true,
-    anchorX = true,
-    anchorY = true,
-    pivotX = true,
-    pivotY = true,
-    scaleX = true,
-    scaleY = true,
-    rotation = true,
-    skewX = true,
-    skewY = true,
-    radius = true,
-    cornerRadius = true,
-    cornerRadiusTopLeft = true,
-    cornerRadiusTopRight = true,
-    cornerRadiusBottomRight = true,
-    cornerRadiusBottomLeft = true,
 }
 
 local function copy_bounds_into(target, bounds)
@@ -153,38 +88,28 @@ local function bounds_match(cached_bounds, bounds)
         cached_bounds.height == (bounds.height or 0)
 end
 
-local function handle_paint_prop_change(_, _, watched_key, target)
-    target.shape_dirty:mark('paint')
-
-    if FILL_CACHE_KEYS[watched_key] then
-        target:_invalidate_fill_resolution_cache()
-    end
-end
-
-local function handle_geometry_prop_change(_, _, _, target)
-    target.shape_dirty:mark('geometry')
-end
-
 Shape.__index = Shape
 
 function Shape:constructor(opts)
     Container.constructor(self, opts, ShapeSchema)
-    self.shape_dirty = DirtyState({ 'paint', 'geometry' })
+    self.shape_dirty = DirtyProps.create({
+        _paint_flag = {
+            val = false,
+            groups = { 'paint' }
+        },
+        _geometry_flag = {
+            val = false,
+            groups = { 'geometry' }
+        },
+    })
+    self.shape_dirty:reset_dirty_props()
     self.schema:define(ShapeSchema)
-
-    for key in pairs(PAINT_KEYS) do
-        self.props:watch(key, handle_paint_prop_change)
-    end
-
-    for key in pairs(GEOMETRY_KEYS) do
-        self.props:watch(key, handle_geometry_prop_change)
-    end
 
     for key, value in pairs(opts or {}) do
         self[key] = value
     end
 
-    self.shape_dirty:mark('paint', 'geometry')
+    self.shape_dirty:mark_dirty('paint', 'geometry')
     self._ui_shape_instance = true
     self._fill_surface_cache = nil
     self._fill_active_descriptor_cache = nil
@@ -205,11 +130,11 @@ function Shape.new(opts)
     return Shape(opts)
 end
 
-function Shape:addChild()
+function Shape:addChild() -- luacheck: ignore self
     Assert.fail('Shape may not contain child nodes', 2)
 end
 
-function Shape:removeChild()
+function Shape:removeChild() -- luacheck: ignore self
     Assert.fail('Shape may not contain child nodes', 2)
 end
 
@@ -370,7 +295,7 @@ function Shape:_apply_motion_value(target_name, property_name, value)
 end
 
 function Shape:_refresh_if_dirty()
-    local geometry_was_dirty = self.dirty:is_any(
+    local geometry_was_dirty = self:group_any_dirty(
         'measurement',
         'local_transform',
         'world_transform',
@@ -380,7 +305,7 @@ function Shape:_refresh_if_dirty()
     Container._refresh_if_dirty(self)
 
     if geometry_was_dirty then
-        self.shape_dirty:mark('geometry')
+        self.shape_dirty:mark_dirty('geometry')
     end
 end
 
@@ -523,14 +448,14 @@ function Shape:draw(graphics)
 
     local shape_dirty = self.shape_dirty
 
-    if shape_dirty:is_dirty('geometry') then
+    if shape_dirty:group_dirty('geometry') then
         self:_refresh_shape_geometry()
-        shape_dirty:clear('geometry')
+        shape_dirty:clear_dirty('geometry')
     end
 
-    if shape_dirty:is_dirty('paint') then
+    if shape_dirty:group_dirty('paint') then
         self:_refresh_shape_paint()
-        shape_dirty:clear('paint')
+        shape_dirty:clear_dirty('paint')
     end
 
     local active_fill = self:_resolve_active_fill_source()
@@ -540,7 +465,7 @@ function Shape:draw(graphics)
     RuntimeProfiler.pop_zone(profile_token)
 end
 
-function Shape:_requires_shape_result_clip()
+function Shape:_requires_shape_result_clip() -- luacheck: ignore self
     return false
 end
 

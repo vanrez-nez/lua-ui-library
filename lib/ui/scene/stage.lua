@@ -5,12 +5,10 @@ local Event = require('lib.ui.event.event')
 local Insets = require('lib.ui.core.insets')
 local Rectangle = require('lib.ui.core.rectangle')
 local Responsive = require('lib.ui.layout.responsive')
-local Object = require('lib.cls')
 local Types = require('lib.ui.utils.types')
-local Proxy = require('lib.ui.utils.proxy')
+-- Proxy removed
 local Memoize = require('lib.ui.utils.memoize')
 local RuntimeProfiler = require('profiler.runtime_profiler')
-local CallCounterProfiler = require('profiler.call_counter_profiler')
 
 local max = math.max
 local huge = math.huge
@@ -18,14 +16,6 @@ local huge = math.huge
 local Stage = Container:extends('Stage')
 local StageSchema = require('lib.ui.scene.stage_schema')
 Stage._schema = StageSchema
-
-CallCounterProfiler.start_from_env({
-    name = 'stage',
-    target = 'lib/ui/scene/stage.lua',
-    enabled_env = 'UI_CALL_PROFILE_STAGE',
-    output_env = 'UI_CALL_PROFILE_STAGE_OUTPUT',
-    prefix = 'stage-call-count-profile',
-})
 
 local DRAG_THRESHOLD = 4
 local DRAG_THRESHOLD_SQUARED = DRAG_THRESHOLD * DRAG_THRESHOLD
@@ -54,14 +44,8 @@ local function assert_table(name, value, level)
     end
 end
 
-local function assert_container_node(name, value, level)
-    if not Types.is_instance(value, Container) then
-        fail(name .. ' must be a Container instance', (level or 1) + 1)
-    end
-end
-
 local function get_public_value(self, key)
-    return Proxy.raw_get(self, key)
+    return rawget(self, key)
 end
 
 
@@ -382,18 +366,6 @@ local function normalize_safe_area_insets(value, level)
     return insets
 end
 
-local function reject_stage_parent_write(_, value)
-    if value ~= nil then
-        fail('Stage must not have a parent', 2)
-    end
-
-    return value
-end
-
-local function reject_stage_prop_write(key)
-    fail('Stage does not support prop "' .. key .. '"', 2)
-end
-
 local function derive_safe_area_insets(viewport_width, viewport_height, bounds)
     if bounds == nil then
         return Insets.zero()
@@ -443,7 +415,7 @@ local function refresh_environment_bounds(self)
         end
 
         -- Keep stored safe-area in sync so direct reads are correct too.
-        Proxy.raw_set(self, 'safeAreaInsets', safe_area_insets)
+        self.safeAreaInsets = safe_area_insets
     else
         w = max(0, get_public_value(self, 'width') or 0)
         h = max(0, get_public_value(self, 'height') or 0)
@@ -455,41 +427,6 @@ local function refresh_environment_bounds(self)
     self._safe_area_bounds_cache = viewport:inset(safe_area_insets)
 end
 
-local function synchronize_stage_for_read(target)
-    if target._ui_stage_instance == true then
-        if not target._updating and
-            not target._synchronizing then
-            Stage._synchronize_for_read(target)
-        end
-    end
-end
-
-local function read_stage_width(value, _, target)
-    synchronize_stage_for_read(target)
-
-    if value == nil or value <= 0 then
-        local cache = target._viewport_bounds_cache
-        if cache ~= nil then
-            return cache.width
-        end
-    end
-
-    return value
-end
-
-local function read_stage_height(value, _, target)
-    synchronize_stage_for_read(target)
-
-    if value == nil or value <= 0 then
-        local cache = target._viewport_bounds_cache
-        if cache ~= nil then
-            return cache.height
-        end
-    end
-
-    return value
-end
-
 local function set_safe_area_insets(self, value, level)
     local normalized = normalize_safe_area_insets(value, level or 1)
     local current = get_public_value(self, 'safeAreaInsets')
@@ -498,7 +435,7 @@ local function set_safe_area_insets(self, value, level)
         return normalized, false
     end
 
-    Proxy.raw_set(self, 'safeAreaInsets', normalized)
+    self.safeAreaInsets = normalized
     refresh_environment_bounds(self)
     Container.markDirty(self)
     return normalized, true
@@ -1475,18 +1412,19 @@ local function create_text_compose_event(self, raw_event)
 end
 
 local function apply_environment(self, width, height, safe_area_insets)
+    local _
     local viewport_changed = false
     local safe_area_changed = false
 
     if width ~= nil and get_public_value(self, 'width') ~= width then
         Assert.number('Stage.width', width, 3)
-        Proxy.raw_set(self, 'width', width)
+        self.width = width
         viewport_changed = true
     end
 
     if height ~= nil and get_public_value(self, 'height') ~= height then
         Assert.number('Stage.height', height, 3)
-        Proxy.raw_set(self, 'height', height)
+        self.height = height
         viewport_changed = true
     end
 
@@ -1622,16 +1560,6 @@ function Stage:constructor(opts)
     Container.constructor(self, {}, StageSchema)
     self.schema:define(StageSchema)
 
-    Proxy.on_pre_write(self, 'parent', reject_stage_parent_write)
-    for key in pairs(Container._schema) do
-        if StageSchema[key] == nil then
-            Proxy.on_pre_write(self, key, reject_stage_prop_write)
-        end
-    end
-
-    Proxy.on_read(self, 'width', read_stage_width)
-    Proxy.on_read(self, 'height', read_stage_height)
-
     for key, value in pairs(opts) do
         self[key] = value
     end
@@ -1713,8 +1641,8 @@ end
 
 function Stage:_resolve_responsive_for_node(node)
 
-    local responsive = Proxy.raw_get(node, 'responsive')
-    local breakpoints = Proxy.raw_get(node, 'breakpoints')
+    local responsive = rawget(node, 'responsive')
+    local breakpoints = rawget(node, 'breakpoints')
     if responsive == nil and breakpoints == nil then
         if node._responsive_token ~= nil or node._resolved_responsive_overrides ~= nil then
             node:_set_resolved_responsive_overrides(nil, nil)
@@ -1901,7 +1829,7 @@ function Stage:_move_focus_sequential_internal(direction)
         end
     end
 
-    local next_index = nil
+    local next_index
 
     if direction == 'next' then
         next_index = current_index + 1
@@ -2086,7 +2014,7 @@ function Stage:_refresh_focus_runtime_state(previous_owner_override)
 
     local active_chain = { self }
     local trap_stack = self._focus_trap_stack
-    
+
     for i = 1, #trap_stack do
         active_chain[#active_chain + 1] = trap_stack[i]
     end
@@ -2204,15 +2132,30 @@ function Stage:getSafeArea()
 end
 
 function Stage:addChild()
-    fail('Stage does not support child insertion; baseSceneLayer and overlayLayer are runtime-managed and should be used instead', 2)
+    fail(
+        'Stage does not support child insertion; '
+            .. 'baseSceneLayer and overlayLayer are runtime-managed '
+            .. 'and should be used instead',
+        2
+    )
 end
 
 function Stage:removeChild()
-    fail('Stage does not support child removal; baseSceneLayer and overlayLayer are runtime-managed and cannot be removed directly', 2)
+    fail(
+        'Stage does not support child removal; '
+            .. 'baseSceneLayer and overlayLayer are runtime-managed '
+            .. 'and cannot be removed directly',
+        2
+    )
 end
 
 function Stage:removeAllChildren()
-    fail('Stage does not support child removal; baseSceneLayer and overlayLayer are runtime-managed and cannot be removed directly', 2)
+    fail(
+        'Stage does not support child removal; '
+            .. 'baseSceneLayer and overlayLayer are runtime-managed '
+            .. 'and cannot be removed directly',
+        2
+    )
 end
 
 function Stage:getSafeAreaBounds()
@@ -2299,10 +2242,9 @@ function Stage:deliverInput(raw_event)
             return build_delivery(raw_event, intent, nil, target, path)
         end
 
-        if sequence.pointerType == 'mouse' then
-            -- Hover transformation is gated while any mouse button is held.
-            -- We don't update hover, but we continue to allow drag detection.
-        else
+        -- Hover transformation is gated while any mouse button is held.
+        -- We don't update hover, but we continue to allow drag detection.
+        if sequence.pointerType ~= 'mouse' then
             update_mouse_hover_target(self, raw_event.x, raw_event.y)
         end
 
@@ -2374,9 +2316,9 @@ function Stage:update(_)
 
     local profile_token = RuntimeProfiler.push_zone('Stage.update')
     self._updating = true
-    
+
     refresh_environment_bounds(self)
-    
+
     local queue = self._queued_state_changes
     while queue and queue.head <= queue.tail do
         local handler = queue.items[queue.head]
@@ -2384,8 +2326,6 @@ function Stage:update(_)
         queue.head = queue.head + 1
         handler()
     end
-
-    Proxy.flush(Container._batch_flush_handler)
 
     if queue then
         queue.head = 1

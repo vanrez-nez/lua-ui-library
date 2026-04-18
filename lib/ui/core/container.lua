@@ -1,7 +1,3 @@
--- Level conventions for Assert.fail in this file:
--- Level 2: Direct caller error (used when validating arguments passed directly to a method)
--- Level 3: Caller's caller error (used in deeply nested or proxied functions to point to user code)
--- Level 4: Used in hooks pointing back to original setter
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local MathUtils = require('lib.ui.utils.math')
@@ -13,16 +9,13 @@ local SideQuad = require('lib.ui.core.side_quad')
 local CornerQuad = require('lib.ui.core.corner_quad')
 
 local Schema = require('lib.ui.utils.schema')
-local Proxy = require('lib.ui.utils.proxy')
-local Reactive = require('lib.ui.utils.reactive')
-local DirtyState = require('lib.ui.utils.dirty_state')
+local DirtyProps = require('lib.ui.utils.dirty_props')
 local Rule = require('lib.ui.utils.rule')
 local Utils = require('lib.ui.utils.common')
 local Motion = require('lib.ui.motion')
 local GraphicsState = require('lib.ui.render.graphics_state')
 local RootCompositor = require('lib.ui.render.root_compositor')
 local RuntimeProfiler = require('profiler.runtime_profiler')
-local CallCounterProfiler = require('profiler.call_counter_profiler')
 local ContainerPropertyViews = require('lib.ui.core.container_property_views')
 local Styling = require('lib.ui.utils.styling')
 
@@ -36,38 +29,9 @@ local EventDispatcher = require('lib.ui.event.event_dispatcher')
 
 local Container = EventDispatcher:extends('Container')
 
+Container:implements(DirtyProps)
+
 Container._schema = require('lib.ui.core.container_schema')
-
-CallCounterProfiler.start_from_env({
-    name = 'container',
-    target = 'lib/ui/core/container.lua',
-    enabled_env = 'UI_CALL_PROFILE_CONTAINER',
-    output_env = 'UI_CALL_PROFILE_CONTAINER_OUTPUT',
-    prefix = 'container-call-count-profile',
-})
-
-local LOCAL_TRANSFORM_KEYS = {
-    anchorX = true, anchorY = true, pivotX = true, pivotY = true,
-    x = true, y = true, scaleX = true, scaleY = true,
-    rotation = true, skewX = true, skewY = true
-}
-
-local MEASUREMENT_KEYS = {
-    width = true, height = true, minWidth = true, minHeight = true, maxWidth = true, maxHeight = true
-}
-
-local EFFECTIVE_QUAD_KEYS = {
-    padding = true,
-    paddingTop = true, paddingRight = true, paddingBottom = true, paddingLeft = true,
-    margin = true,
-    marginTop = true, marginRight = true, marginBottom = true, marginLeft = true,
-    safeAreaInsets = true,
-    borderWidth = true,
-    borderWidthTop = true, borderWidthRight = true, borderWidthBottom = true, borderWidthLeft = true,
-    cornerRadius = true,
-    cornerRadiusTopLeft = true, cornerRadiusTopRight = true,
-    cornerRadiusBottomRight = true, cornerRadiusBottomLeft = true,
-}
 
 local QUAD_FAMILIES = {
     padding = {
@@ -167,13 +131,12 @@ local set_stencil_test = GraphicsState.set_stencil_test
 
 local function is_layout_node(node)
     -- fast duck-typing sentinel first for O(1) checks, then Object.is fallback
-    return rawget(node, '_ui_layout_instance') == true or Object.is(node, "LayoutNode")
+    return node._ui_layout_instance == true or Object.is(node, "LayoutNode")
 end
 
 local default = MathUtils.default
 local clamp_number = MathUtils.clamp_number
 local resolve_axis_size = MathUtils.resolve_axis_size
-local is_percentage_string = MathUtils.is_percentage_string
 
 local side_scratch_layer_1 = {}
 local side_scratch_layer_2 = {}
@@ -230,34 +193,30 @@ end
 
 function Container:invalidate_world()
     RootCompositor.invalidate_node_plan(self)
-    self.dirty:mark('world_transform', 'bounds', 'world_inverse')
+    self:mark_dirty('world_transform', 'bounds', 'world_inverse')
 end
 
-function Container:invalidate_descendant_world()
-    local children = self._children
-    for index = 1, #children do
-        local child = children[index]
-        if not child.dirty:is_all('world_transform', 'bounds', 'world_inverse') then
-            child:invalidate_world()
-            child:invalidate_descendant_world()
-        end
+--- Pull-based parent invalidation check.
+-- Called during _refresh_if_dirty / _prepare_for_layout_pass.
+-- Each child checks its parent's cached state against stored references.
+-- O(1) per child — no tree walking.
+function Container:_check_parent_invalidation()
+    local parent = self.parent
+    if not parent then return end
+
+    -- World transform dependency
+    if parent._world_transform_cache ~= self._parent_world_ref then
+        self:mark_dirty('world_transform', 'bounds', 'world_inverse')
+        self._parent_world_ref = parent._world_transform_cache
     end
-end
 
-function Container:invalidate_descendant_geometry()
-    local children = self._children
-    for index = 1, #children do
-        local child = children[index]
-        if not child.dirty:is_all('responsive', 'measurement', 'local_transform') then
-            child.dirty:mark('responsive', 'measurement', 'local_transform')
-            child:mark_layout_node_dirty()
-            child:invalidate_world()
-            child:invalidate_descendant_geometry()
-        else
-            -- Geometry is fully dirty, so we only need to invalidate world downwards
-            child:invalidate_world()
-            child:invalidate_descendant_world()
-        end
+    -- Resolved size dependency (affects measurement for content-sized children)
+    if parent._resolved_width ~= self._parent_resolved_w or
+       parent._resolved_height ~= self._parent_resolved_h then
+        self:mark_dirty('responsive', 'measurement')
+        self:mark_layout_node_dirty()
+        self._parent_resolved_w = parent._resolved_width
+        self._parent_resolved_h = parent._resolved_height
     end
 end
 
@@ -279,7 +238,7 @@ local function assert_no_cycle(parent, child, level)
             )
         end
 
-        current = rawget(current, 'parent')
+        current = current.parent
     end
 end
 
@@ -315,7 +274,7 @@ local function responsive_overrides_affect_root_compositing_plan(self, previous_
 end
 
 local function is_internal_node(node)
-    return Proxy.raw_get(node, 'internal') == true
+    return node.internal == true
 end
 
 local function is_public_node(node)
@@ -332,10 +291,6 @@ local function is_strict_descendant_of(node, ancestor)
     end
 
     return false
-end
-
-local function is_in_same_or_descendant_subtree(node, root)
-    return node == root or is_strict_descendant_of(node, root)
 end
 
 local function assign_attachment_root_recursive(node, attachment_root)
@@ -358,7 +313,7 @@ local function register_node_id_with_root(node, attachment_root)
         return
     end
 
-    local id = Proxy.raw_get(node, 'id')
+    local id = node.id
     if id == nil then
         return
     end
@@ -397,7 +352,7 @@ local function deregister_node_id_from_root_value(node, attachment_root, id)
 end
 
 local function deregister_node_id_from_root(node, attachment_root)
-    deregister_node_id_from_root_value(node, attachment_root, Proxy.raw_get(node, 'id'))
+    deregister_node_id_from_root_value(node, attachment_root, node.id)
 end
 
 local function deregister_subtree_ids(node, attachment_root)
@@ -423,7 +378,7 @@ local function find_sibling_name_collision(node, name, parent)
     local children = parent._children
     for index = 1, #children do
         local sibling = children[index]
-        if sibling ~= node and is_public_node(sibling) and Proxy.raw_get(sibling, 'name') == name then
+        if sibling ~= node and is_public_node(sibling) and sibling.name == name then
             return sibling
         end
     end
@@ -439,33 +394,6 @@ local function validate_name_uniqueness(node, name, parent, level)
             level or 1
         )
     end
-end
-
-local function collect_public_subtree_identity(node, state)
-    state = state or {
-        ids = {},
-        nodes = {},
-    }
-
-    state.nodes[node] = true
-
-    if is_public_node(node) then
-        local id = Proxy.raw_get(node, 'id')
-        if id ~= nil then
-            local existing = state.ids[id]
-            if existing ~= nil and existing ~= node then
-                Assert.fail('duplicate id "' .. tostring(id) .. '" is invalid', 3)
-            end
-            state.ids[id] = node
-        end
-    end
-
-    local children = node._children
-    for index = 1, #children do
-        collect_public_subtree_identity(children[index], state)
-    end
-
-    return state
 end
 
 local function validate_id_uniqueness_against_root(node, id, attachment_root, ignored_nodes, level)
@@ -487,11 +415,11 @@ local function validate_subtree_attach_identity(parent, child, level)
     -- Fast path: we only validate the direct child at attach time to avoid O(N) traversal.
     -- Deep subtrees are assumed valid from their original construction.
     if is_public_node(child) then
-        local id = Proxy.raw_get(child, 'id')
+        local id = child.id
         if id ~= nil then
             validate_id_uniqueness_against_root(child, id, get_root(parent), nil, level)
         end
-        validate_name_uniqueness(child, Proxy.raw_get(child, 'name'), parent, level)
+        validate_name_uniqueness(child, child.name, parent, level)
     end
 end
 
@@ -538,7 +466,7 @@ local function find_by_id_bounded(node, id, depth)
     local children = node._children
     for index = 1, #children do
         local child = children[index]
-        if is_public_node(child) and Proxy.raw_get(child, 'id') == id then
+        if is_public_node(child) and child.id == id then
             return child
         end
 
@@ -558,7 +486,7 @@ local function find_by_tag_bounded(node, tag, depth, results)
     results = results or {}
 
     if depth == 0 then
-        if is_public_node(node) and Proxy.raw_get(node, 'tag') == tag then
+        if is_public_node(node) and node.tag == tag then
             results[#results + 1] = node
         end
         return results
@@ -567,7 +495,7 @@ local function find_by_tag_bounded(node, tag, depth, results)
     local children = node._children
     for index = 1, #children do
         local child = children[index]
-        if is_public_node(child) and Proxy.raw_get(child, 'tag') == tag then
+        if is_public_node(child) and child.tag == tag then
             results[#results + 1] = child
         end
 
@@ -580,7 +508,7 @@ local function find_by_tag_bounded(node, tag, depth, results)
     return results
 end
 
-function Container:notify_stage_subtree_change(stage, handler_name, child, parent)
+function Container:notify_stage_subtree_change(stage, handler_name, child, parent)  -- luacheck: ignore self
     if not Object.is(stage, "Stage") then
         return
     end
@@ -600,8 +528,8 @@ end
 function Container:invalidate_stage_update_token()
     local root = get_root(self)
 
-    if rawget(root, '_ui_stage_instance') == true then
-        rawset(root, '_update_ran', false)
+    if root._ui_stage_instance == true then
+        root._update_ran = false
     end
 end
 
@@ -610,25 +538,14 @@ function Container:mark_layout_node_dirty()
         return false
     end
 
-    if self.dirty:is_dirty('layout') then
-        -- Note: We skip invalidate_stage_update_token here because the layout flag could only have been set
-        -- by a prior call that already invalidated the token.
+    if self:group_dirty('layout') then
         return false
     end
 
-    self.dirty:mark('layout')
+    self:mark_dirty('layout')
     self:invalidate_stage_update_token()
 
     return true
-end
-
-function Container:invalidate_ancestor_layouts()
-    local current = self
-
-    while current ~= nil do
-        Container.mark_layout_node_dirty(current)
-        current = rawget(current, 'parent')
-    end
 end
 
 local function walk_hierarchy(cls, key)
@@ -669,15 +586,6 @@ end
 local function get_declared_rule(self, key)
     local declared_props = self._declared_props
     return declared_props[key]
-end
-
-local function validate_public_value(self, key, value, level, opts)
-    local rule = get_declared_rule(self, key)
-    if rule == true then
-        return value
-    end
-    local full_key = tostring(self) .. '.' .. tostring(key)
-    return Rule.validate(rule, full_key, value, self, (level or 1) + 1, opts)
 end
 
 local function resolve_quad_value(self, family_name, requested_key)
@@ -744,19 +652,19 @@ local function get_effective_value(self, key)
         if Styling.requires_resolution(self, key, family) then
             return resolve_quad_value(self, family_name, key)
         end
-        return Proxy.raw_get(self, key)
+        return rawget(self, key)
     end
 
-    local overrides = rawget(self, '_resolved_responsive_overrides')
+    local overrides = self._resolved_responsive_overrides
     if not Styling.requires_resolution(self, key) then
-        return Proxy.raw_get(self, key)
+        return rawget(self, key)
     end
 
     if overrides ~= nil and overrides[key] ~= nil then
         return overrides[key]
     end
 
-    return Proxy.raw_get(self, key)
+    return rawget(self, key)
 end
 
 local function sync_resolved_cache(self)
@@ -766,19 +674,6 @@ local function sync_resolved_cache(self)
         if type(declared_props[key]) == 'table' then
             resolved_pdata[key] = get_effective_value(self, key)
         end
-    end
-end
-
-local function sync_quad_family_cache(self, family_name)
-    local family = QUAD_FAMILIES[family_name]
-    local resolved_pdata = self._resolved_pdata
-    
-    -- Sync the aggregate
-    resolved_pdata[family.aggregate] = get_effective_value(self, family.aggregate)
-    
-    -- Sync the members
-    for _, member_key in pairs(family.members) do
-        resolved_pdata[member_key] = get_effective_value(self, member_key)
     end
 end
 
@@ -816,7 +711,7 @@ local function resolve_fill_axis_size(self, axis_key, parent_size)
     end
 
     local parent = self.parent
-    local parent_name = nil
+    local parent_name
 
     if parent ~= nil then
         parent_name = getmetatable(parent).__name or tostring(parent)
@@ -855,8 +750,13 @@ local function refresh_measurement(self)
         parent_height = self._measurement_context_height
     end
 
-    local has_responsive = Proxy.raw_get(self, 'responsive') ~= nil or Proxy.raw_get(self, 'breakpoints') ~= nil
-    local get_val = has_responsive and get_effective_value or Proxy.raw_get
+    local has_responsive = self.responsive ~= nil or self.breakpoints ~= nil
+    local get_val
+    if has_responsive then
+        get_val = get_effective_value
+    else
+        get_val = rawget
+    end
 
     local width = clamp_number(
         resolve_measurement_axis_size(self, 'width', get_val(self, 'width'), parent_width),
@@ -872,7 +772,7 @@ local function refresh_measurement(self)
     self._resolved_width = width
     self._resolved_height = height
     self._local_bounds_cache = Rectangle(0, 0, width, height)
-    self.dirty:clear('measurement')
+    self:clear_dirty('measurement')
 end
 
 local function refresh_local_transform(self)
@@ -889,8 +789,13 @@ local function refresh_local_transform(self)
         parent_height = self._measurement_context_height or 0
     end
 
-    local has_responsive = Proxy.raw_get(self, 'responsive') ~= nil or Proxy.raw_get(self, 'breakpoints') ~= nil
-    local get_val = has_responsive and get_effective_value or Proxy.raw_get
+    local has_responsive = self.responsive ~= nil or self.breakpoints ~= nil
+    local get_val
+    if has_responsive then
+        get_val = get_effective_value
+    else
+        get_val = rawget
+    end
 
     local width = self._resolved_width or 0
     local height = self._resolved_height or 0
@@ -916,7 +821,7 @@ local function refresh_local_transform(self)
         (get_val(self, 'skewX') or 0),
         (get_val(self, 'skewY') or 0)
     )
-    self.dirty:clear('local_transform')
+    self:clear_dirty('local_transform')
 end
 
 local function refresh_world_transform(self)
@@ -942,26 +847,9 @@ local function refresh_world_transform(self)
         next_ty = local_transform.ty
     end
 
-    local changed =
-        previous.a ~= next_a or
-        previous.b ~= next_b or
-        previous.c ~= next_c or
-        previous.d ~= next_d or
-        previous.tx ~= next_tx or
-        previous.ty ~= next_ty
-
     previous:set(next_a, next_b, next_c, next_d, next_tx, next_ty)
-    self.dirty:clear('world_transform')
-    self.dirty:mark('world_inverse')
-
-    if changed then
-        local children = self._children
-        for index = 1, #children do
-            local child = children[index]
-            child:invalidate_world()
-            child:invalidate_descendant_world()
-        end
-    end
+    self:clear_dirty('world_transform')
+    self:mark_dirty('world_inverse')
 end
 
 local function refresh_bounds(self)
@@ -976,7 +864,7 @@ local function refresh_bounds(self)
         local points = resolve_world_bounds_points(self)
         if Types.is_table(points) and #points > 0 then
             self._world_bounds_cache = Rectangle.bounding_box(points)
-            self.dirty:clear('bounds')
+            self:clear_dirty('bounds')
             return
         end
     end
@@ -994,7 +882,7 @@ local function refresh_bounds(self)
     local max_y = max(max(y1, y2), max(y3, y4))
     local world_bounds = self._world_bounds_cache
     world_bounds:set(min_x, min_y, max_x - min_x, max_y - min_y)
-    self.dirty:clear('bounds')
+    self:clear_dirty('bounds')
 end
 
 local function refresh_child_order_cache(self)
@@ -1025,22 +913,22 @@ local function refresh_child_order_cache(self)
     end
 
     self._ordered_children = ordered
-    self.dirty:clear('child_order')
+    self:clear_dirty('child_order')
 end
 
 function Container:mark_parent_order_dirty()
     if self.parent then
-        self.parent.dirty:mark('child_order')
+        self.parent:mark_dirty('child_order')
     end
 end
 
 local function resolve_world_inverse(self)
-    if self.dirty:is_dirty('world_inverse') then
+    if self:group_dirty('world_inverse') then
         local matrix = self._world_transform_cache
         local inv, err = matrix:inverse()
         self._world_inverse_cache = inv
         self._world_inverse_error = err
-        self.dirty:clear('world_inverse')
+        self:clear_dirty('world_inverse')
     end
 
     return self._world_inverse_cache, self._world_inverse_error
@@ -1471,180 +1359,6 @@ local function find_hit_target(self, x, y, layer_eligible, effective_visible, ef
     return target
 end
 
-local function validate_id_write(_, value, target)
-    validate_id_uniqueness_against_root(
-        target,
-        value,
-        get_root(target),
-        { [target] = true },
-        4
-    )
-    return value
-end
-
-local function handle_id_change(new, old, _, target)
-    local attachment_root = get_root(target)
-    if old ~= nil then
-        deregister_node_id_from_root_value(target, attachment_root, old)
-    end
-    if new ~= nil then
-        register_node_id_with_root(target, attachment_root)
-    end
-end
-
-local function validate_name_write(_, value, target)
-    validate_name_uniqueness(target, value, target.parent, 4)
-    return value
-end
-
-local function validate_internal_write(_, value, target)
-    local next_internal = value == true
-    if next_internal then
-        return value
-    end
-
-    local attachment_root = get_root(target)
-    validate_id_uniqueness_against_root(
-        target,
-        Proxy.raw_get(target, 'id'),
-        attachment_root,
-        { [target] = true },
-        4
-    )
-    validate_name_uniqueness(
-        target,
-        Proxy.raw_get(target, 'name'),
-        target.parent,
-        4
-    )
-    return value
-end
-
-local function handle_internal_change(new, old, _, target)
-    local attachment_root = get_root(target)
-    local was_internal = old == true
-    local is_internal = new == true
-
-    if was_internal == is_internal then
-        return
-    end
-
-    local id = Proxy.raw_get(target, 'id')
-    if was_internal and not is_internal then
-        if id ~= nil then
-            register_node_id_with_root(target, attachment_root)
-        end
-    else
-        if id ~= nil then
-            deregister_node_id_from_root_value(target, attachment_root, id)
-        end
-    end
-
-    Container.invalidate_stage_update_token(target)
-end
-
-local function install_identity_hooks(self)
-    Proxy.on_pre_write(self, 'id', validate_id_write)
-    Proxy.on_change(self, 'id', handle_id_change)
-    Proxy.on_pre_write(self, 'name', validate_name_write)
-    Proxy.on_pre_write(self, 'internal', validate_internal_write)
-    Proxy.on_change(self, 'internal', handle_internal_change)
-end
-
-local function handle_public_prop_change(self, key)
-    Container.invalidate_stage_update_token(self)
-    local has_responsive_surface =
-        Proxy.raw_get(self, 'responsive') ~= nil or
-        Proxy.raw_get(self, 'breakpoints') ~= nil
-
-    if key == 'responsive' or key == 'breakpoints' or has_responsive_surface then
-        self.dirty:mark('responsive')
-    end
-
-    if RootCompositor.property_affects_node_plan(self, key) or
-        key == 'breakpoints' or
-        key == 'responsive' then
-        RootCompositor.invalidate_node_plan(self)
-    end
-
-    if key == 'breakpoints' or MEASUREMENT_KEYS[key] then
-        Container.invalidate_ancestor_layouts(self)
-        self.dirty:mark('measurement', 'local_transform')
-        Container.invalidate_world(self)
-        Container.invalidate_descendant_geometry(self)
-        return
-    end
-
-    if key == 'visible' then
-        Container.invalidate_ancestor_layouts(self)
-        return
-    end
-
-    if LOCAL_TRANSFORM_KEYS[key] then
-        self.dirty:mark('local_transform')
-        Container.invalidate_world(self)
-        Container.invalidate_descendant_world(self)
-        return
-    end
-
-    if key == 'zIndex' then
-        Container.mark_parent_order_dirty(self)
-    end
-
-    -- Sync eager cache for immediate (non-deferred) updates
-    local family_name = QUAD_KEY_TO_FAMILY[key]
-    if family_name then
-        sync_quad_family_cache(self, family_name)
-    else
-        self._resolved_pdata[key] = get_effective_value(self, key)
-    end
-end
-
-local function handle_public_prop_watch(_, _, watched_key, target)
-    handle_public_prop_change(target, watched_key)
-end
-
-function Container._batch_flush_handler(instance, keys)
-    for key in pairs(keys) do
-        handle_public_prop_change(instance, key)
-    end
-
-    -- Update eager cache for changed keys
-    local resolved_pdata = instance._resolved_pdata
-    for key in pairs(keys) do
-        local family_name = QUAD_KEY_TO_FAMILY[key]
-        if family_name then
-            sync_quad_family_cache(instance, family_name)
-        else
-            resolved_pdata[key] = get_effective_value(instance, key)
-        end
-    end
-end
-
-local function read_responsive_effective_value(_, read_key, target)
-    return target._resolved_pdata[read_key]
-end
-
-local function install_responsive_read_hooks(self, declared_props)
-    for key, rule in pairs(declared_props) do
-        if type(rule) == 'table' then
-            Proxy.on_read(self, key, read_responsive_effective_value)
-        end
-    end
-end
-
-local function install_public_prop_watchers(self, declared_props)
-    local props = self.props
-
-    for key, rule in pairs(declared_props) do
-        if type(rule) == 'table' and key ~= 'id' and key ~= 'name' and key ~= 'internal' then
-            if not rule.deferred then
-                props:watch(key, handle_public_prop_watch)
-            end
-        end
-    end
-end
-
 local function detach_child(parent, child)
     local index = find_child_index(parent, child)
 
@@ -1658,24 +1372,21 @@ local function detach_child(parent, child)
 
     local children = parent._children
     table.remove(children, index)
-    parent.dirty:mark('child_order')
+    parent:mark_dirty('child_order')
     parent:invalidate_stage_update_token()
-    parent:invalidate_ancestor_layouts()
     child.parent = nil
     child._layout_offset_x = 0
     child._layout_offset_y = 0
-    child.dirty:mark('responsive', 'measurement', 'local_transform')
+    child:mark_dirty('responsive', 'measurement', 'local_transform')
     assign_attachment_root_recursive(child, child)
     rebuild_attachment_root_index(child)
     child:invalidate_world()
-    child:invalidate_descendant_geometry()
     parent:notify_stage_subtree_change(stage, '_handle_detached_subtree', child, parent)
 end
 
 local function destroy_subtree(node)
-    -- rawset safely bypasses the dead proxy installed upon Object destruction,
-    -- allowing node flag updates directly while destructing the local structure
-    rawset(node, '_destroying_subtree', true)
+    -- _destroying_subtree guards recursive destroy notifications
+    node._destroying_subtree = true
 
     if node.parent then
         detach_child(node.parent, node)
@@ -1694,89 +1405,182 @@ local function destroy_subtree(node)
 end
 
 local function _init_state_fields(self, config)
-    rawset(self, '_config', config)
-    
-    -- rawset is used below because the Proxy is not yet installed.
-    rawset(self, '_children', {})
-    rawset(self, '_ordered_children', {})
+    self._config = config
+
+    self._children = {}
+    self._ordered_children = {}
     EventDispatcher.constructor(self)
 
-    rawset(self, '_measurement_context_width', nil)
-    rawset(self, '_measurement_context_height', nil)
-    rawset(self, '_layout_offset_x', 0)
-    rawset(self, '_layout_offset_y', 0)
+    self._measurement_context_width = nil
+    self._measurement_context_height = nil
+    self._layout_offset_x = 0
+    self._layout_offset_y = 0
 
-    rawset(self, '_resolved_width', 0)
-    rawset(self, '_resolved_height', 0)
-    rawset(self, '_local_transform_cache', Matrix.identity())
-    rawset(self, '_world_transform_cache', Matrix.identity())
-    rawset(self, '_world_inverse_cache', nil)
-    rawset(self, '_world_inverse_error', 'world transform is not invertible')
-    rawset(self, '_local_bounds_cache', Rectangle(0, 0, 0, 0))
-    rawset(self, '_world_bounds_cache', Rectangle(0, 0, 0, 0))
-    rawset(self, '_ui_container_instance', true)
-    rawset(self, '_attachment_root', self)
-    rawset(self, '_id_index', {})
-    rawset(self, '_resolved_responsive_overrides', {})
-    rawset(self, '_resolved_pdata', {})
+    self._resolved_width = 0
+    self._resolved_height = 0
+    self._local_transform_cache = Matrix.identity()
+    self._world_transform_cache = Matrix.identity()
+    self._world_inverse_cache = nil
+    self._world_inverse_error = 'world transform is not invertible'
+    self._local_bounds_cache = Rectangle(0, 0, 0, 0)
+    self._world_bounds_cache = Rectangle(0, 0, 0, 0)
+    self._ui_container_instance = true
+    self._attachment_root = self
+    self._id_index = {}
+    self._resolved_responsive_overrides = {}
+    self._resolved_pdata = {}
 
-    rawset(self, '_motion_visual_state', {})
-    rawset(self, '_motion_last_request', nil)
+    self._motion_visual_state = {}
+    self._motion_last_request = nil
 
-    rawset(self, 'dirty', DirtyState({
-        'responsive', 'measurement', 'local_transform',
-        'world_transform', 'bounds', 'child_order',
-        'layout', 'world_inverse',
-    }))
+    DirtyProps.init(self, {
+        anchorX = {
+            val = 0,
+            groups = { 'local_transform' }
+        },
+        anchorY = {
+            val = 0,
+            groups = { 'local_transform' }
+        },
+        pivotX = {
+            val = 0.5,
+            groups = { 'local_transform' }
+        },
+        pivotY = {
+            val = 0.5,
+            groups = { 'local_transform' }
+        },
+        x = {
+            val = 0,
+            groups = { 'local_transform' }
+        },
+        y = {
+            val = 0,
+            groups = { 'local_transform' }
+        },
+        scaleX = {
+            val = 1,
+            groups = { 'local_transform' }
+        },
+        scaleY = {
+            val = 1,
+            groups = { 'local_transform' }
+        },
+        rotation = {
+            val = 0,
+            groups = { 'local_transform' }
+        },
+        skewX = {
+            val = 0,
+            groups = { 'local_transform' }
+        },
+        skewY = {
+            val = 0,
+            groups = { 'local_transform' }
+        },
+        width = {
+            val = 0,
+            groups = { 'measurement', 'local_transform' }
+        },
+        height = {
+            val = 0,
+            groups = { 'measurement', 'local_transform' }
+        },
+        minWidth = {
+            val = nil,
+            groups = { 'measurement' }
+        },
+        minHeight = {
+            val = nil,
+            groups = { 'measurement' }
+        },
+        maxWidth = {
+            val = nil,
+            groups = { 'measurement' }
+        },
+        maxHeight = {
+            val = nil,
+            groups = { 'measurement' }
+        },
+        responsive = {
+            val = nil,
+            groups = { 'responsive' }
+        },
+        breakpoints = {
+            val = nil,
+            groups = { 'responsive' }
+        },
+        zIndex = {
+            val = 0,
+            groups = { 'child_order' }
+        },
+        _world_transform_flag = {
+            val = false,
+            groups = { 'world_transform' }
+        },
+        _bounds_flag = {
+            val = false,
+            groups = { 'bounds' }
+        },
+        _world_inverse_flag = {
+            val = false,
+            groups = { 'world_inverse' }
+        },
+        _layout_flag = {
+            val = false,
+            groups = { 'layout' }
+        },
+    })
+    self:reset_dirty_props()
+
+    self._parent_world_ref = nil
+    self._parent_resolved_w = nil
+    self._parent_resolved_h = nil
 end
 
-local function _init_proxy_and_schema(self, extra_public_keys)
+local function _init_schema(self, extra_public_keys)
     local declared_props = Utils.merge_tables(Utils.copy_table(self._schema or {}), extra_public_keys)
 
     rawset(self, '_declared_props', declared_props)
 
-    local proxied_props = {}
+    local schema_props = {}
     for key, rule in pairs(declared_props) do
         if type(rule) == 'table' then
-            proxied_props[key] = rule
+            schema_props[key] = rule
         end
     end
 
-    rawset(self, 'props', Reactive(self))
     rawset(self, 'schema', Schema(self))
 
     ContainerPropertyViews.install(self, {
         public = function(instance, key)
-            if instance._declared_props[key] ~= nil then
-                return Proxy.raw_get(instance, key)
-            end
+            -- rawget reads the local value, bypassing __index resolution
             return rawget(instance, key)
         end,
         effective = function(instance, key)
             if instance._declared_props[key] ~= nil then
                 return instance._resolved_pdata[key]
             end
+            -- rawget reads the local value, bypassing __index resolution
             return rawget(instance, key)
         end,
     })
 
-    self.schema:define(proxied_props)
-    return declared_props, proxied_props
+    self.schema:define(schema_props)
+    return declared_props, schema_props
 end
 
-local function _init_hooks(self, proxied_props)
-    install_identity_hooks(self)
-    install_responsive_read_hooks(self, proxied_props)
-    install_public_prop_watchers(self, proxied_props)
+local function _init_hooks()
+    -- No more Proxy/Reactive hooks — DirtyProps sync handles change detection.
 end
 
-local function _apply_opts(self, opts, declared_props, proxied_props)
+local function _apply_opts(self, opts, declared_props, schema_props)
     for key, value in pairs(opts) do
         if declared_props[key] == nil then
             Assert.fail('Unsupported prop "' .. tostring(key) .. '"', 4)
         end
 
-        if proxied_props[key] ~= nil then
+        if schema_props[key] ~= nil then
             self[key] = value
         else
             ContainerPropertyViews.write_extra(self, key, value)
@@ -1793,11 +1597,11 @@ function Container:_initialize(opts, extra_public_keys, config)
     end
 
     _init_state_fields(self, config)
-    local declared_props, proxied_props = _init_proxy_and_schema(self, extra_public_keys)
-    _init_hooks(self, proxied_props)
-    _apply_opts(self, opts, declared_props, proxied_props)
+    local declared_props, schema_props = _init_schema(self, extra_public_keys)
+    _init_hooks()
+    _apply_opts(self, opts, declared_props, schema_props)
 
-    self.dirty:mark(
+    self:mark_dirty(
         'responsive', 'measurement', 'local_transform',
         'world_transform', 'bounds', 'child_order', 'world_inverse'
     )
@@ -1840,7 +1644,7 @@ function Container._allow_child_fill(node, axes)
 end
 
 local function refresh_responsive(self)
-    self.dirty:clear('responsive')
+    self:clear_dirty('responsive')
 end
 
 function Container:_apply_resolved_size(width, height)
@@ -1849,26 +1653,21 @@ function Container:_apply_resolved_size(width, height)
 
     if self._resolved_width == resolved_width and
         self._resolved_height == resolved_height then
-        self.dirty:clear('measurement')
+        self:clear_dirty('measurement')
         return false
     end
 
     self._resolved_width = resolved_width
     self._resolved_height = resolved_height
     self._local_bounds_cache = Rectangle(0, 0, resolved_width, resolved_height)
-    self.dirty:clear('measurement')
-    self.dirty:mark('local_transform')
+    self:clear_dirty('measurement')
+    self:mark_dirty('local_transform')
     self:invalidate_world()
 
     if self._ui_layout_instance == true and
         Types.is_function(self._refresh_layout_content_rect) then
         self:_refresh_layout_content_rect()
         self:mark_layout_node_dirty()
-    end
-
-    local children = self._children
-    for index = 1, #children do
-        children[index]:_mark_parent_layout_dependency_dirty()
     end
 
     return true
@@ -1898,46 +1697,53 @@ function Container:_apply_content_measurement(width, height)
 end
 
 function Container:_refresh_if_dirty()
+    self:sync_dirty_props()
+    self:_check_parent_invalidation()
 
-    if self.dirty:is_dirty('responsive') then
+    if self:group_dirty('responsive') then
         refresh_responsive(self)
     end
 
-    if self.dirty:is_dirty('measurement') then
+    if self:group_dirty('measurement') then
         refresh_measurement(self)
     end
 
-    if self.dirty:is_dirty('local_transform') then
+    if self:group_dirty('local_transform') then
         refresh_local_transform(self)
     end
 
-    if self.dirty:is_dirty('world_transform') then
+    if self:group_dirty('world_transform') then
         refresh_world_transform(self)
     end
 
-    if self.dirty:is_dirty('bounds') then
+    if self:group_dirty('bounds') then
         refresh_bounds(self)
     end
 
-    if self.dirty:is_dirty('child_order') then
+    if self:group_dirty('child_order') then
         refresh_child_order_cache(self)
     end
+
+    self:reset_dirty_props()
 end
 
 function Container:_prepare_for_layout_pass()
+    self:sync_dirty_props()
+    self:_check_parent_invalidation()
 
-    if self.dirty:is_dirty('responsive') then
+    if self:group_dirty('responsive') then
         refresh_responsive(self)
     end
 
-    if self.dirty:is_dirty('measurement') then
+    if self:group_dirty('measurement') then
         refresh_measurement(self)
     end
 
-    if self.dirty:is_dirty('child_order') then
+    if self:group_dirty('child_order') then
         refresh_child_order_cache(self)
     end
 
+    self:reset_dirty_props()
     return self
 end
 
@@ -1960,7 +1766,7 @@ function Container:update(_)
     local children = self._children
     local snapshot_len = #children
     local start_offset = UPDATE_SNAPSHOT_OFFSET
-    
+
     for index = 1, snapshot_len do
         UPDATE_SNAPSHOT_SCRATCH[start_offset + index] = children[index]
     end
@@ -1977,7 +1783,7 @@ function Container:update(_)
 
     UPDATE_SNAPSHOT_OFFSET = start_offset
 
-    if self.dirty:is_dirty('child_order') then
+    if self:group_dirty('child_order') then
         refresh_child_order_cache(self)
     end
 
@@ -2004,13 +1810,11 @@ function Container:addChild(child)
     local attachment_root = get_root(self)
     assign_attachment_root_recursive(child, attachment_root)
     register_subtree_ids(child, attachment_root)
-    self.dirty:mark('child_order')
+    self:mark_dirty('child_order')
     self:invalidate_stage_update_token()
-    self:invalidate_ancestor_layouts()
 
-    child.dirty:mark('responsive', 'measurement', 'bounds', 'local_transform')
+    child:mark_dirty('responsive', 'measurement', 'bounds', 'local_transform')
     child:invalidate_world()
-    child:invalidate_descendant_geometry()
     self:notify_stage_subtree_change(
         attachment_root,
         '_handle_attached_subtree',
@@ -2038,7 +1842,7 @@ function Container:findById(id, depth)
     validate_lookup_key('Container.findById', 'id', id)
     depth = validate_depth_argument('Container.findById', depth, -1)
 
-    if is_public_node(self) and Proxy.raw_get(self, 'id') == id then
+    if is_public_node(self) and self.id == id then
         return self
     end
 
@@ -2050,7 +1854,9 @@ function Container:findById(id, depth)
         local attachment_root = get_root(self)
         local index = attachment_root and attachment_root._id_index or nil
         local candidate = index and index[id] or nil
-        if candidate ~= nil and candidate ~= self and is_public_node(candidate) and is_strict_descendant_of(candidate, self) then
+        if candidate ~= nil and candidate ~= self
+            and is_public_node(candidate)
+            and is_strict_descendant_of(candidate, self) then
             return candidate
         end
         return nil
@@ -2165,7 +1971,7 @@ function Container:_hit_test_resolved(x, y, state)
 
     state = state or {}
 
-    return find_hit_target(self, x, y, 
+    return find_hit_target(self, x, y,
         state.layer_eligible ~= false,
         state.effective_visible ~= false,
         state.effective_enabled ~= false,
@@ -2232,9 +2038,8 @@ function Container:markDirty()
     -- Note: This is an unoptimized coarse fallback that over-invalidates measurement and bounds.
     -- Prefer utilizing more targeted dirty:mark(...) statements where context is available.
     self:invalidate_stage_update_token()
-    self.dirty:mark('responsive', 'measurement', 'local_transform')
+    self:mark_dirty('responsive', 'measurement', 'local_transform')
     self:invalidate_world()
-    self:invalidate_descendant_geometry()
     return self
 end
 
@@ -2248,17 +2053,15 @@ function Container:_set_layout_offset(x, y)
 
     self._layout_offset_x = x
     self._layout_offset_y = y
-    self.dirty:mark('local_transform')
+    self:mark_dirty('local_transform')
     self:invalidate_world()
-    self:invalidate_descendant_world()
     return self
 end
 
 function Container:_mark_parent_layout_dependency_dirty()
     self:mark_layout_node_dirty()
-    self.dirty:mark('measurement', 'local_transform')
+    self:mark_dirty('measurement', 'local_transform')
     self:invalidate_world()
-    self:invalidate_descendant_geometry()
     return self
 end
 
@@ -2291,10 +2094,8 @@ function Container:_set_measurement_context(width, height)
     self:invalidate_stage_update_token()
     self._measurement_context_width = width
     self._measurement_context_height = height
-    self:invalidate_ancestor_layouts()
-    self.dirty:mark('measurement', 'local_transform')
+    self:mark_dirty('measurement', 'local_transform')
     self:invalidate_world()
-    self:invalidate_descendant_geometry()
     return self
 end
 
@@ -2330,7 +2131,7 @@ function Container:_set_resolved_responsive_overrides(token, overrides)
         end
     end
 
-    local previous_overrides = rawget(self, '_resolved_responsive_overrides')
+    local previous_overrides = self._resolved_responsive_overrides
     local previous_effective_z_index = get_effective_value(self, 'zIndex')
 
     if responsive_overrides_affect_root_compositing_plan(self, previous_overrides, normalized) then
@@ -2341,14 +2142,12 @@ function Container:_set_resolved_responsive_overrides(token, overrides)
     self._responsive_token = token
     self._resolved_responsive_overrides_source = overrides
     self._resolved_responsive_overrides = normalized
-    
+
     -- When overrides change, we must sync the entire resolved cache
     sync_resolved_cache(self)
 
-    self:invalidate_ancestor_layouts()
-    self.dirty:mark('responsive', 'measurement', 'local_transform')
+    self:mark_dirty('responsive', 'measurement', 'local_transform')
     self:invalidate_world()
-    self:invalidate_descendant_geometry()
 
     if previous_effective_z_index ~= get_effective_value(self, 'zIndex') then
         self:mark_parent_order_dirty()
