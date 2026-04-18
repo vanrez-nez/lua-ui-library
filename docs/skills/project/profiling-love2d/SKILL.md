@@ -6,6 +6,10 @@ description: "Project-specific instructions for coding performant code in Lua/Lo
 ## Profiling
 - Profile first — never try to optimize without measuring. Use existing `profiler` at the root project. Read  `profiler/README.md`
 - It is forbidden to modify any files on the profiler or doing custom implementations in the code you are testing.
+- Never trust a single profiler run; require two orthogonal views (e.g. function-level and line-level sampling) to agree before believing a hotspot is real.
+- Validate attribution with ablation: stub the alleged hotspot to a no-op and confirm total runtime drops proportionally — if it doesn't, the profiler lied about where the cost lives.
+- Always measure A vs B, never A alone; absolute numbers are noise, deltas across versions are signal.
+- When the profile is flat with no dominant hotspot, stop hunting — the answer is architectural (data layout, call frequency, allocation strategy), not a local optimization.
 
 ## Performance
 - **Locals over globals.** VM stores locals in registers; globals cost a table lookup. Alias anything accessed in a hot path: `local floor = math.floor`.
