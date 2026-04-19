@@ -70,6 +70,11 @@ local function validate_margin(name, value)
   validate_side(name, value)
 end
 
+local function validate_border_width(name, value)
+  if Types.is_number(value) then return end
+  validate_side(name, value)
+end
+
 local function validate_size(name, value, allow_content)
   if Types.is_number(value)              then return end
   if value == Constants.SIZE_MODE_FILL   then return end
@@ -109,6 +114,10 @@ end
 
 function CustomRules.corner_quad(opts)
   return Rule.custom(validate_corner, opts)
+end
+
+function CustomRules.border_width(opts)
+  return Rule.custom(validate_border_width, opts)
 end
 
 return CustomRules
