@@ -22,12 +22,6 @@ local Types = require('lib.ui.utils.types')
 
 local Rule = {}
 
-local BASE_OPTS = {
-  optional = true,
-  default = true,
-}
-
---- Guards against typos in opts tables. Raises at the call site (level 3).
 local function check_opts(opts, allowed)
   for k in pairs(opts) do
     if not allowed[k] then
@@ -35,6 +29,11 @@ local function check_opts(opts, allowed)
     end
   end
 end
+
+local BASE_OPTS = {
+  optional = true,
+  default = true,
+}
 
 local validators = {}
 
@@ -66,17 +65,8 @@ validators.enum = function(r, name, v)
   if not r.allowed[v] then Assert.fail(name .. ': must be one of: ' .. r.display, 2) end
 end
 
---- Accepts: number | 'fill' | percentage string | 'content' (if allow_content).
---- Used for layout dimension props (width, height, gap, etc.).
-validators.size_value = function(r, name, v)
-  if Types.is_number(v) then return end
-  if v == 'fill' then return end
-  if Types.is_percentage(v) then return end
-  if v == 'content' then
-    if r.allow_content then return end
-    Assert.fail(name .. ': "content" requires an intrinsic measurement rule', 2)
-  end
-  Assert.fail(name .. ': must be a number, "fill", "content", or a percentage string', 2)
+validators.custom = function(r, name, v)
+  r.fn(name, v, 2)
 end
 
 --- Passes if the value satisfies ANY inner rule (first-match, short-circuit).
@@ -90,17 +80,6 @@ end
 --- Passes only if the value satisfies ALL inner rules.
 validators.all_of = function(r, name, v)
   for _, inner in ipairs(r.rules) do Rule.validate(inner, name, v) end
-end
-
---- Delegates to a custom validation function.
-validators.custom = function(r, name, v)
-  r.validate(name, v)
-end
-
---- Runs a predicate, then delegates to an inner rule.
-validators.gate = function(r, name, v)
-  r.predicate(name, v)
-  Rule.validate(r.inner_rule, name, v)
 end
 
 --- Validates `value` against `rule`, raising on failure.
@@ -246,29 +225,17 @@ function Rule.enum(values, opts)
   }
 end
 
---- Creates a size_value rule for layout dimension properties.
---- Accepts: number | 'fill' | percentage string (e.g. '50%') | 'content'.
---- 'content' is only valid when allow_content = true (requires intrinsic sizing).
---- Example:
----   Rule.size_value({ default = 'fill', allow_content = true })
---- @param opts table?
----   optional      boolean
----   default       number|string
----   allow_content boolean  permit the 'content' keyword (default false)
---- @return table
-function Rule.size_value(opts)
+-- Rule.custom(fn, opts)
+-- fn(name, value, level) — use Assert directly, same as any validator
+function Rule.custom(fn, opts)
   opts = opts or {}
-  check_opts(opts, {
-    optional = true,
-    default = true,
-    allow_content = true,
-  })
+  check_opts(opts, BASE_OPTS)
   return {
-    kind = 'size_value',
+    kind = 'custom',
     optional = opts.optional or false,
     has_default = opts.default ~= nil,
     default = opts.default,
-    allow_content = opts.allow_content or false,
+    fn = fn,
   }
 end
 
@@ -323,40 +290,6 @@ function Rule.all_of(rules, opts)
     has_default = opts.default ~= nil,
     default = opts.default,
     rules = rules,
-  }
-end
-
---- Creates a rule with a custom validation function.
---- The function receives (name, value) and should raise on failure.
---- @param fn   function  validator: (name, value) → raises on failure
---- @param opts table?    optional, default
---- @return table
-function Rule.custom(fn, opts)
-  opts = opts or {}
-  check_opts(opts, BASE_OPTS)
-  return {
-    kind = 'custom',
-    optional = opts.optional or false,
-    has_default = opts.default ~= nil,
-    default = opts.default,
-    validate = fn,
-  }
-end
-
---- Creates a rule that runs a predicate before delegating to an inner rule.
---- The predicate receives (name, value) and should raise on failure.
---- If the predicate passes, validation continues with the inner rule.
---- @param predicate  function  (name, value) → raises to reject
---- @param inner_rule table     any Rule descriptor
---- @return table
-function Rule.gate(predicate, inner_rule)
-  return {
-    kind = 'gate',
-    optional = inner_rule.optional,
-    has_default = inner_rule.has_default,
-    default = inner_rule.default,
-    predicate = predicate,
-    inner_rule = inner_rule,
   }
 end
 

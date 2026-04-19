@@ -53,7 +53,7 @@ local LAYOUT_NODE_SCHEMA = {
         default = Enums.Alignment.START,
         set = mark_dirty,
     }),
-    responsive = Rule.gate(
+    responsive = Rule.all_of(
         ResponsiveBreakpointsGate.with_peer('breakpoints'),
         Responsive.schema_rule('Layout', { set = mark_dirty })
     ),

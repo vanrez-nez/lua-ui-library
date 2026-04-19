@@ -14,14 +14,14 @@
 --   local host = { width = '50%' }
 --
 --   local schema = Schema.create(host, {
---     width  = Rule.size_value({ default = 'fill' }),
---     height = Rule.size_value({ default = 'fill' }),
+--     width  = Rule.custom(validate_width, { default = 'fill' }),
+--     height = Rule.custom(validate_height, { default = 'fill' }),
 --     label  = Rule.string({ optional = true }),
 --     alpha  = Rule.number({ min = 0, max = 1, default = 1 }),
 --   })
 --
 --   schema:set_defaults()   -- host.height = 'fill', host.alpha = 1
---   schema:validate()       -- ok; host.width '50%' passes size_value
+--   schema:validate()       -- ok; host.width '50%' passes custom validation
 --
 --   host.alpha = 2
 --   schema:validate()       -- error: alpha out of range [0, 1]

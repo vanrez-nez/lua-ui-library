@@ -1,4 +1,5 @@
 local Rule = require('lib.ui.utils.rule')
+local CustomRules = require('lib.ui.schema.custom_rules')
 local Motion = require('lib.ui.motion')
 
 local CONTAINER_SCHEMA = {
@@ -18,11 +19,11 @@ local CONTAINER_SCHEMA = {
     pivotY = Rule.number({ default = 0.5 }),
     x = Rule.number({ default = 0 }),
     y = Rule.number({ default = 0 }),
-    width = Rule.size_value({
+    width = CustomRules.size_value({
         default = 0,
         allow_content = true
     }),
-    height = Rule.size_value({
+    height = CustomRules.size_value({
         default = 0,
         allow_content = true
     }),

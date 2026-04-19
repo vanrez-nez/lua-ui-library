@@ -6,16 +6,14 @@ local CornerQuad = require('lib.ui.core.corner_quad')
 local Motion = require('lib.ui.motion')
 local GraphicsValidation = require('lib.ui.render.graphics_validation')
 local SpacingSchema = require('lib.ui.core.spacing_schema')
+local Enums = require('lib.ui.core.enums')
+local Enum = require('lib.ui.utils.enum')
+local CustomRules = require('lib.ui.schema.custom_rules')
 
-local ALIGNMENT_VALUES = {
-    start = true,
-    center = true,
-    ['end'] = true,
-    stretch = true,
-}
+local enum_has = Enum.enum_has
 
-local function validate_alignment(key, value, ctx, level)
-    if not Types.is_string(value) or not ALIGNMENT_VALUES[value] then
+local function validate_alignment(key, value, _, level)
+    if not Types.is_string(value) or not enum_has(Enums.Alignment, value) then
         Assert.fail(
             'Drawable.' .. key .. ' must be "start", "center", "end", or "stretch"',
             level or 1
@@ -49,24 +47,24 @@ local DRAWABLE_SCHEMA = {
     marginRight = SpacingSchema.finite_number_rule(),
     marginBottom = SpacingSchema.finite_number_rule(),
     marginLeft = SpacingSchema.finite_number_rule(),
-    alignX = Rule.custom(validate_alignment, { default = 'start' }),
-    alignY = Rule.custom(validate_alignment, { default = 'start' }),
+    alignX = Rule.custom(validate_alignment, { default = Enums.Alignment.START }),
+    alignY = Rule.custom(validate_alignment, { default = Enums.Alignment.START }),
     skin = Rule.table(),
     shader = Rule.custom(GraphicsValidation.validate_root_shader),
-    opacity = Rule.opacity(GraphicsValidation.ROOT_OPACITY_DEFAULT),
+    opacity = CustomRules.opacity(GraphicsValidation.ROOT_OPACITY_DEFAULT),
     blendMode = Rule.enum(
         GraphicsValidation.ROOT_BLEND_MODE_VALUES,
-        GraphicsValidation.ROOT_BLEND_MODE_DEFAULT
+        { default = GraphicsValidation.ROOT_BLEND_MODE_DEFAULT }
     ),
     mask = Rule.table(),
-    motionPreset = Rule.custom(Motion.validate_motion_preset, { tier = 'heavy' }),
-    motion = Rule.custom(Motion.validate_motion, { tier = 'heavy' }),
+    motionPreset = Rule.custom(Motion.validate_motion_preset),
+    motion = Rule.custom(Motion.validate_motion),
 
     -- background
-    backgroundColor = Rule.color(),
-    backgroundOpacity = Rule.opacity(),
-    backgroundGradient = Rule.custom(GraphicsValidation.validate_gradient, { tier = 'always' }),
-    backgroundImage = Rule.custom(GraphicsValidation.validate_texture_or_sprite_source, { tier = 'heavy' }),
+    backgroundColor = CustomRules.color(),
+    backgroundOpacity = CustomRules.opacity(),
+    backgroundGradient = Rule.custom(GraphicsValidation.validate_gradient),
+    backgroundImage = Rule.custom(GraphicsValidation.validate_texture_or_sprite_source),
     backgroundRepeatX = Rule.boolean(),
     backgroundRepeatY = Rule.boolean(),
     backgroundOffsetX = SpacingSchema.finite_number_rule(),
@@ -75,17 +73,17 @@ local DRAWABLE_SCHEMA = {
     backgroundAlignY = Rule.enum(GraphicsValidation.SOURCE_ALIGN_VALUES),
 
     -- border
-    borderColor = Rule.color(),
-    borderOpacity = Rule.opacity(),
+    borderColor = CustomRules.color(),
+    borderOpacity = CustomRules.opacity(),
     borderWidth = Rule.normalize(normalize_border_width),
     borderWidthTop = SpacingSchema.non_negative_finite_rule(),
     borderWidthRight = SpacingSchema.non_negative_finite_rule(),
     borderWidthBottom = SpacingSchema.non_negative_finite_rule(),
     borderWidthLeft = SpacingSchema.non_negative_finite_rule(),
-    borderStyle = Rule.enum({ 'smooth', 'rough' }),
-    borderJoin = Rule.enum({ 'none', 'miter', 'bevel' }),
+    borderStyle = Rule.enum(Enums.StrokeStyle),
+    borderJoin = Rule.enum(Enums.StrokeJoin),
     borderMiterLimit = Rule.number({ min_exclusive = 0, finite = true }),
-    borderPattern = Rule.enum({ 'solid', 'dashed' }),
+    borderPattern = Rule.enum(Enums.StrokePattern),
     borderDashLength = Rule.number({ min_exclusive = 0, max = 255, finite = true }),
     borderGapLength = Rule.number({ min = 0, max = 255, finite = true }),
     borderDashOffset = SpacingSchema.finite_number_rule(),
@@ -98,8 +96,8 @@ local DRAWABLE_SCHEMA = {
     cornerRadiusBottomLeft = SpacingSchema.non_negative_finite_rule(),
 
     -- shadow
-    shadowColor = Rule.color(),
-    shadowOpacity = Rule.opacity(),
+    shadowColor = CustomRules.color(),
+    shadowOpacity = CustomRules.opacity(),
     shadowOffsetX = SpacingSchema.finite_number_rule(),
     shadowOffsetY = SpacingSchema.finite_number_rule(),
     shadowBlur = SpacingSchema.non_negative_finite_rule(),

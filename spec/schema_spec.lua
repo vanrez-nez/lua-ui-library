@@ -1,6 +1,7 @@
 local luaunit = require('luaunit')
 local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
+local CustomRules = require('lib.ui.schema.custom_rules')
 
 local TestSchema = {}
 
@@ -267,8 +268,8 @@ end
 function TestSchema.test_full_lifecycle_create_defaults_validate()
   local host = { width = '50%' }
   local schema = Schema.create(host, {
-    width  = Rule.size_value({ default = 'fill' }),
-    height = Rule.size_value({ default = 'fill' }),
+    width  = CustomRules.size_value({ default = 'fill' }),
+    height = CustomRules.size_value({ default = 'fill' }),
     alpha  = Rule.number({ min = 0, max = 1, default = 1 }),
   })
 
