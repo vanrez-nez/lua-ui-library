@@ -1,5 +1,6 @@
 local luaunit = require('luaunit')
 local Rule = require('lib.ui.utils.rule')
+local CustomRules = require('lib.ui.schema.custom_rules')
 
 local TestRule = {}
 
@@ -173,37 +174,37 @@ function TestRule.test_validate_enum_with_default_accepts_nil()
   Rule.validate(r, 'choice', nil)
 end
 
--- Rule.validate — size_value
+-- Rule.validate — custom size_value
 
 function TestRule.test_validate_size_value_accepts_number()
-  local r = Rule.size_value()
+  local r = CustomRules.size_value()
   Rule.validate(r, 'width', 100)
 end
 
 function TestRule.test_validate_size_value_accepts_fill()
-  local r = Rule.size_value()
+  local r = CustomRules.size_value()
   Rule.validate(r, 'width', 'fill')
 end
 
 function TestRule.test_validate_size_value_accepts_percentage()
-  local r = Rule.size_value()
+  local r = CustomRules.size_value()
   Rule.validate(r, 'width', '50%')
 end
 
 function TestRule.test_validate_size_value_accepts_content_when_allowed()
-  local r = Rule.size_value({ allow_content = true })
+  local r = CustomRules.size_value({ allow_content = true })
   Rule.validate(r, 'width', 'content')
 end
 
 function TestRule.test_validate_size_value_rejects_content_when_not_allowed()
-  local r = Rule.size_value()
+  local r = CustomRules.size_value()
   luaunit.assertError(function()
     Rule.validate(r, 'width', 'content')
   end)
 end
 
 function TestRule.test_validate_size_value_rejects_invalid_string()
-  local r = Rule.size_value()
+  local r = CustomRules.size_value()
   luaunit.assertError(function()
     Rule.validate(r, 'width', 'auto')
   end)

@@ -844,7 +844,8 @@ local function normalize_styling_value(property_name, value, node)
         Assert.fail('Unsupported prop "' .. tostring(property_name) .. '"', 3)
     end
 
-    return Rule.validate(rule, 'Drawable.' .. tostring(property_name), value, node, 3)
+    Rule.validate(rule, 'Drawable.' .. tostring(property_name), value, node, 3)
+    return value
 end
 
 local function normalize_resolver_context(node, resolver_context)

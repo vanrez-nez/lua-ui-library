@@ -1,11 +1,8 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Rule = require('lib.ui.utils.rule')
-local SideQuad = require('lib.ui.core.side_quad')
-local CornerQuad = require('lib.ui.core.corner_quad')
 local Motion = require('lib.ui.motion')
 local GraphicsValidation = require('lib.ui.render.graphics_validation')
-local SpacingSchema = require('lib.ui.core.spacing_schema')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
 local CustomRules = require('lib.ui.schema.custom_rules')
@@ -22,31 +19,35 @@ local function validate_alignment(key, value, _, level)
     return value
 end
 
-local function normalize_border_width(value, key, _, level)
-    return SideQuad.normalize(value, {
-        label = key,
-        validate_member = SpacingSchema.check_non_negative_finite,
-    }, level)
+local function validate_border_width(key, value, level)
+    CustomRules.validate_side_quad(
+        key,
+        value,
+        CustomRules.validate_non_negative_finite,
+        level or 1
+    )
 end
 
-local function normalize_corner_radius(value, key, _, level)
-    return CornerQuad.normalize(value, {
-        label = key,
-        validate_member = SpacingSchema.check_non_negative_finite,
-    }, level)
+local function validate_corner_radius(key, value, level)
+    CustomRules.validate_corner_quad(
+        key,
+        value,
+        CustomRules.validate_non_negative_finite,
+        level or 1
+    )
 end
 
 local DRAWABLE_SCHEMA = {
-    padding = SpacingSchema.padding_rule({ default = 0 }),
-    paddingTop = SpacingSchema.non_negative_finite_rule(),
-    paddingRight = SpacingSchema.non_negative_finite_rule(),
-    paddingBottom = SpacingSchema.non_negative_finite_rule(),
-    paddingLeft = SpacingSchema.non_negative_finite_rule(),
-    margin = SpacingSchema.margin_rule({ default = 0 }),
-    marginTop = SpacingSchema.finite_number_rule(),
-    marginRight = SpacingSchema.finite_number_rule(),
-    marginBottom = SpacingSchema.finite_number_rule(),
-    marginLeft = SpacingSchema.finite_number_rule(),
+    padding = CustomRules.padding({ default = 0 }),
+    paddingTop = Rule.number({ min = 0 }),
+    paddingRight = Rule.number({ min = 0 }),
+    paddingBottom = Rule.number({ min = 0 }),
+    paddingLeft = Rule.number({ min = 0 }),
+    margin = CustomRules.margin({ default = 0 }),
+    marginTop = Rule.number(),
+    marginRight = Rule.number(),
+    marginBottom = Rule.number(),
+    marginLeft = Rule.number(),
     alignX = Rule.custom(validate_alignment, { default = Enums.Alignment.START }),
     alignY = Rule.custom(validate_alignment, { default = Enums.Alignment.START }),
     skin = Rule.table(),
@@ -67,40 +68,40 @@ local DRAWABLE_SCHEMA = {
     backgroundImage = Rule.custom(GraphicsValidation.validate_texture_or_sprite_source),
     backgroundRepeatX = Rule.boolean(),
     backgroundRepeatY = Rule.boolean(),
-    backgroundOffsetX = SpacingSchema.finite_number_rule(),
-    backgroundOffsetY = SpacingSchema.finite_number_rule(),
+    backgroundOffsetX = Rule.number(),
+    backgroundOffsetY = Rule.number(),
     backgroundAlignX = Rule.enum(GraphicsValidation.SOURCE_ALIGN_VALUES),
     backgroundAlignY = Rule.enum(GraphicsValidation.SOURCE_ALIGN_VALUES),
 
     -- border
     borderColor = CustomRules.color(),
     borderOpacity = CustomRules.opacity(),
-    borderWidth = Rule.normalize(normalize_border_width),
-    borderWidthTop = SpacingSchema.non_negative_finite_rule(),
-    borderWidthRight = SpacingSchema.non_negative_finite_rule(),
-    borderWidthBottom = SpacingSchema.non_negative_finite_rule(),
-    borderWidthLeft = SpacingSchema.non_negative_finite_rule(),
+    borderWidth = Rule.custom(validate_border_width),
+    borderWidthTop = Rule.number({ min = 0 }),
+    borderWidthRight = Rule.number({ min = 0 }),
+    borderWidthBottom = Rule.number({ min = 0 }),
+    borderWidthLeft = Rule.number({ min = 0 }),
     borderStyle = Rule.enum(Enums.StrokeStyle),
     borderJoin = Rule.enum(Enums.StrokeJoin),
-    borderMiterLimit = Rule.number({ min_exclusive = 0, finite = true }),
+    borderMiterLimit = CustomRules.positive_finite(),
     borderPattern = Rule.enum(Enums.StrokePattern),
-    borderDashLength = Rule.number({ min_exclusive = 0, max = 255, finite = true }),
-    borderGapLength = Rule.number({ min = 0, max = 255, finite = true }),
-    borderDashOffset = SpacingSchema.finite_number_rule(),
+    borderDashLength = CustomRules.positive_finite({ max = 255 }),
+    borderGapLength = Rule.number({ min = 0, max = 255 }),
+    borderDashOffset = Rule.number(),
 
     -- corner radius
-    cornerRadius = Rule.normalize(normalize_corner_radius),
-    cornerRadiusTopLeft = SpacingSchema.non_negative_finite_rule(),
-    cornerRadiusTopRight = SpacingSchema.non_negative_finite_rule(),
-    cornerRadiusBottomRight = SpacingSchema.non_negative_finite_rule(),
-    cornerRadiusBottomLeft = SpacingSchema.non_negative_finite_rule(),
+    cornerRadius = Rule.custom(validate_corner_radius),
+    cornerRadiusTopLeft = Rule.number({ min = 0 }),
+    cornerRadiusTopRight = Rule.number({ min = 0 }),
+    cornerRadiusBottomRight = Rule.number({ min = 0 }),
+    cornerRadiusBottomLeft = Rule.number({ min = 0 }),
 
     -- shadow
     shadowColor = CustomRules.color(),
     shadowOpacity = CustomRules.opacity(),
-    shadowOffsetX = SpacingSchema.finite_number_rule(),
-    shadowOffsetY = SpacingSchema.finite_number_rule(),
-    shadowBlur = SpacingSchema.non_negative_finite_rule(),
+    shadowOffsetX = Rule.number(),
+    shadowOffsetY = Rule.number(),
+    shadowBlur = Rule.number({ min = 0 }),
     shadowInset = Rule.boolean(),
 }
 

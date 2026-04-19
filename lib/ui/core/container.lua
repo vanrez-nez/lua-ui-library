@@ -694,7 +694,8 @@ function Container:_set_resolved_responsive_overrides(token, overrides)
                 normalized[key] = value
             else
                 local full_key = tostring(self) .. '.' .. tostring(key)
-                normalized[key] = Rule.validate(rule, full_key, value, self, 3, overrides)
+                Rule.validate(rule, full_key, value, self, 3, overrides)
+                normalized[key] = value
             end
         end
     end

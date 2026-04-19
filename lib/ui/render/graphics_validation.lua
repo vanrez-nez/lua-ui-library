@@ -1,7 +1,6 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Color = require('lib.ui.render.color')
-local SpacingSchema = require('lib.ui.core.spacing_schema')
 local Texture = require('lib.ui.graphics.texture')
 local Sprite = require('lib.ui.graphics.sprite')
 local Enums = require('lib.ui.core.enums')
@@ -9,7 +8,6 @@ local Enum = require('lib.ui.utils.enum')
 
 local GraphicsValidation = {}
 
-local check_finite_number = SpacingSchema.check_finite_number
 local enum_has = Enum.enum_has
 
 GraphicsValidation.ROOT_OPACITY_DEFAULT = 1
@@ -24,6 +22,12 @@ local function validate_enum(key, value, allowed, level)
         key .. ": '" .. tostring(value) .. "' is not a valid value — accepted: " .. table.concat(allowed, ', '),
         level or 1
     )
+end
+
+local function check_finite_number(key, value, level)
+    Assert.number(key, value, level or 1)
+    Assert.finite(key, value, level or 1)
+    return value
 end
 
 function GraphicsValidation.validate_opacity(key, value, _, level)

@@ -1,27 +1,13 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Rule = require('lib.ui.utils.rule')
-local SpacingSchema = require('lib.ui.core.spacing_schema')
+local CustomRules = require('lib.ui.schema.custom_rules')
 local ResponsiveBreakpointsGate = require('lib.ui.core.responsive_breakpoints_gate')
 local Responsive = require('lib.ui.layout.responsive')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
 
 local enum_has = Enum.enum_has
-
-local function mark_dirty(ctx)
-    local method = rawget(ctx, 'markDirty')
-    local current = rawget(ctx, '_pclass') or getmetatable(ctx)
-
-    while method == nil and current ~= nil do
-        method = rawget(current, 'markDirty')
-        current = rawget(current, 'super')
-    end
-
-    if method ~= nil then
-        method(ctx)
-    end
-end
 
 local function validate_justify(_, value, _, level)
     if not Types.is_string(value) or not enum_has(Enums.Justify, value) then
@@ -38,25 +24,19 @@ local function validate_align(_, value, _, level)
 end
 
 local LAYOUT_NODE_SCHEMA = {
-    gap = SpacingSchema.non_negative_finite_rule({ default = 0, set = mark_dirty }),
-    padding = SpacingSchema.padding_rule({ default = 0, set = mark_dirty }),
-    paddingTop = SpacingSchema.non_negative_finite_rule({ set = mark_dirty }),
-    paddingRight = SpacingSchema.non_negative_finite_rule({ set = mark_dirty }),
-    paddingBottom = SpacingSchema.non_negative_finite_rule({ set = mark_dirty }),
-    paddingLeft = SpacingSchema.non_negative_finite_rule({ set = mark_dirty }),
-    wrap = Rule.boolean(false, { set = mark_dirty }),
-    justify = Rule.custom(validate_justify, {
-        default = Enums.Justify.START,
-        set = mark_dirty,
-    }),
-    align = Rule.custom(validate_align, {
-        default = Enums.Alignment.START,
-        set = mark_dirty,
-    }),
-    responsive = Rule.all_of(
+    gap = Rule.number({ min = 0, default = 0 }),
+    padding = CustomRules.padding({ default = 0 }),
+    paddingTop = Rule.number({ min = 0 }),
+    paddingRight = Rule.number({ min = 0 }),
+    paddingBottom = Rule.number({ min = 0 }),
+    paddingLeft = Rule.number({ min = 0 }),
+    wrap = Rule.boolean(false),
+    justify = Rule.custom(validate_justify, { default = Enums.Justify.START }),
+    align = Rule.custom(validate_align, { default = Enums.Alignment.START }),
+    responsive = Rule.all_of({
         ResponsiveBreakpointsGate.with_peer('breakpoints'),
-        Responsive.schema_rule('Layout', { set = mark_dirty })
-    ),
+        Responsive.schema_rule('Layout')
+    }),
 }
 
 return LAYOUT_NODE_SCHEMA

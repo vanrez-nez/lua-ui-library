@@ -443,7 +443,6 @@ local function set_safe_area_insets(self, value, level)
 end
 
 function Stage:_handle_safe_area_change_internal()
-    -- This method is called by the schema 'set' hook.
     -- The value is already updated in public_values.
     refresh_environment_bounds(self)
     Container.markDirty(self)
