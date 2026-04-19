@@ -60,6 +60,10 @@ validators.table = function(r, name, v)
   Assert.table(name, v, 2)
 end
 
+validators.func = function(r, name, v)
+  Assert.func(name, v, 2)
+end
+
 --- Accepts only values present in the pre-built `allowed` lookup set.
 validators.enum = function(r, name, v)
   if not r.allowed[v] then Assert.fail(name .. ': must be one of: ' .. r.display, 2) end
@@ -203,6 +207,23 @@ function Rule.table(opts)
   }
 end
 
+--- Creates a function rule. Accepts any callable value.
+--- Commonly used for callbacks and event handlers.
+--- Example:
+---   on_press = Rule.func({ optional = true })
+--- @param opts table?  optional, default
+--- @return table
+function Rule.func(opts)
+  opts = opts or {}
+  check_opts(opts, BASE_OPTS)
+  return {
+    kind = 'func',
+    optional = opts.optional or false,
+    has_default = opts.default ~= nil,
+    default = opts.default,
+  }
+end
+
 --- Creates an enum rule from an ordered list of allowed string values.
 --- Membership is tested via a pre-built lookup set for O(1) checks.
 --- Example:
@@ -225,8 +246,8 @@ function Rule.enum(values, opts)
   }
 end
 
--- Rule.custom(fn, opts)
--- fn(name, value, level) — use Assert directly, same as any validator
+--- Rule.custom(fn, opts)
+--- fn(name, value, level) — use Assert directly, same as any validator
 function Rule.custom(fn, opts)
   opts = opts or {}
   check_opts(opts, BASE_OPTS)
