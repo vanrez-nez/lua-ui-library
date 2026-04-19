@@ -86,6 +86,11 @@ validators.all_of = function(r, name, v)
   for _, inner in ipairs(r.rules) do Rule.validate(inner, name, v) end
 end
 
+
+validators.instance = function(r, name, v)
+  Assert.is_instance(name, v, r.class, r.class_name, 2)
+end
+
 --- Validates `value` against `rule`, raising on failure.
 --- nil is accepted when the rule is optional or has a default; otherwise raises.
 --- @param rule   table   a Rule descriptor
@@ -228,8 +233,8 @@ end
 --- Membership is tested via a pre-built lookup set for O(1) checks.
 --- Example:
 ---   Rule.enum({ 'left', 'center', 'right' }, { default = 'left' })
---- @param values  string[]  allowed values
---- @param opts    table?    optional, default
+--- @param values string[]  allowed values
+--- @param opts table?    optional, default
 --- @return table
 function Rule.enum(values, opts)
   opts = opts or {}
@@ -246,8 +251,25 @@ function Rule.enum(values, opts)
   }
 end
 
+-- Rule.instance(class, class_name, opts)
+--- @param class table the class to check against
+--- @param class_name string  used in error messages
+--- @param opts table?  optional, default
+function Rule.instance(class, class_name, opts)
+  opts = opts or {}
+  check_opts(opts, BASE_OPTS)
+  return {
+    kind = 'instance',
+    optional = opts.optional or false,
+    has_default = opts.default ~= nil,
+    default = opts.default,
+    class = class,
+    class_name = class_name,
+  }
+end
+
 --- Rule.custom(fn, opts)
---- fn(name, value, level) — use Assert directly, same as any validator
+--- @param fn custom validator function receiving name, value and level as args
 function Rule.custom(fn, opts)
   opts = opts or {}
   check_opts(opts, BASE_OPTS)
