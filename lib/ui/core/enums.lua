@@ -26,6 +26,20 @@ Enums.SourceAlign = enum(
   { END = Constants.ALIGN_END }
 )
 
+Enums.Padding = enum(
+  { LEFT = Constants.PADDING_LEFT },
+  { TOP = Constants.PADDING_TOP },
+  { RIGHT = Constants.PADDING_RIGHT },
+  { BOTTOM = Constants.PADDING_BOTTOM }
+)
+
+Enums.Margin = enum(
+  { LEFT = Constants.MARGIN_LEFT },
+  { TOP = Constants.MARGIN_TOP },
+  { RIGHT = Constants.MARGIN_RIGHT },
+  { BOTTOM = Constants.MARGIN_BOTTOM }
+)
+
 Enums.BlendMode = enum(
   { NORMAL = Constants.BLEND_MODE_NORMAL },
   { ADD = Constants.BLEND_MODE_ADD },

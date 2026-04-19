@@ -46,6 +46,18 @@ Constants.FILL_KIND_COLOR = 'color'
 Constants.FILL_KIND_GRADIENT = 'gradient'
 Constants.FILL_KIND_TEXTURE = 'texture'
 
+-- Margin
+Constants.MARGIN_LEFT = 'marginLeft'
+Constants.MARGIN_TOP = 'marginTop'
+Constants.MARGIN_RIGHT = 'marginRight'
+Constants.MARGIN_BOTTOM = 'marginBottom'
+
+-- Padding
+Constants.PADDING_LEFT = 'paddingLeft'
+Constants.PADDING_TOP = 'paddingTop'
+Constants.PADDING_RIGHT = 'paddingRight'
+Constants.PADDING_BOTTOM = 'paddingBottom'
+
 -- Event
 Constants.EVENT_ACTIVATE = 'ui.activate'
 Constants.EVENT_DEACTIVATE = 'ui.deactivate'
@@ -97,6 +109,12 @@ Constants.NAVIGATION_MODE_DIRECTIONAL = 'directional'
 Constants.POINTER_FOCUS_COUPLING_BEFORE = 'before'
 Constants.POINTER_FOCUS_COUPLING_AFTER = 'after'
 Constants.POINTER_FOCUS_COUPLING_NONE = 'none'
+
+-- Corner
+Constants.TOP_LEFT = 'topLeft'
+Constants.TOP_RIGHT = 'topRight'
+Constants.BOTTOM_LEFT = 'bottomLeft'
+Constants.BOTTOM_RIGHT = 'bottomRight'
 
 -- Edge
 Constants.EDGE_TOP = 'top'

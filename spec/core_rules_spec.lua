@@ -38,13 +38,6 @@ function TestCoreRules.test_validate_size_value_rejects_invalid_string()
   end)
 end
 
-function TestCoreRules.test_validate_opacity_rejects_out_of_range_value()
-  local r = CustomRules.opacity()
-  luaunit.assertError(function()
-    Rule.validate(r, 'opacity', 2)
-  end)
-end
-
 function TestCoreRules.test_validate_color_accepts_named_color()
   local r = CustomRules.color()
   Rule.validate(r, 'color', 'white')
