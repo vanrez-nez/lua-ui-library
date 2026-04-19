@@ -6,7 +6,7 @@ local Enums = require('lib.ui.core.enums')
 local default_opacity_rule = Rule.number({ min = 0, max = 1, default = 1 })
 
 return {
-    fillColor = CustomRules.color({ 1, 1, 1, 1 }),
+    fillColor = CustomRules.color({ default = { 1, 1, 1, 1 } }),
     fillOpacity = default_opacity_rule,
     fillGradient = Rule.custom(GraphicsValidation.validate_gradient),
     fillTexture = Rule.custom(GraphicsValidation.validate_texture_or_sprite_source),

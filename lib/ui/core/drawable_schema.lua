@@ -1,30 +1,14 @@
-local Assert = require('lib.ui.utils.assert')
-local Types = require('lib.ui.utils.types')
 local Rule = require('lib.ui.utils.rule')
 local Motion = require('lib.ui.motion')
 local GraphicsValidation = require('lib.ui.render.graphics_validation')
 local Enums = require('lib.ui.core.enums')
-local Enum = require('lib.ui.utils.enum')
 local CustomRules = require('lib.ui.schema.custom_rules')
 
-local enum_has = Enum.enum_has
-local non_negative_number_rule = Rule.number({ min = 0 })
-local root_opacity_rule = Rule.number({
+local opacity_rule = Rule.number({
     min = 0,
     max = 1,
-    default = GraphicsValidation.ROOT_OPACITY_DEFAULT,
+    default = GraphicsValidation.ROOT_OPACITY_DEFAULT
 })
-local opacity_rule = Rule.number({ min = 0, max = 1 })
-
-local function validate_alignment(key, value, _, level)
-    if not Types.is_string(value) or not enum_has(Enums.Alignment, value) then
-        Assert.fail(
-            'Drawable.' .. key .. ' must be "start", "center", "end", or "stretch"',
-            level or 1
-        )
-    end
-    return value
-end
 
 local DRAWABLE_SCHEMA = {
     padding = CustomRules.padding({ default = 0 }),
@@ -37,11 +21,11 @@ local DRAWABLE_SCHEMA = {
     marginRight = Rule.number(),
     marginBottom = Rule.number(),
     marginLeft = Rule.number(),
-    alignX = Rule.custom(validate_alignment, { default = Enums.Alignment.START }),
-    alignY = Rule.custom(validate_alignment, { default = Enums.Alignment.START }),
+    alignX = Rule.enum(Enums.Alignment, { default = Enums.Alignment.START }),
+    alignY = Rule.enum(Enums.Alignment, { default = Enums.Alignment.START }),
     skin = Rule.table(),
     shader = Rule.custom(GraphicsValidation.validate_root_shader),
-    opacity = root_opacity_rule,
+    opacity = opacity_rule,
     blendMode = Rule.enum(
         GraphicsValidation.ROOT_BLEND_MODE_VALUES,
         { default = GraphicsValidation.ROOT_BLEND_MODE_DEFAULT }
@@ -65,7 +49,7 @@ local DRAWABLE_SCHEMA = {
     -- border
     borderColor = CustomRules.color(),
     borderOpacity = opacity_rule,
-    borderWidth = CustomRules.side_quad(non_negative_number_rule),
+    borderWidth = CustomRules.border_width(),
     borderWidthTop = Rule.number({ min = 0 }),
     borderWidthRight = Rule.number({ min = 0 }),
     borderWidthBottom = Rule.number({ min = 0 }),
@@ -79,7 +63,7 @@ local DRAWABLE_SCHEMA = {
     borderDashOffset = Rule.number(),
 
     -- corner radius
-    cornerRadius = CustomRules.corner_quad(non_negative_number_rule),
+    cornerRadius = CustomRules.corner_quad(),
     cornerRadiusTopLeft = Rule.number({ min = 0 }),
     cornerRadiusTopRight = Rule.number({ min = 0 }),
     cornerRadiusBottomRight = Rule.number({ min = 0 }),

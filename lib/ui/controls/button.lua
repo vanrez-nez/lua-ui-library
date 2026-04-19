@@ -10,8 +10,8 @@ local Button = Drawable:extends('Button')
 
 local ButtonSchema = {
     pressed = Rule.boolean(),
-    onPressedChange = Rule.any(),
-    onActivate = Rule.any(),
+    onPressedChange = Rule.func({ optional = true }),
+    onActivate = Rule.func({ optional = true }),
     disabled = Rule.boolean(false),
 }
 
