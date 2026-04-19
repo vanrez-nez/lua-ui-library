@@ -1,4 +1,4 @@
-std = "luajit"
+std = "luajit+love"
 
 files["**/*.lua"] = {
     globals = {
