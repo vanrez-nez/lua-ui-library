@@ -4,8 +4,11 @@ local ControlUtils = require('lib.ui.controls.control_utils')
 local Constants = require('lib.ui.core.constants')
 local Types = require('lib.ui.utils.types')
 local Assert = require('lib.ui.utils.assert')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local Modal = Container:extends('Modal')
+local MODAL_BACKDROP_SCOPE = StyleScope.create('modal', 'backdrop')
+local MODAL_SURFACE_SCOPE = StyleScope.create('modal', 'surface')
 
 local MODAL_PUBLIC_KEYS = {
     open = {
@@ -181,7 +184,6 @@ function Modal:constructor(opts)
     )
 
     Container.constructor(self, modal_opts, MODAL_PUBLIC_KEYS)
-    self.schema:define(MODAL_PUBLIC_KEYS)
     self.open = opts.open
     self.onOpenChange = opts.onOpenChange
     if opts.dismissOnBackdrop ~= nil then self.dismissOnBackdrop = opts.dismissOnBackdrop end
@@ -212,12 +214,9 @@ function Modal:constructor(opts)
         width = 'fill',
         height = 'fill',
         interactive = true,
+        style_scope = MODAL_BACKDROP_SCOPE,
     })
     Container._allow_fill_from_parent(backdrop, { width = true, height = true })
-    backdrop._styling_context = {
-        component = 'modal',
-        part = 'backdrop',
-    }
     local overlay_frame = Container.new({
         tag = (self.tag and (self.tag .. '.frame')) or 'modal.frame',
         internal = true,
@@ -243,11 +242,8 @@ function Modal:constructor(opts)
         padding = { 20, 20, 20, 20 },
         alignX = 'stretch',
         alignY = 'stretch',
+        style_scope = MODAL_SURFACE_SCOPE,
     })
-    surface._styling_context = {
-        component = 'modal',
-        part = 'surface',
-    }
     surface.role = Constants.ROLE_DIALOG
     local content_slot = Container.new({
         tag = (self.tag and (self.tag .. '.content')) or 'modal.content',

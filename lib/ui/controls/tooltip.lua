@@ -7,10 +7,12 @@ local Rule = require('lib.ui.utils.rule')
 local Constants = require('lib.ui.core.constants')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local Tooltip = Container:extends('Tooltip')
 local enum = Enum.enum
 local enum_has = Enum.enum_has
+local TOOLTIP_SURFACE_SCOPE = StyleScope.create('tooltip', 'surface')
 
 Tooltip.TRIGGER_MODE_HOVER = 'hover'
 Tooltip.TRIGGER_MODE_FOCUS = 'focus'
@@ -189,7 +191,6 @@ function Tooltip:constructor(opts)
         focusable = false,
     })
     Container.constructor(self, base_opts)
-    self.schema:define(TooltipSchema)
     self.open = opts.open
     self.onOpenChange = opts.onOpenChange
     self.placement = opts.placement or Enums.Edge.TOP
@@ -244,11 +245,8 @@ function Tooltip:constructor(opts)
         height = 80,
         interactive = false,
         focusable = false,
+        style_scope = TOOLTIP_SURFACE_SCOPE,
     })
-    surface._styling_context = {
-        component = 'tooltip',
-        part = 'surface',
-    }
     local content = Container.new({
         tag = (self.tag and (self.tag .. '.content')) or 'tooltip.content',
         internal = true,

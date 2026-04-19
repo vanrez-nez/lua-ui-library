@@ -1,21 +1,8 @@
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local Resolver = {}
-
--- docs/spec/ui-foundation-spec.md §8.4:
--- component-bound tokens use "<component>.<part>.<property>" and variant-
--- specific tokens append ".<variant>". Token binding is explicit; there is no
--- implicit CSS-like selector or descendant-based token matching.
-local function token_key(component, part, property_name, variant)
-    local key = table.concat({ component, part, property_name }, '.')
-
-    if variant ~= nil and variant ~= 'base' then
-        key = key .. '.' .. tostring(variant)
-    end
-
-    return key
-end
 
 local function resolve_override_value(source, part, property_name, variant)
     if not Types.is_table(source) then
@@ -44,33 +31,20 @@ end
 function Resolver.resolve(context)
     Assert.table('context', context, 2)
 
-    local component = context.component
-    local part = context.part
+    local scope = context.style_scope
     local property_name = context.property
     local variant = context.variant
 
-    Assert.string('context.component', component, 2)
-    Assert.string('context.part', part, 2)
+    StyleScope.assert('context.style_scope', scope, 2)
     Assert.string('context.property', property_name, 2)
 
     if context.instanceValue ~= nil then
         return context.instanceValue
     end
 
-    local instance_variant = resolve_override_value(
-        context.instanceOverrides,
-        part,
-        property_name,
-        variant
-    )
-
-    if instance_variant ~= nil then
-        return instance_variant
-    end
-
     local skin_variant = resolve_override_value(
         context.partSkin,
-        part,
+        scope:get_part(),
         property_name,
         variant
     )
@@ -79,8 +53,8 @@ function Resolver.resolve(context)
         return skin_variant
     end
 
-    local key_with_variant = token_key(component, part, property_name, variant)
-    local base_key = token_key(component, part, property_name, nil)
+    local key_with_variant = scope:get_token_key(property_name, variant)
+    local base_key = scope:get_token_key(property_name, nil)
     local theme = context.theme
     local defaults = context.defaults or {}
 
@@ -105,8 +79,9 @@ function Resolver.resolve(context)
     error('missing token "' .. key_with_variant .. '"', 2)
 end
 
-function Resolver.token_key(component, part, property_name, variant)
-    return token_key(component, part, property_name, variant)
+function Resolver.token_key(scope, property_name, variant)
+    StyleScope.assert('scope', scope, 2)
+    return scope:get_token_key(property_name, variant)
 end
 
 return Resolver

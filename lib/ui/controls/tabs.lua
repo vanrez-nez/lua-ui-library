@@ -9,10 +9,15 @@ local Rule = require('lib.ui.utils.rule')
 local Enums = require('lib.ui.core.enums')
 local Constants = require('lib.ui.core.constants')
 local Enum = require('lib.ui.utils.enum')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local enum_has = Enum.enum_has
 
 local Tabs = Drawable:extends('Tabs')
+local TABS_LIST_SCOPE = StyleScope.create('tabs', 'list')
+local TABS_INDICATOR_SCOPE = StyleScope.create('tabs', 'indicator')
+local TABS_TRIGGER_SCOPE = StyleScope.create('tabs', 'trigger')
+local TABS_PANEL_SCOPE = StyleScope.create('tabs', 'panel')
 
 local function normalize_disabled_values(values)
     if values == nil then
@@ -115,7 +120,7 @@ local function sync_visual_state(self)
         ControlUtils.set_interaction_state(node, not disabled)
         node._tab_active = active
         node._tab_disabled = disabled
-        node._styling_variant = self:_resolve_trigger_variant(node)
+        node:setStyleVariant(self:_resolve_trigger_variant(node))
     end
 
     for key, node in pairs(panels) do
@@ -123,7 +128,7 @@ local function sync_visual_state(self)
         node.props:raw_set('visible', active)
         ControlUtils.set_interaction_state(node, active)
         node._tab_active = active
-        node._styling_variant = self:_resolve_panel_variant(node)
+        node:setStyleVariant(self:_resolve_panel_variant(node))
     end
 end
 
@@ -239,7 +244,6 @@ function Tabs:constructor(opts)
         focusable = false,
     })
     Drawable.constructor(self, drawable_opts)
-    self.schema:define(TabsSchema)
     self.value = opts.value
     self.onValueChange = opts.onValueChange
     self.orientation = opts.orientation or Enums.Orientation.HORIZONTAL
@@ -282,6 +286,7 @@ function Tabs:constructor(opts)
         height = list_surface_height,
         interactive = false,
         focusable = false,
+        style_scope = TABS_LIST_SCOPE,
     })
     local indicator = Drawable.new({
         tag = 'tabs_indicator',
@@ -290,15 +295,8 @@ function Tabs:constructor(opts)
         height = 0,
         interactive = false,
         focusable = false,
+        style_scope = TABS_INDICATOR_SCOPE,
     })
-    list_surface._styling_context = {
-        component = 'tabs',
-        part = 'list',
-    }
-    indicator._styling_context = {
-        component = 'tabs',
-        part = 'indicator',
-    }
     list_surface:addChild(list_region)
     list_surface:addChild(indicator)
     Container._allow_fill_from_parent(list_surface, { width = true, height = true })
@@ -445,13 +443,10 @@ function Tabs:_register_tab(value, trigger_node, panel_node)
         height = 40,
         interactive = true,
         focusable = true,
+        style_scope = TABS_TRIGGER_SCOPE,
     })
     trigger.pointerFocusCoupling = 'before'
     trigger._tab_trigger_value = value
-    trigger._styling_context = {
-        component = 'tabs',
-        part = 'trigger',
-    }
     trigger:addChild(trigger_node)
 
     local panel = Drawable({
@@ -461,13 +456,10 @@ function Tabs:_register_tab(value, trigger_node, panel_node)
         height = Constants.SIZE_MODE_FILL,
         interactive = true,
         focusable = false,
+        style_scope = TABS_PANEL_SCOPE,
     })
     Container._allow_fill_from_parent(panel, { width = true, height = true })
     panel._tab_panel_value = value
-    panel._styling_context = {
-        component = 'tabs',
-        part = 'panel',
-    }
     panel:addChild(panel_node)
 
     self._list_region:addChild(trigger)

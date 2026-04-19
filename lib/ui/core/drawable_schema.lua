@@ -3,6 +3,7 @@ local Motion = require('lib.ui.motion')
 local GraphicsValidation = require('lib.ui.render.graphics_validation')
 local Enums = require('lib.ui.core.enums')
 local CustomRules = require('lib.ui.schema.custom_rules')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local opacity_rule = Rule.number({
     min = 0,
@@ -23,6 +24,8 @@ local DRAWABLE_SCHEMA = {
     marginLeft = Rule.number(),
     alignX = Rule.enum(Enums.Alignment, { default = Enums.Alignment.START }),
     alignY = Rule.enum(Enums.Alignment, { default = Enums.Alignment.START }),
+    style_scope = Rule.custom(StyleScope.assert, { optional = true }),
+    style_variant = Rule.string({ optional = true }),
     skin = Rule.table(),
     shader = Rule.custom(GraphicsValidation.validate_root_shader),
     opacity = opacity_rule,

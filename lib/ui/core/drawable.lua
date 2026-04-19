@@ -1,6 +1,7 @@
 local Assert = require('lib.ui.utils.assert')
 local Container = require('lib.ui.core.container')
 local Types = require('lib.ui.utils.types')
+local Rule = require('lib.ui.utils.rule')
 local Insets = require('lib.ui.core.insets')
 local Rectangle = require('lib.ui.core.rectangle')
 local Utils = require('lib.ui.utils.common')
@@ -9,6 +10,7 @@ local RootCompositor = require('lib.ui.render.root_compositor')
 local Styling = require('lib.ui.render.styling')
 local DrawableSchema = require('lib.ui.core.drawable_schema')
 local Constants = require('lib.ui.core.constants')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local max = math.max
 
@@ -266,6 +268,18 @@ local function refresh_drawable_content(self)
     align_children(self, entries, content_extent)
 end
 
+local function validate_style_scope_value(value, level)
+    if value == nil then
+        return
+    end
+
+    StyleScope.assert('Drawable.style_scope', value, level or 3)
+end
+
+local function validate_style_variant_value(value, level)
+    Rule.validate(DrawableSchema.style_variant, 'Drawable.style_variant', value, nil, level or 3)
+end
+
 
 Drawable.__index = Drawable
 
@@ -274,10 +288,11 @@ function Drawable:constructor(opts)
         allow_content_width = true,
         allow_content_height = true,
     })
-    self.schema:define(DrawableSchema)
     for key, value in pairs(opts or {}) do
         self[key] = value
     end
+    validate_style_scope_value(self.style_scope, 3)
+    validate_style_variant_value(self.style_variant, 3)
     self._ui_drawable_instance = true
     self._motion_visual_state = {}
     self._motion_last_request = nil
@@ -289,6 +304,24 @@ end
 
 function Drawable.is_drawable(value)
     return Types.is_instance(value, Drawable)
+end
+
+function Drawable:setStyleScope(scope)
+    validate_style_scope_value(scope, 2)
+    self.style_scope = scope
+    self:markDirty()
+    return self
+end
+
+function Drawable:setStyleVariant(variant)
+    validate_style_variant_value(variant, 2)
+    self.style_variant = variant
+    self:markDirty()
+    return self
+end
+
+function Drawable:resolveStyleVariant()
+    return self.style_variant
 end
 
 function Drawable:getContentRect()
@@ -550,7 +583,7 @@ end
 -- handles the empty-props case without painting anything.
 function Drawable:draw(graphics)
     local bounds = self:getWorldBounds()
-    local props = Styling.assemble_props(self, self._styling_context)
+    local props = Styling.assemble_props(self)
     Styling.draw(props, bounds, graphics)
 end
 

@@ -407,7 +407,6 @@ end
 
 function ScrollableContainer:constructor(opts)
     Container.constructor(self, opts, ScrollableContainerSchema)
-    self.schema:define(ScrollableContainerSchema)
 
     for key, value in pairs(opts or {}) do
         self[key] = value

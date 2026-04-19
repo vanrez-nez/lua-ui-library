@@ -104,7 +104,6 @@ function Shape:constructor(opts)
         },
     })
     self.shape_dirty:reset_dirty_props()
-    self.schema:define(ShapeSchema)
 
     for key, value in pairs(opts or {}) do
         self[key] = value

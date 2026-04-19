@@ -4,8 +4,11 @@ local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
 local Constants = require('lib.ui.core.constants')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local Switch = Drawable:extends('Switch')
+local SWITCH_TRACK_SCOPE = StyleScope.create('switch', 'track')
+local SWITCH_THUMB_SCOPE = StyleScope.create('switch', 'thumb')
 
 Switch.SnapBehavior = {
     Nearest = 'nearest',
@@ -52,7 +55,6 @@ function Switch:constructor(opts)
         focusable = true,
     })
     Drawable.constructor(self, drawable_opts)
-    self.schema:define(SwitchSchema)
     self.checked = opts.checked
     self.onCheckedChange = opts.onCheckedChange
     self.disabled = opts.disabled == true
@@ -86,6 +88,7 @@ function Switch:constructor(opts)
         height = 24,
         interactive = false,
         focusable = false,
+        style_scope = SWITCH_TRACK_SCOPE,
     })
     local thumb = Drawable.new({
         tag = (self.tag and (self.tag .. '.thumb')) or 'switch.thumb',
@@ -94,15 +97,8 @@ function Switch:constructor(opts)
         height = 18,
         interactive = false,
         focusable = false,
+        style_scope = SWITCH_THUMB_SCOPE,
     })
-    track._styling_context = {
-        component = 'switch',
-        part = 'track',
-    }
-    thumb._styling_context = {
-        component = 'switch',
-        part = 'thumb',
-    }
     track:addChild(thumb)
     Container.addChild(self, track)
     self.track = track
@@ -180,7 +176,7 @@ function Switch:_get_checked_state()
     return checked_value(self)
 end
 
-function Switch:_resolve_visual_variant()
+function Switch:resolveStyleVariant()
     if self.disabled == true then
         return 'disabled'
     end
@@ -197,7 +193,7 @@ function Switch:_resolve_visual_variant()
         return 'focused'
     end
 
-    return 'base'
+    return self.style_variant
 end
 
 function Switch:update(dt)
@@ -219,7 +215,7 @@ function Switch:update(dt)
     local track_width = math.max(32, math.min(width, 48))
     local track_height = math.max(18, math.min(height, 28))
     local thumb_size = math.max(12, track_height - 6)
-    local variant = self:_resolve_visual_variant()
+    local variant = self:resolveStyleVariant()
     local thumb_x = checked_value(self) and (track_width - thumb_size - 3) or 3
 
     if track ~= nil then
@@ -227,7 +223,7 @@ function Switch:update(dt)
         track.height = track_height
         track.x = (width - track_width) * 0.5
         track.y = (height - track_height) * 0.5
-        track._styling_variant = variant
+        track:setStyleVariant(variant)
         track:markDirty()
     end
 
@@ -236,7 +232,7 @@ function Switch:update(dt)
         thumb.height = thumb_size
         thumb.x = thumb_x
         thumb.y = (track_height - thumb_size) * 0.5
-        thumb._styling_variant = variant
+        thumb:setStyleVariant(variant)
         thumb:markDirty()
     end
 

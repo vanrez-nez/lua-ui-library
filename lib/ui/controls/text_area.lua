@@ -5,8 +5,11 @@ local Drawable = require('lib.ui.core.drawable')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local TextArea = TextInput:extends('TextArea')
+local TEXT_AREA_FIELD_SCOPE = StyleScope.create('textArea', 'field')
+local TEXT_AREA_SCROLL_REGION_SCOPE = StyleScope.create('textArea', 'scroll region')
 
 local TextAreaSchema = {
     wrap = Rule.boolean(true),
@@ -21,13 +24,9 @@ TextArea._schema = ControlUtils.extend_schema(TextInput._schema, TextAreaSchema)
 function TextArea:constructor(opts)
     opts = opts or {}
     TextInput.constructor(self, opts)
-    self.schema:define(TextAreaSchema)
 
     self._ui_text_area_control = true
-    self._styling_context = {
-        component = 'textArea',
-        part = 'field',
-    }
+    self:setStyleScope(TEXT_AREA_FIELD_SCOPE)
 
     self.wrap = opts.wrap ~= false
     self.rows = opts.rows
@@ -49,12 +48,9 @@ function TextArea:constructor(opts)
         height = 'fill',
         interactive = false,
         focusable = false,
+        style_scope = TEXT_AREA_SCROLL_REGION_SCOPE,
     })
     Container._allow_fill_from_parent(region_surface, { width = true, height = true })
-    region_surface._styling_context = {
-        component = 'textArea',
-        part = 'scroll region',
-    }
 
     local region = ScrollableContainer._create_scroll_region({
         scroll_x = (self.wrap == false) and self.scrollXEnabled,
@@ -99,8 +95,8 @@ function TextArea.new(opts)
     return TextArea(opts)
 end
 
-function TextArea:_resolve_visual_variant()
-    return TextInput._resolve_visual_variant(self)
+function TextArea:resolveStyleVariant()
+    return TextInput.resolveStyleVariant(self)
 end
 
 function TextArea:update(dt)
@@ -116,7 +112,7 @@ function TextArea:update(dt)
 
     local region_surface = self.scrollRegion
     if region_surface ~= nil then
-        region_surface._styling_variant = self:_resolve_visual_variant()
+        region_surface:setStyleVariant(self:resolveStyleVariant())
     end
 
     return self

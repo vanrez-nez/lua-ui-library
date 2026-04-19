@@ -5,8 +5,10 @@ local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
 local Constants = require('lib.ui.core.constants')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local Button = Drawable:extends('Button')
+local BUTTON_SURFACE_SCOPE = StyleScope.create('button', 'surface')
 
 local ButtonSchema = {
     pressed = Rule.boolean(),
@@ -46,9 +48,9 @@ function Button:constructor(opts)
     local drawable_opts = ControlUtils.base_opts(opts, {
         interactive = true,
         focusable = true,
+        style_scope = BUTTON_SURFACE_SCOPE,
     })
     Drawable.constructor(self, drawable_opts)
-    self.schema:define(ButtonSchema)
     self.pressed = opts.pressed
     self.onPressedChange = opts.onPressedChange
     self.onActivate = opts.onActivate
@@ -82,11 +84,7 @@ function Button:constructor(opts)
 
     self.surface = self
     self.border = self
-    self._styling_context = {
-        component = 'button',
-        part = 'surface',
-    }
-    self._last_visual_variant = self:_resolve_visual_variant()
+    self._last_visual_variant = self:resolveStyleVariant()
 
     ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
         if effective_disabled(self) then return end
@@ -148,7 +146,7 @@ function Button:_is_pressed()
     return get_pressed(self)
 end
 
-function Button:_resolve_visual_variant()
+function Button:resolveStyleVariant()
     if self.disabled == true then
         return 'disabled'
     end
@@ -165,7 +163,7 @@ function Button:_resolve_visual_variant()
         return 'focused'
     end
 
-    return 'base'
+    return self.style_variant
 end
 
 function Button:update(dt)
@@ -190,7 +188,7 @@ function Button:update(dt)
         self._hovered = false
     end
 
-    local variant = self:_resolve_visual_variant()
+    local variant = self:resolveStyleVariant()
     local previous = self._last_visual_variant
     if previous ~= nil and previous ~= variant then
         self:_raise_motion('state-change', {

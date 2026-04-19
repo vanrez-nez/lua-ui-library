@@ -34,7 +34,6 @@ function Option:constructor(opts)
         focusable = true,
     })
     Drawable.constructor(self, drawable_opts)
-    self.schema:define(OptionSchema)
     self.pointerFocusCoupling = 'before'
 
     if not Types.is_string(opts.value) or opts.value == '' then
@@ -129,7 +128,7 @@ function Option:_is_effectively_disabled()
     return select:_is_option_disabled(self)
 end
 
-function Option:_resolve_visual_variant()
+function Option:resolveStyleVariant()
     if self:_is_effectively_disabled() then
         return 'disabled'
     end
@@ -142,7 +141,7 @@ function Option:_resolve_visual_variant()
         return 'focused'
     end
 
-    return 'base'
+    return self.style_variant
 end
 
 function Option:update(dt)

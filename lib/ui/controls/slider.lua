@@ -7,9 +7,12 @@ local Rule = require('lib.ui.utils.rule')
 local Constants = require('lib.ui.core.constants')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local Slider = Drawable:extends('Slider')
 local enum_has = Enum.enum_has
+local SLIDER_TRACK_SCOPE = StyleScope.create('slider', 'track')
+local SLIDER_THUMB_SCOPE = StyleScope.create('slider', 'thumb')
 
 local function normalize_value(self, value)
     local min_value = self.min or 0
@@ -138,7 +141,6 @@ function Slider:constructor(opts)
         focusable = true,
     })
     Drawable.constructor(self, drawable_opts)
-    self.schema:define(Slider._control_schema)
     self.value = opts.value
     self.onValueChange = opts.onValueChange
     self.min = opts.min or 0
@@ -175,21 +177,15 @@ function Slider:constructor(opts)
         internal = true,
         interactive = false,
         focusable = false,
+        style_scope = SLIDER_TRACK_SCOPE,
     })
     local thumb = Drawable.new({
         tag = (self.tag and (self.tag .. '.thumb')) or 'slider.thumb',
         internal = true,
         interactive = false,
         focusable = false,
+        style_scope = SLIDER_THUMB_SCOPE,
     })
-    track._styling_context = {
-        component = 'slider',
-        part = 'track',
-    }
-    thumb._styling_context = {
-        component = 'slider',
-        part = 'thumb',
-    }
     Container.addChild(self, track)
     Container.addChild(self, thumb)
     self.track = track
@@ -282,7 +278,7 @@ function Slider.new(opts)
     return Slider(opts)
 end
 
-function Slider:_resolve_visual_variant()
+function Slider:resolveStyleVariant()
     if self.disabled then
         return 'disabled'
     end
@@ -295,7 +291,7 @@ function Slider:_resolve_visual_variant()
         return 'focused'
     end
 
-    return 'base'
+    return self.style_variant
 end
 
 function Slider:_get_value()
@@ -319,9 +315,9 @@ function Slider:update(dt)
     end
     self._last_motion_value = value
 
-    local variant = self:_resolve_visual_variant()
-    self.track._styling_variant = variant
-    self.thumb._styling_variant = variant
+    local variant = self:resolveStyleVariant()
+    self.track:setStyleVariant(variant)
+    self.thumb:setStyleVariant(variant)
     sync_parts(self)
     return self
 end

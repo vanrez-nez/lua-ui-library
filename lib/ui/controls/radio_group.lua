@@ -128,7 +128,6 @@ function RadioGroup:constructor(opts)
         focusable = false,
     })
     Drawable.constructor(self, drawable_opts)
-    self.schema:define(RadioGroup._control_schema)
     self.value = opts.value
     self.onValueChange = opts.onValueChange
     self.orientation = opts.orientation or Enums.Orientation.VERTICAL

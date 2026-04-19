@@ -46,6 +46,8 @@ local BASE_KEYS = {
     mask = true,
     motionPreset = true,
     motion = true,
+    style_scope = true,
+    style_variant = true,
 }
 
 function Utils.base_opts(opts, defaults)
@@ -245,6 +247,45 @@ function Utils.set_interaction_state(node, enabled)
     rawset(node, 'enabled', enabled)
     rawset(node, 'interactive', enabled)
     rawset(node, 'focusable', enabled)
+end
+
+function Utils.coerce_to_node(value, fallback_tag)
+    if value == nil then
+        return nil
+    end
+
+    if Types.is_string(value) then
+        if love == nil or love.graphics == nil or
+            not Types.is_function(love.graphics.newFont) then
+            local Column = require('lib.ui.layout.column')
+            local placeholder = Column.new({
+                tag = fallback_tag,
+                internal = true,
+                width = 0,
+                height = 0,
+                interactive = false,
+                focusable = false,
+            })
+
+            placeholder.text = value
+            return placeholder
+        end
+
+        local Text = require('lib.ui.controls.text')
+        return Text.new({
+            tag = fallback_tag,
+            internal = true,
+            text = value,
+            width = 0,
+            wrap = true,
+        })
+    end
+
+    if Types.is_table(value) and value._ui_container_instance == true then
+        return value
+    end
+
+    Assert.fail('slot content must be a string, node, or nil', 2)
 end
 
 Utils.overlay_mixin = {

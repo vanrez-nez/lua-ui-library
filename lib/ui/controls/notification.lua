@@ -7,9 +7,11 @@ local Rule = require('lib.ui.utils.rule')
 local Constants = require('lib.ui.core.constants')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local Notification = Container:extends('Notification')
 local enum_has = Enum.enum_has
+local NOTIFICATION_SURFACE_SCOPE = StyleScope.create('notification', 'surface')
 
 local NotificationSchema = {
     open = Rule.boolean(),
@@ -150,7 +152,6 @@ function Notification:constructor(opts)
     })
 
     Container.constructor(self, base_opts)
-    self.schema:define(NotificationSchema)
     self.open = opts.open
     self.onOpenChange = opts.onOpenChange
     self.closeMethod = opts.closeMethod or 'button'
@@ -199,11 +200,8 @@ function Notification:constructor(opts)
         height = 96,
         interactive = true,
         focusable = false,
+        style_scope = NOTIFICATION_SURFACE_SCOPE,
     })
-    surface._styling_context = {
-        component = 'notification',
-        part = 'surface',
-    }
     local content = Container.new({
         tag = (self.tag and (self.tag .. '.content')) or 'notification.content',
         internal = true,

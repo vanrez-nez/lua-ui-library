@@ -4,8 +4,10 @@ local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local Radio = Drawable:extends('Radio')
+local RADIO_INDICATOR_SCOPE = StyleScope.create('radio', 'indicator')
 
 local RadioSchema = {
     value = Rule.custom(function(_, value, _, level)
@@ -34,7 +36,6 @@ function Radio:constructor(opts)
         focusable = true,
     })
     Drawable.constructor(self, drawable_opts)
-    self.schema:define(RadioSchema)
     self.pointerFocusCoupling = 'before'
 
     if not Types.is_string(opts.value) or opts.value == '' then
@@ -55,11 +56,8 @@ function Radio:constructor(opts)
         height = 20,
         interactive = false,
         focusable = false,
+        style_scope = RADIO_INDICATOR_SCOPE,
     })
-    indicator._styling_context = {
-        component = 'radio',
-        part = 'indicator',
-    }
     local label_slot = Container.new({
         tag = (self.tag and (self.tag .. '.label')) or 'radio.label',
         internal = true,
@@ -140,7 +138,7 @@ function Radio:_is_effectively_disabled()
     return group:_is_radio_disabled(self)
 end
 
-function Radio:_resolve_visual_variant()
+function Radio:resolveStyleVariant()
     if self:_is_effectively_disabled() then
         return 'disabled'
     end
@@ -153,7 +151,7 @@ function Radio:_resolve_visual_variant()
         return 'focused'
     end
 
-    return 'base'
+    return self.style_variant
 end
 
 function Radio:update(dt)
@@ -164,7 +162,7 @@ function Radio:update(dt)
 
     local indicator = self.indicator
     if indicator ~= nil then
-        indicator._styling_variant = self:_resolve_visual_variant()
+        indicator:setStyleVariant(self:resolveStyleVariant())
     end
 
     return self

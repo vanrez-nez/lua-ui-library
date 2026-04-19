@@ -56,11 +56,6 @@ function LayoutNode:constructor(opts, schema, config)
     )
 
     Container._initialize(self, opts, declared_schema, config)
-    self.schema:define(LayoutNodeSchema)
-
-    if schema ~= LayoutNodeSchema then
-        self.schema:define(schema)
-    end
 
     for key, value in pairs(opts) do
         self[key] = value

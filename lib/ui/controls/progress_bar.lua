@@ -6,8 +6,11 @@ local MathUtils = require('lib.ui.utils.math')
 local Rule = require('lib.ui.utils.rule')
 local Constants = require('lib.ui.core.constants')
 local Enums = require('lib.ui.core.enums')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local ProgressBar = Drawable:extends('ProgressBar')
+local PROGRESS_BAR_TRACK_SCOPE = StyleScope.create('progressBar', 'track')
+local PROGRESS_BAR_INDICATOR_SCOPE = StyleScope.create('progressBar', 'indicator')
 
 local ProgressBarSchema = {
     value = Rule.number(),
@@ -83,7 +86,6 @@ function ProgressBar:constructor(opts)
         focusable = false,
     })
     Drawable.constructor(self, drawable_opts)
-    self.schema:define(ProgressBarSchema)
     self.value = opts.value
     self.min = opts.min or 0
     self.max = opts.max or 1
@@ -105,21 +107,15 @@ function ProgressBar:constructor(opts)
         internal = true,
         interactive = false,
         focusable = false,
+        style_scope = PROGRESS_BAR_TRACK_SCOPE,
     })
     local indicator = Drawable.new({
         tag = (self.tag and (self.tag .. '.indicator')) or 'progress.indicator',
         internal = true,
         interactive = false,
         focusable = false,
+        style_scope = PROGRESS_BAR_INDICATOR_SCOPE,
     })
-    track._styling_context = {
-        component = 'progressBar',
-        part = 'track',
-    }
-    indicator._styling_context = {
-        component = 'progressBar',
-        part = 'indicator',
-    }
 
     Container.addChild(self, track)
     Container.addChild(self, indicator)
@@ -160,8 +156,8 @@ function ProgressBar:update(dt)
     end
 
     local variant = self.indeterminate and 'indeterminate' or 'determinate'
-    self.track._styling_variant = variant
-    self.indicator._styling_variant = variant
+    self.track:setStyleVariant(variant)
+    self.indicator:setStyleVariant(variant)
 
     self._last_motion_ratio = current_ratio
     sync_parts(self)

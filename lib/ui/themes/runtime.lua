@@ -4,10 +4,9 @@ local DefaultTokens = require('lib.ui.themes.default')
 
 local Runtime = {}
 
-function Runtime.resolve(component, part, property_name, variant, context)
+function Runtime.resolve(style_scope, property_name, variant, context)
     context = context or {}
-    context.component = component
-    context.part = part
+    context.style_scope = style_scope
     context.property = property_name
     context.variant = variant
     context.theme = context.theme or Theme.get_active()

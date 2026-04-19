@@ -1554,7 +1554,6 @@ function Stage:constructor(opts)
     })
 
     Container.constructor(self, {}, StageSchema)
-    self.schema:define(StageSchema)
 
     for key, value in pairs(opts) do
         self[key] = value

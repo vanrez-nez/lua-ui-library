@@ -227,7 +227,6 @@ function Composer:constructor(opts)
     opts = copy_options(opts)
 
     Container.constructor(self, {}, Composer._schema)
-    self.schema:define(Composer._schema)
 
     for key, value in pairs(opts) do
         self[key] = value

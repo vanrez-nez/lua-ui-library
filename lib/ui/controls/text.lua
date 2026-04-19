@@ -129,8 +129,8 @@ function Text.new(opts)
     return Text(opts)
 end
 
-function Text:_resolve_visual_variant()
-    return self.textVariant or 'base'
+function Text:resolveStyleVariant()
+    return self.textVariant or self.style_variant
 end
 
 function Text.addChild()

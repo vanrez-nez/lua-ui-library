@@ -6,8 +6,10 @@ local ControlUtils = require('lib.ui.controls.control_utils')
 local MathUtils = require('lib.ui.utils.math')
 local Rule = require('lib.ui.utils.rule')
 local Constants = require('lib.ui.core.constants')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local TextInput = Drawable:extends('TextInput')
+local TEXT_INPUT_FIELD_SCOPE = StyleScope.create('textInput', 'field')
 
 TextInput.InputMode = { text = 'text', numeric = 'numeric', email = 'email', url = 'url', search = 'search' }
 TextInput.SubmitBehavior = { blur = 'blur', submit = 'submit', none = 'none' }
@@ -134,10 +136,10 @@ function TextInput:constructor(opts)
     local drawable_opts = ControlUtils.base_opts(opts, {
         interactive = true,
         focusable = true,
+        style_scope = TEXT_INPUT_FIELD_SCOPE,
     })
 
     Drawable.constructor(self, drawable_opts)
-    self.schema:define(TextInputSchema)
     self.value = opts.value
     self.onValueChange = opts.onValueChange
     self.selectionStart = opts.selectionStart
@@ -194,10 +196,6 @@ function TextInput:constructor(opts)
     self._composition_text = ''
     self._caret_blink_t = 0
     self._caret_blink_on = true
-    self._styling_context = {
-        component = 'textInput',
-        part = 'field',
-    }
 
     ControlUtils.add_control_listener(self, self, 'ui.activate', function()
         if self.disabled then return end
@@ -321,7 +319,7 @@ function TextInput:_composition_text_value()
     return self._composition_text or ''
 end
 
-function TextInput:_resolve_visual_variant()
+function TextInput:resolveStyleVariant()
     if self.disabled == true then
         return 'disabled'
     end
@@ -338,7 +336,7 @@ function TextInput:_resolve_visual_variant()
         return 'focused'
     end
 
-    return 'base'
+    return self.style_variant
 end
 
 function TextInput:_delete_backward()

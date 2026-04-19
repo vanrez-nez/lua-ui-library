@@ -3,8 +3,11 @@ local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local Checkbox = Drawable:extends('Checkbox')
+local CHECKBOX_BOX_SCOPE = StyleScope.create('checkbox', 'box')
+local CHECKBOX_INDICATOR_SCOPE = StyleScope.create('checkbox', 'indicator')
 
 local VALID_STATES = {
     checked = true,
@@ -20,12 +23,12 @@ local function normalize_state(value)
     return nil
 end
 
-local function validate_toggle_order(toggle_order)
+local function validate_toggle_order(toggle_order, level)
     if toggle_order == nil then
         return nil
     end
 
-    Assert.table('toggleOrder', toggle_order, 3)
+    Assert.table('toggleOrder', toggle_order, level or 3)
 
     local has_checked = false
     local has_unchecked = false
@@ -63,7 +66,7 @@ Checkbox._control_schema = {
     label = Rule.any(),
     description = Rule.any(),
     toggleOrder = Rule.custom(function(_, value, _, level)
-        return validate_toggle_order(value)
+        return validate_toggle_order(value, level)
     end),
 }
 
@@ -99,7 +102,6 @@ function Checkbox:constructor(opts)
         focusable = true,
     })
     Drawable.constructor(self, drawable_opts)
-    self.schema:define(Checkbox._control_schema)
     self.checked = opts.checked
     self.onCheckedChange = opts.onCheckedChange
     self.disabled = opts.disabled == true
@@ -121,6 +123,7 @@ function Checkbox:constructor(opts)
         height = 20,
         interactive = false,
         focusable = false,
+        style_scope = CHECKBOX_BOX_SCOPE,
     })
     local indicator = Drawable.new({
         tag = (self.tag and (self.tag .. '.indicator')) or 'checkbox.indicator',
@@ -129,15 +132,8 @@ function Checkbox:constructor(opts)
         height = 12,
         interactive = false,
         focusable = false,
+        style_scope = CHECKBOX_INDICATOR_SCOPE,
     })
-    box._styling_context = {
-        component = 'checkbox',
-        part = 'box',
-    }
-    indicator._styling_context = {
-        component = 'checkbox',
-        part = 'indicator',
-    }
     box:addChild(indicator)
     Container.addChild(self, box)
     self.box = box
@@ -161,7 +157,7 @@ function Checkbox:_get_checked_state()
     return get_effective_checked(self)
 end
 
-function Checkbox:_resolve_visual_variant()
+function Checkbox:resolveStyleVariant()
     if self.disabled == true then
         return 'disabled'
     end
@@ -180,7 +176,7 @@ function Checkbox:_resolve_visual_variant()
         return 'focused'
     end
 
-    return 'base'
+    return self.style_variant
 end
 
 function Checkbox:update(dt)
@@ -195,14 +191,14 @@ function Checkbox:update(dt)
     local height = self._resolved_height or 0
     local box_size = math.min(width, height, 20)
     local indicator_size = math.max(0, box_size - 8)
-    local variant = self:_resolve_visual_variant()
+    local variant = self:resolveStyleVariant()
 
     if box ~= nil then
         box.x = (width - box_size) * 0.5
         box.y = (height - box_size) * 0.5
         box.width = box_size
         box.height = box_size
-        box._styling_variant = variant
+        box:setStyleVariant(variant)
         box:markDirty()
     end
 
@@ -214,7 +210,7 @@ function Checkbox:update(dt)
         indicator.x = (box_size - indicator_size) * 0.5
         indicator.y = (box_size - indicator_size) * 0.5
         indicator.visible = show_indicator
-        indicator._styling_variant = variant
+        indicator:setStyleVariant(variant)
         indicator:markDirty()
     end
 

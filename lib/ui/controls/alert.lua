@@ -1,6 +1,6 @@
 local Modal = require('lib.ui.controls.modal')
-local Text = require('lib.ui.controls.text')
 local Container = require('lib.ui.core.container')
+local Drawable = require('lib.ui.core.drawable')
 local Column = require('lib.ui.layout.column')
 local Row = require('lib.ui.layout.row')
 local ControlUtils = require('lib.ui.controls.control_utils')
@@ -9,64 +9,22 @@ local AlertSchema = require('lib.ui.controls.alert_schema')
 local Constants = require('lib.ui.core.constants')
 local Types = require('lib.ui.utils.types')
 local Assert = require('lib.ui.utils.assert')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local Alert = Modal:extends('Alert')
+local ALERT_SCOPES = {
+    surface = StyleScope.create('alert', 'surface'),
+    backdrop = StyleScope.create('alert', 'backdrop'),
+    title = StyleScope.create('alert', 'title'),
+    message = StyleScope.create('alert', 'message'),
+    actions = StyleScope.create('alert', 'actions')
+}
 
 Alert.schema = Schema.create(Alert, AlertSchema)
 Alert.schema:copy_from(Schema.create(Alert, Modal._schema))
 
-local function set_alert_styling_context(node, part)
-    if node == nil then
-        return
-    end
-
-    node._styling_context = {
-        component = 'alert',
-        part = part,
-    }
-end
-
 local function is_content_node(value)
     return Types.is_table(value) and value._ui_container_instance == true
-end
-
-local function can_construct_text()
-    return love ~= nil and love.graphics ~= nil and
-        Types.is_function(love.graphics.newFont)
-end
-
-local function coerce_text_node(value, tag)
-    if value == nil then
-        return nil
-    end
-
-    if Types.is_string(value) then
-        if not can_construct_text() then
-            local placeholder = Column.new({
-                tag = tag,
-                internal = true,
-                width = 0,
-                height = 0,
-                interactive = false,
-                focusable = false,
-            })
-
-            placeholder.text = value
-
-            return placeholder
-        end
-
-        local text_node = Text.new({
-            tag = tag,
-            internal = true,
-            text = value,
-            width = 0,
-            wrap = true,
-        })
-        return text_node
-    end
-
-    return value
 end
 
 local function build_actions_container(actions)
@@ -95,6 +53,26 @@ local function build_actions_container(actions)
     end
 
     return container
+end
+
+local function build_slot(part, child, variant)
+    local slot = Drawable.new({
+        tag = 'alert.' .. part,
+        internal = true,
+        width = Constants.SIZE_MODE_FILL,
+        height = Constants.SIZE_MODE_CONTENT,
+        interactive = false,
+        focusable = false,
+        style_scope = ALERT_SCOPES[part],
+        style_variant = variant,
+    })
+    Container._allow_fill_from_parent(slot, { width = true })
+
+    if child ~= nil then
+        slot:addChild(child)
+    end
+
+    return slot
 end
 
 local function collect_action_nodes(node, out)
@@ -154,12 +132,16 @@ function Alert:constructor(opts)
     modal_opts.safeAreaAware = opts.safeAreaAware
     modal_opts.backdropDismissBehavior = opts.backdropDismissBehavior
 
-    local title_node = coerce_text_node(opts.title, 'alert.title')
-    local message_node = coerce_text_node(opts.message, 'alert.message')
+    local title_node = ControlUtils.coerce_to_node(opts.title, 'alert.title')
+    local message_node = ControlUtils.coerce_to_node(opts.message, 'alert.message')
     local actions_container = build_actions_container(opts.actions)
-    set_alert_styling_context(title_node, 'title')
-    set_alert_styling_context(message_node, 'message')
-    set_alert_styling_context(actions_container, 'actions')
+    local initial_variant = opts.variant or Constants.INTENT_DEFAULT
+    local title_slot = build_slot('title', title_node, initial_variant)
+    local message_slot = nil
+    if message_node ~= nil then
+        message_slot = build_slot('message', message_node, initial_variant)
+    end
+    local actions_slot = build_slot('actions', actions_container, initial_variant)
 
     local layout = Column.new({
         tag = 'alert.body',
@@ -172,38 +154,36 @@ function Alert:constructor(opts)
     })
     Container._allow_fill_from_parent(layout, { width = true, height = true })
 
-    layout:addChild(title_node)
+    layout:addChild(title_slot)
 
-    if message_node ~= nil then
-        layout:addChild(message_node)
+    if message_slot ~= nil then
+        layout:addChild(message_slot)
     end
 
-    layout:addChild(actions_container)
+    layout:addChild(actions_slot)
     modal_opts.content = layout
 
     Modal.constructor(self, modal_opts)
-    self.schema:define(AlertSchema)
     self.title = opts.title
     self.message = opts.message
     self.actions = opts.actions
-    self.variant = opts.variant or Constants.INTENT_DEFAULT
+    self.variant = initial_variant
     self.initialFocus = opts.initialFocus
 
     self._ui_alert_control = true
     self._title_node = title_node
     self._message_node = message_node
     self._actions_container = actions_container
+    self._title_slot = title_slot
+    self._message_slot = message_slot
+    self._actions_slot = actions_slot
+    self._last_pushed_variant = nil
 
     self.surface.role = Constants.ROLE_ALERT_DIALOG
     self.surface.accessibleName = Types.is_string(opts.title) and opts.title or nil
-    self.surface._styling_context = {
-        component = 'alert',
-        part = 'surface',
-    }
-    self.backdrop._styling_context = {
-        component = 'alert',
-        part = 'backdrop',
-    }
+    self.surface:setStyleScope(ALERT_SCOPES.surface)
+    self.backdrop:setStyleScope(ALERT_SCOPES.backdrop)
+    self:_sync_style_variant()
 end
 
 function Alert.new(opts)
@@ -222,6 +202,42 @@ function Alert:_handle_overlay_opened_internal()
     if target ~= nil then
         ControlUtils.request_focus(target)
     end
+end
+
+function Alert:_sync_style_variant()
+    local variant = self.variant
+
+    if variant == self._last_pushed_variant then
+        return
+    end
+
+    if self._title_slot ~= nil then
+        self._title_slot:setStyleVariant(variant)
+    end
+
+    if self._message_slot ~= nil then
+        self._message_slot:setStyleVariant(variant)
+    end
+
+    if self._actions_slot ~= nil then
+        self._actions_slot:setStyleVariant(variant)
+    end
+
+    if self.surface ~= nil then
+        self.surface:setStyleVariant(variant)
+    end
+
+    if self.backdrop ~= nil then
+        self.backdrop:setStyleVariant(variant)
+    end
+
+    self._last_pushed_variant = variant
+end
+
+function Alert:update(dt)
+    Modal.update(self, dt)
+    self:_sync_style_variant()
+    return self
 end
 
 return Alert

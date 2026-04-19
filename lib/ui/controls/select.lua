@@ -6,8 +6,11 @@ local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
 local Constants = require('lib.ui.core.constants')
+local StyleScope = require('lib.ui.render.style_scope')
 
 local Select = Drawable:extends('Select')
+local SELECT_TRIGGER_SCOPE = StyleScope.create('select', 'trigger')
+local SELECT_POPUP_SCOPE = StyleScope.create('select', 'popup')
 
 local function collect_options(node, out)
     if node._ui_option_control == true then
@@ -238,7 +241,6 @@ function Select:constructor(opts)
         focusable = false,
     })
     Drawable.constructor(self, drawable_opts)
-    self.schema:define(Select._control_schema)
     self.value = opts.value
     self.onValueChange = opts.onValueChange
     self.open = opts.open
@@ -272,13 +274,10 @@ function Select:constructor(opts)
         height = 40,
         interactive = true,
         focusable = true,
+        style_scope = SELECT_TRIGGER_SCOPE,
     })
     Container._allow_fill_from_parent(trigger, { width = true })
     trigger.pointerFocusCoupling = 'before'
-    trigger._styling_context = {
-        component = 'select',
-        part = 'trigger',
-    }
 
     local summary = Text.new({
         tag = (self.tag and (self.tag .. '.summary')) or 'select.summary',
@@ -306,11 +305,8 @@ function Select:constructor(opts)
         height = 132,
         interactive = true,
         focusable = false,
+        style_scope = SELECT_POPUP_SCOPE,
     })
-    popup._styling_context = {
-        component = 'select',
-        part = 'popup',
-    }
     local popup_slot = Container.new({
         tag = (self.tag and (self.tag .. '.popup_slot')) or 'select.popup_slot',
         internal = true,
@@ -476,8 +472,8 @@ function Select:update(dt)
     end
 
     self._last_open_state = wants_open
-    self.trigger._styling_variant = wants_open and 'open' or 'base'
-    self.popup._styling_variant = wants_open and 'open' or 'base'
+    self.trigger:setStyleVariant(wants_open and 'open' or nil)
+    self.popup:setStyleVariant(wants_open and 'open' or nil)
     return self
 end
 

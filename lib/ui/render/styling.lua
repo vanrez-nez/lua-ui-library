@@ -4,6 +4,9 @@ local Rule = require('lib.ui.utils.rule')
 local CanvasPoolRegistry = require('lib.ui.render.canvas_pool_registry')
 local StylingContract = require('lib.ui.render.styling_contract')
 local ThemeRuntime = require('lib.ui.themes.runtime')
+local StyleScope = require('lib.ui.render.style_scope')
+local Theme = require('lib.ui.themes.theme')
+local DefaultTokens = require('lib.ui.themes.default')
 local GraphicsSource = require('lib.ui.render.graphics_source')
 local GraphicsStencil = require('lib.ui.render.graphics_stencil')
 local SourcePlacement = require('lib.ui.render.source_placement')
@@ -848,32 +851,6 @@ local function normalize_styling_value(property_name, value, node)
     return value
 end
 
-local function normalize_resolver_context(node, resolver_context)
-    if not Types.is_table(resolver_context) then
-        return nil
-    end
-
-    local context = {}
-    for key, value in pairs(resolver_context) do
-        context[key] = value
-    end
-
-    if context.partSkin == nil and Types.is_table(node.skin) then
-        context.partSkin = node.skin
-    end
-
-    if context.variant == nil then
-        local explicit_variant = node._styling_variant
-        if explicit_variant ~= nil then
-            context.variant = explicit_variant
-        elseif Types.is_function(node._resolve_visual_variant) then
-            context.variant = node:_resolve_visual_variant()
-        end
-    end
-
-    return context
-end
-
 local QUAD_FAMILIES = {
     borderWidth = {
         aggregate = 'borderWidth',
@@ -927,14 +904,14 @@ local function resolve_override_value(source, part, property_name, variant)
     return property_value.base
 end
 
-local function resolve_token_value(tokens, component, part, property_name, variant)
+local function resolve_token_value(tokens, scope, property_name, variant)
     if not Types.is_table(tokens) then
         return nil
     end
 
-    local key = table.concat({ component, part, property_name }, '.')
+    local key = scope:get_token_key(property_name, nil)
     if variant ~= nil and variant ~= 'base' then
-        local variant_key = key .. '.' .. tostring(variant)
+        local variant_key = scope:get_token_key(property_name, variant)
         if tokens[variant_key] ~= nil then
             return tokens[variant_key]
         end
@@ -983,9 +960,12 @@ local function resolve_quad_family_from_layers(node, family, layers)
     return props
 end
 
-local function resolve_contextual_props(node, resolver_context)
+local function resolve_contextual_props(node, scope, variant)
     local props = {}
-    local part = resolver_context.part
+    local part = scope:get_part()
+    local part_skin = Types.is_table(node.skin) and node.skin or nil
+    local theme = Theme.get_active()
+    local defaults = DefaultTokens
 
     for _, key in ipairs(StylingContract.ROOT_PROPERTY_KEYS) do
         if QUAD_PROPERTY_KEYS[key] then
@@ -994,16 +974,14 @@ local function resolve_contextual_props(node, resolver_context)
 
         local ok, value = pcall(
             ThemeRuntime.resolve,
-            resolver_context.component,
-            part,
+            scope,
             key,
-            resolver_context.variant,
+            variant,
             {
                 instanceValue = node[key],
-                instanceOverrides = resolver_context.instanceOverrides,
-                partSkin = resolver_context.partSkin,
-                theme = resolver_context.theme,
-                defaults = resolver_context.defaults,
+                partSkin = part_skin,
+                theme = theme,
+                defaults = defaults,
             }
         )
 
@@ -1029,81 +1007,59 @@ local function resolve_contextual_props(node, resolver_context)
             direct_layer[property_name] = node[property_name]
         end
 
-        local override_layer = {
-            aggregate = resolve_override_value(
-                resolver_context.instanceOverrides,
-                part,
-                family.aggregate,
-                resolver_context.variant
-            ),
-        }
-        for _, property_name in pairs(family.members) do
-            override_layer[property_name] = resolve_override_value(
-                resolver_context.instanceOverrides,
-                part,
-                property_name,
-                resolver_context.variant
-            )
-        end
-
         local skin_layer = {
             aggregate = resolve_override_value(
-                resolver_context.partSkin,
+                part_skin,
                 part,
                 family.aggregate,
-                resolver_context.variant
+                variant
             ),
         }
         for _, property_name in pairs(family.members) do
             skin_layer[property_name] = resolve_override_value(
-                resolver_context.partSkin,
+                part_skin,
                 part,
                 property_name,
-                resolver_context.variant
+                variant
             )
         end
 
         local theme_layer = {
             aggregate = resolve_token_value(
-                resolver_context.theme and resolver_context.theme.tokens or nil,
-                resolver_context.component,
-                part,
+                theme and theme.tokens or nil,
+                scope,
                 family.aggregate,
-                resolver_context.variant
+                variant
             ),
         }
         for _, property_name in pairs(family.members) do
             theme_layer[property_name] = resolve_token_value(
-                resolver_context.theme and resolver_context.theme.tokens or nil,
-                resolver_context.component,
-                part,
+                theme and theme.tokens or nil,
+                scope,
                 property_name,
-                resolver_context.variant
+                variant
             )
         end
 
         local defaults_layer = {
             aggregate = resolve_token_value(
-                resolver_context.defaults,
-                resolver_context.component,
-                part,
+                defaults,
+                scope,
                 family.aggregate,
-                resolver_context.variant
+                variant
             ),
         }
         for _, property_name in pairs(family.members) do
             defaults_layer[property_name] = resolve_token_value(
-                resolver_context.defaults,
-                resolver_context.component,
-                part,
+                defaults,
+                scope,
                 property_name,
-                resolver_context.variant
+                variant
             )
         end
 
         local resolved = resolve_quad_family_from_layers(node, family, {
             direct_layer,
-            override_layer,
             skin_layer,
             theme_layer,
             defaults_layer,
@@ -1119,13 +1075,15 @@ local function resolve_contextual_props(node, resolver_context)
     return props
 end
 
-function Styling.assemble_props(node, resolver_context)
-    resolver_context = normalize_resolver_context(node, resolver_context)
+function Styling.assemble_props(node)
+    local scope = node.style_scope
 
-    if Types.is_table(resolver_context) then
-        if resolver_context.component ~= nil and resolver_context.part ~= nil then
-            return resolve_contextual_props(node, resolver_context)
+    if StyleScope.is_style_scope(scope) then
+        local variant = nil
+        if Types.is_function(node.resolveStyleVariant) then
+            variant = node:resolveStyleVariant()
         end
+        return resolve_contextual_props(node, scope, variant)
     end
 
     local skin = node.skin

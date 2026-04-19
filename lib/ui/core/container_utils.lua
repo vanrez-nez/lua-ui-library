@@ -1083,7 +1083,7 @@ function _init_schema(self, extra_public_keys)
         end
     end
 
-    rawset(self, 'schema', Schema(self))
+    rawset(self, 'schema', Schema.create(self, schema_props))
 
     ContainerPropertyViews.install(self, {
         public = function(instance, key)
@@ -1097,7 +1097,6 @@ function _init_schema(self, extra_public_keys)
         end,
     })
 
-    self.schema:define(schema_props)
     return declared_props, schema_props
 end
 
