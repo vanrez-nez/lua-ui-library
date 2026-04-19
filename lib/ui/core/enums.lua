@@ -83,6 +83,18 @@ Enums.FillKind = enum(
   { TEXTURE = Constants.FILL_KIND_TEXTURE }
 )
 
+Enums.AlertVariant = enum(
+  { DEFAULT = Constants.INTENT_DEFAULT },
+  { DESTRUCTIVE = Constants.INTENT_DESTRUCTIVE },
+  { SUCCESS = Constants.INTENT_SUCCESS },
+  { WARNING = Constants.INTENT_WARNING }
+)
+
+Enums.AccessibilityRole = enum(
+  { DIALOG = Constants.ROLE_DIALOG },
+  { ALERT_DIALOG = Constants.ROLE_ALERT_DIALOG }
+)
+
 Enums.Event = enum(
   { ACTIVATE = Constants.EVENT_ACTIVATE },
   { DEACTIVATE = Constants.EVENT_DEACTIVATE },

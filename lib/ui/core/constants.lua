@@ -46,6 +46,16 @@ Constants.FILL_KIND_COLOR = 'color'
 Constants.FILL_KIND_GRADIENT = 'gradient'
 Constants.FILL_KIND_TEXTURE = 'texture'
 
+-- Intent
+Constants.INTENT_DEFAULT = 'default'
+Constants.INTENT_DESTRUCTIVE = 'destructive'
+Constants.INTENT_SUCCESS = 'success'
+Constants.INTENT_WARNING = 'warning'
+
+-- Role
+Constants.ROLE_DIALOG = 'dialog'
+Constants.ROLE_ALERT_DIALOG = 'alertdialog'
+
 -- Margin
 Constants.MARGIN_LEFT = 'marginLeft'
 Constants.MARGIN_TOP = 'marginTop'

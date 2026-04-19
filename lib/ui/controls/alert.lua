@@ -4,73 +4,27 @@ local Container = require('lib.ui.core.container')
 local Column = require('lib.ui.layout.column')
 local Row = require('lib.ui.layout.row')
 local ControlUtils = require('lib.ui.controls.control_utils')
+local Schema = require('lib.ui.utils.schema')
+local AlertSchema = require('lib.ui.controls.alert_schema')
+local Constants = require('lib.ui.core.constants')
 local Types = require('lib.ui.utils.types')
 local Assert = require('lib.ui.utils.assert')
 
 local Alert = Modal:extends('Alert')
 
-local ALERT_PUBLIC_KEYS = {
-    title = {
-        default = nil,
-        validate = function(_, value, _, level)
-            if value == nil then
-                return value
-            end
+Alert.schema = Schema.create(Alert, AlertSchema)
+Alert.schema:copy_from(Schema.create(Alert, Modal._schema))
 
-            if Types.is_string(value) or Types.is_table(value) then
-                return value
-            end
+local function set_alert_styling_context(node, part)
+    if node == nil then
+        return
+    end
 
-            Assert.fail('Alert.title must be a string, content node, or nil', level or 1)
-        end,
-    },
-    message = {
-        default = nil,
-        validate = function(_, value, _, level)
-            if value == nil or Types.is_string(value) or Types.is_table(value) then
-                return value
-            end
-
-            Assert.fail('Alert.message must be a string, content node, or nil', level or 1)
-        end,
-    },
-    actions = {
-        default = nil,
-        validate = function(_, value, _, level)
-            if value == nil or Types.is_table(value) then
-                return value
-            end
-
-            Assert.fail('Alert.actions must be a container, list, or nil', level or 1)
-        end,
-    },
-    variant = {
-        default = 'default',
-        validate = function(_, value, _, level)
-            if value ~= 'default' and value ~= 'destructive' and
-                value ~= 'success' and value ~= 'warning' then
-                Assert.fail(
-                    'Alert.variant must be "default", "destructive", "success", or "warning"',
-                    level or 1
-                )
-            end
-
-            return value
-        end,
-    },
-    initialFocus = {
-        default = nil,
-        validate = function(_, value, _, level)
-            if value ~= nil and not Types.is_string(value) then
-                Assert.fail('Alert.initialFocus must be a string or nil', level or 1)
-            end
-
-            return value
-        end,
-    },
-}
-
-Alert._schema = ControlUtils.extend_schema(Modal._schema, ALERT_PUBLIC_KEYS)
+    node._styling_context = {
+        component = 'alert',
+        part = part,
+    }
+end
 
 local function is_content_node(value)
     return Types.is_table(value) and value._ui_container_instance == true
@@ -112,11 +66,7 @@ local function coerce_text_node(value, tag)
         return text_node
     end
 
-    if is_content_node(value) then
-        return value
-    end
-
-    Assert.fail('Alert content must be a string or content node', 3)
+    return value
 end
 
 local function build_actions_container(actions)
@@ -130,8 +80,8 @@ local function build_actions_container(actions)
         width = 0,
         height = 64,
         gap = 12,
-        align = 'center',
-        justify = 'end',
+        align = Constants.ALIGN_CENTER,
+        justify = Constants.ALIGN_END,
     })
 
     if actions == nil then
@@ -170,28 +120,6 @@ local function collect_action_nodes(node, out)
     return out
 end
 
-local function validate_title(value)
-    if Types.is_string(value) then
-        if value == '' then
-            Assert.fail(
-                'Alert title must be a non-empty string or a content node.',
-                3
-            )
-        end
-
-        return
-    end
-
-    if is_content_node(value) then
-        return
-    end
-
-    Assert.fail(
-        'Alert title must be a non-empty string or a content node.',
-        3
-    )
-end
-
 local function resolve_initial_action(self, actions)
     local preferred = self.initialFocus
 
@@ -212,7 +140,6 @@ end
 function Alert:constructor(opts)
     opts = opts or {}
     Assert.table('opts', opts, 2)
-    validate_title(opts.title)
 
     local modal_opts = ControlUtils.base_opts(opts, {
         safeAreaAware = true,
@@ -230,14 +157,18 @@ function Alert:constructor(opts)
     local title_node = coerce_text_node(opts.title, 'alert.title')
     local message_node = coerce_text_node(opts.message, 'alert.message')
     local actions_container = build_actions_container(opts.actions)
+    set_alert_styling_context(title_node, 'title')
+    set_alert_styling_context(message_node, 'message')
+    set_alert_styling_context(actions_container, 'actions')
+
     local layout = Column.new({
         tag = 'alert.body',
         internal = true,
-        width = 'fill',
-        height = 'fill',
+        width = Constants.SIZE_MODE_FILL,
+        height = Constants.SIZE_MODE_FILL,
         gap = 16,
-        align = 'stretch',
-        justify = 'start',
+        align = Constants.ALIGN_STRETCH,
+        justify = Constants.ALIGN_START,
     })
     Container._allow_fill_from_parent(layout, { width = true, height = true })
 
@@ -251,11 +182,11 @@ function Alert:constructor(opts)
     modal_opts.content = layout
 
     Modal.constructor(self, modal_opts)
-    self.schema:define(ALERT_PUBLIC_KEYS)
+    self.schema:define(AlertSchema)
     self.title = opts.title
     self.message = opts.message
     self.actions = opts.actions
-    self.variant = opts.variant or 'default'
+    self.variant = opts.variant or Constants.INTENT_DEFAULT
     self.initialFocus = opts.initialFocus
 
     self._ui_alert_control = true
@@ -263,8 +194,16 @@ function Alert:constructor(opts)
     self._message_node = message_node
     self._actions_container = actions_container
 
-    self.surface.role = 'alertdialog'
+    self.surface.role = Constants.ROLE_ALERT_DIALOG
     self.surface.accessibleName = Types.is_string(opts.title) and opts.title or nil
+    self.surface._styling_context = {
+        component = 'alert',
+        part = 'surface',
+    }
+    self.backdrop._styling_context = {
+        component = 'alert',
+        part = 'backdrop',
+    }
 end
 
 function Alert.new(opts)
