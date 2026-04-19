@@ -4,7 +4,10 @@
   "autoDiscovery": true,
   "autoDiscoverySearchDepth": 2,
   "watcherScope": "project",
-  "watchExclude": ["docs/**", "spec/**"],
+  "watchExclude": [
+    "docs/**",
+    "spec/**"
+  ],
   "locations": [
     "_test/performance-native",
     "demos/01-container",
@@ -15,7 +18,8 @@
     "demos/06-performance"
   ],
   "logFilter": [
-    "app", "error"
+    "app",
+    "error"
   ],
   "fileLogs": {
     "enabled": true,
