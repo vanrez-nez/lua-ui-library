@@ -51,7 +51,7 @@ function TriangleShape:_get_local_points(out_table)
     return points
 end
 
-function TriangleShape:_requires_shape_result_clip()
+function TriangleShape._requires_shape_result_clip()
     return true
 end
 

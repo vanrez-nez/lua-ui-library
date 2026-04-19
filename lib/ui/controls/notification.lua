@@ -3,10 +3,13 @@ local Drawable = require('lib.ui.core.drawable')
 local Button = require('lib.ui.controls.button')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Assert = require('lib.ui.utils.assert')
-local Types = require('lib.ui.utils.types')
 local Rule = require('lib.ui.utils.rule')
+local Constants = require('lib.ui.core.constants')
+local Enums = require('lib.ui.core.enums')
+local Enum = require('lib.ui.utils.enum')
 
 local Notification = Container:extends('Notification')
+local enum_has = Enum.enum_has
 
 local NotificationSchema = {
     open = Rule.boolean(),
@@ -14,8 +17,8 @@ local NotificationSchema = {
     closeMethod = Rule.any({ default = 'button' }),
     duration = Rule.number(),
     stackable = Rule.boolean(true),
-    edge = Rule.any({ default = 'top' }),
-    align = Rule.any({ default = 'center' }),
+    edge = Rule.enum(Enums.Edge, { default = Enums.Edge.TOP }),
+    align = Rule.enum(Enums.SourceAlign, { default = Enums.SourceAlign.CENTER }),
     safeAreaAware = Rule.boolean(true),
 }
 
@@ -58,7 +61,10 @@ local function collect_notification_surfaces(stage, group_key, out)
     for index = 1, #children do
         local child = children[index]
         local owner = child._ui_notification_owner
-        if owner ~= nil and effective_open(owner) and axis_group_key(owner) == group_key and owner.stackable == true then
+        if owner ~= nil and
+            effective_open(owner) and
+            axis_group_key(owner) == group_key and
+            owner.stackable == true then
             out[#out + 1] = owner
         end
     end
@@ -75,22 +81,22 @@ local function position_surface(self, stage)
     local x = viewport.x + margin
     local y = viewport.y + margin
 
-    if self.edge == 'bottom' then
+    if self.edge == Constants.EDGE_BOTTOM then
         y = viewport.y + viewport.height - surface_height - margin
-    elseif self.edge == 'right' then
+    elseif self.edge == Constants.EDGE_RIGHT then
         x = viewport.x + viewport.width - surface_width - margin
     end
 
-    if self.edge == 'top' or self.edge == 'bottom' then
-        if self.align == 'center' then
+    if self.edge == Constants.EDGE_TOP or self.edge == Constants.EDGE_BOTTOM then
+        if self.align == Constants.ALIGN_CENTER then
             x = viewport.x + (viewport.width - surface_width) * 0.5
-        elseif self.align == 'end' then
+        elseif self.align == Constants.ALIGN_END then
             x = viewport.x + viewport.width - surface_width - margin
         end
     else
-        if self.align == 'center' then
+        if self.align == Constants.ALIGN_CENTER then
             y = viewport.y + (viewport.height - surface_height) * 0.5
-        elseif self.align == 'end' then
+        elseif self.align == Constants.ALIGN_END then
             y = viewport.y + viewport.height - surface_height - margin
         end
     end
@@ -104,22 +110,22 @@ local function position_surface(self, stage)
             end
             local peer_surface = group[index].surface
             local peer_bounds = peer_surface:getLocalBounds()
-            if self.edge == 'top' then
+            if self.edge == Constants.EDGE_TOP then
                 offset = offset + peer_bounds.height + 12
-            elseif self.edge == 'bottom' then
+            elseif self.edge == Constants.EDGE_BOTTOM then
                 offset = offset + peer_bounds.height + 12
-            elseif self.edge == 'left' then
+            elseif self.edge == Constants.EDGE_LEFT then
                 offset = offset + peer_bounds.width + 12
             else
                 offset = offset + peer_bounds.width + 12
             end
         end
 
-        if self.edge == 'top' then
+        if self.edge == Constants.EDGE_TOP then
             y = y + offset
-        elseif self.edge == 'bottom' then
+        elseif self.edge == Constants.EDGE_BOTTOM then
             y = y - offset
-        elseif self.edge == 'left' then
+        elseif self.edge == Constants.EDGE_LEFT then
             x = x + offset
         else
             x = x - offset
@@ -150,8 +156,8 @@ function Notification:constructor(opts)
     self.closeMethod = opts.closeMethod or 'button'
     self.duration = opts.duration
     self.stackable = opts.stackable ~= false
-    self.edge = opts.edge or 'top'
-    self.align = opts.align or 'center'
+    self.edge = opts.edge or Enums.Edge.TOP
+    self.align = opts.align or Enums.SourceAlign.CENTER
     self.safeAreaAware = opts.safeAreaAware ~= false
 
     self._ui_notification_control = true
@@ -166,10 +172,10 @@ function Notification:constructor(opts)
     if self.closeMethod ~= 'button' and self.closeMethod ~= 'auto-dismiss' then
         Assert.fail('Notification.closeMethod must be "button" or "auto-dismiss"', 2)
     end
-    if self.edge ~= 'top' and self.edge ~= 'bottom' and self.edge ~= 'left' and self.edge ~= 'right' then
+    if not enum_has(Enums.Edge, self.edge) then
         Assert.fail('Notification.edge is invalid', 2)
     end
-    if self.align ~= 'start' and self.align ~= 'center' and self.align ~= 'end' then
+    if not enum_has(Enums.SourceAlign, self.align) then
         Assert.fail('Notification.align is invalid', 2)
     end
     if self.closeMethod == 'auto-dismiss' and effective_duration(self) ~= nil and effective_duration(self) <= 0 then

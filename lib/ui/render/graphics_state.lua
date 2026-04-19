@@ -1,5 +1,6 @@
 local Types = require('lib.ui.utils.types')
 local Rectangle = require('lib.ui.core.rectangle')
+local Constants = require('lib.ui.core.constants')
 
 local GraphicsState = {}
 
@@ -112,7 +113,7 @@ function GraphicsState.set_blend_mode(graphics, mode, alpha_mode)
         return
     end
 
-    if mode == 'normal' then
+    if mode == Constants.BLEND_MODE_NORMAL then
         mode = 'alpha'
     end
 

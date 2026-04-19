@@ -5,36 +5,25 @@ local MathUtils = require('lib.ui.utils.math')
 local LayoutSpacing = require('lib.ui.layout.spacing')
 local Direction = require('lib.ui.layout.direction')
 local ContentFillGuard = require('lib.ui.layout.content_fill_guard')
+local Enums = require('lib.ui.core.enums')
+local Constants = require('lib.ui.core.constants')
+local Enum = require('lib.ui.utils.enum')
 
 local max = math.max
 local clamp_number = MathUtils.clamp_number
 local resolve_axis_size = MathUtils.resolve_axis_size
 local is_percentage_string = MathUtils.is_percentage_string
+local enum_has = Enum.enum_has
 
 local SequentialLayout = {}
 
-local function effective_values(node)
+local function make_effective_values(node)
     return setmetatable({}, {
         __index = function(_, key)
             return node[key]
         end,
     })
 end
-
-local JUSTIFY_VALUES = {
-    start = true,
-    center = true,
-    ['end'] = true,
-    ['space-between'] = true,
-    ['space-around'] = true,
-}
-
-local ALIGN_VALUES = {
-    start = true,
-    center = true,
-    ['end'] = true,
-    stretch = true,
-}
 
 local function child_is_visible(child)
     return child.visible ~= false
@@ -67,11 +56,11 @@ local function get_rect_axis_size(rect, axis_key)
 end
 
 local function depends_on_parent_axis(value)
-    return value == 'fill' or is_percentage_string(value)
+    return value == Constants.SIZE_MODE_FILL or is_percentage_string(value)
 end
 
 local function validate_effective_props(self, config)
-    local effective_values = effective_values(self)
+    local effective_values = make_effective_values(self)
     local justify = effective_values.justify
     local align = effective_values.align
     local wrap = effective_values.wrap
@@ -80,7 +69,7 @@ local function validate_effective_props(self, config)
     Assert.number(config.kind .. '.gap', gap, 3)
     Assert.boolean(config.kind .. '.wrap', wrap, 3)
 
-    if not Types.is_string(justify) or not JUSTIFY_VALUES[justify] then
+    if not Types.is_string(justify) or not enum_has(Enums.Justify, justify) then
         Assert.fail(
             config.kind ..
                 '.justify must be "start", "center", "end", "space-between", or "space-around"',
@@ -88,7 +77,7 @@ local function validate_effective_props(self, config)
         )
     end
 
-    if not Types.is_string(align) or not ALIGN_VALUES[align] then
+    if not Types.is_string(align) or not enum_has(Enums.Alignment, align) then
         Assert.fail(
             config.kind ..
                 '.align must be "start", "center", "end", or "stretch"',
@@ -104,11 +93,11 @@ local function validate_effective_props(self, config)
 end
 
 local function resolve_axis(value, available, min_value, max_value, config, axis_key)
-    if value == 'content' or value == nil then
+    if value == Constants.SIZE_MODE_CONTENT or value == nil then
         return nil
     end
 
-    if value == 'fill' then
+    if value == Constants.SIZE_MODE_FILL then
         if axis_key == config.main_size_key then
             return nil
         end
@@ -217,10 +206,10 @@ local function measure_entry(entry, stage, config, available_main, available_cro
 end
 
 local function assert_no_circular_dependency(self, child, config, align)
-    local self_values = effective_values(self)
-    local child_values = effective_values(child)
+    local self_values = make_effective_values(self)
+    local child_values = make_effective_values(child)
 
-    if self_values[config.main_size_key] == 'content' and
+    if self_values[config.main_size_key] == Constants.SIZE_MODE_CONTENT and
         depends_on_parent_axis(child_values[config.main_size_key]) then
         Assert.fail(
             config.kind ..
@@ -232,9 +221,9 @@ local function assert_no_circular_dependency(self, child, config, align)
         )
     end
 
-    if self_values[config.cross_size_key] == 'content' and
+    if self_values[config.cross_size_key] == Constants.SIZE_MODE_CONTENT and
         (depends_on_parent_axis(child_values[config.cross_size_key]) or
-            align == 'stretch') then
+            align == Constants.ALIGN_STRETCH) then
         Assert.fail(
             config.kind ..
                 ' has a circular measurement dependency because ' ..
@@ -253,7 +242,7 @@ local function make_entry(child, config)
 
     return {
         child = child,
-        values = effective_values(child),
+        values = make_effective_values(child),
         margin = margin,
         main_leading = main_leading,
         main_trailing = main_trailing,
@@ -314,7 +303,7 @@ local function allocate_fill_sizes(line, available_main, gap, config)
     for index = 1, #line.entries do
         local entry = line.entries[index]
 
-        if entry.values[config.main_size_key] == 'fill' then
+        if entry.values[config.main_size_key] == Constants.SIZE_MODE_FILL then
             fill_entries[#fill_entries + 1] = entry
             fill_margin_extent = fill_margin_extent +
                 entry.main_leading +
@@ -398,11 +387,11 @@ local function resolve_justify(justify, available_main, used_main, gap, child_co
 
     local extra = available_main - used_main
 
-    if justify == 'center' then
+    if justify == Constants.ALIGN_CENTER then
         return extra / 2, between_gap
     end
 
-    if justify == 'end' then
+    if justify == Constants.ALIGN_END then
         return extra, between_gap
     end
 
@@ -410,7 +399,7 @@ local function resolve_justify(justify, available_main, used_main, gap, child_co
         return 0, between_gap
     end
 
-    if justify == 'space-between' then
+    if justify == Constants.JUSTIFY_SPACE_BETWEEN then
         if child_count == 1 then
             return 0, between_gap
         end
@@ -418,7 +407,7 @@ local function resolve_justify(justify, available_main, used_main, gap, child_co
         return 0, between_gap + (extra / (child_count - 1))
     end
 
-    if justify == 'space-around' then
+    if justify == Constants.JUSTIFY_SPACE_AROUND then
         local around = extra / child_count
         return around / 2, between_gap + around
     end
@@ -428,7 +417,7 @@ end
 
 local function resize_to_sequential_content(self, main_content_size, cross_content_size,
         config)
-    local effective_values = effective_values(self)
+    local effective_values = make_effective_values(self)
     local resolved_width = self._resolved_width or 0
     local resolved_height = self._resolved_height or 0
     local padding = effective_values.padding or {
@@ -439,7 +428,7 @@ local function resize_to_sequential_content(self, main_content_size, cross_conte
     }
 
     if config.main_size_key == 'width' then
-        if effective_values.width == 'content' then
+        if effective_values.width == Constants.SIZE_MODE_CONTENT then
             resolved_width = clamp_number(
                 padding.left + main_content_size + padding.right,
                 effective_values.minWidth,
@@ -447,7 +436,7 @@ local function resize_to_sequential_content(self, main_content_size, cross_conte
             )
         end
 
-        if effective_values.height == 'content' then
+        if effective_values.height == Constants.SIZE_MODE_CONTENT then
             resolved_height = clamp_number(
                 padding.top + cross_content_size + padding.bottom,
                 effective_values.minHeight,
@@ -455,7 +444,7 @@ local function resize_to_sequential_content(self, main_content_size, cross_conte
             )
         end
     else
-        if effective_values.height == 'content' then
+        if effective_values.height == Constants.SIZE_MODE_CONTENT then
             resolved_height = clamp_number(
                 padding.top + main_content_size + padding.bottom,
                 effective_values.minHeight,
@@ -463,7 +452,7 @@ local function resize_to_sequential_content(self, main_content_size, cross_conte
             )
         end
 
-        if effective_values.width == 'content' then
+        if effective_values.width == Constants.SIZE_MODE_CONTENT then
             resolved_width = clamp_number(
                 padding.left + cross_content_size + padding.right,
                 effective_values.minWidth,
@@ -475,7 +464,7 @@ local function resize_to_sequential_content(self, main_content_size, cross_conte
     return self:_apply_resolved_size(resolved_width, resolved_height)
 end
 
-local function place_invisible_children(self, invisible_children, content_rect)
+local function place_invisible_children(_, invisible_children, content_rect)
     for index = 1, #invisible_children do
         local child = invisible_children[index]
         child:_set_layout_offset(content_rect.x, content_rect.y)
@@ -496,7 +485,7 @@ function SequentialLayout.apply(self, stage, config)
 
     local ok, result = xpcall(function()
         local justify, align, wrap, gap = validate_effective_props(self, config)
-        local effective_values = effective_values(self)
+        local effective_values = make_effective_values(self)
         local children = self._children
         local content_rect
         local available_main
@@ -517,7 +506,7 @@ function SequentialLayout.apply(self, stage, config)
         available_main = get_rect_axis_size(content_rect, config.main_size_key)
         available_cross = get_rect_axis_size(content_rect, config.cross_size_key)
 
-        if wrap and main_mode == 'content' then
+        if wrap and main_mode == Constants.SIZE_MODE_CONTENT then
             wrap = false
         end
 
@@ -530,7 +519,7 @@ function SequentialLayout.apply(self, stage, config)
                 local entry = make_entry(child, config)
                 local main_value = entry.values[config.main_size_key]
 
-                if main_value == 'fill' then
+                if main_value == Constants.SIZE_MODE_FILL then
                     entry.final_main = clamp_number(
                         0,
                         entry.values[config.main_min_key],
@@ -559,7 +548,7 @@ function SequentialLayout.apply(self, stage, config)
             for entry_index = 1, #line.entries do
                 local entry = line.entries[entry_index]
 
-                if entry.values[config.main_size_key] == 'fill' then
+                if entry.values[config.main_size_key] == Constants.SIZE_MODE_FILL then
                     measure_entry(
                         entry,
                         stage,
@@ -575,12 +564,12 @@ function SequentialLayout.apply(self, stage, config)
 
             local stretch_cross = line.cross_extent
 
-            if not wrap and effective_values[config.cross_size_key] ~= 'content' and
-                align == 'stretch' then
+            if not wrap and effective_values[config.cross_size_key] ~= Constants.SIZE_MODE_CONTENT and
+                align == Constants.ALIGN_STRETCH then
                 stretch_cross = available_cross
             end
 
-            if align == 'stretch' then
+            if align == Constants.ALIGN_STRETCH then
                 for entry_index = 1, #line.entries do
                     local entry = line.entries[entry_index]
 
@@ -626,7 +615,7 @@ function SequentialLayout.apply(self, stage, config)
         end
 
         local cross_cursor = 0
-        local direction = 'ltr'
+        local direction = Constants.DIRECTION_LTR
 
         if config.kind == 'Row' then
             direction = effective_values.direction
@@ -653,11 +642,11 @@ function SequentialLayout.apply(self, stage, config)
                     available_line_cross = available_cross
                 end
 
-                if align == 'center' then
+                if align == Constants.ALIGN_CENTER then
                     cross_position = cross_cursor +
                         ((available_line_cross - (entry.outer_cross or 0)) / 2) +
                         entry.cross_leading
-                elseif align == 'end' then
+                elseif align == Constants.ALIGN_END then
                     cross_position = cross_cursor +
                         (available_line_cross - (entry.outer_cross or 0)) +
                         entry.cross_leading
@@ -665,7 +654,7 @@ function SequentialLayout.apply(self, stage, config)
 
                 local main_position = main_cursor + entry.main_leading
 
-                if config.kind == 'Row' and direction == 'rtl' then
+                if config.kind == 'Row' and direction == Constants.DIRECTION_RTL then
                     main_position = available_main -
                         main_cursor -
                         (entry.outer_main or 0) +

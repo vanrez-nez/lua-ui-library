@@ -4,8 +4,12 @@ local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local MathUtils = require('lib.ui.utils.math')
 local Rule = require('lib.ui.utils.rule')
+local Constants = require('lib.ui.core.constants')
+local Enums = require('lib.ui.core.enums')
+local Enum = require('lib.ui.utils.enum')
 
 local Slider = Drawable:extends('Slider')
+local enum_has = Enum.enum_has
 
 local function normalize_value(self, value)
     local min_value = self.min or 0
@@ -51,12 +55,12 @@ Slider._control_schema = {
         return value
     end),
     orientation = Rule.custom(function(_, value, _, level)
-        value = value or 'horizontal'
-        if value ~= 'horizontal' and value ~= 'vertical' then
+        value = value or Enums.Orientation.HORIZONTAL
+        if not enum_has(Enums.Orientation, value) then
             Assert.fail('Slider.orientation must be "horizontal" or "vertical"', level or 1)
         end
         return value
-    end, { default = 'horizontal' }),
+    end, { default = Enums.Orientation.HORIZONTAL }),
     disabled = Rule.boolean(false),
 }
 
@@ -72,11 +76,13 @@ local function ratio_for_value(self, value)
 end
 
 local function value_from_pointer(self, x, y)
-    local bounds = self:getWorldBounds()
+        local bounds = self:getWorldBounds()
     local orientation = self.orientation
-    local ratio = 0
+    local min_value = self.min or 0
+    local max_value = self.max or 1
+    local ratio
 
-    if orientation == 'vertical' then
+    if orientation == Enums.Orientation.VERTICAL then
         local denom = bounds.height <= 0 and 1 or bounds.height
         ratio = 1 - ((y - bounds.y) / denom)
     else
@@ -85,9 +91,6 @@ local function value_from_pointer(self, x, y)
     end
 
     ratio = MathUtils.clamp(ratio, 0, 1)
-
-    local min_value = self.min or 0
-    local max_value = self.max or 1
     return min_value + ((max_value - min_value) * ratio)
 end
 
@@ -102,7 +105,7 @@ local function sync_parts(self)
         height = self._resolved_height or 0,
     }
 
-    if self.orientation == 'vertical' then
+    if self.orientation == Enums.Orientation.VERTICAL then
         track.x = bounds.width * 0.35
         track.y = 0
         track.width = math.max(6, bounds.width * 0.3)
@@ -141,10 +144,10 @@ function Slider:constructor(opts)
     self.min = opts.min or 0
     self.max = opts.max or 1
     self.step = opts.step
-    self.orientation = opts.orientation or 'horizontal'
+    self.orientation = opts.orientation or Enums.Orientation.HORIZONTAL
     self.disabled = opts.disabled == true
     ControlUtils.validate_control_schema(self, opts, Slider._control_schema, 2)
-    self.pointerFocusCoupling = 'before'
+    self.pointerFocusCoupling = Constants.POINTER_FOCUS_COUPLING_BEFORE
 
     self._ui_slider_control = true
 
@@ -156,7 +159,7 @@ function Slider:constructor(opts)
         Assert.fail('Slider.step must be > 0 when provided', 2)
     end
 
-    if self.orientation ~= 'horizontal' and self.orientation ~= 'vertical' then
+    if not enum_has(Enums.Orientation, self.orientation) then
         Assert.fail('Slider.orientation must be "horizontal" or "vertical"', 2)
     end
 
@@ -208,20 +211,20 @@ function Slider:constructor(opts)
             return
         end
 
-        if event.dragPhase == 'start' then
+        if event.dragPhase == Constants.DRAG_PHASE_START then
             self._dragging = true
             request_value(self, value_from_pointer(self, event.x, event.y))
             event:stopPropagation()
             return
         end
 
-        if event.dragPhase == 'move' and self._dragging then
+        if event.dragPhase == Constants.DRAG_PHASE_MOVE and self._dragging then
             request_value(self, value_from_pointer(self, event.x, event.y))
             event:stopPropagation()
             return
         end
 
-        if event.dragPhase == 'end' then
+        if event.dragPhase == Constants.DRAG_PHASE_END then
             self._dragging = false
             event:stopPropagation()
         end
@@ -245,24 +248,24 @@ function Slider:constructor(opts)
     end)
 
     ControlUtils.add_control_listener(self, self, 'ui.navigate', function(event)
-        if self.disabled or event.navigationMode ~= 'directional' then
+        if self.disabled or event.navigationMode ~= Constants.NAVIGATION_MODE_DIRECTIONAL then
             return
         end
 
         local step = self.step or ((self.max - self.min) / 10)
         local next_value = effective_value(self)
-        if self.orientation == 'horizontal' then
-            if event.direction == 'right' then
+        if self.orientation == Enums.Orientation.HORIZONTAL then
+            if event.direction == Constants.NAVIGATION_DIRECTION_RIGHT then
                 next_value = next_value + step
-            elseif event.direction == 'left' then
+            elseif event.direction == Constants.NAVIGATION_DIRECTION_LEFT then
                 next_value = next_value - step
             else
                 return
             end
         else
-            if event.direction == 'up' then
+            if event.direction == Constants.NAVIGATION_DIRECTION_UP then
                 next_value = next_value + step
-            elseif event.direction == 'down' then
+            elseif event.direction == Constants.NAVIGATION_DIRECTION_DOWN then
                 next_value = next_value - step
             else
                 return

@@ -4,36 +4,21 @@ local Color = require('lib.ui.render.color')
 local SpacingSchema = require('lib.ui.core.spacing_schema')
 local Texture = require('lib.ui.graphics.texture')
 local Sprite = require('lib.ui.graphics.sprite')
+local Enums = require('lib.ui.core.enums')
+local Enum = require('lib.ui.utils.enum')
 
 local GraphicsValidation = {}
 
 local check_finite_number = SpacingSchema.check_finite_number
+local enum_has = Enum.enum_has
 
 GraphicsValidation.ROOT_OPACITY_DEFAULT = 1
-GraphicsValidation.ROOT_BLEND_MODE_DEFAULT = 'normal'
-GraphicsValidation.ROOT_BLEND_MODE_VALUES = {
-    'normal',
-    'add',
-    'subtract',
-    'multiply',
-    'screen',
-    'lighten',
-    'darken',
-    'replace',
-}
-
-GraphicsValidation.SOURCE_ALIGN_VALUES = {
-    'start',
-    'center',
-    'end',
-}
+GraphicsValidation.ROOT_BLEND_MODE_DEFAULT = Enums.BlendMode.NORMAL
+GraphicsValidation.ROOT_BLEND_MODE_VALUES = Enums.BlendMode
+GraphicsValidation.SOURCE_ALIGN_VALUES = Enums.SourceAlign
 
 local function validate_enum(key, value, allowed, level)
-    for index = 1, #allowed do
-        if value == allowed[index] then
-            return value
-        end
-    end
+    if enum_has(allowed, value) then return value end
 
     Assert.fail(
         key .. ": '" .. tostring(value) .. "' is not a valid value — accepted: " .. table.concat(allowed, ', '),
@@ -105,7 +90,7 @@ function GraphicsValidation.validate_gradient(key, value, _, level)
         Assert.fail(key .. '.kind must be "linear"', level or 1)
     end
 
-    if value.direction ~= 'horizontal' and value.direction ~= 'vertical' then
+    if not enum_has(Enums.Orientation, value.direction) then
         Assert.fail(key .. '.direction must be "horizontal" or "vertical"', level or 1)
     end
 

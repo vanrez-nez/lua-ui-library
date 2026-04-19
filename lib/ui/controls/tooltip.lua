@@ -4,20 +4,37 @@ local ControlUtils = require('lib.ui.controls.control_utils')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Rule = require('lib.ui.utils.rule')
+local Constants = require('lib.ui.core.constants')
+local Enums = require('lib.ui.core.enums')
+local Enum = require('lib.ui.utils.enum')
 
 local Tooltip = Container:extends('Tooltip')
+local enum = Enum.enum
+local enum_has = Enum.enum_has
 
-local PLACEMENTS = { top = true, bottom = true, left = true, right = true }
-local ALIGNS = { start = true, center = true, ['end'] = true }
-local TRIGGER_MODES = { hover = true, focus = true, ['hover-focus'] = true, manual = true }
+Tooltip.TRIGGER_MODE_HOVER = 'hover'
+Tooltip.TRIGGER_MODE_FOCUS = 'focus'
+Tooltip.TRIGGER_MODE_HOVER_FOCUS = 'hover-focus'
+Tooltip.TRIGGER_MODE_MANUAL = 'manual'
+
+local TriggerMode = enum(
+    { HOVER = Tooltip.TRIGGER_MODE_HOVER },
+    { FOCUS = Tooltip.TRIGGER_MODE_FOCUS },
+    { HOVER_FOCUS = Tooltip.TRIGGER_MODE_HOVER_FOCUS },
+    { MANUAL = Tooltip.TRIGGER_MODE_MANUAL }
+)
+
+Tooltip.Placement = Enums.Edge
+Tooltip.Align = Enums.SourceAlign
+Tooltip.TriggerMode = TriggerMode
 
 local TooltipSchema = {
     open = Rule.boolean(),
     onOpenChange = Rule.any(),
-    placement = Rule.any({ default = 'top' }),
-    align = Rule.any({ default = 'center' }),
+    placement = Rule.enum(Enums.Edge, { default = Enums.Edge.TOP }),
+    align = Rule.enum(Enums.SourceAlign, { default = Enums.SourceAlign.CENTER }),
     offset = Rule.number({ default = 8 }),
-    triggerMode = Rule.any({ default = 'hover-focus' }),
+    triggerMode = Rule.enum(TriggerMode, { default = TriggerMode.HOVER_FOCUS }),
     safeAreaAware = Rule.boolean(true),
 }
 
@@ -63,13 +80,13 @@ end
 
 local function desired_open(self)
     local mode = self.triggerMode
-    if mode == 'manual' then
+    if mode == TriggerMode.MANUAL then
         return effective_open(self)
     end
-    if mode == 'hover' then
+    if mode == TriggerMode.HOVER then
         return hovered(self)
     end
-    if mode == 'focus' then
+    if mode == TriggerMode.FOCUS then
         return focused(self)
     end
     return hovered(self) or focused(self)
@@ -79,32 +96,32 @@ local function candidate_rect(trigger_bounds, width, height, placement, align, o
     local x = trigger_bounds.x
     local y = trigger_bounds.y
 
-    if placement == 'top' then
+    if placement == Constants.EDGE_TOP then
         y = trigger_bounds.y - height - offset
-        if align == 'center' then
+        if align == Constants.ALIGN_CENTER then
             x = trigger_bounds.x + (trigger_bounds.width - width) * 0.5
-        elseif align == 'end' then
+        elseif align == Constants.ALIGN_END then
             x = trigger_bounds.x + trigger_bounds.width - width
         end
-    elseif placement == 'bottom' then
+    elseif placement == Constants.EDGE_BOTTOM then
         y = trigger_bounds.y + trigger_bounds.height + offset
-        if align == 'center' then
+        if align == Constants.ALIGN_CENTER then
             x = trigger_bounds.x + (trigger_bounds.width - width) * 0.5
-        elseif align == 'end' then
+        elseif align == Constants.ALIGN_END then
             x = trigger_bounds.x + trigger_bounds.width - width
         end
-    elseif placement == 'left' then
+    elseif placement == Constants.EDGE_LEFT then
         x = trigger_bounds.x - width - offset
-        if align == 'center' then
+        if align == Constants.ALIGN_CENTER then
             y = trigger_bounds.y + (trigger_bounds.height - height) * 0.5
-        elseif align == 'end' then
+        elseif align == Constants.ALIGN_END then
             y = trigger_bounds.y + trigger_bounds.height - height
         end
     else
         x = trigger_bounds.x + trigger_bounds.width + offset
-        if align == 'center' then
+        if align == Constants.ALIGN_CENTER then
             y = trigger_bounds.y + (trigger_bounds.height - height) * 0.5
-        elseif align == 'end' then
+        elseif align == Constants.ALIGN_END then
             y = trigger_bounds.y + trigger_bounds.height - height
         end
     end
@@ -175,10 +192,10 @@ function Tooltip:constructor(opts)
     self.schema:define(TooltipSchema)
     self.open = opts.open
     self.onOpenChange = opts.onOpenChange
-    self.placement = opts.placement or 'top'
-    self.align = opts.align or 'center'
+    self.placement = opts.placement or Enums.Edge.TOP
+    self.align = opts.align or Enums.SourceAlign.CENTER
     self.offset = opts.offset or 8
-    self.triggerMode = opts.triggerMode or 'hover-focus'
+    self.triggerMode = opts.triggerMode or TriggerMode.HOVER_FOCUS
     self.safeAreaAware = opts.safeAreaAware ~= false
 
     self._ui_tooltip_control = true
@@ -190,13 +207,13 @@ function Tooltip:constructor(opts)
 
     ControlUtils.assert_controlled_pair('open', opts.open, 'onOpenChange', opts.onOpenChange, 2)
 
-    if not PLACEMENTS[self.placement] then
+    if not enum_has(Enums.Edge, self.placement) then
         Assert.fail('Tooltip.placement is invalid', 2)
     end
-    if not ALIGNS[self.align] then
+    if not enum_has(Enums.SourceAlign, self.align) then
         Assert.fail('Tooltip.align is invalid', 2)
     end
-    if not TRIGGER_MODES[self.triggerMode] then
+    if not enum_has(TriggerMode, self.triggerMode) then
         Assert.fail('Tooltip.triggerMode is invalid', 2)
     end
     if self.offset < 0 then
@@ -273,7 +290,7 @@ end
 function Tooltip:update(dt)
     Container.update(self, dt)
 
-    if self.triggerMode ~= 'manual' and self._open_controlled == false then
+    if self.triggerMode ~= TriggerMode.MANUAL and self._open_controlled == false then
         request_open_change(self, desired_open(self))
     end
 
@@ -308,7 +325,7 @@ function Tooltip:update(dt)
     return self
 end
 
-function Tooltip:_overlay_focus_contract()
+function Tooltip._overlay_focus_contract()
     return {
         scope = true,
     }

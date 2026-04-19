@@ -202,22 +202,22 @@ function Scene.is_scene(value)
     return Types.is_instance(value, Scene)
 end
 
-function Scene:onCreate(_)
+function Scene.onCreate()
 end
 
-function Scene:onEnterBefore()
+function Scene.onEnterBefore()
 end
 
-function Scene:onEnterAfter()
+function Scene.onEnterAfter()
 end
 
-function Scene:onLeaveBefore()
+function Scene.onLeaveBefore()
 end
 
-function Scene:onLeaveAfter()
+function Scene.onLeaveAfter()
 end
 
-function Scene:onDestroy()
+function Scene.onDestroy()
 end
 
 function Scene:_is_created()

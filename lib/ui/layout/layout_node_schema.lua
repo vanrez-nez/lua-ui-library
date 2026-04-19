@@ -4,21 +4,10 @@ local Rule = require('lib.ui.utils.rule')
 local SpacingSchema = require('lib.ui.core.spacing_schema')
 local ResponsiveBreakpointsGate = require('lib.ui.core.responsive_breakpoints_gate')
 local Responsive = require('lib.ui.layout.responsive')
+local Enums = require('lib.ui.core.enums')
+local Enum = require('lib.ui.utils.enum')
 
-local JUSTIFY_VALUES = {
-    start = true,
-    center = true,
-    ['end'] = true,
-    ['space-between'] = true,
-    ['space-around'] = true,
-}
-
-local ALIGN_VALUES = {
-    start = true,
-    center = true,
-    ['end'] = true,
-    stretch = true,
-}
+local enum_has = Enum.enum_has
 
 local function mark_dirty(ctx)
     local method = rawget(ctx, 'markDirty')
@@ -35,14 +24,14 @@ local function mark_dirty(ctx)
 end
 
 local function validate_justify(_, value, _, level)
-    if not Types.is_string(value) or not JUSTIFY_VALUES[value] then
+    if not Types.is_string(value) or not enum_has(Enums.Justify, value) then
         Assert.fail('Layout.justify must be "start", "center", "end", "space-between", or "space-around"', level)
     end
     return value
 end
 
 local function validate_align(_, value, _, level)
-    if not Types.is_string(value) or not ALIGN_VALUES[value] then
+    if not Types.is_string(value) or not enum_has(Enums.Alignment, value) then
         Assert.fail('Layout.align must be "start", "center", "end", or "stretch"', level)
     end
     return value
@@ -57,11 +46,11 @@ local LAYOUT_NODE_SCHEMA = {
     paddingLeft = SpacingSchema.non_negative_finite_rule({ set = mark_dirty }),
     wrap = Rule.boolean(false, { set = mark_dirty }),
     justify = Rule.custom(validate_justify, {
-        default = 'start',
+        default = Enums.Justify.START,
         set = mark_dirty,
     }),
     align = Rule.custom(validate_align, {
-        default = 'start',
+        default = Enums.Alignment.START,
         set = mark_dirty,
     }),
     responsive = Rule.gate(

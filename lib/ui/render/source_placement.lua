@@ -1,4 +1,5 @@
 local Rectangle = require('lib.ui.core.rectangle')
+local Constants = require('lib.ui.core.constants')
 
 local SourcePlacement = {}
 
@@ -9,9 +10,9 @@ function SourcePlacement.resolve_aligned_origin(axis_start, axis_size, source_si
     local resolved_axis_size = axis_size or 0
     local resolved_source_size = source_size or 0
 
-    if align == 'center' then
+    if align == Constants.ALIGN_CENTER then
         origin = origin + ((resolved_axis_size - resolved_source_size) * 0.5)
-    elseif align == 'end' then
+    elseif align == Constants.ALIGN_END then
         origin = origin + resolved_axis_size - resolved_source_size
     end
 
@@ -68,7 +69,7 @@ function SourcePlacement.resolve_tiled_placements(bounds, source_width, source_h
         resolved_bounds.x,
         resolved_bounds.width,
         resolved_source_width,
-        opts.alignX or 'start',
+        opts.alignX or Constants.ALIGN_START,
         opts.offsetX or 0,
         repeat_x
     )
@@ -76,7 +77,7 @@ function SourcePlacement.resolve_tiled_placements(bounds, source_width, source_h
         resolved_bounds.y,
         resolved_bounds.height,
         resolved_source_height,
-        opts.alignY or 'start',
+        opts.alignY or Constants.ALIGN_START,
         opts.offsetY or 0,
         repeat_y
     )

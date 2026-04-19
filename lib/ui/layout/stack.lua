@@ -3,6 +3,7 @@ local Rectangle = require('lib.ui.core.rectangle')
 local LayoutSpacing = require('lib.ui.layout.spacing')
 local ContentFillGuard = require('lib.ui.layout.content_fill_guard')
 local StackSchema = require('lib.ui.layout.stack_schema')
+local Constants = require('lib.ui.core.constants')
 
 local max = math.max
 local min = math.min
@@ -132,7 +133,7 @@ function Stack:_apply_layout(_)
     content_rect = self:_refresh_layout_content_rect()
     place_children(self, content_rect)
 
-    if width_mode ~= 'content' and height_mode ~= 'content' then
+    if width_mode ~= Constants.SIZE_MODE_CONTENT and height_mode ~= Constants.SIZE_MODE_CONTENT then
         return self
     end
 

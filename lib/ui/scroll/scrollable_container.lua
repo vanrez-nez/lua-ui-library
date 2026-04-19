@@ -4,12 +4,12 @@ local Assert = require('lib.ui.utils.assert')
 local MathUtils = require('lib.ui.utils.math')
 -- Proxy removed: DirtyProps sync handles change detection
 local ScrollableContainerSchema = require('lib.ui.scroll.scrollable_container_schema')
+local Constants = require('lib.ui.core.constants')
 
 local max = math.max
 local min = math.min
 local abs = math.abs
 
--- ────────────────────────────────────────────────────────────────────────────
 -- ScrollableContainer
 --
 -- A structural primitive that clips descendant content and exposes scroll
@@ -20,12 +20,16 @@ local abs = math.abs
 --   viewport   = internal Container with clipChildren = true
 --   content    = internal Container inside viewport (consumer adds children here)
 --   scrollbars = optional visual Drawable nodes
--- ────────────────────────────────────────────────────────────────────────────
 
 local ScrollableContainer = Container:extends('ScrollableContainer')
 ScrollableContainer._schema = ScrollableContainerSchema
 
--- ── Constants ───────────────────────────────────────────────────────────────
+ScrollableContainer.State = {
+    Idle = Constants.SCROLL_STATE_IDLE,
+    Dragging = Constants.SCROLL_STATE_DRAGGING,
+    Inertial = Constants.SCROLL_STATE_INERTIAL,
+}
+
 
 local VELOCITY_STOP_THRESHOLD = 0.5
 local OVERSCROLL_RESISTANCE   = 0.4
@@ -36,18 +40,14 @@ local SCROLLBAR_MARGIN        = 2
 local SCROLLBAR_MIN_OVERSHOOT_THUMB = 2
 local DELTA_EPSILON           = 1e-6
 
-local STATE_IDLE     = 'idle'
-local STATE_DRAGGING = 'dragging'
-local STATE_INERTIAL = 'inertial'
+local STATE_IDLE     = Constants.SCROLL_STATE_IDLE
+local STATE_DRAGGING = Constants.SCROLL_STATE_DRAGGING
+local STATE_INERTIAL = Constants.SCROLL_STATE_INERTIAL
 
--- ── Helpers ─────────────────────────────────────────────────────────────────
 
 local function get_public(self, key)
     return self[key]
 end
-
-
--- ── Content extent measurement ──────────────────────────────────────────────
 
 local function measure_content_extent(content_node)
     local children = content_node._children
@@ -72,8 +72,6 @@ local function measure_content_extent(content_node)
     return max_right, max_bottom
 end
 
--- ── Scroll range ────────────────────────────────────────────────────────────
-
 local function compute_scroll_range(self)
     local viewport_node = self._viewport
     local content_node  = self._content
@@ -97,8 +95,6 @@ local function compute_scroll_range(self)
     return max_x, max_y, vw, vh
 end
 
--- ── Offset clamping ─────────────────────────────────────────────────────────
-
 local function clamp_offsets(self, allow_overscroll)
     local max_x, max_y = compute_scroll_range(self)
     self._max_scroll_x = max_x
@@ -116,8 +112,6 @@ local function clamp_offsets(self, allow_overscroll)
     self._scroll_y = sy
 end
 
--- ── Apply scroll offset to content position ─────────────────────────────────
-
 local function apply_content_offset(self)
     local content_node = self._content
 
@@ -131,8 +125,6 @@ local function apply_content_offset(self)
     content_node:invalidate_world()
     content_node:invalidate_descendant_world()
 end
-
--- ── Scrollbar geometry ──────────────────────────────────────────────────────
 
 local function update_scrollbar_geometry(self)
     local function mark_node_geometry_dirty(node)
@@ -282,8 +274,6 @@ local function update_scrollbar_geometry(self)
     end
 end
 
--- ── Scroll application ─────────────────────────────────────────────────────
-
 local function apply_scroll(self, dx, dy, allow_overscroll)
     -- Disabled axes must never move, even with overscroll
     if not get_public(self, 'scrollXEnabled') then dx = 0 end
@@ -324,8 +314,6 @@ local function apply_scroll(self, dx, dy, allow_overscroll)
     return consumed_x, consumed_y
 end
 
--- ── Remaining scroll range (for nested consumption) ─────────────────────────
-
 local function has_remaining_range(self, dx, dy)
     local sx = self._scroll_x or 0
     local sy = self._scroll_y or 0
@@ -340,8 +328,6 @@ local function has_remaining_range(self, dx, dy)
     return false
 end
 
--- ── Velocity tracking ───────────────────────────────────────────────────────
-
 local function record_velocity(self, dx, dy)
     self._velocity_x = dx
     self._velocity_y = dy
@@ -350,8 +336,6 @@ end
 local function is_effectively_integer(value)
     return abs(value - math.floor(value + 0.5)) <= DELTA_EPSILON
 end
-
--- ── Overscroll snap-back ────────────────────────────────────────────────────
 
 local function resolve_overscroll(self)
     local sx = self._scroll_x or 0
@@ -397,8 +381,6 @@ local function resolve_overscroll(self)
     return snapping
 end
 
--- ── __index / __newindex ────────────────────────────────────────────────────
-
 function ScrollableContainer.__index(self, key)
     -- Expose internal role nodes as read-only
     if key == 'content' then
@@ -422,8 +404,6 @@ function ScrollableContainer.__newindex(self, key, value)
 
     rawset(self, key, value)
 end
-
--- ── Constructor ─────────────────────────────────────────────────────────────
 
 function ScrollableContainer:constructor(opts)
     Container.constructor(self, opts, ScrollableContainerSchema)
@@ -454,8 +434,6 @@ function ScrollableContainer:constructor(opts)
     self._prev_drag_delta_x = 0
     self._prev_drag_delta_y = 0
 
-    -- ── Build anatomy ───────────────────────────────────────────────────
-
     -- Viewport: clips children
     local viewport = Container({
         tag = 'scroll_viewport',
@@ -482,8 +460,6 @@ function ScrollableContainer:constructor(opts)
 
     self._viewport = viewport
     self._content = content
-
-    -- ── Scrollbar parts (optional) ──────────────────────────────────────
 
     -- Vertical scrollbar track + thumb
     local v_track = Drawable({
@@ -533,15 +509,12 @@ function ScrollableContainer:constructor(opts)
     self._scrollbar_h_track = h_track
     self._scrollbar_h_thumb = h_thumb
 
-    -- ── Wire events ─────────────────────────────────────────────────────
     self:_wire_scroll_events()
 end
 
 function ScrollableContainer.new(opts)
     return ScrollableContainer(opts)
 end
-
--- ── Event wiring ────────────────────────────────────────────────────────────
 
 function ScrollableContainer:_wire_scroll_events()
     local self_ref = self
@@ -586,7 +559,7 @@ function ScrollableContainer:_wire_scroll_events()
 
     -- Drag start
     self:_add_event_listener('ui.drag', function(event)
-        if event.dragPhase == 'start' then
+        if event.dragPhase == Constants.DRAG_PHASE_START then
             self_ref._scroll_state = STATE_DRAGGING
             self_ref._drag_start_x = event.x or 0
             self_ref._drag_start_y = event.y or 0
@@ -601,7 +574,7 @@ function ScrollableContainer:_wire_scroll_events()
             return
         end
 
-        if event.dragPhase == 'move' then
+        if event.dragPhase == Constants.DRAG_PHASE_MOVE then
             if self_ref._scroll_state ~= STATE_DRAGGING then return end
 
             local prev_dx = self_ref._prev_drag_delta_x or 0
@@ -620,7 +593,7 @@ function ScrollableContainer:_wire_scroll_events()
             return
         end
 
-        if event.dragPhase == 'end' then
+        if event.dragPhase == Constants.DRAG_PHASE_END then
             if self_ref._scroll_state ~= STATE_DRAGGING then return end
 
             if get_public(self_ref, 'momentum') then
@@ -640,7 +613,6 @@ function ScrollableContainer:_wire_scroll_events()
     end)
 end
 
--- ── Inertial frame update ───────────────────────────────────────────────────
 
 function ScrollableContainer:_update_inertial()
     if self._scroll_state ~= STATE_INERTIAL then return end
@@ -677,7 +649,7 @@ function ScrollableContainer:_update_inertial()
     end
 end
 
--- ── Viewport sizing ─────────────────────────────────────────────────────────
+-- Viewport sizing
 -- Since ScrollableContainer is not a LayoutNode, 'fill' can't resolve on the
 -- viewport. We sync the viewport's dimensions to match our own resolved size
 -- before each update so that layout children get proper constraints.
@@ -738,7 +710,7 @@ function ScrollableContainer:_prepare_for_layout_pass()
     return self
 end
 
--- ── Update override ─────────────────────────────────────────────────────────
+-- ── Update override
 
 function ScrollableContainer:update(dt)
     -- Sync viewport dimensions before layout
@@ -757,8 +729,7 @@ function ScrollableContainer:update(dt)
     return self
 end
 
--- ── Programmatic scrolling ──────────────────────────────────────────────────
-
+-- Programmatic scrolling
 function ScrollableContainer:_scroll_to(x, y)
     Assert.number('x', x, 2)
     Assert.number('y', y, 2)
@@ -783,7 +754,6 @@ function ScrollableContainer:_scroll_by(dx, dy)
     return self
 end
 
--- ── Query ───────────────────────────────────────────────────────────────────
 
 function ScrollableContainer:_get_scroll_offset()
     return self._scroll_x or 0, self._scroll_y or 0
@@ -817,9 +787,6 @@ function ScrollableContainer:_get_scroll_range()
     return self._max_scroll_x or 0, self._max_scroll_y or 0
 end
 
--- ── TextArea integration boundary ───────────────────────────────────────────
--- Internal factory for text-area reuse without new public API surface.
-
 function ScrollableContainer._create_scroll_region(config)
     config = config or {}
     return ScrollableContainer({
@@ -833,10 +800,7 @@ function ScrollableContainer._create_scroll_region(config)
     })
 end
 
--- ── addChild override ───────────────────────────────────────────────────────
--- Block direct child insertion — content goes through self.content
-
-function ScrollableContainer:addChild()
+function ScrollableContainer.addChild()
     Assert.fail(
         'ScrollableContainer does not support direct child insertion; ' ..
         'add children to scrollable.content instead',
@@ -844,7 +808,7 @@ function ScrollableContainer:addChild()
     )
 end
 
-function ScrollableContainer:removeChild()
+function ScrollableContainer.removeChild()
     Assert.fail(
         'ScrollableContainer does not support direct child removal; ' ..
         'remove children from scrollable.content instead',
@@ -852,7 +816,7 @@ function ScrollableContainer:removeChild()
     )
 end
 
-function ScrollableContainer:removeAllChildren()
+function ScrollableContainer.removeAllChildren()
     Assert.fail(
         'ScrollableContainer does not support direct child removal; ' ..
         'remove children from scrollable.content instead',

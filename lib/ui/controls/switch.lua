@@ -3,8 +3,14 @@ local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local Constants = require('lib.ui.core.constants')
 
 local Switch = Drawable:extends('Switch')
+
+Switch.SnapBehavior = {
+    Nearest = 'nearest',
+    Directional = 'directional',
+}
 
 local checked_value, request_checked =
     ControlUtils.controlled_value('checked', false, {
@@ -115,7 +121,7 @@ function Switch:constructor(opts)
     ControlUtils.add_control_listener(self, self, 'ui.drag', function(event)
         if self.disabled == true then return end
 
-        if event.dragPhase == 'start' then
+        if event.dragPhase == Constants.DRAG_PHASE_START then
             self._dragging = true
             self._drag_start_x = event.x or 0
             self._drag_dx = 0
@@ -124,7 +130,7 @@ function Switch:constructor(opts)
             return
         end
 
-        if event.dragPhase == 'move' and self._dragging then
+        if event.dragPhase == Constants.DRAG_PHASE_MOVE and self._dragging then
             local dx = (event.x or 0) - (self._drag_start_x or 0)
             self._last_drag_dx = self._drag_dx or 0
             self._drag_dx = dx
@@ -132,7 +138,7 @@ function Switch:constructor(opts)
             return
         end
 
-        if event.dragPhase == 'end' and self._dragging then
+        if event.dragPhase == Constants.DRAG_PHASE_END and self._dragging then
                 local threshold = self.dragThreshold or 10
             local dx = self._drag_dx or 0
             local abs_dx = math.abs(dx)

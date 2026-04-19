@@ -11,15 +11,11 @@ local DrawHelpers = require('lib.ui.shapes.draw_helpers')
 local DrawableSchema = require('lib.ui.core.drawable_schema')
 local SideQuad = require('lib.ui.core.side_quad')
 local CornerQuad = require('lib.ui.core.corner_quad')
+local Constants = require('lib.ui.core.constants')
 
 local Styling = {}
 local save_color = DrawHelpers.save_color
 local restore_color = DrawHelpers.restore_color
-
--- Lerp scalar ported from reference/color.lua — plain arithmetic, [0,1] space, no class import.
-local function lerp(a, b, s)
-    return a + s * (b - a)
-end
 
 -- ---------------------------------------------------------------------------
 -- Corner radius resolution — spec §8 overflow protection.
@@ -180,7 +176,7 @@ local function paint_background_gradient(props, bounds, graphics, radii)
     if n < 2 then return end
 
     local x, y, w, h = bounds.x, bounds.y, bounds.width, bounds.height
-    local horizontal = grad.direction == 'horizontal'
+    local horizontal = grad.direction == Constants.ORIENTATION_HORIZONTAL
 
     -- Build interleaved vertex pairs: for each stop i, one "A" vertex and one "B" vertex
     -- where A and B are opposite ends of the strip perpendicular to the gradient axis.
@@ -250,8 +246,8 @@ local function paint_background_image(props, bounds, graphics, radii)
     if drawable == nil then return end
     if not Types.is_function(graphics.draw) then return end
 
-    local align_x = props.backgroundAlignX or 'start'
-    local align_y = props.backgroundAlignY or 'start'
+    local align_x = props.backgroundAlignX or Constants.ALIGN_START
+    local align_y = props.backgroundAlignY or Constants.ALIGN_START
     local off_x   = props.backgroundOffsetX or 0
     local off_y   = props.backgroundOffsetY or 0
     local rep_x   = props.backgroundRepeatX or false
@@ -326,67 +322,6 @@ end
 -- ---------------------------------------------------------------------------
 -- Border — center-aligned per spec §7.
 -- ---------------------------------------------------------------------------
-
-local function draw_dashed_line(graphics, x1, y1, x2, y2, dash_len, gap_len)
-    if not Types.is_function(graphics.line) then
-        return
-    end
-
-    local dx = x2 - x1
-    local dy = y2 - y1
-    local length = math.sqrt((dx * dx) + (dy * dy))
-
-    if length <= 0 then
-        return
-    end
-
-    if gap_len <= 0 then
-        graphics.line(x1, y1, x2, y2)
-        return
-    end
-
-    local ux = dx / length
-    local uy = dy / length
-    local step = dash_len + gap_len
-
-    for offset = 0, length, step do
-        local dash_end = math.min(offset + dash_len, length)
-        graphics.line(
-            x1 + (ux * offset),
-            y1 + (uy * offset),
-            x1 + (ux * dash_end),
-            y1 + (uy * dash_end)
-        )
-    end
-end
-
-local function draw_dashed_arc(graphics, cx, cy, r, a1, a2, dash_len, gap_len)
-    if r <= 0 or not Types.is_function(graphics.arc) then
-        return
-    end
-
-    local span = a2 - a1
-    local arc_length = math.abs(span) * r
-
-    if arc_length <= 0 then
-        return
-    end
-
-    if gap_len <= 0 then
-        graphics.arc('line', 'open', cx, cy, r, a1, a2)
-        return
-    end
-
-    local direction = (span >= 0) and 1 or -1
-    local step = dash_len + gap_len
-
-    for offset = 0, arc_length, step do
-        local dash_end = math.min(offset + dash_len, arc_length)
-        local dash_a1 = a1 + direction * (offset / r)
-        local dash_a2 = a1 + direction * (dash_end / r)
-        graphics.arc('line', 'open', cx, cy, r, dash_a1, dash_a2)
-    end
-end
 
 local function draw_dashed_line_with_offset(graphics, x1, y1, x2, y2, dash_len, gap_len, offset)
     if not Types.is_function(graphics.line) then
@@ -588,7 +523,7 @@ local function apply_border_line_state(props, graphics)
     if join ~= nil and Types.is_function(graphics.setLineJoin) then
         graphics.setLineJoin(join)
     end
-    if miter ~= nil and join == 'miter' and Types.is_function(graphics.setMiterLimit) then
+    if miter ~= nil and join == Constants.STROKE_JOIN_MITER and Types.is_function(graphics.setMiterLimit) then
         graphics.setMiterLimit(miter)
     end
 end
@@ -605,7 +540,7 @@ local function paint_border(props, bounds, graphics, radii)
     if c == nil then return end
 
     -- Cycle ceiling guard (spec §7.4)
-    if props.borderPattern == 'dashed' then
+    if props.borderPattern == Constants.STROKE_PATTERN_DASHED then
         local dl = props.borderDashLength or 8
         local gl = props.borderGapLength  or 6
         if dl + gl > 255 then
@@ -623,11 +558,11 @@ local function paint_border(props, bounds, graphics, radii)
     apply_border_line_state(props, graphics)
 
     local x, y, w, h = bounds.x, bounds.y, bounds.width, bounds.height
-    local dashed = props.borderPattern == 'dashed'
+    local dashed = props.borderPattern == Constants.STROKE_PATTERN_DASHED
     local dash_len = props.borderDashLength or 8
     local gap_len = props.borderGapLength or 6
     local dash_offset = props.borderDashOffset or 0
-    local snap_dashed_motion = dashed and props.borderStyle == 'rough'
+    local snap_dashed_motion = dashed and props.borderStyle == Constants.STROKE_STYLE_ROUGH
 
     if snap_dashed_motion then
         dash_offset = math.floor(dash_offset + 0.5)
@@ -1165,7 +1100,7 @@ local function resolve_contextual_props(node, resolver_context)
             )
         end
 
-        resolved = resolve_quad_family_from_layers(node, family, {
+        local resolved = resolve_quad_family_from_layers(node, family, {
             direct_layer,
             override_layer,
             skin_layer,

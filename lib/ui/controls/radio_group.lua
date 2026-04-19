@@ -1,11 +1,15 @@
 local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
-local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local Enums = require('lib.ui.core.enums')
+local Enum = require('lib.ui.utils.enum')
+local Constants = require('lib.ui.core.constants')
 
 local RadioGroup = Drawable:extends('RadioGroup')
+local enum_has = Enum.enum_has
+
 
 local function collect_radios(node, out)
     if node._ui_radio_control == true then
@@ -91,12 +95,12 @@ RadioGroup._control_schema = {
     value = Rule.any(),
     onValueChange = Rule.any(),
     orientation = Rule.custom(function(_, value, _, level)
-        value = value or 'vertical'
-        if value ~= 'horizontal' and value ~= 'vertical' then
+        value = value or Enums.Orientation.VERTICAL
+        if not enum_has(Enums.Orientation, value) then
             Assert.fail('RadioGroup.orientation must be "horizontal" or "vertical"', level or 1)
         end
         return value
-    end, { default = 'vertical' }),
+    end, { default = Enums.Orientation.VERTICAL }),
     disabledValues = Rule.custom(function(_, value)
         normalize_disabled_values(value)
         return value
@@ -127,13 +131,13 @@ function RadioGroup:constructor(opts)
     self.schema:define(RadioGroup._control_schema)
     self.value = opts.value
     self.onValueChange = opts.onValueChange
-    self.orientation = opts.orientation or 'vertical'
+    self.orientation = opts.orientation or Enums.Orientation.VERTICAL
     self.disabledValues = opts.disabledValues
     ControlUtils.validate_control_schema(self, opts, RadioGroup._control_schema, 2)
 
     self._ui_radio_group_control = true
 
-    if self.orientation ~= 'horizontal' and self.orientation ~= 'vertical' then
+    if not enum_has(Enums.Orientation, self.orientation) then
         Assert.fail('RadioGroup.orientation must be "horizontal" or "vertical"', 2)
     end
 
@@ -146,15 +150,19 @@ function RadioGroup:constructor(opts)
     self._radio_by_value = {}
 
     ControlUtils.add_control_listener(self, self, 'ui.navigate', function(event)
-        if event.navigationMode ~= 'directional' then
+        if event.navigationMode ~= Constants.NAVIGATION_MODE_DIRECTIONAL then
             return
         end
 
-        if self.orientation == 'horizontal' and event.direction ~= 'left' and event.direction ~= 'right' then
+        if self.orientation == Enums.Orientation.HORIZONTAL and
+            event.direction ~= Constants.NAVIGATION_DIRECTION_LEFT and
+            event.direction ~= Constants.NAVIGATION_DIRECTION_RIGHT then
             return
         end
 
-        if self.orientation == 'vertical' and event.direction ~= 'up' and event.direction ~= 'down' then
+        if self.orientation == Enums.Orientation.VERTICAL and
+            event.direction ~= Constants.NAVIGATION_DIRECTION_UP and
+            event.direction ~= Constants.NAVIGATION_DIRECTION_DOWN then
             return
         end
 
@@ -170,7 +178,11 @@ function RadioGroup:constructor(opts)
             end
         end
 
-        local step = (event.direction == 'left' or event.direction == 'up') and -1 or 1
+        local step = 1
+        if event.direction == Constants.NAVIGATION_DIRECTION_LEFT or
+            event.direction == Constants.NAVIGATION_DIRECTION_UP then
+            step = -1
+        end
         local next_index = current_index
         repeat
             next_index = next_index + step

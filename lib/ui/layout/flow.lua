@@ -6,11 +6,15 @@ local LayoutSpacing = require('lib.ui.layout.spacing')
 local Direction = require('lib.ui.layout.direction')
 local ContentFillGuard = require('lib.ui.layout.content_fill_guard')
 local FlowSchema = require('lib.ui.layout.flow_schema')
+local Enums = require('lib.ui.core.enums')
+local Constants = require('lib.ui.core.constants')
+local Enum = require('lib.ui.utils.enum')
 
 local max = math.max
 local clamp_number = MathUtils.clamp_number
 local resolve_axis_size = MathUtils.resolve_axis_size
 local is_percentage_string = MathUtils.is_percentage_string
+local enum_has = Enum.enum_has
 
 local Flow = LayoutNode:extends('Flow')
 Flow._schema = FlowSchema
@@ -22,21 +26,6 @@ local function effective_values(node)
         end,
     })
 end
-
-local JUSTIFY_VALUES = {
-    start = true,
-    center = true,
-    ['end'] = true,
-    ['space-between'] = true,
-    ['space-around'] = true,
-}
-
-local ALIGN_VALUES = {
-    start = true,
-    center = true,
-    ['end'] = true,
-    stretch = true,
-}
 
 local function child_is_visible(child)
     return child.visible ~= false
@@ -51,15 +40,15 @@ local function get_axis_size(node, axis_key)
 end
 
 local function depends_on_parent_axis(value)
-    return value == 'fill' or is_percentage_string(value)
+    return value == Constants.SIZE_MODE_FILL or is_percentage_string(value)
 end
 
 local function resolve_axis(value, available, min_value, max_value)
-    if value == 'content' or value == nil then
+        if value == Constants.SIZE_MODE_CONTENT or value == nil then
         return nil
     end
 
-    if value == 'fill' then
+    if value == Constants.SIZE_MODE_FILL then
         Assert.fail('Flow does not define fill resolution for child axes', 3)
     end
 
@@ -81,14 +70,14 @@ local function validate_effective_props(self)
     Assert.number('Flow.gap', gap, 3)
     Assert.boolean('Flow.wrap', wrap, 3)
 
-    if not Types.is_string(justify) or not JUSTIFY_VALUES[justify] then
+    if not Types.is_string(justify) or not enum_has(Enums.Justify, justify) then
         Assert.fail(
             'Flow.justify must be "start", "center", "end", or "space-between", or "space-around"',
             3
         )
     end
 
-    if not Types.is_string(align) or not ALIGN_VALUES[align] then
+    if not Types.is_string(align) or not enum_has(Enums.Alignment, align) then
         Assert.fail(
             'Flow.align must be "start", "center", "end", or "stretch"',
             3
@@ -151,7 +140,7 @@ local function assert_no_circular_dependency(self, child)
     local self_values = effective_values(self)
     local child_values = effective_values(child)
 
-    if self_values.width == 'content' and
+    if self_values.width == Constants.SIZE_MODE_CONTENT and
         depends_on_parent_axis(child_values.width) then
         Assert.fail(
             'Flow has a circular measurement dependency because width = "content" and a child depends on parent width',
@@ -159,10 +148,11 @@ local function assert_no_circular_dependency(self, child)
         )
     end
 
-    if self_values.height == 'content' and
+    if self_values.height == Constants.SIZE_MODE_CONTENT and
         depends_on_parent_axis(child_values.height) then
         Assert.fail(
-            'Flow has a circular measurement dependency because height = "content" and a child depends on parent height',
+            'Flow has a circular measurement dependency because height = "content" ' ..
+                'and a child depends on parent height',
             3
         )
     end
@@ -244,11 +234,11 @@ local function resolve_justify(justify, available_width, used_width, gap, child_
 
     local extra = available_width - used_width
 
-    if justify == 'center' then
+    if justify == Constants.ALIGN_CENTER then
         return extra / 2, between_gap
     end
 
-    if justify == 'end' then
+    if justify == Constants.ALIGN_END then
         return extra, between_gap
     end
 
@@ -256,7 +246,7 @@ local function resolve_justify(justify, available_width, used_width, gap, child_
         return 0, between_gap
     end
 
-    if justify == 'space-between' then
+    if justify == Constants.JUSTIFY_SPACE_BETWEEN then
         -- Flow keeps justify as the owner of the last wrapped row. The only
         -- special-case is sparse last-row space-between, where one large gap
         -- becomes visually misleading, so it degenerates to start.
@@ -267,7 +257,7 @@ local function resolve_justify(justify, available_width, used_width, gap, child_
         return 0, between_gap + (extra / (child_count - 1))
     end
 
-    if justify == 'space-around' then
+    if justify == Constants.JUSTIFY_SPACE_AROUND then
         local around = extra / child_count
         return around / 2, between_gap + around
     end
@@ -285,7 +275,6 @@ local function reverse_entries(entries)
 end
 
 local function resize_to_flow_content(self, content_width, content_height)
-    local effective_values = effective_values(self)
     local padding = effective_values.padding or {
         left = 0,
         right = 0,
@@ -295,7 +284,7 @@ local function resize_to_flow_content(self, content_width, content_height)
     local resolved_width = self._resolved_width or 0
     local resolved_height = self._resolved_height or 0
 
-    if effective_values.width == 'content' then
+    if effective_values.width == Constants.SIZE_MODE_CONTENT then
         resolved_width = clamp_number(
             padding.left + content_width + padding.right,
             effective_values.minWidth,
@@ -303,7 +292,7 @@ local function resize_to_flow_content(self, content_width, content_height)
         )
     end
 
-    if effective_values.height == 'content' then
+    if effective_values.height == Constants.SIZE_MODE_CONTENT then
         resolved_height = clamp_number(
             padding.top + content_height + padding.bottom,
             effective_values.minHeight,
@@ -314,7 +303,7 @@ local function resize_to_flow_content(self, content_width, content_height)
     return self:_apply_resolved_size(resolved_width, resolved_height)
 end
 
-local function place_invisible_children(self, invisible_children, content_rect)
+local function place_invisible_children(invisible_children, content_rect)
     for index = 1, #invisible_children do
         local child = invisible_children[index]
         child:_set_layout_offset(content_rect.x, content_rect.y)
@@ -346,7 +335,6 @@ function Flow:_apply_layout(stage)
 
     local ok, result = xpcall(function()
         local gap, wrap, justify, _, direction = validate_effective_props(self)
-        local effective_values = effective_values(self)
         local children = self._children
         local content_rect
         local available_width
@@ -366,7 +354,7 @@ function Flow:_apply_layout(stage)
         available_width = content_rect.width or 0
         available_height = content_rect.height or 0
 
-        if wrap and effective_values.width == 'content' then
+        if wrap and effective_values.width == Constants.SIZE_MODE_CONTENT then
             wrap = false
         end
 
@@ -424,13 +412,13 @@ function Flow:_apply_layout(stage)
                 is_last_wrapped_row
             )
 
-            if direction == 'rtl' then
+            if direction == Constants.DIRECTION_RTL then
                 placement_entries = reverse_entries(row.entries)
             end
 
             local x_cursor = base_x
 
-            if direction == 'rtl' then
+            if direction == Constants.DIRECTION_RTL then
                 for entry_index = #placement_entries, 1, -1 do
                     local entry = placement_entries[entry_index]
                     local child = entry.child
@@ -477,7 +465,7 @@ function Flow:_apply_layout(stage)
             end
         end
 
-        place_invisible_children(self, invisible_children, content_rect)
+        place_invisible_children(invisible_children, content_rect)
 
         return self
     end, function(err)

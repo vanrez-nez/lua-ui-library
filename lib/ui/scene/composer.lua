@@ -284,7 +284,7 @@ function Composer:_resolve_registered_entry(name)
     return entry
 end
 
-function Composer:_instantiate_scene(entry)
+function Composer._instantiate_scene(_, entry)
     local definition = entry.definition
     local scene
 
@@ -332,7 +332,7 @@ function Composer:_mount_scene(scene)
     return scene
 end
 
-function Composer:_detach_scene(scene)
+function Composer._detach_scene(_, scene)
 
     if scene.parent ~= nil then
         scene:_detach_from_runtime()

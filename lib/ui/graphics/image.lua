@@ -7,10 +7,37 @@ local Texture = require('lib.ui.graphics.texture')
 local Sprite = require('lib.ui.graphics.sprite')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Utils = require('lib.ui.utils.common')
+local Constants = require('lib.ui.core.constants')
+local Enum = require('lib.ui.utils.enum')
 
 local Image = Drawable:extends('Image')
 local max = math.max
 local min = math.min
+local enum = Enum.enum
+local enum_has = Enum.enum_has
+
+Image.FIT_CONTAIN = 'contain'
+Image.FIT_COVER = 'cover'
+Image.FIT_STRETCH = 'stretch'
+Image.FIT_NONE = 'none'
+Image.SAMPLING_NEAREST = 'nearest'
+Image.SAMPLING_LINEAR = 'linear'
+
+Image.Fit = enum(
+    { CONTAIN = Image.FIT_CONTAIN },
+    { COVER = Image.FIT_COVER },
+    { STRETCH = Image.FIT_STRETCH },
+    { NONE = Image.FIT_NONE }
+)
+Image.Align = enum(
+    { START = Constants.ALIGN_START },
+    { CENTER = Constants.ALIGN_CENTER },
+    { END = Constants.ALIGN_END }
+)
+Image.Sampling = enum(
+    { NEAREST = Image.SAMPLING_NEAREST },
+    { LINEAR = Image.SAMPLING_LINEAR }
+)
 
 local function validate_source(_, value, _, level)
     if Types.is_instance(value, Texture) or Types.is_instance(value, Sprite) then
@@ -22,7 +49,7 @@ end
 
 local function validate_enum(name, allowed)
     return function(_, value, _, level)
-        if not Types.is_string(value) or not allowed[value] then
+        if not Types.is_string(value) or not enum_has(allowed, value) then
             Assert.fail(name .. ' is invalid', level or 1)
         end
         return value
@@ -32,36 +59,20 @@ end
 Image._schema = Utils.merge_tables(Utils.copy_table(Drawable._schema), {
     source = { validate = validate_source, required = true },
     fit = {
-        validate = validate_enum('Image.fit', {
-            contain = true,
-            cover = true,
-            stretch = true,
-            none = true,
-        }),
-        default = 'contain',
+        validate = validate_enum('Image.fit', Image.Fit),
+        default = Image.Fit.CONTAIN,
     },
     alignX = {
-        validate = validate_enum('Image.alignX', {
-            start = true,
-            center = true,
-            ['end'] = true,
-        }),
-        default = 'center',
+        validate = validate_enum('Image.alignX', Image.Align),
+        default = Image.Align.CENTER,
     },
     alignY = {
-        validate = validate_enum('Image.alignY', {
-            start = true,
-            center = true,
-            ['end'] = true,
-        }),
-        default = 'center',
+        validate = validate_enum('Image.alignY', Image.Align),
+        default = Image.Align.CENTER,
     },
     sampling = {
-        validate = validate_enum('Image.sampling', {
-            nearest = true,
-            linear = true,
-        }),
-        default = 'linear',
+        validate = validate_enum('Image.sampling', Image.Sampling),
+        default = Image.Sampling.LINEAR,
     },
     decorative = { type = 'boolean', default = false },
     accessibleName = { type = 'string' },
@@ -92,11 +103,11 @@ local function resolve_source_metrics(source)
 end
 
 local function resolve_axis(origin, available, content, align)
-    if align == 'center' then
+    if align == Constants.ALIGN_CENTER then
         return origin + ((available - content) * 0.5)
     end
 
-    if align == 'end' then
+    if align == Constants.ALIGN_END then
         return origin + (available - content)
     end
 
@@ -115,12 +126,20 @@ local function resolve_padding_edges(padding)
     return padding.left or 0, padding.top or 0, padding.right or 0, padding.bottom or 0
 end
 
-local function resolve_draw_geometry(self, content_x, content_y, content_width, content_height, source_width, source_height)
+local function resolve_draw_geometry(
+    self,
+    content_x,
+    content_y,
+    content_width,
+    content_height,
+    source_width,
+    source_height
+)
     local fit = self.fit
     local draw_width = source_width
     local draw_height = source_height
 
-    if fit == 'stretch' then
+    if fit == Image.Fit.STRETCH then
         draw_width = content_width
         draw_height = content_height
     elseif fit == 'contain' or fit == 'cover' then
@@ -231,11 +250,11 @@ function Image.new(opts)
     return Image(opts)
 end
 
-function Image:addChild()
+function Image.addChild()
     Assert.fail('Image may not contain child nodes', 2)
 end
 
-function Image:removeChild()
+function Image.removeChild()
     Assert.fail('Image may not contain child nodes', 2)
 end
 
@@ -265,7 +284,7 @@ function Image:resolveImageRect(content)
     ), region
 end
 
-function Image:draw()
+function Image.draw()
     -- Image is a closed graphics primitive. It does not expose Drawable styling
     -- surfaces such as background, border, corner radius, or shadow.
 end
@@ -314,7 +333,7 @@ function Image:_draw_control(graphics)
     local previous_scissor_y = nil
     local previous_scissor_width = nil
     local previous_scissor_height = nil
-    local apply_cover_clip = self.fit == 'cover' and Types.is_function(graphics.setScissor)
+    local apply_cover_clip = self.fit == Image.Fit.COVER and Types.is_function(graphics.setScissor)
     local scale_x = region_width == 0 and 1 or (draw_width / region_width)
     local scale_y = region_height == 0 and 1 or (draw_height / region_height)
 
@@ -322,7 +341,8 @@ function Image:_draw_control(graphics)
 
     if apply_cover_clip then
         if Types.is_function(graphics.getScissor) then
-            previous_scissor_x, previous_scissor_y, previous_scissor_width, previous_scissor_height = graphics.getScissor()
+            previous_scissor_x, previous_scissor_y, previous_scissor_width, previous_scissor_height =
+                graphics.getScissor()
         end
         graphics.setScissor(content_x, content_y, content_width, content_height)
     end
@@ -335,7 +355,12 @@ function Image:_draw_control(graphics)
 
     if apply_cover_clip then
         if previous_scissor_x ~= nil then
-            graphics.setScissor(previous_scissor_x, previous_scissor_y, previous_scissor_width, previous_scissor_height)
+            graphics.setScissor(
+                previous_scissor_x,
+                previous_scissor_y,
+                previous_scissor_width,
+                previous_scissor_height
+            )
         else
             graphics.setScissor()
         end

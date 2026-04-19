@@ -1,5 +1,6 @@
 local Types = require('lib.ui.utils.types')
 local RuntimeProfiler = require('profiler.runtime_profiler')
+local Constants = require('lib.ui.core.constants')
 
 local FillSource = {}
 
@@ -51,8 +52,8 @@ function FillSource.resolve_surface(shape)
         fillRepeatY = get_surface_value(shape, 'fillRepeatY', false) == true,
         fillOffsetX = get_surface_value(shape, 'fillOffsetX', 0),
         fillOffsetY = get_surface_value(shape, 'fillOffsetY', 0),
-        fillAlignX = get_surface_value(shape, 'fillAlignX', 'center'),
-        fillAlignY = get_surface_value(shape, 'fillAlignY', 'center'),
+        fillAlignX = get_surface_value(shape, 'fillAlignX', Constants.ALIGN_CENTER),
+        fillAlignY = get_surface_value(shape, 'fillAlignY', Constants.ALIGN_CENTER),
     }
     RuntimeProfiler.pop_zone(profile_token)
     return surface
@@ -68,8 +69,8 @@ function FillSource.resolve_active_descriptor(fill_surface)
         repeatY = fill_surface.fillRepeatY == true,
         offsetX = fill_surface.fillOffsetX or 0,
         offsetY = fill_surface.fillOffsetY or 0,
-        alignX = fill_surface.fillAlignX or 'center',
-        alignY = fill_surface.fillAlignY or 'center',
+        alignX = fill_surface.fillAlignX or Constants.ALIGN_CENTER,
+        alignY = fill_surface.fillAlignY or Constants.ALIGN_CENTER,
     }
 
     if fill_surface.fillTexture ~= nil then

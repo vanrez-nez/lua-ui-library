@@ -1,5 +1,4 @@
 local Assert = require('lib.ui.utils.assert')
-local Types = require('lib.ui.utils.types')
 
 local FontCache = {}
 

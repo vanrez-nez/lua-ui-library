@@ -170,7 +170,6 @@ local TOKENS = {
     ['tabs.trigger.fillColor.active'] = { 0.24, 0.58, 0.98, 1 },
     ['tabs.trigger.fillColor.disabled'] = { 0.24, 0.25, 0.28, 1 },
     ['tabs.trigger.borderColor'] = { 0.32, 0.35, 0.41, 1 },
-    ['tabs.trigger.borderColor.focused'] = { 1, 1, 1, 1 },
     ['tabs.indicator.fillColor'] = { 0.92, 0.69, 0.22, 1 },
     ['tabs.panel.fillColor'] = { 0.11, 0.13, 0.16, 1 },
     ['tabs.panel.fillColor.inactive'] = { 0.08, 0.09, 0.11, 1 },

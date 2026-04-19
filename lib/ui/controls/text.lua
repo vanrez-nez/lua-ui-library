@@ -3,8 +3,12 @@ local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local FontCache = require('lib.ui.text.font_cache')
 local ControlUtils = require('lib.ui.controls.control_utils')
+local Constants = require('lib.ui.core.constants')
+local Enums = require('lib.ui.core.enums')
+local Enum = require('lib.ui.utils.enum')
 
 local Text = Drawable:extends('Text')
+local enum_has = Enum.enum_has
 
 local function count_lines(text)
     if text == nil or text == '' then
@@ -79,12 +83,12 @@ function Text:constructor(opts)
     self.fontSize = opts.fontSize or 16
     self.lineHeight = opts.lineHeight or 1
     self.maxWidth = opts.maxWidth
-    self.textAlign = opts.textAlign or 'start'
+    self.textAlign = opts.textAlign or Constants.ALIGN_START
     self.textVariant = opts.textVariant
     self.color = opts.color or { 1, 1, 1, 1 }
     self.wrap = opts.wrap == true
 
-    if self.textAlign ~= 'start' and self.textAlign ~= 'center' and self.textAlign ~= 'end' then
+    if not enum_has(Enums.SourceAlign, self.textAlign) then
         Assert.fail('Text.textAlign must be "start", "center", or "end"', 2)
     end
 
@@ -129,11 +133,11 @@ function Text:_resolve_visual_variant()
     return self.textVariant or 'base'
 end
 
-function Text:addChild()
+function Text.addChild()
     Assert.fail('Text may not contain child nodes', 2)
 end
 
-function Text:removeChild()
+function Text.removeChild()
     Assert.fail('Text may not contain child nodes', 2)
 end
 
@@ -220,8 +224,13 @@ function Text:_draw_control(graphics)
     end
 
     local wrap = self.wrap == true
-    local align = self.textAlign or 'start'
-    local love_align = align == 'end' and 'right' or (align == 'center' and 'center' or 'left')
+    local align = self.textAlign or Constants.ALIGN_START
+    local love_align = 'left'
+    if align == Constants.ALIGN_END then
+        love_align = 'right'
+    elseif align == Constants.ALIGN_CENTER then
+        love_align = 'center'
+    end
     local line_height = self.lineHeight or 1
     local old_line_height = nil
 
@@ -246,9 +255,9 @@ function Text:_draw_control(graphics)
     else
         local text_width = font:getWidth(text)
         local x = bounds.x
-        if align == 'center' then
+        if align == Constants.ALIGN_CENTER then
             x = x + (bounds.width - text_width) * 0.5
-        elseif align == 'end' then
+        elseif align == Constants.ALIGN_END then
             x = x + (bounds.width - text_width)
         end
         if Types.is_function(graphics.print) then

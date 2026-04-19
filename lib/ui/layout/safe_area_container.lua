@@ -4,6 +4,7 @@ local LayoutNode = require('lib.ui.layout.layout_node')
 local Rectangle = require('lib.ui.core.rectangle')
 local LayoutSpacing = require('lib.ui.layout.spacing')
 local SafeAreaContainerSchema = require('lib.ui.layout.safe_area_container_schema')
+local Constants = require('lib.ui.core.constants')
 
 local max = math.max
 local min = math.min
@@ -302,7 +303,7 @@ function SafeAreaContainer:_apply_layout(stage)
     local width_mode = node_values.width
     local height_mode = node_values.height
 
-    if width_mode ~= 'content' and height_mode ~= 'content' then
+    if width_mode ~= Constants.SIZE_MODE_CONTENT and height_mode ~= Constants.SIZE_MODE_CONTENT then
         return self
     end
 

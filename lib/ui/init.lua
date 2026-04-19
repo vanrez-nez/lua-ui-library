@@ -47,4 +47,5 @@ return {
     Scene = require('lib.ui.scene.scene'),
     Stage = require('lib.ui.scene.stage'),
     Composer = require('lib.ui.scene.composer'),
+    Enums = require('lib.ui.core.enums'),
 }

@@ -5,16 +5,9 @@ local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local Constants = require('lib.ui.core.constants')
 
 local Select = Drawable:extends('Select')
-
-local function copy_array(values)
-    local copy = {}
-    for index = 1, #values do
-        copy[index] = values[index]
-    end
-    return copy
-end
 
 local function collect_options(node, out)
     if node._ui_option_control == true then
@@ -221,7 +214,10 @@ local function next_enabled_option(self, direction)
         end
     end
 
-    local step = (direction == 'left' or direction == 'up') and -1 or 1
+    local step = 1
+    if direction == Constants.NAVIGATION_DIRECTION_LEFT or direction == Constants.NAVIGATION_DIRECTION_UP then
+        step = -1
+    end
     local next_index = current_index
     repeat
         next_index = next_index + step
@@ -357,7 +353,7 @@ function Select:constructor(opts)
     end)
 
     ControlUtils.add_control_listener(self, popup_root, 'ui.navigate', function(event)
-        if not effective_open(self) or event.navigationMode ~= 'directional' then
+        if not effective_open(self) or event.navigationMode ~= Constants.NAVIGATION_MODE_DIRECTIONAL then
             return
         end
 

@@ -126,12 +126,26 @@ BUILTIN_TRANSITIONS.slideRight = create_transition(function(graphics, progress, 
     draw_canvas(graphics, incoming_canvas, -width * (1 - progress), 0, 1)
 end)
 
-BUILTIN_TRANSITIONS.slideUp = create_transition(function(graphics, progress, outgoing_canvas, incoming_canvas, _, height)
+BUILTIN_TRANSITIONS.slideUp = create_transition(function(
+    graphics,
+    progress,
+    outgoing_canvas,
+    incoming_canvas,
+    _,
+    height
+)
     draw_canvas(graphics, outgoing_canvas, 0, -height * progress, 1)
     draw_canvas(graphics, incoming_canvas, 0, height * (1 - progress), 1)
 end)
 
-BUILTIN_TRANSITIONS.slideDown = create_transition(function(graphics, progress, outgoing_canvas, incoming_canvas, _, height)
+BUILTIN_TRANSITIONS.slideDown = create_transition(function(
+    graphics,
+    progress,
+    outgoing_canvas,
+    incoming_canvas,
+    _,
+    height
+)
     draw_canvas(graphics, outgoing_canvas, 0, height * progress, 1)
     draw_canvas(graphics, incoming_canvas, 0, -height * (1 - progress), 1)
 end)

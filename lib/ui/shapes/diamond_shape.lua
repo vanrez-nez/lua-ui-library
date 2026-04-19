@@ -23,7 +23,7 @@ function DiamondShape:_get_local_points(out_table)
     return points
 end
 
-function DiamondShape:_requires_shape_result_clip()
+function DiamondShape._requires_shape_result_clip()
     return true
 end
 

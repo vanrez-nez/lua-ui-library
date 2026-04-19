@@ -4,6 +4,7 @@ local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local Constants = require('lib.ui.core.constants')
 
 local Button = Drawable:extends('Button')
 
@@ -101,21 +102,21 @@ function Button:constructor(opts)
     ControlUtils.add_control_listener(self, self, 'ui.drag', function(event)
         if effective_disabled(self) then return end
 
-        if event.dragPhase == 'start' then
+        if event.dragPhase == Constants.DRAG_PHASE_START then
             self._pressing_pointer = true
             set_pressed(self, true)
             event:stopPropagation()
             return
         end
 
-        if event.dragPhase == 'move' then
+        if event.dragPhase == Constants.DRAG_PHASE_MOVE then
             local inside = self:containsPoint(event.x, event.y)
             set_pressed(self, inside)
             event:stopPropagation()
             return
         end
 
-        if event.dragPhase == 'end' then
+        if event.dragPhase == Constants.DRAG_PHASE_END then
             self._pressing_pointer = false
             set_pressed(self, false)
             event:stopPropagation()

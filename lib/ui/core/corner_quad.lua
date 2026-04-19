@@ -32,10 +32,30 @@ end
 local function normalize_table(value, opts, level)
     if value.topLeft ~= nil or value.topRight ~= nil or value.bottomRight ~= nil or value.bottomLeft ~= nil then
         return build({
-            topLeft = validate_member((opts.label or 'corner quad') .. '.topLeft', value.topLeft or 0, opts, level),
-            topRight = validate_member((opts.label or 'corner quad') .. '.topRight', value.topRight or 0, opts, level),
-            bottomRight = validate_member((opts.label or 'corner quad') .. '.bottomRight', value.bottomRight or 0, opts, level),
-            bottomLeft = validate_member((opts.label or 'corner quad') .. '.bottomLeft', value.bottomLeft or 0, opts, level),
+            topLeft = validate_member(
+                (opts.label or 'corner quad') .. '.topLeft',
+                value.topLeft or 0,
+                opts,
+                level
+            ),
+            topRight = validate_member(
+                (opts.label or 'corner quad') .. '.topRight',
+                value.topRight or 0,
+                opts,
+                level
+            ),
+            bottomRight = validate_member(
+                (opts.label or 'corner quad') .. '.bottomRight',
+                value.bottomRight or 0,
+                opts,
+                level
+            ),
+            bottomLeft = validate_member(
+                (opts.label or 'corner quad') .. '.bottomLeft',
+                value.bottomLeft or 0,
+                opts,
+                level
+            ),
         }, opts)
     end
 
@@ -97,7 +117,12 @@ function CornerQuad.resolve_layers(layers, opts, level)
                 if resolved[member] == nil then
                     local explicit = layer[member]
                     if explicit ~= nil then
-                        resolved[member] = validate_member((opts.label or 'corner quad') .. '.' .. member, explicit, opts, level)
+                        resolved[member] = validate_member(
+                            (opts.label or 'corner quad') .. '.' .. member,
+                            explicit,
+                            opts,
+                            level
+                        )
                         has_any = true
                     elseif aggregate ~= nil then
                         resolved[member] = aggregate[member]

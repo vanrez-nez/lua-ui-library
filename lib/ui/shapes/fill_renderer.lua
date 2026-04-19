@@ -4,6 +4,7 @@ local Texture = require('lib.ui.graphics.texture')
 local Sprite = require('lib.ui.graphics.sprite')
 local DrawHelpers = require('lib.ui.shapes.draw_helpers')
 local RuntimeProfiler = require('profiler.runtime_profiler')
+local Constants = require('lib.ui.core.constants')
 
 local FillRenderer = {}
 
@@ -98,7 +99,7 @@ local function build_gradient_vertices(shape, placement)
     local bounds = placement.localBounds
     local gradient = placement.gradient
     local colors = gradient.colors
-    local horizontal = placement.direction == 'horizontal'
+    local horizontal = placement.direction == Constants.ORIENTATION_HORIZONTAL
     local vertices = get_renderer_scratch(shape).gradient_vertices
     local vertex_index = 1
 
@@ -110,14 +111,14 @@ local function build_gradient_vertices(shape, placement)
         local start_alpha = (start_color[4] or 1) * placement.opacity
         local end_alpha = (end_color[4] or 1) * placement.opacity
 
-        local start_ax = nil
-        local start_ay = nil
-        local start_bx = nil
-        local start_by = nil
-        local end_ax = nil
-        local end_ay = nil
-        local end_bx = nil
-        local end_by = nil
+        local start_ax
+        local start_ay
+        local start_bx
+        local start_by
+        local end_ax
+        local end_ay
+        local end_bx
+        local end_by
 
         if horizontal then
             local start_x = bounds.x + (bounds.width * start_t)

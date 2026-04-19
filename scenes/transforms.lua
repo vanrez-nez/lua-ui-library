@@ -41,8 +41,8 @@ function Transforms.new()
             anchor = Vec2(0, 0),
             pivot = Vec2(0, 0),
         })
-        function background:draw()
-            local w, h = self.parent.size.x, self.parent.size.y
+        function background.draw(drawable)
+            local w, h = drawable.parent.size.x, drawable.parent.size.y
             love.graphics.setColor(0.08, 0.10, 0.11)
             love.graphics.rectangle("fill", 0, 0, w, h)
             love.graphics.setColor(0.13, 0.15, 0.17)
@@ -72,8 +72,22 @@ function Transforms.new()
         })
         self:addChild(subtitle)
 
-        self.outer = makePanel("outer", Vec2(330, 230), Vec2(0.5, 0.58), Vec2(0.5, 0.5), { 0.39, 0.25, 0.22 }, "Outer")
-        self.middle = makePanel("middle", Vec2(210, 145), Vec2(0.50, 0.50), Vec2(0.5, 0.5), { 0.20, 0.37, 0.30 }, "Middle")
+        self.outer = makePanel(
+            "outer",
+            Vec2(330, 230),
+            Vec2(0.5, 0.58),
+            Vec2(0.5, 0.5),
+            { 0.39, 0.25, 0.22 },
+            "Outer"
+        )
+        self.middle = makePanel(
+            "middle",
+            Vec2(210, 145),
+            Vec2(0.50, 0.50),
+            Vec2(0.5, 0.5),
+            { 0.20, 0.37, 0.30 },
+            "Middle"
+        )
         self.inner = makePanel("inner", Vec2(115, 75), Vec2(0.78, 0.48), Vec2(0.5, 0.5), { 0.22, 0.29, 0.45 }, "Inner")
 
         self.outer:addChild(self.middle)

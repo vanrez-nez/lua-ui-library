@@ -1,10 +1,11 @@
 local Types = require('lib.ui.utils.types')
 local MathUtils = require('lib.ui.utils.math')
+local Constants = require('lib.ui.core.constants')
 
 local DrawHelpers = {}
 local abs = math.abs
 local sqrt = math.sqrt
-local unpack = table.unpack or unpack
+local unpack = unpack
 local PATH_EPSILON = 1e-9
 
 local function save_color(graphics)
@@ -166,7 +167,9 @@ function DrawHelpers.apply_line_state(graphics, line_width, line_style, line_joi
         graphics.setLineJoin(line_join)
     end
 
-    if miter_limit ~= nil and line_join == 'miter' and Types.is_function(graphics.setMiterLimit) then
+    if miter_limit ~= nil and
+        line_join == Constants.STROKE_JOIN_MITER and
+        Types.is_function(graphics.setMiterLimit) then
         graphics.setMiterLimit(miter_limit)
     end
 end
@@ -177,7 +180,7 @@ function DrawHelpers.with_stroke_state(graphics, line_width, line_style, line_jo
         width = line_width ~= nil,
         style = line_style ~= nil,
         join = line_join ~= nil,
-        miter = miter_limit ~= nil and line_join == 'miter',
+        miter = miter_limit ~= nil and line_join == Constants.STROKE_JOIN_MITER,
     }
 
     DrawHelpers.apply_line_state(
@@ -428,16 +431,12 @@ function DrawHelpers.draw_polygon_stroke(graphics, world_points, stroke)
         return false
     end
 
-    local pattern = stroke.pattern or 'solid'
-    local can_draw = false
-
-    if pattern == 'dashed' then
-        can_draw = Types.is_function(graphics.line)
-    else
-        can_draw = Types.is_function(graphics.polygon)
-    end
-
-    if not can_draw then
+    local pattern = stroke.pattern or Constants.STROKE_PATTERN_SOLID
+    if pattern == Constants.STROKE_PATTERN_DASHED then
+        if not Types.is_function(graphics.line) then
+            return false
+        end
+    elseif not Types.is_function(graphics.polygon) then
         return false
     end
 
@@ -454,7 +453,7 @@ function DrawHelpers.draw_polygon_stroke(graphics, world_points, stroke)
                 stroke.join,
                 stroke.miter_limit,
                 function()
-                    if pattern == 'dashed' then
+                    if pattern == Constants.STROKE_PATTERN_DASHED then
                         DrawHelpers.draw_dashed_polyline(
                             graphics,
                             world_points,
@@ -494,7 +493,7 @@ function DrawHelpers.draw_polyline_stroke(graphics, world_points, stroke, closed
                 stroke.join,
                 stroke.miter_limit,
                 function()
-                    if (stroke.pattern or 'solid') == 'dashed' then
+                    if (stroke.pattern or Constants.STROKE_PATTERN_SOLID) == Constants.STROKE_PATTERN_DASHED then
                         DrawHelpers.draw_dashed_polyline(
                             graphics,
                             world_points,

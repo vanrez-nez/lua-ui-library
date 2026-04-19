@@ -30,7 +30,7 @@ function Theme.new(opts)
     return Theme(opts)
 end
 
-function Theme:is_theme()
+function Theme.is_theme()
     return true
 end
 

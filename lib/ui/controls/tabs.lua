@@ -4,9 +4,13 @@ local Row = require('lib.ui.layout.row')
 local Column = require('lib.ui.layout.column')
 local ScrollableContainer = require('lib.ui.scroll.scrollable_container')
 local Assert = require('lib.ui.utils.assert')
-local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local Enums = require('lib.ui.core.enums')
+local Constants = require('lib.ui.core.constants')
+local Enum = require('lib.ui.utils.enum')
+
+local enum_has = Enum.enum_has
 
 local Tabs = Drawable:extends('Tabs')
 
@@ -71,7 +75,13 @@ local effective_value, request_value =
 local TabsSchema = {
     value = Rule.any(),
     onValueChange = Rule.any(),
-    orientation = Rule.any({ default = 'horizontal' }),
+    orientation = Rule.custom(function(_, value, _, level)
+        value = value or Enums.Orientation.HORIZONTAL
+        if not enum_has(Enums.Orientation, value) then
+            Assert.fail('Tabs.orientation must be "horizontal" or "vertical"', level or 1)
+        end
+        return value
+    end, { default = Enums.Orientation.HORIZONTAL }),
     activationMode = Rule.any({ default = 'manual' }),
     listScrollable = Rule.boolean(false),
     loopFocus = Rule.boolean(true),
@@ -118,7 +128,7 @@ local function sync_visual_state(self)
 end
 
 local function next_focus_value(self, current, direction)
-    local values = ordered_enabled_values(self)
+ local values = ordered_enabled_values(self)
     if #values == 0 then
         return nil
     end
@@ -135,7 +145,10 @@ local function next_focus_value(self, current, direction)
         return values[1]
     end
 
-    local step = (direction == 'left' or direction == 'up') and -1 or 1
+    local step = 1
+    if direction == Constants.NAVIGATION_DIRECTION_LEFT or direction == Constants.NAVIGATION_DIRECTION_UP then
+        step = -1
+    end
     local next_idx = idx + step
 
     if next_idx < 1 or next_idx > #values then
@@ -154,15 +167,15 @@ local function next_focus_value(self, current, direction)
 end
 
 local function build_list_layout(orientation)
-    if orientation == 'vertical' then
+    if orientation == Enums.Orientation.VERTICAL then
         local list = Column.new({
             tag = 'tabs_list',
             internal = true,
-            width = 'fill',
-            height = 'content',
+            width = Constants.SIZE_MODE_FILL,
+            height = Constants.SIZE_MODE_CONTENT,
             gap = 4,
-            align = 'stretch',
-            justify = 'start',
+            align = Constants.ALIGN_STRETCH,
+            justify = Constants.ALIGN_START,
         })
         Container._allow_fill_from_parent(list, { width = true })
         return list
@@ -171,11 +184,11 @@ local function build_list_layout(orientation)
     local list = Row.new({
         tag = 'tabs_list',
         internal = true,
-        width = 'content',
-        height = 'fill',
+        width = Constants.SIZE_MODE_CONTENT,
+        height = Constants.SIZE_MODE_FILL,
         gap = 4,
-        align = 'stretch',
-        justify = 'start',
+        align = Constants.ALIGN_STRETCH,
+        justify = Constants.ALIGN_START,
     })
     Container._allow_fill_from_parent(list, { height = true })
     return list
@@ -205,7 +218,7 @@ local function sync_indicator_geometry(self)
     local origin_y = (trigger._layout_offset_y or 0) + (trigger.y or 0)
 
     indicator.visible = true
-    if orientation == 'vertical' then
+    if orientation == Enums.Orientation.VERTICAL then
         indicator.x = origin_x
         indicator.y = origin_y
         indicator.width = 4
@@ -229,7 +242,7 @@ function Tabs:constructor(opts)
     self.schema:define(TabsSchema)
     self.value = opts.value
     self.onValueChange = opts.onValueChange
-    self.orientation = opts.orientation or 'horizontal'
+    self.orientation = opts.orientation or Enums.Orientation.HORIZONTAL
     self.activationMode = opts.activationMode or 'manual'
     self.listScrollable = opts.listScrollable == true
     self.loopFocus = opts.loopFocus ~= false
@@ -237,7 +250,7 @@ function Tabs:constructor(opts)
 
     self._ui_tabs_control = true
 
-    if self.orientation ~= 'horizontal' and self.orientation ~= 'vertical' then
+    if not enum_has(Enums.Orientation, self.orientation) then
         Assert.fail('Tabs.orientation must be "horizontal" or "vertical"', 2)
     end
 
@@ -257,11 +270,16 @@ function Tabs:constructor(opts)
 
     local list_root
     local list_region = build_list_layout(self.orientation)
+    local list_surface_height = 44
+    if self.orientation == Enums.Orientation.VERTICAL then
+        list_surface_height = Constants.SIZE_MODE_FILL
+    end
+
     local list_surface = Drawable.new({
         tag = 'tabs_list_surface',
         internal = true,
-        width = 'fill',
-        height = self.orientation == 'vertical' and 'fill' or 44,
+        width = Constants.SIZE_MODE_FILL,
+        height = list_surface_height,
         interactive = false,
         focusable = false,
     })
@@ -286,10 +304,10 @@ function Tabs:constructor(opts)
     Container._allow_fill_from_parent(list_surface, { width = true, height = true })
     if self.listScrollable then
         list_root = ScrollableContainer.new({
-            width = 'fill',
+            width = Constants.SIZE_MODE_FILL,
             height = 44,
-            scrollXEnabled = self.orientation == 'horizontal',
-            scrollYEnabled = self.orientation == 'vertical',
+            scrollXEnabled = self.orientation == Enums.Orientation.HORIZONTAL,
+            scrollYEnabled = self.orientation == Enums.Orientation.VERTICAL,
             showScrollbars = false,
             momentum = false,
         })
@@ -299,8 +317,8 @@ function Tabs:constructor(opts)
         list_root.content:addChild(list_surface)
     else
         list_root = list_surface
-        if self.orientation == 'vertical' then
-            list_root.height = 'content'
+        if self.orientation == Enums.Orientation.VERTICAL then
+            list_root.height = Constants.SIZE_MODE_CONTENT
         else
             list_root.height = 44
         end
@@ -309,7 +327,14 @@ function Tabs:constructor(opts)
     self._list_region = list_region
     end
 
-    local panels = Container({ tag = 'tabs_panels', internal = true, width = 'fill', height = 'fill', y = 52, interactive = false })
+    local panels = Container({
+        tag = 'tabs_panels',
+        internal = true,
+        width = Constants.SIZE_MODE_FILL,
+        height = Constants.SIZE_MODE_FILL,
+        y = 52,
+        interactive = false,
+    })
     Container._allow_fill_from_parent(panels, { width = true, height = true })
     Container.addChild(self, panels)
     self._panels_region = panels
@@ -335,7 +360,7 @@ function Tabs:constructor(opts)
     end)
 
     ControlUtils.add_control_listener(self, self, 'ui.navigate', function(event)
-        if event.navigationMode ~= 'directional' then return end
+        if event.navigationMode ~= Constants.NAVIGATION_MODE_DIRECTIONAL then return end
 
         local focus_owner = ControlUtils.stage_focus_owner(self)
         if focus_owner == nil then return end
@@ -344,10 +369,14 @@ function Tabs:constructor(opts)
         if current == nil then return end
 
         local orientation = self.orientation
-        if orientation == 'horizontal' and event.direction ~= 'left' and event.direction ~= 'right' then
+        if orientation == Enums.Orientation.HORIZONTAL and
+            event.direction ~= Constants.NAVIGATION_DIRECTION_LEFT and
+            event.direction ~= Constants.NAVIGATION_DIRECTION_RIGHT then
             return
         end
-        if orientation == 'vertical' and event.direction ~= 'up' and event.direction ~= 'down' then
+        if orientation == Enums.Orientation.VERTICAL and
+            event.direction ~= Constants.NAVIGATION_DIRECTION_UP and
+            event.direction ~= Constants.NAVIGATION_DIRECTION_DOWN then
             return
         end
 
@@ -369,7 +398,7 @@ function Tabs.new(opts)
     return Tabs(opts)
 end
 
-function Tabs:_resolve_trigger_variant(trigger)
+function Tabs._resolve_trigger_variant(_, trigger)
     if trigger == nil then
         return 'base'
     end
@@ -389,7 +418,7 @@ function Tabs:_resolve_trigger_variant(trigger)
     return 'base'
 end
 
-function Tabs:_resolve_panel_variant(panel)
+function Tabs._resolve_panel_variant(_, panel)
     if panel ~= nil and panel._tab_active == true then
         return 'active'
     end
@@ -428,8 +457,8 @@ function Tabs:_register_tab(value, trigger_node, panel_node)
     local panel = Drawable({
         tag = 'tabs_panel_' .. value,
         internal = true,
-        width = 'fill',
-        height = 'fill',
+        width = Constants.SIZE_MODE_FILL,
+        height = Constants.SIZE_MODE_FILL,
         interactive = true,
         focusable = false,
     })

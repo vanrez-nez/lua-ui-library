@@ -5,8 +5,12 @@ local FontCache = require('lib.ui.text.font_cache')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local MathUtils = require('lib.ui.utils.math')
 local Rule = require('lib.ui.utils.rule')
+local Constants = require('lib.ui.core.constants')
 
 local TextInput = Drawable:extends('TextInput')
+
+TextInput.InputMode = { text = 'text', numeric = 'numeric', email = 'email', url = 'url', search = 'search' }
+TextInput.SubmitBehavior = { blur = 'blur', submit = 'submit', none = 'none' }
 
 local function strlen(value)
     return #value
@@ -66,11 +70,6 @@ local function set_selection_request(self, s, e)
     self._selection_start = s
     self._selection_end = e
     ControlUtils.call_if_function(self.onSelectionChange, s, e)
-end
-
-local function caret_pos(self)
-    local _, e = get_selection_pair(self)
-    return e
 end
 
 local function reset_blink(self)
@@ -200,7 +199,7 @@ function TextInput:constructor(opts)
         part = 'field',
     }
 
-    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
+    ControlUtils.add_control_listener(self, self, 'ui.activate', function()
         if self.disabled then return end
 
         ControlUtils.request_focus(self)
@@ -239,15 +238,15 @@ function TextInput:constructor(opts)
         if self.disabled then return end
         if not has_focus(self) then return end
 
-        if event.navigationMode ~= 'directional' then
+        if event.navigationMode ~= Constants.NAVIGATION_MODE_DIRECTIONAL then
             return
         end
 
-        local s, e = get_selection_pair(self)
+        local _, e = get_selection_pair(self)
         local c = e
         local value_len = strlen(get_effective_value(self))
 
-        if event.direction == 'left' then
+        if event.direction == Constants.NAVIGATION_DIRECTION_LEFT then
             c = MathUtils.clamp(c - 1, 0, value_len)
             set_selection_request(self, c, c)
             reset_blink(self)
@@ -256,7 +255,7 @@ function TextInput:constructor(opts)
             return
         end
 
-        if event.direction == 'right' then
+        if event.direction == Constants.NAVIGATION_DIRECTION_RIGHT then
             c = MathUtils.clamp(c + 1, 0, value_len)
             set_selection_request(self, c, c)
             reset_blink(self)
@@ -294,11 +293,11 @@ function TextInput.new(opts)
     return TextInput(opts)
 end
 
-function TextInput:addChild()
+function TextInput.addChild()
     Assert.fail('TextInput may not contain child nodes', 2)
 end
 
-function TextInput:removeChild()
+function TextInput.removeChild()
     Assert.fail('TextInput may not contain child nodes', 2)
 end
 
@@ -370,7 +369,10 @@ function TextInput:update(dt)
 
     ControlUtils.set_interaction_state(self, not disabled)
 
-    if focused ~= was_focused and love ~= nil and love.keyboard ~= nil and Types.is_function(love.keyboard.setTextInput) then
+    if focused ~= was_focused and
+        love ~= nil and
+        love.keyboard ~= nil and
+        Types.is_function(love.keyboard.setTextInput) then
         love.keyboard.setTextInput(focused)
     end
 
@@ -394,7 +396,7 @@ function TextInput:update(dt)
     return self
 end
 
-function TextInput:_measure_text(graphics)
+function TextInput._measure_text(self)
     local font = self._cached_font
     if font == nil then
         font = FontCache.get(self.font, self.fontSize or 16)

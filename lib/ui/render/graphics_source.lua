@@ -21,8 +21,8 @@ local function read_method_number(source, method_name)
         return nil
     end
 
-    local ok, value = pcall(method, source)
-    if ok and Types.is_number(value) then
+    local success, value = pcall(method, source)
+    if success and Types.is_number(value) then
         return value
     end
 
@@ -62,8 +62,8 @@ function GraphicsSource.get_intrinsic_dimensions(source)
     end
 
     if Types.is_function(get_intrinsic_dimensions) then
-        local ok, resolved_width, resolved_height = pcall(get_intrinsic_dimensions, source)
-        if ok and Types.is_number(resolved_width) and Types.is_number(resolved_height) then
+        local success, resolved_width, resolved_height = pcall(get_intrinsic_dimensions, source)
+        if success and Types.is_number(resolved_width) and Types.is_number(resolved_height) then
             width = resolved_width
             height = resolved_height
         end

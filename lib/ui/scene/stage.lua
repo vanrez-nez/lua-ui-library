@@ -6,6 +6,7 @@ local Insets = require('lib.ui.core.insets')
 local Rectangle = require('lib.ui.core.rectangle')
 local Responsive = require('lib.ui.layout.responsive')
 local Types = require('lib.ui.utils.types')
+local Constants = require('lib.ui.core.constants')
 -- Proxy removed
 local Memoize = require('lib.ui.utils.memoize')
 local RuntimeProfiler = require('profiler.runtime_profiler')
@@ -306,19 +307,19 @@ local function get_world_center(node)
 end
 
 local function matches_direction(direction, delta_x, delta_y)
-    if direction == 'right' then
+    if direction == Constants.NAVIGATION_DIRECTION_RIGHT then
         return delta_x > 0
     end
 
-    if direction == 'left' then
+    if direction == Constants.NAVIGATION_DIRECTION_LEFT then
         return delta_x < 0
     end
 
-    if direction == 'down' then
+    if direction == Constants.NAVIGATION_DIRECTION_DOWN then
         return delta_y > 0
     end
 
-    if direction == 'up' then
+    if direction == Constants.NAVIGATION_DIRECTION_UP then
         return delta_y < 0
     end
 
@@ -1294,11 +1295,11 @@ local function create_navigation_event(self, raw_event)
     local navigation_mode = nil
 
     if raw_event.key == 'tab' then
-        navigation_mode = 'sequential'
+        navigation_mode = Constants.NAVIGATION_MODE_SEQUENTIAL
         direction = is_shift_down(raw_event) and 'previous' or 'next'
     elseif raw_event.key == 'up' or raw_event.key == 'down' or
         raw_event.key == 'left' or raw_event.key == 'right' then
-        navigation_mode = 'directional'
+        navigation_mode = Constants.NAVIGATION_MODE_DIRECTIONAL
         direction = raw_event.key
     end
 
@@ -1319,11 +1320,11 @@ local function apply_navigation_focus_movement(self, event)
         return get_stored_focus_owner(self)
     end
 
-    if event.navigationMode == 'sequential' then
+    if event.navigationMode == Constants.NAVIGATION_MODE_SEQUENTIAL then
         return self:_move_focus_sequential_internal(event.direction)
     end
 
-    if event.navigationMode == 'directional' then
+    if event.navigationMode == Constants.NAVIGATION_MODE_DIRECTIONAL then
         return self:_move_focus_directional_internal(event.direction)
     end
 
@@ -1531,12 +1532,8 @@ function Stage:constructor(opts)
         end
     end
 
-    -- Track whether dimensions are host-driven (no explicit width/height provided).
-    -- When host-driven, refresh_environment_bounds will always poll the live host.
     local host_driven = (opts.width == nil and opts.height == nil)
     rawset(self, '_host_driven_dims', host_driven)
-
-
 
     rawset(self, '_ui_stage_instance', true)
     rawset(self, '_update_ran', false)
@@ -2131,7 +2128,7 @@ function Stage:getSafeArea()
     return get_public_value(self, 'safeAreaInsets'):clone()
 end
 
-function Stage:addChild()
+function Stage.addChild()
     fail(
         'Stage does not support child insertion; '
             .. 'baseSceneLayer and overlayLayer are runtime-managed '
@@ -2140,7 +2137,7 @@ function Stage:addChild()
     )
 end
 
-function Stage:removeChild()
+function Stage.removeChild()
     fail(
         'Stage does not support child removal; '
             .. 'baseSceneLayer and overlayLayer are runtime-managed '
@@ -2149,7 +2146,7 @@ function Stage:removeChild()
     )
 end
 
-function Stage:removeAllChildren()
+function Stage.removeAllChildren()
     fail(
         'Stage does not support child removal; '
             .. 'baseSceneLayer and overlayLayer are runtime-managed '

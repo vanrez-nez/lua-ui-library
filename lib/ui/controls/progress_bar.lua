@@ -4,6 +4,8 @@ local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local MathUtils = require('lib.ui.utils.math')
 local Rule = require('lib.ui.utils.rule')
+local Constants = require('lib.ui.core.constants')
+local Enums = require('lib.ui.core.enums')
 
 local ProgressBar = Drawable:extends('ProgressBar')
 
@@ -12,7 +14,7 @@ local ProgressBarSchema = {
     min = Rule.number({ default = 0 }),
     max = Rule.number({ default = 1 }),
     indeterminate = Rule.boolean(false),
-    orientation = Rule.any({ default = 'horizontal' }),
+    orientation = Rule.enum(Enums.Orientation, { default = Enums.Orientation.HORIZONTAL }),
 }
 
 ProgressBar._schema = ControlUtils.extend_schema(Drawable._schema, ProgressBarSchema)
@@ -48,7 +50,7 @@ local function sync_parts(self)
     track.width = bounds.width
     track.height = bounds.height
 
-    if self.orientation == 'vertical' then
+    if self.orientation == Constants.ORIENTATION_VERTICAL then
         indicator.x = 0
         indicator.width = bounds.width
         if self.indeterminate then
@@ -86,7 +88,7 @@ function ProgressBar:constructor(opts)
     self.min = opts.min or 0
     self.max = opts.max or 1
     self.indeterminate = opts.indeterminate == true
-    self.orientation = opts.orientation or 'horizontal'
+    self.orientation = opts.orientation or Enums.Orientation.HORIZONTAL
 
     self._ui_progress_bar_control = true
 
@@ -94,7 +96,7 @@ function ProgressBar:constructor(opts)
         Assert.fail('ProgressBar.max must be greater than ProgressBar.min', 2)
     end
 
-    if self.orientation ~= 'horizontal' and self.orientation ~= 'vertical' then
+    if self.orientation ~= Constants.ORIENTATION_HORIZONTAL and self.orientation ~= Constants.ORIENTATION_VERTICAL then
         Assert.fail('ProgressBar.orientation must be "horizontal" or "vertical"', 2)
     end
 

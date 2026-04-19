@@ -256,7 +256,7 @@ function Utils.overlay_mixin:_get_overlay_root()
     return self[self._overlay_root_key or '_overlay_root']
 end
 
-function Utils.overlay_mixin:_overlay_focus_contract()
+function Utils.overlay_mixin._overlay_focus_contract()
     return nil
 end
 

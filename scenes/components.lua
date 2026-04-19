@@ -21,8 +21,8 @@ function Components.new()
             anchor = Vec2(0, 0),
             pivot = Vec2(0, 0),
         })
-        function background:draw()
-            local w, h = self.parent.size.x, self.parent.size.y
+        function background.draw(drawable)
+            local w, h = drawable.parent.size.x, drawable.parent.size.y
             love.graphics.setColor(0.10, 0.11, 0.14)
             love.graphics.rectangle("fill", 0, 0, w, h)
             love.graphics.setColor(0.14, 0.17, 0.23)

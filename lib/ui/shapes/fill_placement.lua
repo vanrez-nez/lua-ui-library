@@ -2,11 +2,13 @@ local GraphicsSource = require('lib.ui.render.graphics_source')
 local SourcePlacement = require('lib.ui.render.source_placement')
 local Rectangle = require('lib.ui.core.rectangle')
 local RuntimeProfiler = require('profiler.runtime_profiler')
+local Constants = require('lib.ui.core.constants')
 
 local FillPlacement = {}
+local PLACEMENT_MODE_STRETCH = 'stretch'
 
 local function resolve_gradient_points(bounds, direction)
-    if direction == 'vertical' then
+    if direction == Constants.ORIENTATION_VERTICAL then
         return bounds.x, bounds.y, bounds.x, bounds.y + bounds.height
     end
 
@@ -29,8 +31,8 @@ local function resolve_texture_placement(bounds, descriptor)
         repeatY = repeat_y,
         offsetX = descriptor.offsetX or 0,
         offsetY = descriptor.offsetY or 0,
-        alignX = descriptor.alignX or 'center',
-        alignY = descriptor.alignY or 'center',
+        alignX = descriptor.alignX or Constants.ALIGN_CENTER,
+        alignY = descriptor.alignY or Constants.ALIGN_CENTER,
         localBounds = resolved_bounds,
         drawable = drawable,
         quad = quad,
@@ -40,7 +42,7 @@ local function resolve_texture_placement(bounds, descriptor)
     }
 
     if not repeat_x and not repeat_y then
-        placement.placementMode = 'stretch'
+        placement.placementMode = PLACEMENT_MODE_STRETCH
         placement.originX = resolved_bounds.x
         placement.originY = resolved_bounds.y
         placement.startX = placement.originX
@@ -95,7 +97,7 @@ function FillPlacement.resolve(bounds, descriptor)
 
     if descriptor.kind == 'gradient' then
         local gradient = descriptor.gradient or descriptor.source
-        local direction = (gradient and gradient.direction) or 'horizontal'
+        local direction = (gradient and gradient.direction) or Constants.ORIENTATION_HORIZONTAL
         local start_x, start_y, end_x, end_y = resolve_gradient_points(resolved_bounds, direction)
 
         local placement = {

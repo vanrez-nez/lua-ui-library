@@ -8,6 +8,7 @@ local Motion = require('lib.ui.motion')
 local RootCompositor = require('lib.ui.render.root_compositor')
 local Styling = require('lib.ui.render.styling')
 local DrawableSchema = require('lib.ui.core.drawable_schema')
+local Constants = require('lib.ui.core.constants')
 
 local max = math.max
 
@@ -26,11 +27,6 @@ Drawable._schema = Utils.merge_tables(
 
 local DEFAULT_FOCUS_RING_OFFSET = 2
 local DEFAULT_FOCUS_RING_WIDTH = 2
-local get_effective_value
-local resolve_content_rect
-
-
-
 
 local function get_effective_insets(self, key)
     return Insets.normalize(self[key])
@@ -80,11 +76,11 @@ local function get_child_parent_local_bounds(child)
 end
 
 local function assert_no_content_fill_dependency(self, children)
-    if self.width == 'content' then
+    if self.width == Constants.SIZE_MODE_CONTENT then
         for index = 1, #children do
             local child = children[index]
 
-            if child_is_visible(child) and child.width == 'fill' then
+            if child_is_visible(child) and child.width == Constants.SIZE_MODE_FILL then
                 Assert.fail(
                     'Drawable has a circular measurement dependency because '
                         .. 'width = "content" and a visible child has width = "fill"',
@@ -94,11 +90,11 @@ local function assert_no_content_fill_dependency(self, children)
         end
     end
 
-    if self.height == 'content' then
+    if self.height == Constants.SIZE_MODE_CONTENT then
         for index = 1, #children do
             local child = children[index]
 
-            if child_is_visible(child) and child.height == 'fill' then
+            if child_is_visible(child) and child.height == Constants.SIZE_MODE_FILL then
                 Assert.fail(
                     'Drawable has a circular measurement dependency because '
                         .. 'height = "content" and a visible child has height = "fill"',
@@ -107,6 +103,10 @@ local function assert_no_content_fill_dependency(self, children)
             end
         end
     end
+end
+
+local get_effective_value = function(self, key)
+    return self[key]
 end
 
 local function collect_child_entries(children)
@@ -128,6 +128,50 @@ local function collect_child_entries(children)
     end
 
     return entries
+end
+
+local function resolve_alignment_axis(origin, available_size, content_size, align)
+    content_size = max(0, content_size)
+
+    if available_size <= 0 then
+        if align == Constants.ALIGN_STRETCH then
+            return origin, 0
+        end
+
+        return origin, content_size
+    end
+
+    if align == Constants.ALIGN_STRETCH then
+        return origin, available_size
+    end
+
+    if align == Constants.ALIGN_CENTER then
+        return origin + ((available_size - content_size) / 2), content_size
+    end
+
+    if align == Constants.ALIGN_END then
+        return origin + (available_size - content_size), content_size
+    end
+
+    return origin, content_size
+end
+
+local function resolve_content_rect(self, content_width, content_height)
+    local content_box = get_local_content_rect(self)
+    local x, width = resolve_alignment_axis(
+        content_box.x,
+        content_box.width,
+        content_width,
+        (get_effective_value(self, 'alignX') or Constants.ALIGN_START)
+    )
+    local y, height = resolve_alignment_axis(
+        content_box.y,
+        content_box.height,
+        content_height,
+        (get_effective_value(self, 'alignY') or Constants.ALIGN_START)
+    )
+
+    return Rectangle(x, y, width, height)
 end
 
 local function measure_content_extent(self, entries)
@@ -175,11 +219,11 @@ local function align_children(self, entries, content_extent)
         local width = nil
         local height = nil
 
-        if self.alignX == 'stretch' then
+        if self.alignX == Constants.ALIGN_STRETCH then
             width = target_rect.width
         end
 
-        if self.alignY == 'stretch' then
+        if self.alignY == Constants.ALIGN_STRETCH then
             height = target_rect.height
         end
 
@@ -192,11 +236,11 @@ local function align_children(self, entries, content_extent)
         local offset_x = shared_offset_x
         local offset_y = shared_offset_y
 
-        if self.alignX == 'stretch' then
+        if self.alignX == Constants.ALIGN_STRETCH then
             offset_x = content_rect.x - entry.bounds.x
         end
 
-        if self.alignY == 'stretch' then
+        if self.alignY == Constants.ALIGN_STRETCH then
             offset_y = content_rect.y - entry.bounds.y
         end
 
@@ -221,51 +265,6 @@ local function refresh_drawable_content(self)
 
     align_children(self, entries, content_extent)
 end
-
-local function resolve_alignment_axis(origin, available_size, content_size, align)
-    content_size = max(0, content_size)
-
-    if available_size <= 0 then
-        if align == 'stretch' then
-            return origin, 0
-        end
-
-        return origin, content_size
-    end
-
-    if align == 'stretch' then
-        return origin, available_size
-    end
-
-    if align == 'center' then
-        return origin + ((available_size - content_size) / 2), content_size
-    end
-
-    if align == 'end' then
-        return origin + (available_size - content_size), content_size
-    end
-
-    return origin, content_size
-end
-
-resolve_content_rect = function(self, content_width, content_height)
-    local content_box = get_local_content_rect(self)
-    local x, width = resolve_alignment_axis(
-        content_box.x,
-        content_box.width,
-        content_width,
-        (get_effective_value(self, 'alignX') or 'start')
-    )
-    local y, height = resolve_alignment_axis(
-        content_box.y,
-        content_box.height,
-        content_height,
-        (get_effective_value(self, 'alignY') or 'start')
-    )
-
-    return Rectangle(x, y, width, height)
-end
-
 
 
 Drawable.__index = Drawable
@@ -319,10 +318,6 @@ function Drawable:_resolve_root_compositing_extras()
     end
 
     return compositing_extras
-end
-
-get_effective_value = function(self, key)
-    return self[key]
 end
 
 local function color_input_is_visible(color, opacity)
@@ -420,13 +415,13 @@ function Drawable:resolveContentRect(content_width, content_height)
         content_box.x,
         content_box.width,
         content_width,
-        (get_effective_value(self, 'alignX') or 'start')
+        (get_effective_value(self, 'alignX') or Constants.ALIGN_START)
     )
     local y, height = resolve_alignment_axis(
         content_box.y,
         content_box.height,
         content_height,
-        (get_effective_value(self, 'alignY') or 'start')
+        (get_effective_value(self, 'alignY') or Constants.ALIGN_START)
     )
 
     return Rectangle(x, y, width, height)

@@ -109,7 +109,12 @@ function SideQuad.resolve_layers(layers, opts, level)
                 if resolved[member] == nil then
                     local explicit = layer[member]
                     if explicit ~= nil then
-                        resolved[member] = validate_member((opts.label or 'side quad') .. '.' .. member, explicit, opts, level)
+                        resolved[member] = validate_member(
+                            (opts.label or 'side quad') .. '.' .. member,
+                            explicit,
+                            opts,
+                            level
+                        )
                         has_any = true
                     elseif aggregate ~= nil then
                         resolved[member] = aggregate[member]

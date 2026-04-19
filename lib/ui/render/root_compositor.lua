@@ -619,7 +619,16 @@ local function transform_rect_point(x, y, pivot_x, pivot_y, translation_x, trans
     return pivot_x + translation_x + local_x, pivot_y + translation_y + local_y
 end
 
-local function resolve_transformed_rect(rect, pivot_x, pivot_y, translation_x, translation_y, rotation, scale_x, scale_y)
+local function resolve_transformed_rect(
+    rect,
+    pivot_x,
+    pivot_y,
+    translation_x,
+    translation_y,
+    rotation,
+    scale_x,
+    scale_y
+)
     if rect == nil or rect:is_empty() then
         return Rectangle(0, 0, 0, 0)
     end
@@ -632,10 +641,50 @@ local function resolve_transformed_rect(rect, pivot_x, pivot_y, translation_x, t
     local top = rect.y
     local right = rect.x + rect.width
     local bottom = rect.y + rect.height
-    local x1, y1 = transform_rect_point(left, top, pivot_x, pivot_y, translation_x, translation_y, rotation, scale_x, scale_y)
-    local x2, y2 = transform_rect_point(right, top, pivot_x, pivot_y, translation_x, translation_y, rotation, scale_x, scale_y)
-    local x3, y3 = transform_rect_point(right, bottom, pivot_x, pivot_y, translation_x, translation_y, rotation, scale_x, scale_y)
-    local x4, y4 = transform_rect_point(left, bottom, pivot_x, pivot_y, translation_x, translation_y, rotation, scale_x, scale_y)
+    local x1, y1 = transform_rect_point(
+        left,
+        top,
+        pivot_x,
+        pivot_y,
+        translation_x,
+        translation_y,
+        rotation,
+        scale_x,
+        scale_y
+    )
+    local x2, y2 = transform_rect_point(
+        right,
+        top,
+        pivot_x,
+        pivot_y,
+        translation_x,
+        translation_y,
+        rotation,
+        scale_x,
+        scale_y
+    )
+    local x3, y3 = transform_rect_point(
+        right,
+        bottom,
+        pivot_x,
+        pivot_y,
+        translation_x,
+        translation_y,
+        rotation,
+        scale_x,
+        scale_y
+    )
+    local x4, y4 = transform_rect_point(
+        left,
+        bottom,
+        pivot_x,
+        pivot_y,
+        translation_x,
+        translation_y,
+        rotation,
+        scale_x,
+        scale_y
+    )
 
     return Rectangle.bounding_box({
         { x = x1, y = y1 },
@@ -972,7 +1021,16 @@ local function begin_canvas_origin_transform(graphics, canvas_world_origin)
     return true
 end
 
-local function composite_isolated_subtree(node, graphics, canvas, isolation_target, compositing_plan, clip_state, runtime, render_state)
+local function composite_isolated_subtree(
+    node,
+    graphics,
+    canvas,
+    isolation_target,
+    compositing_plan,
+    clip_state,
+    runtime,
+    render_state
+)
     local root_compositing_state = compositing_plan.root_compositing_state
     local compositing_extras = compositing_plan.compositing_extras or EMPTY_COMPOSITING_EXTRAS
     local result_clip = compositing_plan.result_clip
@@ -1152,7 +1210,15 @@ local function composite_isolated_subtree(node, graphics, canvas, isolation_targ
     GraphicsState.restore_color(graphics, previous_color)
 end
 
-function RootCompositor.draw_isolated_subtree(node, graphics, draw_callback, clip_state, render_state, compositing_plan, runtime)
+function RootCompositor.draw_isolated_subtree(
+    node,
+    graphics,
+    draw_callback,
+    clip_state,
+    render_state,
+    compositing_plan,
+    runtime
+)
     local profile_token = RuntimeProfiler.push_zone('RootCompositor.draw_isolated_subtree')
     if not Types.is_function(graphics.newCanvas) or
         not Types.is_function(graphics.setCanvas) or

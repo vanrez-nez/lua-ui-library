@@ -1,4 +1,5 @@
 local Assert = require('lib.ui.utils.assert')
+local Constants = require('lib.ui.core.constants')
 
 local ContentFillGuard = {}
 
@@ -14,11 +15,11 @@ function ContentFillGuard.assert_valid(kind, parent_values, children, axis_keys,
     for axis_index = 1, #axis_keys do
         local axis_key = axis_keys[axis_index]
 
-        if parent_values[axis_key] == 'content' then
+        if parent_values[axis_key] == Constants.SIZE_MODE_CONTENT then
             for child_index = 1, #children do
                 local child = children[child_index]
 
-                if child_is_visible(child) and child[axis_key] == 'fill' then
+                if child_is_visible(child) and child[axis_key] == Constants.SIZE_MODE_FILL then
                     Assert.fail(
                         kind ..
                             ' has a circular measurement dependency because ' ..

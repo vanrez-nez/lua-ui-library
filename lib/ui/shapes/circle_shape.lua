@@ -1,6 +1,7 @@
 local Shape = require('lib.ui.core.shape')
 local DrawHelpers = require('lib.ui.shapes.draw_helpers')
 local MathUtils = require('lib.ui.utils.math')
+local Constants = require('lib.ui.core.constants')
 
 local CircleShape = Shape:extends('CircleShape')
 local WHITE_COLOR = { 1, 1, 1, 1 }
@@ -235,9 +236,9 @@ local function resolve_stroke_draw_options(shape, bounds, world_points)
     local dash_length = shape.strokeDashLength or 8
     local gap_length = shape.strokeGapLength or 4
     local dash_offset = shape.strokeDashOffset or 0
-    local stroke_pattern = shape.strokePattern or 'solid'
+    local stroke_pattern = shape.strokePattern or Constants.STROKE_PATTERN_SOLID
 
-    if stroke_pattern == 'dashed' and gap_length > 0 then
+    if stroke_pattern == Constants.STROKE_PATTERN_DASHED and gap_length > 0 then
         local perimeter = estimate_ellipse_perimeter(bounds.width, bounds.height)
         dash_length, gap_length = resolve_closed_dash_pattern(
             perimeter,
@@ -272,7 +273,7 @@ local function resolve_stroke_draw_options(shape, bounds, world_points)
     stroke.color = shape.strokeColor
     stroke.opacity = shape.strokeOpacity or 1
     stroke.width = shape.strokeWidth or 0
-    stroke.style = shape.strokeStyle or 'smooth'
+    stroke.style = shape.strokeStyle or Constants.STROKE_STYLE_SMOOTH
     stroke.join = nil
     stroke.miter_limit = nil
     stroke.pattern = stroke_pattern
@@ -294,7 +295,7 @@ function CircleShape:_get_local_points(out_table)
     return build_local_ellipse_points(bounds, segments, self:_get_local_point_buffer(segments, out_table))
 end
 
-function CircleShape:_requires_shape_result_clip()
+function CircleShape._requires_shape_result_clip()
     return true
 end
 
@@ -306,7 +307,7 @@ function CircleShape:_resolve_root_compositing_result_clip()
         return nil
     end
 
-    if (self.strokePattern or 'solid') ~= 'solid' then
+    if (self.strokePattern or Constants.STROKE_PATTERN_SOLID) ~= Constants.STROKE_PATTERN_SOLID then
         return Shape._resolve_root_compositing_result_clip(self)
     end
 
@@ -354,7 +355,7 @@ function CircleShape:_draw_stroke(graphics)
 
     local stroked_world_points, stroke = resolve_stroke_draw_options(self, bounds, world_points)
 
-    if stroke.pattern == 'solid' and axis_aligned_world_ellipse ~= nil then
+    if stroke.pattern == Constants.STROKE_PATTERN_SOLID and axis_aligned_world_ellipse ~= nil then
         return draw_axis_aligned_ellipse_stroke(graphics, axis_aligned_world_ellipse, stroke, segments)
     end
 

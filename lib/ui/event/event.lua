@@ -1,14 +1,12 @@
 local Assert = require('lib.ui.utils.assert')
 local Object = require('lib.cls')
 local Types = require('lib.ui.utils.types')
+local Enums = require('lib.ui.core.enums')
+local Enum = require('lib.ui.utils.enum')
+
+local enum_has = Enum.enum_has
 
 local Event = Object:extends('Event')
-
-local VALID_PHASES = {
-    capture = true,
-    target = true,
-    bubble = true,
-}
 
 local function clone_path(path)
     if path == nil then
@@ -50,7 +48,7 @@ function Event:constructor(opts)
     Assert.string('Event.type', opts.type, 3)
     Assert.number('Event.timestamp', opts.timestamp, 3)
 
-    if opts.phase ~= nil and not VALID_PHASES[opts.phase] then
+    if opts.phase ~= nil and not enum_has(Enums.EventPhase, opts.phase) then
         Assert.fail('Event.phase must be "capture", "target", or "bubble"', 3)
     end
 
@@ -107,7 +105,7 @@ function Event:preventDefault()
 end
 
 function Event:_set_phase(phase)
-    if phase ~= nil and not VALID_PHASES[phase] then
+    if phase ~= nil and not enum_has(Enums.EventPhase, phase) then
         Assert.fail('phase must be "capture", "target", or "bubble"', 2)
     end
 

@@ -1,6 +1,5 @@
 local Object = require('lib.cls')
 local Assert = require('lib.ui.utils.assert')
-local Types = require('lib.ui.utils.types')
 local Texture = require('lib.ui.graphics.texture')
 
 local Atlas = Object:extends('Atlas')

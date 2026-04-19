@@ -9,6 +9,7 @@ local ShapeFillRenderer = require('lib.ui.shapes.fill_renderer')
 local RuntimeProfiler = require('profiler.runtime_profiler')
 local DirtyProps = require('lib.ui.utils.dirty_props')
 local ShapeSchema = require('lib.ui.core.shape_schema')
+local Constants = require('lib.ui.core.constants')
 
 local Shape = Container:extends('Shape')
 local WHITE_COLOR = { 1, 1, 1, 1 }
@@ -323,10 +324,10 @@ function Shape:_resolve_polygon_stroke_options(target)
     stroke.color = self.strokeColor
     stroke.opacity = self.strokeOpacity or 1
     stroke.width = self.strokeWidth or 0
-    stroke.style = self.strokeStyle or 'smooth'
-    stroke.join = self.strokeJoin or 'miter'
+    stroke.style = self.strokeStyle or Constants.STROKE_STYLE_SMOOTH
+    stroke.join = self.strokeJoin or Constants.STROKE_JOIN_MITER
     stroke.miter_limit = self.strokeMiterLimit or 10
-    stroke.pattern = self.strokePattern or 'solid'
+    stroke.pattern = self.strokePattern or Constants.STROKE_PATTERN_SOLID
     stroke.dash_length = self.strokeDashLength or 8
     stroke.gap_length = self.strokeGapLength or 4
     stroke.dash_offset = self.strokeDashOffset or 0

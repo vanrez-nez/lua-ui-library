@@ -1,7 +1,6 @@
 local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
-local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
 
