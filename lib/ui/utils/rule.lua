@@ -52,21 +52,26 @@ validators.number = function(r, name, v)
   Assert.range(name, v, r.min, r.max, 2)
 end
 
-validators.boolean = function(r, name, v)
+validators.boolean = function(_, name, v)
   Assert.boolean(name, v, 2)
 end
 
-validators.table = function(r, name, v)
+validators.table = function(_, name, v)
   Assert.table(name, v, 2)
 end
 
-validators.func = function(r, name, v)
+validators.func = function(_, name, v)
   Assert.func(name, v, 2)
 end
 
 --- Accepts only values present in the pre-built `allowed` lookup set.
 validators.enum = function(r, name, v)
   if not r.allowed[v] then Assert.fail(name .. ': must be one of: ' .. r.display, 2) end
+end
+
+--- Accepts only one exact non-nil value.
+validators.literal = function(r, name, v)
+  if v ~= r.value then Assert.fail(name .. ': must be ' .. r.display, 2) end
 end
 
 validators.custom = function(r, name, v)
@@ -248,6 +253,29 @@ function Rule.enum(values, opts)
     default = opts.default,
     allowed = allowed,
     display = table.concat(values, ', '),
+  }
+end
+
+--- Creates a literal rule for one exact non-nil value.
+--- Use `optional = true` to accept nil; nil literals are not supported.
+--- Example:
+---   Rule.literal('indeterminate')
+--- @param value any  exact value accepted by the rule; must not be nil
+--- @param opts table?    optional, default
+--- @return table
+function Rule.literal(value, opts)
+  if value == nil then
+    Assert.fail('Rule.literal: nil literal is not supported; use optional = true', 2)
+  end
+  opts = opts or {}
+  check_opts(opts, BASE_OPTS)
+  return {
+    kind = 'literal',
+    optional = opts.optional or false,
+    has_default = opts.default ~= nil,
+    default = opts.default,
+    value = value,
+    display = tostring(value),
   }
 end
 

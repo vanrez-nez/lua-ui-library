@@ -5,6 +5,12 @@ function Assert.fail(message, level)
     error(message, (level or 1) + 1)
 end
 
+function Assert.none(name, value, level)
+    if not Types.is_nil(value) then
+        error(name .. ' must be nil', (level or 1) + 1)
+    end
+end
+
 function Assert.boolean(name, value, level)
     if not Types.is_boolean(value) then
         error(name .. ' must be a boolean', (level or 1) + 1)
