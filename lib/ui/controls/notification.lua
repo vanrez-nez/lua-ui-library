@@ -3,27 +3,16 @@ local Drawable = require('lib.ui.core.drawable')
 local Button = require('lib.ui.controls.button')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Assert = require('lib.ui.utils.assert')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
 local StyleScope = require('lib.ui.render.style_scope')
+local NotificationSchema = require('lib.ui.controls.notification_schema')
 
 local Notification = Container:extends('Notification')
 local enum_has = Enum.enum_has
 local NOTIFICATION_SURFACE_SCOPE = StyleScope.create('notification', 'surface')
-
-local NotificationSchema = {
-    open = Rule.boolean(),
-    onOpenChange = Rule.any(),
-    closeMethod = Rule.any({ default = 'button' }),
-    duration = Rule.number(),
-    stackable = Rule.boolean(true),
-    edge = Rule.enum(Enums.Edge, { default = Enums.Edge.TOP }),
-    align = Rule.enum(Enums.SourceAlign, { default = Enums.SourceAlign.CENTER }),
-    safeAreaAware = Rule.boolean(true),
-}
 
 Notification.schema = Schema.extend(Container.schema, NotificationSchema)
 Notification:implements(ControlUtils.overlay_mixin)

@@ -4,21 +4,13 @@ local Container = require('lib.ui.core.container')
 local Drawable = require('lib.ui.core.drawable')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local StyleScope = require('lib.ui.render.style_scope')
+local TextAreaSchema = require('lib.ui.controls.text_area_schema')
 
 local TextArea = TextInput:extends('TextArea')
 local TEXT_AREA_FIELD_SCOPE = StyleScope.create('textArea', 'field')
 local TEXT_AREA_SCROLL_REGION_SCOPE = StyleScope.create('textArea', 'scroll region')
-
-local TextAreaSchema = {
-    wrap = Rule.boolean(true),
-    rows = Rule.number(),
-    scrollXEnabled = Rule.boolean(false),
-    scrollYEnabled = Rule.boolean(true),
-    momentum = Rule.boolean(false),
-}
 
 TextArea.schema = Schema.extend(TextInput.schema, TextAreaSchema)
 

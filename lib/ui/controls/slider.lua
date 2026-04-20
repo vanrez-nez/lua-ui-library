@@ -3,12 +3,12 @@ local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local MathUtils = require('lib.ui.utils.math')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
 local StyleScope = require('lib.ui.render.style_scope')
+local SliderSchema = require('lib.ui.controls.slider_schema')
 
 local Slider = Drawable:extends('Slider')
 local enum_has = Enum.enum_has
@@ -37,37 +37,7 @@ local effective_value, request_value =
         normalize = normalize_value,
     })
 
-Slider._control_schema = {
-    value = Rule.any(),
-    onValueChange = Rule.any(),
-    min = Rule.number({ default = 0 }),
-    max = Rule.custom(function(_, value, _, level, full_opts)
-        value = (value == nil) and 1 or value
-        Assert.number('Slider.max', value, level or 1)
-        local min_value = (full_opts and full_opts.min) or 0
-        if value <= min_value then
-            Assert.fail('Slider.max must be greater than Slider.min', level or 1)
-        end
-        return value
-    end, { default = 1 }),
-    step = Rule.custom(function(_, value, _, level)
-        if value == nil then return nil end
-        Assert.number('Slider.step', value, level or 1)
-        if value <= 0 then
-            Assert.fail('Slider.step must be > 0 when provided', level or 1)
-        end
-        return value
-    end),
-    orientation = Rule.custom(function(_, value, _, level)
-        value = value or Enums.Orientation.HORIZONTAL
-        if not enum_has(Enums.Orientation, value) then
-            Assert.fail('Slider.orientation must be "horizontal" or "vertical"', level or 1)
-        end
-        return value
-    end, { default = Enums.Orientation.HORIZONTAL }),
-    disabled = Rule.boolean(false),
-}
-
+Slider._control_schema = SliderSchema
 Slider.schema = Schema.extend(Drawable.schema, Slider._control_schema)
 
 local function ratio_for_value(self, value)

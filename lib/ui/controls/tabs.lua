@@ -5,12 +5,12 @@ local Column = require('lib.ui.layout.column')
 local ScrollableContainer = require('lib.ui.scroll.scrollable_container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local Enums = require('lib.ui.core.enums')
 local Constants = require('lib.ui.core.constants')
 local Enum = require('lib.ui.utils.enum')
 local StyleScope = require('lib.ui.render.style_scope')
+local TabsSchema = require('lib.ui.controls.tabs_schema')
 
 local enum_has = Enum.enum_has
 
@@ -77,22 +77,6 @@ local effective_value, request_value =
     ControlUtils.controlled_value('value', nil, {
         normalize = normalize_tab_value,
     })
-
-local TabsSchema = {
-    value = Rule.any(),
-    onValueChange = Rule.any(),
-    orientation = Rule.custom(function(_, value, _, level)
-        value = value or Enums.Orientation.HORIZONTAL
-        if not enum_has(Enums.Orientation, value) then
-            Assert.fail('Tabs.orientation must be "horizontal" or "vertical"', level or 1)
-        end
-        return value
-    end, { default = Enums.Orientation.HORIZONTAL }),
-    activationMode = Rule.any({ default = 'manual' }),
-    listScrollable = Rule.boolean(false),
-    loopFocus = Rule.boolean(true),
-    disabledValues = Rule.any(),
-}
 
 Tabs.schema = Schema.extend(Drawable.schema, TabsSchema)
 

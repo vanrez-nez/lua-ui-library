@@ -4,12 +4,11 @@ local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Rectangle = require('lib.ui.core.rectangle')
 local Texture = require('lib.ui.graphics.texture')
-local Sprite = require('lib.ui.graphics.sprite')
 local ControlUtils = require('lib.ui.controls.control_utils')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local Enum = require('lib.ui.utils.enum')
+local ImageSchema = require('lib.ui.graphics.image_schema')
 
 local Image = Drawable:extends('Image')
 local max = math.max
@@ -39,18 +38,7 @@ Image.Sampling = enum(
     { LINEAR = Image.SAMPLING_LINEAR }
 )
 
-Image.schema = Schema.extend(Drawable.schema, {
-    source = Rule.any_of({
-        Rule.instance(Texture, 'Texture'),
-        Rule.instance(Sprite, 'Sprite'),
-    }),
-    fit = Rule.enum(Image.Fit, { default = Image.Fit.CONTAIN }),
-    alignX = Rule.enum(Image.Align, { default = Image.Align.CENTER }),
-    alignY = Rule.enum(Image.Align, { default = Image.Align.CENTER }),
-    sampling = Rule.enum(Image.Sampling, { default = Image.Sampling.LINEAR }),
-    decorative = Rule.boolean(false),
-    accessibleName = Rule.string({ optional = true }),
-})
+Image.schema = Schema.extend(Drawable.schema, ImageSchema)
 
 local function resolve_source_view(source)
     if Types.is_instance(source, Texture) then

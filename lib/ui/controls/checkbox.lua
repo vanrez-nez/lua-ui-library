@@ -1,20 +1,13 @@
 local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
-local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local StyleScope = require('lib.ui.render.style_scope')
+local CheckboxSchema = require('lib.ui.controls.checkbox_schema')
 
 local Checkbox = Drawable:extends('Checkbox')
 local CHECKBOX_BOX_SCOPE = StyleScope.create('checkbox', 'box')
 local CHECKBOX_INDICATOR_SCOPE = StyleScope.create('checkbox', 'indicator')
-
-local VALID_STATES = {
-    checked = true,
-    unchecked = true,
-    indeterminate = true,
-}
 
 local function normalize_state(value)
     if value == true then return 'checked' end
@@ -22,32 +15,6 @@ local function normalize_state(value)
     if value == 'indeterminate' then return 'indeterminate' end
     if value == 'checked' or value == 'unchecked' then return value end
     return nil
-end
-
-local function validate_toggle_order(toggle_order, level)
-    if toggle_order == nil then
-        return nil
-    end
-
-    Assert.table('toggleOrder', toggle_order, level or 3)
-
-    local has_checked = false
-    local has_unchecked = false
-
-    for i = 1, #toggle_order do
-        local entry = toggle_order[i]
-        if not VALID_STATES[entry] then
-            Assert.fail('invalid toggleOrder entry: ' .. tostring(entry), 3)
-        end
-        if entry == 'checked' then has_checked = true end
-        if entry == 'unchecked' then has_unchecked = true end
-    end
-
-    if not has_checked or not has_unchecked then
-        Assert.fail('toggleOrder must contain both "checked" and "unchecked"', 3)
-    end
-
-    return toggle_order
 end
 
 local function normalize_checked(_, value)
@@ -60,17 +27,7 @@ local get_effective_checked, request_checked =
         normalize = normalize_checked,
     })
 
-Checkbox._control_schema = {
-    checked = Rule.any(),
-    onCheckedChange = Rule.any(),
-    disabled = Rule.boolean(false),
-    label = Rule.any(),
-    description = Rule.any(),
-    toggleOrder = Rule.custom(function(_, value, _, level)
-        return validate_toggle_order(value, level)
-    end),
-}
-
+Checkbox._control_schema = CheckboxSchema
 Checkbox.schema = Schema.extend(Drawable.schema, Checkbox._control_schema)
 
 local function resolve_next_state(self)

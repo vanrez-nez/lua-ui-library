@@ -4,10 +4,10 @@ local Types = require('lib.ui.utils.types')
 local FontCache = require('lib.ui.text.font_cache')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local MathUtils = require('lib.ui.utils.math')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local StyleScope = require('lib.ui.render.style_scope')
+local TextInputSchema = require('lib.ui.controls.text_input_schema')
 
 local TextInput = Drawable:extends('TextInput')
 local TEXT_INPUT_FIELD_SCOPE = StyleScope.create('textInput', 'field')
@@ -25,23 +25,6 @@ local get_effective_value, set_value_request =
             return tostring(value or '')
         end,
     })
-
-local TextInputSchema = {
-    value = Rule.any(),
-    onValueChange = Rule.any(),
-    selectionStart = Rule.number(),
-    selectionEnd = Rule.number(),
-    onSelectionChange = Rule.any(),
-    placeholder = Rule.any(),
-    disabled = Rule.boolean(false),
-    readOnly = Rule.boolean(false),
-    maxLength = Rule.number(),
-    inputMode = Rule.any({ default = 'text' }),
-    submitBehavior = Rule.any({ default = 'blur' }),
-    onSubmit = Rule.any(),
-    font = Rule.any(),
-    fontSize = Rule.number({ default = 16 }),
-}
 
 TextInput.schema = Schema.extend(Drawable.schema, TextInputSchema)
 

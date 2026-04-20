@@ -3,20 +3,10 @@ local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
+local OptionSchema = require('lib.ui.controls.option_schema')
 
 local Option = Drawable:extends('Option')
-
-local OptionSchema = {
-    value = Rule.custom(function(_, value, _, level)
-        if not Types.is_string(value) or value == '' then
-            Assert.fail('Option.value is required', level or 1)
-        end
-        return value
-    end, { required = true }),
-    disabled = Rule.boolean(false),
-}
 
 Option.schema = Schema.extend(Drawable.schema, OptionSchema)
 

@@ -3,23 +3,15 @@ local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local MathUtils = require('lib.ui.utils.math')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local Enums = require('lib.ui.core.enums')
 local StyleScope = require('lib.ui.render.style_scope')
+local ProgressBarSchema = require('lib.ui.controls.progress_bar_schema')
 
 local ProgressBar = Drawable:extends('ProgressBar')
 local PROGRESS_BAR_TRACK_SCOPE = StyleScope.create('progressBar', 'track')
 local PROGRESS_BAR_INDICATOR_SCOPE = StyleScope.create('progressBar', 'indicator')
-
-local ProgressBarSchema = {
-    value = Rule.number(),
-    min = Rule.number({ default = 0 }),
-    max = Rule.number({ default = 1 }),
-    indeterminate = Rule.boolean(false),
-    orientation = Rule.enum(Enums.Orientation, { default = Enums.Orientation.HORIZONTAL }),
-}
 
 ProgressBar.schema = Schema.extend(Drawable.schema, ProgressBarSchema)
 

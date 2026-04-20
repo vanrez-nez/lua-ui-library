@@ -2,10 +2,10 @@ local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local StyleScope = require('lib.ui.render.style_scope')
+local SwitchSchema = require('lib.ui.controls.switch_schema')
 
 local Switch = Drawable:extends('Switch')
 local SWITCH_TRACK_SCOPE = StyleScope.create('switch', 'track')
@@ -23,29 +23,6 @@ local checked_value, request_checked =
             return value == true
         end,
     })
-
-local SwitchSchema = {
-    checked = Rule.boolean(),
-    onCheckedChange = Rule.any(),
-    disabled = Rule.boolean(false),
-    dragThreshold = Rule.custom(function(_, value, _, level)
-        if value == nil then return 10 end
-        Assert.number('Switch.dragThreshold', value, level or 1)
-        if value < 0 then
-            Assert.fail('negative dragThreshold is invalid', level or 1)
-        end
-        return value
-    end, { default = 10 }),
-    snapBehavior = Rule.custom(function(_, value, _, level)
-        value = value or 'nearest'
-        if value ~= 'nearest' and value ~= 'directional' then
-            Assert.fail('Switch.snapBehavior must be "nearest" or "directional"', level or 1)
-        end
-        return value
-    end, { default = 'nearest' }),
-    label = Rule.any(),
-    description = Rule.any(),
-}
 
 Switch.schema = Schema.extend(Drawable.schema, SwitchSchema)
 

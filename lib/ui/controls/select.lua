@@ -4,10 +4,10 @@ local Text = require('lib.ui.controls.text')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local StyleScope = require('lib.ui.render.style_scope')
+local SelectSchema = require('lib.ui.controls.select_schema')
 
 local Select = Drawable:extends('Select')
 local SELECT_TRIGGER_SCOPE = StyleScope.create('select', 'trigger')
@@ -76,27 +76,7 @@ end
 local raw_selected_value, request_value_change =
     ControlUtils.controlled_value('value', nil)
 
-Select._control_schema = {
-    value = Rule.any(),
-    onValueChange = Rule.any(),
-    open = Rule.boolean(),
-    onOpenChange = Rule.any(),
-    selectionMode = Rule.custom(function(_, value, _, level)
-        value = value or 'single'
-        if value ~= 'single' and value ~= 'multiple' then
-            Assert.fail('Select.selectionMode must be "single" or "multiple"', level or 1)
-        end
-        return value
-    end, { default = 'single' }),
-    placeholder = Rule.any({ default = 'None selected' }),
-    modal = Rule.boolean(false),
-    disabled = Rule.boolean(false),
-    disabledValues = Rule.custom(function(_, value)
-        normalize_disabled_values(value)
-        return value
-    end),
-}
-
+Select._control_schema = SelectSchema
 Select.schema = Schema.extend(Drawable.schema, Select._control_schema)
 Select._overlay_root_key = '_popup_root'
 Select:implements(ControlUtils.overlay_mixin)

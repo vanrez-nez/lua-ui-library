@@ -3,20 +3,13 @@ local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local StyleScope = require('lib.ui.render.style_scope')
+local ButtonSchema = require('lib.ui.controls.button_schema')
 
 local Button = Drawable:extends('Button')
 local BUTTON_SURFACE_SCOPE = StyleScope.create('button', 'surface')
-
-local ButtonSchema = {
-    pressed = Rule.boolean(),
-    onPressedChange = Rule.func({ optional = true }),
-    onActivate = Rule.func({ optional = true }),
-    disabled = Rule.boolean(false),
-}
 
 Button.schema = Schema.extend(Drawable.schema, ButtonSchema)
 

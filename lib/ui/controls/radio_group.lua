@@ -2,11 +2,11 @@ local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
 local Constants = require('lib.ui.core.constants')
+local RadioGroupSchema = require('lib.ui.controls.radio_group_schema')
 
 local RadioGroup = Drawable:extends('RadioGroup')
 local enum_has = Enum.enum_has
@@ -92,22 +92,7 @@ local effective_value, request_value =
         normalize = normalize_value,
     })
 
-RadioGroup._control_schema = {
-    value = Rule.any(),
-    onValueChange = Rule.any(),
-    orientation = Rule.custom(function(_, value, _, level)
-        value = value or Enums.Orientation.VERTICAL
-        if not enum_has(Enums.Orientation, value) then
-            Assert.fail('RadioGroup.orientation must be "horizontal" or "vertical"', level or 1)
-        end
-        return value
-    end, { default = Enums.Orientation.VERTICAL }),
-    disabledValues = Rule.custom(function(_, value)
-        normalize_disabled_values(value)
-        return value
-    end),
-}
-
+RadioGroup._control_schema = RadioGroupSchema
 RadioGroup.schema = Schema.extend(Drawable.schema, RadioGroup._control_schema)
 
 local function focused_radio(self)

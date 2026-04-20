@@ -3,35 +3,15 @@ local Drawable = require('lib.ui.core.drawable')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Constants = require('lib.ui.core.constants')
 local Assert = require('lib.ui.utils.assert')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local StyleScope = require('lib.ui.render.style_scope')
+local ModalSchema = require('lib.ui.controls.modal_schema')
 
 local Modal = Container:extends('Modal')
 local MODAL_BACKDROP_SCOPE = StyleScope.create('modal', 'backdrop')
 local MODAL_SURFACE_SCOPE = StyleScope.create('modal', 'surface')
 
-local MODAL_PUBLIC_KEYS = {
-    open = Rule.boolean({ optional = true }),
-    onOpenChange = Rule.func({ optional = true }),
-    dismissOnBackdrop = Rule.boolean(true),
-    dismissOnEscape = Rule.boolean(true),
-    trapFocus = Rule.boolean(true),
-    restoreFocus = Rule.boolean(true),
-    safeAreaAware = Rule.boolean(true),
-    backdropDismissBehavior = Rule.custom(function(_, value, level)
-        if value ~= 'close' and value ~= 'ignore' then
-            Assert.fail(
-                'Modal.backdropDismissBehavior must be "close" or "ignore"',
-                level or 1
-            )
-        end
-
-        return value
-    end, { default = 'close' }),
-}
-
-Modal.schema = Schema.extend(Container.schema, MODAL_PUBLIC_KEYS)
+Modal.schema = Schema.extend(Container.schema, ModalSchema)
 Modal:implements(ControlUtils.overlay_mixin)
 
 local function get_effective_open(self)
@@ -148,7 +128,7 @@ function Modal:constructor(opts)
         2
     )
 
-    Container.constructor(self, modal_opts, MODAL_PUBLIC_KEYS)
+    Container.constructor(self, modal_opts, ModalSchema)
     self.open = opts.open
     self.onOpenChange = opts.onOpenChange
     if opts.dismissOnBackdrop ~= nil then self.dismissOnBackdrop = opts.dismissOnBackdrop end

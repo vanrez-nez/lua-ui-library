@@ -3,12 +3,12 @@ local Drawable = require('lib.ui.core.drawable')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
-local Rule = require('lib.ui.utils.rule')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
 local StyleScope = require('lib.ui.render.style_scope')
+local TooltipSchema = require('lib.ui.controls.tooltip_schema')
 
 local Tooltip = Container:extends('Tooltip')
 local enum = Enum.enum
@@ -30,16 +30,6 @@ local TriggerMode = enum(
 Tooltip.Placement = Enums.Edge
 Tooltip.Align = Enums.SourceAlign
 Tooltip.TriggerMode = TriggerMode
-
-local TooltipSchema = {
-    open = Rule.boolean(),
-    onOpenChange = Rule.any(),
-    placement = Rule.enum(Enums.Edge, { default = Enums.Edge.TOP }),
-    align = Rule.enum(Enums.SourceAlign, { default = Enums.SourceAlign.CENTER }),
-    offset = Rule.number({ default = 8 }),
-    triggerMode = Rule.enum(TriggerMode, { default = TriggerMode.HOVER_FOCUS }),
-    safeAreaAware = Rule.boolean(true),
-}
 
 Tooltip.schema = Schema.extend(Container.schema, TooltipSchema)
 Tooltip:implements(ControlUtils.overlay_mixin)
