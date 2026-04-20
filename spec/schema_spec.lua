@@ -326,6 +326,39 @@ function TestSchema.test_omitted_spec_optional_fields_do_not_fail_validate_all()
   luaunit.assertNil(node.backgroundColor)
 end
 
+function TestSchema.test_control_class_schema_validates_local_props_during_base_initialization()
+  local Checkbox = require('lib.ui.controls.checkbox')
+  local RadioGroup = require('lib.ui.controls.radio_group')
+  local Slider = require('lib.ui.controls.slider')
+
+  luaunit.assertError(function()
+    Checkbox.new({ checked = 'checked' })
+  end)
+
+  luaunit.assertError(function()
+    RadioGroup.new({ value = 42 })
+  end)
+
+  luaunit.assertError(function()
+    Slider.new({ value = 'bad' })
+  end)
+end
+
+function TestSchema.test_control_behavior_defaults_preserve_user_overrides()
+  local Checkbox = require('lib.ui.controls.checkbox')
+
+  local defaulted = Checkbox.new({})
+  luaunit.assertEquals(defaulted.interactive, true)
+  luaunit.assertEquals(defaulted.focusable, true)
+
+  local overridden = Checkbox.new({
+    interactive = false,
+    focusable = false,
+  })
+  luaunit.assertEquals(overridden.interactive, false)
+  luaunit.assertEquals(overridden.focusable, false)
+end
+
 local M = {}
 
 function M.run()

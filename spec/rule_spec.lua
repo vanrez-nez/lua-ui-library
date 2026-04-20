@@ -155,6 +155,17 @@ function TestRule.test_validate_table_raises_on_non_table()
   end)
 end
 
+function TestRule.test_validate_table_items_validates_present_values()
+  local r = Rule.table({ items = Rule.string() })
+
+  Rule.validate(r, 'values', { 'a', 'b' })
+  Rule.validate(r, 'values', { [2] = 'b', first = 'a' })
+
+  luaunit.assertError(function()
+    Rule.validate(r, 'values', { 'a', 2 })
+  end)
+end
+
 -- Rule.validate — enum
 
 function TestRule.test_validate_enum_passes_on_allowed_value()
