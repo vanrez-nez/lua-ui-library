@@ -3,7 +3,7 @@ local Rule = require('lib.ui.utils.rule')
 
 return {
     checked = Rule.boolean(),
-    onCheckedChange = Rule.any(),
+    onCheckedChange = Rule.func({ optional = true }),
     disabled = Rule.boolean(false),
     dragThreshold = Rule.custom(function(_, value, _, level)
         if value == nil then return 10 end

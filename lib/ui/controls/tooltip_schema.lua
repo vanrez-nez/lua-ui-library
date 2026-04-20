@@ -13,7 +13,7 @@ local TriggerMode = enum(
 
 return {
     open = Rule.boolean(),
-    onOpenChange = Rule.any(),
+    onOpenChange = Rule.func({ optional = true }),
     placement = Rule.enum(Enums.Edge, { default = Enums.Edge.TOP }),
     align = Rule.enum(Enums.SourceAlign, { default = Enums.SourceAlign.CENTER }),
     offset = Rule.number({ default = 8 }),

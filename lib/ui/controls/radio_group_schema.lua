@@ -20,7 +20,7 @@ end
 
 return {
     value = Rule.any(),
-    onValueChange = Rule.any(),
+    onValueChange = Rule.func({ optional = true }),
     orientation = Rule.custom(function(_, value, _, level)
         value = value or Enums.Orientation.VERTICAL
         if not enum_has(Enums.Orientation, value) then

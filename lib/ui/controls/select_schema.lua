@@ -16,9 +16,9 @@ end
 
 return {
     value = Rule.any(),
-    onValueChange = Rule.any(),
+    onValueChange = Rule.func({ optional = true }),
     open = Rule.boolean(),
-    onOpenChange = Rule.any(),
+    onOpenChange = Rule.func({ optional = true }),
     selectionMode = Rule.custom(function(_, value, _, level)
         value = value or 'single'
         if value ~= 'single' and value ~= 'multiple' then

@@ -7,7 +7,7 @@ local enum_has = Enum.enum_has
 
 return {
     value = Rule.any(),
-    onValueChange = Rule.any(),
+    onValueChange = Rule.func({ optional = true }),
     min = Rule.number({ default = 0 }),
     max = Rule.custom(function(_, value, _, level, full_opts)
         value = (value == nil) and 1 or value

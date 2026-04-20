@@ -35,7 +35,7 @@ end
 
 return {
     checked = Rule.any(),
-    onCheckedChange = Rule.any(),
+    onCheckedChange = Rule.func({ optional = true }),
     disabled = Rule.boolean(false),
     label = Rule.any(),
     description = Rule.any(),
