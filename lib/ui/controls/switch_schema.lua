@@ -1,5 +1,6 @@
 local Assert = require('lib.ui.utils.assert')
 local Rule = require('lib.ui.utils.rule')
+local Container = require('lib.ui.core.container')
 
 return {
     checked = Rule.boolean(),
@@ -20,6 +21,14 @@ return {
         end
         return value
     end, { default = 'nearest' }),
-    label = Rule.any(),
-    description = Rule.any(),
+    -- Spec: ui-controls 6.6 anatomy/composition: optional associated content, non-interactive.
+    label = Rule.any_of({
+        Rule.string(),
+        Rule.instance(Container, 'Container')
+    }, { optional = true }),
+    -- Spec: ui-controls 6.6 anatomy/composition: optional associated content, non-interactive.
+    description = Rule.any_of({
+        Rule.string(),
+        Rule.instance(Container, 'Container')
+    }, { optional = true }),
 }

@@ -19,6 +19,7 @@ local function normalize_disabled_values(values)
 end
 
 return {
+    -- Spec: ui-controls 6.5 props: string | nil; value must resolve against registered Radio values.
     value = Rule.any(),
     onValueChange = Rule.func({ optional = true }),
     orientation = Rule.custom(function(_, value, _, level)

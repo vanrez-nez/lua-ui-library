@@ -4,6 +4,7 @@ local Enums = require('lib.ui.core.enums')
 return {
     open = Rule.boolean(),
     onOpenChange = Rule.func({ optional = true }),
+    -- Spec: ui-controls 6.15 props/defaults: "button" | "auto-dismiss", default "button".
     closeMethod = Rule.any({ default = 'button' }),
     duration = Rule.number(),
     stackable = Rule.boolean(true),

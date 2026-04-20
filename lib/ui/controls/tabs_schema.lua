@@ -6,6 +6,7 @@ local Enum = require('lib.ui.utils.enum')
 local enum_has = Enum.enum_has
 
 return {
+    -- Spec: ui-controls 6.17 props: string | nil; value maps to one trigger/panel pair.
     value = Rule.any(),
     onValueChange = Rule.func({ optional = true }),
     orientation = Rule.custom(function(_, value, _, level)
@@ -15,8 +16,10 @@ return {
         end
         return value
     end, { default = Enums.Orientation.HORIZONTAL }),
+    -- Spec: ui-controls 6.17 props/errors: "manual" only in this revision.
     activationMode = Rule.any({ default = 'manual' }),
     listScrollable = Rule.boolean(false),
     loopFocus = Rule.boolean(true),
+    -- Spec: ui-controls 6.17 props: table | nil of disabled tab values.
     disabledValues = Rule.any(),
 }

@@ -6,6 +6,7 @@ local Enum = require('lib.ui.utils.enum')
 local enum_has = Enum.enum_has
 
 return {
+    -- Spec: ui-controls 6.7 props: number | nil; effective value clamps to [min, max] and quantizes by step.
     value = Rule.any(),
     onValueChange = Rule.func({ optional = true }),
     min = Rule.number({ default = 0 }),

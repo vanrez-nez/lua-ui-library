@@ -15,6 +15,7 @@ local function normalize_disabled_values(values)
 end
 
 return {
+    -- Spec: ui-controls 6.10: single value is string | nil; multiple value is table | nil of unique strings.
     value = Rule.any(),
     onValueChange = Rule.func({ optional = true }),
     open = Rule.boolean(),
@@ -26,6 +27,7 @@ return {
         end
         return value
     end, { default = 'single' }),
+    -- Spec: ui-controls 6.10 props/defaults: placeholder is string | nil, default "None selected".
     placeholder = Rule.any({ default = 'None selected' }),
     modal = Rule.boolean(false),
     disabled = Rule.boolean(false),

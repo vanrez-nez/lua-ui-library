@@ -1,5 +1,6 @@
 local Assert = require('lib.ui.utils.assert')
 local Rule = require('lib.ui.utils.rule')
+local Container = require('lib.ui.core.container')
 
 local VALID_STATES = {
     checked = true,
@@ -34,11 +35,20 @@ local function validate_toggle_order(toggle_order, level)
 end
 
 return {
+    -- Spec: ui-controls 6.3 props: boolean | "indeterminate" | nil.
     checked = Rule.any(),
     onCheckedChange = Rule.func({ optional = true }),
     disabled = Rule.boolean(false),
-    label = Rule.any(),
-    description = Rule.any(),
+    -- Spec: ui-controls 6.3 anatomy/composition: optional associated content, non-interactive.
+    label = Rule.any_of({
+        Rule.string(),
+        Rule.instance(Container, 'Container')
+    }, { optional = true }),
+    -- Spec: ui-controls 6.3 anatomy/composition: optional associated content, non-interactive.
+    description = Rule.any_of({
+        Rule.string(),
+        Rule.instance(Container, 'Container')
+    }, { optional = true }),
     toggleOrder = Rule.custom(function(_, value, _, level)
         return validate_toggle_order(value, level)
     end),
