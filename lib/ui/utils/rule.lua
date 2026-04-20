@@ -56,8 +56,13 @@ validators.boolean = function(_, name, v)
   Assert.boolean(name, v, 2)
 end
 
-validators.table = function(_, name, v)
+validators.table = function(r, name, v)
   Assert.table(name, v, 2)
+  if r.items then
+    for key, item in pairs(v) do
+      Rule.validate(r.items, name .. '[' .. tostring(key) .. ']', item)
+    end
+  end
 end
 
 validators.func = function(_, name, v)
@@ -203,17 +208,22 @@ function Rule.boolean(opts)
   }
 end
 
---- Creates a table rule (type-check only; no structural validation).
---- @param opts table?  optional, default
+--- Creates a table rule.
+--- @param opts table?  optional, default, items
 --- @return table
 function Rule.table(opts)
   opts = opts or {}
-  check_opts(opts, BASE_OPTS)
+  check_opts(opts, {
+    optional = true,
+    default = true,
+    items = true,
+  })
   return {
     kind = 'table',
     optional = opts.optional or false,
     has_default = opts.default ~= nil,
     default = opts.default,
+    items = opts.items,
   }
 end
 
