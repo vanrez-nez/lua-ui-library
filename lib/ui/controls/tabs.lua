@@ -6,6 +6,7 @@ local ScrollableContainer = require('lib.ui.scroll.scrollable_container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local Enums = require('lib.ui.core.enums')
 local Constants = require('lib.ui.core.constants')
 local Enum = require('lib.ui.utils.enum')
@@ -93,7 +94,7 @@ local TabsSchema = {
     disabledValues = Rule.any(),
 }
 
-Tabs._schema = ControlUtils.extend_schema(Drawable._schema, TabsSchema)
+Tabs.schema = Schema.extend(Drawable.schema, TabsSchema)
 
 local function find_trigger_value_from_target(self, target)
     local current = target

@@ -5,6 +5,7 @@ local FontCache = require('lib.ui.text.font_cache')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local MathUtils = require('lib.ui.utils.math')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local StyleScope = require('lib.ui.render.style_scope')
 
@@ -42,7 +43,7 @@ local TextInputSchema = {
     fontSize = Rule.number({ default = 16 }),
 }
 
-TextInput._schema = ControlUtils.extend_schema(Drawable._schema, TextInputSchema)
+TextInput.schema = Schema.extend(Drawable.schema, TextInputSchema)
 
 local function get_selection_pair(self)
     if self._selection_controlled then

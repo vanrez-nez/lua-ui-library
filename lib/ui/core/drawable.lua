@@ -4,7 +4,7 @@ local Types = require('lib.ui.utils.types')
 local Rule = require('lib.ui.utils.rule')
 local Insets = require('lib.ui.core.insets')
 local Rectangle = require('lib.ui.core.rectangle')
-local Utils = require('lib.ui.utils.common')
+local Schema = require('lib.ui.utils.schema')
 local Motion = require('lib.ui.motion')
 local RootCompositor = require('lib.ui.render.root_compositor')
 local Styling = require('lib.ui.render.styling')
@@ -22,10 +22,7 @@ Drawable._root_compositing_capabilities = {
     blendMode = true,
 }
 
-Drawable._schema = Utils.merge_tables(
-    Utils.copy_table(Container._schema),
-    DrawableSchema
-)
+Drawable.schema = Schema.extend(Container.schema, DrawableSchema)
 
 local DEFAULT_FOCUS_RING_OFFSET = 2
 local DEFAULT_FOCUS_RING_WIDTH = 2

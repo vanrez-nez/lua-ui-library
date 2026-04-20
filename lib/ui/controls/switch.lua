@@ -3,6 +3,7 @@ local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local StyleScope = require('lib.ui.render.style_scope')
 
@@ -46,7 +47,7 @@ local SwitchSchema = {
     description = Rule.any(),
 }
 
-Switch._schema = ControlUtils.extend_schema(Drawable._schema, SwitchSchema)
+Switch.schema = Schema.extend(Drawable.schema, SwitchSchema)
 
 function Switch:constructor(opts)
     opts = opts or {}

@@ -20,8 +20,7 @@ local ALERT_SCOPES = {
     actions = StyleScope.create('alert', 'actions')
 }
 
-Alert.schema = Schema.create(Alert, AlertSchema)
-Alert.schema:copy_from(Schema.create(Alert, Modal._schema))
+Alert.schema = Schema.extend(Modal.schema, AlertSchema)
 
 local function is_content_node(value)
     return Types.is_table(value) and value._ui_container_instance == true

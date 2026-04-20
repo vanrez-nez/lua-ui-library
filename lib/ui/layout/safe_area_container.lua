@@ -3,6 +3,7 @@ local Container = require('lib.ui.core.container')
 local LayoutNode = require('lib.ui.layout.layout_node')
 local Rectangle = require('lib.ui.core.rectangle')
 local LayoutSpacing = require('lib.ui.layout.spacing')
+local Schema = require('lib.ui.utils.schema')
 local SafeAreaContainerSchema = require('lib.ui.layout.safe_area_container_schema')
 local Constants = require('lib.ui.core.constants')
 
@@ -10,7 +11,7 @@ local max = math.max
 local min = math.min
 
 local SafeAreaContainer = LayoutNode:extends('SafeAreaContainer')
-SafeAreaContainer._schema = SafeAreaContainerSchema
+SafeAreaContainer.schema = Schema.extend(LayoutNode.schema, SafeAreaContainerSchema)
 
 local APPLY_FLAG_KEYS = {
     left = 'applyLeft',

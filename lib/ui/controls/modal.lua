@@ -2,8 +2,9 @@ local Container = require('lib.ui.core.container')
 local Drawable = require('lib.ui.core.drawable')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Constants = require('lib.ui.core.constants')
-local Types = require('lib.ui.utils.types')
 local Assert = require('lib.ui.utils.assert')
+local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local StyleScope = require('lib.ui.render.style_scope')
 
 local Modal = Container:extends('Modal')
@@ -11,62 +12,26 @@ local MODAL_BACKDROP_SCOPE = StyleScope.create('modal', 'backdrop')
 local MODAL_SURFACE_SCOPE = StyleScope.create('modal', 'surface')
 
 local MODAL_PUBLIC_KEYS = {
-    open = {
-        default = nil,
-        validate = function(_, value, _, level)
-            if value ~= nil then
-                Assert.boolean('Modal.open', value, level or 1)
-            end
+    open = Rule.boolean({ optional = true }),
+    onOpenChange = Rule.func({ optional = true }),
+    dismissOnBackdrop = Rule.boolean(true),
+    dismissOnEscape = Rule.boolean(true),
+    trapFocus = Rule.boolean(true),
+    restoreFocus = Rule.boolean(true),
+    safeAreaAware = Rule.boolean(true),
+    backdropDismissBehavior = Rule.custom(function(_, value, level)
+        if value ~= 'close' and value ~= 'ignore' then
+            Assert.fail(
+                'Modal.backdropDismissBehavior must be "close" or "ignore"',
+                level or 1
+            )
+        end
 
-            return value
-        end,
-    },
-    onOpenChange = {
-        default = nil,
-        validate = function(_, value, _, level)
-            if value ~= nil and not Types.is_function(value) then
-                Assert.fail('Modal.onOpenChange must be a function or nil', level or 1)
-            end
-
-            return value
-        end,
-    },
-    dismissOnBackdrop = {
-        type = 'boolean',
-        default = true,
-    },
-    dismissOnEscape = {
-        type = 'boolean',
-        default = true,
-    },
-    trapFocus = {
-        type = 'boolean',
-        default = true,
-    },
-    restoreFocus = {
-        type = 'boolean',
-        default = true,
-    },
-    safeAreaAware = {
-        type = 'boolean',
-        default = true,
-    },
-    backdropDismissBehavior = {
-        default = 'close',
-        validate = function(_, value, _, level)
-            if value ~= 'close' and value ~= 'ignore' then
-                Assert.fail(
-                    'Modal.backdropDismissBehavior must be "close" or "ignore"',
-                    level or 1
-                )
-            end
-
-            return value
-        end,
-    },
+        return value
+    end, { default = 'close' }),
 }
 
-Modal._schema = ControlUtils.extend_schema(Container._schema, MODAL_PUBLIC_KEYS)
+Modal.schema = Schema.extend(Container.schema, MODAL_PUBLIC_KEYS)
 Modal:implements(ControlUtils.overlay_mixin)
 
 local function get_effective_open(self)

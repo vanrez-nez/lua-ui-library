@@ -5,6 +5,7 @@ local Drawable = require('lib.ui.core.drawable')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local StyleScope = require('lib.ui.render.style_scope')
 
 local TextArea = TextInput:extends('TextArea')
@@ -19,7 +20,7 @@ local TextAreaSchema = {
     momentum = Rule.boolean(false),
 }
 
-TextArea._schema = ControlUtils.extend_schema(TextInput._schema, TextAreaSchema)
+TextArea.schema = Schema.extend(TextInput.schema, TextAreaSchema)
 
 function TextArea:constructor(opts)
     opts = opts or {}

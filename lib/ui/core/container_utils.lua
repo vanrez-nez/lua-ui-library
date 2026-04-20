@@ -1072,18 +1072,33 @@ function _init_state_fields(self, config)
 end
 
 function _init_schema(self, extra_public_keys)
-    local declared_props = Utils.merge_tables(Utils.copy_table(self._schema or {}), extra_public_keys)
-
-    rawset(self, '_declared_props', declared_props)
-
-    local schema_props = {}
-    for key, rule in pairs(declared_props) do
-        if type(rule) == 'table' then
-            schema_props[key] = rule
-        end
+    local class = rawget(self, '_pclass') or getmetatable(self)
+    local schema = class.schema
+    if schema == nil then
+        schema = Schema.create({})
     end
 
-    rawset(self, 'schema', Schema.create(self, schema_props))
+    local declared_extras = nil
+    if extra_public_keys ~= nil then
+        local rule_overrides = {}
+        declared_extras = {}
+
+        for key, rule in pairs(extra_public_keys) do
+            declared_extras[key] = rule
+            if type(rule) == 'table' and rule.kind ~= nil then
+                rule_overrides[key] = rule
+            end
+        end
+
+        schema = Schema.extend(schema, rule_overrides)
+    end
+
+    local declared_props = schema:get_rules()
+    if declared_extras ~= nil then
+        declared_props = Utils.merge_tables(declared_props, declared_extras)
+    end
+
+    rawset(self, '_declared_props', declared_props)
 
     ContainerPropertyViews.install(self, {
         public = function(instance, key)
@@ -1097,20 +1112,21 @@ function _init_schema(self, extra_public_keys)
         end,
     })
 
-    return declared_props, schema_props
+    return declared_props, schema
 end
 
 function _init_hooks()
     -- No more Proxy/Reactive hooks — DirtyProps sync handles change detection.
 end
 
-function _apply_opts(self, opts, declared_props, schema_props)
+function _apply_opts(self, opts, declared_props)
     for key, value in pairs(opts) do
-        if declared_props[key] == nil then
+        local rule = declared_props[key]
+        if rule == nil then
             Assert.fail('Unsupported prop "' .. tostring(key) .. '"', 4)
         end
 
-        if schema_props[key] ~= nil then
+        if type(rule) == 'table' and rule.kind ~= nil then
             self[key] = value
         else
             ContainerPropertyViews.write_extra(self, key, value)

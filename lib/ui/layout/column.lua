@@ -1,9 +1,10 @@
 local LayoutNode = require('lib.ui.layout.layout_node')
 local SequentialLayout = require('lib.ui.layout.sequential_layout')
+local Schema = require('lib.ui.utils.schema')
 local ColumnSchema = require('lib.ui.layout.column_schema')
 
 local Column = LayoutNode:extends('Column')
-Column._schema = ColumnSchema
+Column.schema = Schema.extend(LayoutNode.schema, ColumnSchema)
 
 function Column:constructor(opts)
     LayoutNode.constructor(self, opts, ColumnSchema, {

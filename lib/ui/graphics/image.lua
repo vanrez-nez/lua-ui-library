@@ -6,7 +6,8 @@ local Rectangle = require('lib.ui.core.rectangle')
 local Texture = require('lib.ui.graphics.texture')
 local Sprite = require('lib.ui.graphics.sprite')
 local ControlUtils = require('lib.ui.controls.control_utils')
-local Utils = require('lib.ui.utils.common')
+local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local Enum = require('lib.ui.utils.enum')
 
@@ -14,7 +15,6 @@ local Image = Drawable:extends('Image')
 local max = math.max
 local min = math.min
 local enum = Enum.enum
-local enum_has = Enum.enum_has
 
 Image.FIT_CONTAIN = 'contain'
 Image.FIT_COVER = 'cover'
@@ -39,43 +39,17 @@ Image.Sampling = enum(
     { LINEAR = Image.SAMPLING_LINEAR }
 )
 
-local function validate_source(_, value, _, level)
-    if Types.is_instance(value, Texture) or Types.is_instance(value, Sprite) then
-        return value
-    end
-
-    Assert.fail('Image.source must be a Texture or Sprite', level or 1)
-end
-
-local function validate_enum(name, allowed)
-    return function(_, value, _, level)
-        if not Types.is_string(value) or not enum_has(allowed, value) then
-            Assert.fail(name .. ' is invalid', level or 1)
-        end
-        return value
-    end
-end
-
-Image._schema = Utils.merge_tables(Utils.copy_table(Drawable._schema), {
-    source = { validate = validate_source, required = true },
-    fit = {
-        validate = validate_enum('Image.fit', Image.Fit),
-        default = Image.Fit.CONTAIN,
-    },
-    alignX = {
-        validate = validate_enum('Image.alignX', Image.Align),
-        default = Image.Align.CENTER,
-    },
-    alignY = {
-        validate = validate_enum('Image.alignY', Image.Align),
-        default = Image.Align.CENTER,
-    },
-    sampling = {
-        validate = validate_enum('Image.sampling', Image.Sampling),
-        default = Image.Sampling.LINEAR,
-    },
-    decorative = { type = 'boolean', default = false },
-    accessibleName = { type = 'string' },
+Image.schema = Schema.extend(Drawable.schema, {
+    source = Rule.any_of({
+        Rule.instance(Texture, 'Texture'),
+        Rule.instance(Sprite, 'Sprite'),
+    }),
+    fit = Rule.enum(Image.Fit, { default = Image.Fit.CONTAIN }),
+    alignX = Rule.enum(Image.Align, { default = Image.Align.CENTER }),
+    alignY = Rule.enum(Image.Align, { default = Image.Align.CENTER }),
+    sampling = Rule.enum(Image.Sampling, { default = Image.Sampling.LINEAR }),
+    decorative = Rule.boolean(false),
+    accessibleName = Rule.string({ optional = true }),
 })
 
 local function resolve_source_view(source)

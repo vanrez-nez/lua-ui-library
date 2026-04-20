@@ -1,7 +1,7 @@
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
-local Utils = require('lib.ui.utils.common')
+local Schema = require('lib.ui.utils.schema')
 local DrawHelpers = require('lib.ui.shapes.draw_helpers')
 local ShapeFillSource = require('lib.ui.shapes.fill_source')
 local ShapeFillPlacement = require('lib.ui.shapes.fill_placement')
@@ -20,10 +20,7 @@ Shape._root_compositing_capabilities = {
     blendMode = true,
 }
 
-Shape._schema = Utils.merge_tables(
-    Utils.copy_table(Container._schema),
-    ShapeSchema
-)
+Shape.schema = Schema.extend(Container.schema, ShapeSchema)
 
 local FILL_MOTION_CACHE_KEYS = {
     fillColor = true,

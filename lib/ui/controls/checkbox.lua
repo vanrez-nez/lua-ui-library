@@ -3,6 +3,7 @@ local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local StyleScope = require('lib.ui.render.style_scope')
 
 local Checkbox = Drawable:extends('Checkbox')
@@ -70,7 +71,7 @@ Checkbox._control_schema = {
     end),
 }
 
-Checkbox._schema = ControlUtils.extend_schema(Drawable._schema, Checkbox._control_schema)
+Checkbox.schema = Schema.extend(Drawable.schema, Checkbox._control_schema)
 
 local function resolve_next_state(self)
     local current = get_effective_checked(self)

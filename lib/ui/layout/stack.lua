@@ -2,6 +2,7 @@ local LayoutNode = require('lib.ui.layout.layout_node')
 local Rectangle = require('lib.ui.core.rectangle')
 local LayoutSpacing = require('lib.ui.layout.spacing')
 local ContentFillGuard = require('lib.ui.layout.content_fill_guard')
+local Schema = require('lib.ui.utils.schema')
 local StackSchema = require('lib.ui.layout.stack_schema')
 local Constants = require('lib.ui.core.constants')
 
@@ -9,7 +10,7 @@ local max = math.max
 local min = math.min
 
 local Stack = LayoutNode:extends('Stack')
-Stack._schema = StackSchema
+Stack.schema = Schema.extend(LayoutNode.schema, StackSchema)
 
 local function effective_values(node)
     return setmetatable({}, {

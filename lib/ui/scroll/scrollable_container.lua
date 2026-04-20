@@ -3,6 +3,7 @@ local Drawable = require('lib.ui.core.drawable')
 local Assert = require('lib.ui.utils.assert')
 local MathUtils = require('lib.ui.utils.math')
 -- Proxy removed: DirtyProps sync handles change detection
+local Schema = require('lib.ui.utils.schema')
 local ScrollableContainerSchema = require('lib.ui.scroll.scrollable_container_schema')
 local Constants = require('lib.ui.core.constants')
 
@@ -22,7 +23,7 @@ local abs = math.abs
 --   scrollbars = optional visual Drawable nodes
 
 local ScrollableContainer = Container:extends('ScrollableContainer')
-ScrollableContainer._schema = ScrollableContainerSchema
+ScrollableContainer.schema = Schema.extend(Container.schema, ScrollableContainerSchema)
 
 ScrollableContainer.State = {
     Idle = Constants.SCROLL_STATE_IDLE,

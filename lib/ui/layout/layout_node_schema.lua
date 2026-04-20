@@ -26,17 +26,17 @@ end
 local LAYOUT_NODE_SCHEMA = {
     gap = Rule.number({ min = 0, default = 0 }),
     padding = CustomRules.padding({ default = 0 }),
-    paddingTop = Rule.number({ min = 0 }),
-    paddingRight = Rule.number({ min = 0 }),
-    paddingBottom = Rule.number({ min = 0 }),
-    paddingLeft = Rule.number({ min = 0 }),
+    paddingTop = Rule.number({ min = 0, optional = true }),
+    paddingRight = Rule.number({ min = 0, optional = true }),
+    paddingBottom = Rule.number({ min = 0, optional = true }),
+    paddingLeft = Rule.number({ min = 0, optional = true }),
     wrap = Rule.boolean(false),
     justify = Rule.custom(validate_justify, { default = Enums.Justify.START }),
     align = Rule.custom(validate_align, { default = Enums.Alignment.START }),
     responsive = Rule.all_of({
         ResponsiveBreakpointsGate.with_peer('breakpoints'),
         Responsive.schema_rule('Layout')
-    }),
+    }, { optional = true }),
 }
 
 return LAYOUT_NODE_SCHEMA

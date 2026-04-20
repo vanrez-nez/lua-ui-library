@@ -4,6 +4,7 @@ local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local StyleScope = require('lib.ui.render.style_scope')
 
@@ -17,7 +18,7 @@ local ButtonSchema = {
     disabled = Rule.boolean(false),
 }
 
-Button._schema = ControlUtils.extend_schema(Drawable._schema, ButtonSchema)
+Button.schema = Schema.extend(Drawable.schema, ButtonSchema)
 
 local function effective_disabled(self)
     return self.disabled == true

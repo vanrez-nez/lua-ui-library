@@ -4,6 +4,7 @@ local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 
 local Option = Drawable:extends('Option')
 
@@ -17,7 +18,7 @@ local OptionSchema = {
     disabled = Rule.boolean(false),
 }
 
-Option._schema = ControlUtils.extend_schema(Drawable._schema, OptionSchema)
+Option.schema = Schema.extend(Drawable.schema, OptionSchema)
 
 local function assert_string_or_node(name, value, level)
     if value == nil or Types.is_string(value) or Types.is_table(value) then

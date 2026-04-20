@@ -2,17 +2,14 @@ local Assert = require('lib.ui.utils.assert')
 local Container = require('lib.ui.core.container')
 local Types = require('lib.ui.utils.types')
 local Rectangle = require('lib.ui.core.rectangle')
-local Utils = require('lib.ui.utils.common')
+local Schema = require('lib.ui.utils.schema')
 local LayoutNodeSchema = require('lib.ui.layout.layout_node_schema')
 -- Proxy removed: DirtyProps sync handles change detection
 
 local max = math.max
 
 local LayoutNode = Container:extends('LayoutNode')
-LayoutNode._schema = Utils.merge_tables(
-    Utils.copy_table(Container._schema),
-    LayoutNodeSchema
-)
+LayoutNode.schema = Schema.extend(Container.schema, LayoutNodeSchema)
 
 local function assert_no_dual_responsive_breakpoints(responsive, breakpoints, level)
     if responsive ~= nil and breakpoints ~= nil then
@@ -44,10 +41,6 @@ end
 function LayoutNode:constructor(opts, schema, config)
     opts = opts or {}
     schema = schema or LayoutNodeSchema
-    local declared_schema = Utils.merge_tables(
-        Utils.copy_table(LayoutNode._schema),
-        schema
-    )
 
     assert_no_dual_responsive_breakpoints(
         opts.responsive,
@@ -55,7 +48,7 @@ function LayoutNode:constructor(opts, schema, config)
         3
     )
 
-    Container._initialize(self, opts, declared_schema, config)
+    Container._initialize(self, opts, schema, config)
 
     for key, value in pairs(opts) do
         self[key] = value

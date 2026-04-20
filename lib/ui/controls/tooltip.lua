@@ -4,6 +4,7 @@ local ControlUtils = require('lib.ui.controls.control_utils')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
@@ -40,7 +41,7 @@ local TooltipSchema = {
     safeAreaAware = Rule.boolean(true),
 }
 
-Tooltip._schema = ControlUtils.extend_schema(Container._schema, TooltipSchema)
+Tooltip.schema = Schema.extend(Container.schema, TooltipSchema)
 Tooltip:implements(ControlUtils.overlay_mixin)
 
 local function effective_open(self)

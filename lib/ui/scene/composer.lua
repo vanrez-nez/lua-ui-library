@@ -5,11 +5,12 @@ local Stage = require('lib.ui.scene.stage')
 local Transitions = require('lib.ui.scene.transitions')
 local Types = require('lib.ui.utils.types')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 -- Proxy removed
 local ComposerSchema = require('lib.ui.scene.composer_schema')
 
 local Composer = Container:extends('Composer')
-Composer._schema = ComposerSchema.composer
+Composer.schema = Schema.extend(Container.schema, ComposerSchema.composer)
 
 
 
@@ -226,7 +227,7 @@ end
 function Composer:constructor(opts)
     opts = copy_options(opts)
 
-    Container.constructor(self, {}, Composer._schema)
+    Container.constructor(self, {}, ComposerSchema.composer)
 
     for key, value in pairs(opts) do
         self[key] = value

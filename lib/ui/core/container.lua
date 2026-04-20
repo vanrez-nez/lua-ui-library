@@ -8,16 +8,18 @@ local EventDispatcher = require('lib.ui.event.event_dispatcher')
 
 local DirtyProps = require('lib.ui.utils.dirty_props')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local Utils = require('lib.ui.utils.common')
 local Motion = require('lib.ui.motion')
 local ContainerUtils = require('lib.ui.core.container_utils')
 local RootCompositor = require('lib.ui.render.root_compositor')
+local ContainerSchema = require('lib.ui.core.container_schema')
 
 local Container = EventDispatcher:extends('Container')
 
 Container:implements(DirtyProps)
 
-Container._schema = require('lib.ui.core.container_schema')
+Container.schema = Schema.create(ContainerSchema)
 
 local get_scissor_rect = ContainerUtils.get_scissor_rect
 local get_stencil_test = ContainerUtils.get_stencil_test
@@ -168,9 +170,11 @@ function Container:_initialize(opts, extra_public_keys, config)
     end
 
     _init_state_fields(self, config)
-    local declared_props, schema_props = _init_schema(self, extra_public_keys)
+    local declared_props, schema = _init_schema(self, extra_public_keys)
     _init_hooks()
-    _apply_opts(self, opts, declared_props, schema_props)
+    schema:set_defaults(self)
+    _apply_opts(self, opts, declared_props)
+    schema:validate_all(self)
 
     self:mark_dirty(
         'responsive', 'measurement', 'local_transform',

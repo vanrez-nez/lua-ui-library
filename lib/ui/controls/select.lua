@@ -5,6 +5,7 @@ local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local StyleScope = require('lib.ui.render.style_scope')
 
@@ -96,7 +97,7 @@ Select._control_schema = {
     end),
 }
 
-Select._schema = ControlUtils.extend_schema(Drawable._schema, Select._control_schema)
+Select.schema = Schema.extend(Drawable.schema, Select._control_schema)
 Select._overlay_root_key = '_popup_root'
 Select:implements(ControlUtils.overlay_mixin)
 

@@ -4,6 +4,7 @@ local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local MathUtils = require('lib.ui.utils.math')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
@@ -67,7 +68,7 @@ Slider._control_schema = {
     disabled = Rule.boolean(false),
 }
 
-Slider._schema = ControlUtils.extend_schema(Drawable._schema, Slider._control_schema)
+Slider.schema = Schema.extend(Drawable.schema, Slider._control_schema)
 
 local function ratio_for_value(self, value)
     local min_value = self.min or 0

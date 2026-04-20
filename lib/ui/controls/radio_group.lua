@@ -3,6 +3,7 @@ local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
 local Constants = require('lib.ui.core.constants')
@@ -107,7 +108,7 @@ RadioGroup._control_schema = {
     end),
 }
 
-RadioGroup._schema = ControlUtils.extend_schema(Drawable._schema, RadioGroup._control_schema)
+RadioGroup.schema = Schema.extend(Drawable.schema, RadioGroup._control_schema)
 
 local function focused_radio(self)
     local focus_owner = ControlUtils.stage_focus_owner(self)

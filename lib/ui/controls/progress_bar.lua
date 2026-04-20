@@ -4,6 +4,7 @@ local Assert = require('lib.ui.utils.assert')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local MathUtils = require('lib.ui.utils.math')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local Enums = require('lib.ui.core.enums')
 local StyleScope = require('lib.ui.render.style_scope')
@@ -20,7 +21,7 @@ local ProgressBarSchema = {
     orientation = Rule.enum(Enums.Orientation, { default = Enums.Orientation.HORIZONTAL }),
 }
 
-ProgressBar._schema = ControlUtils.extend_schema(Drawable._schema, ProgressBarSchema)
+ProgressBar.schema = Schema.extend(Drawable.schema, ProgressBarSchema)
 
 local function effective_value(self)
     local value = self.value

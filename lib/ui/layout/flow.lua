@@ -5,6 +5,7 @@ local MathUtils = require('lib.ui.utils.math')
 local LayoutSpacing = require('lib.ui.layout.spacing')
 local Direction = require('lib.ui.layout.direction')
 local ContentFillGuard = require('lib.ui.layout.content_fill_guard')
+local Schema = require('lib.ui.utils.schema')
 local FlowSchema = require('lib.ui.layout.flow_schema')
 local Enums = require('lib.ui.core.enums')
 local Constants = require('lib.ui.core.constants')
@@ -17,7 +18,7 @@ local is_percentage_string = MathUtils.is_percentage_string
 local enum_has = Enum.enum_has
 
 local Flow = LayoutNode:extends('Flow')
-Flow._schema = FlowSchema
+Flow.schema = Schema.extend(LayoutNode.schema, FlowSchema)
 
 local function effective_values(node)
     return setmetatable({}, {

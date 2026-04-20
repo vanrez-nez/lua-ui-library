@@ -7,6 +7,7 @@ local Rectangle = require('lib.ui.core.rectangle')
 local Responsive = require('lib.ui.layout.responsive')
 local Types = require('lib.ui.utils.types')
 local Constants = require('lib.ui.core.constants')
+local Schema = require('lib.ui.utils.schema')
 -- Proxy removed
 local Memoize = require('lib.ui.utils.memoize')
 local RuntimeProfiler = require('profiler.runtime_profiler')
@@ -16,7 +17,7 @@ local huge = math.huge
 
 local Stage = Container:extends('Stage')
 local StageSchema = require('lib.ui.scene.stage_schema')
-Stage._schema = StageSchema
+Stage.schema = Schema.extend(Container.schema, StageSchema)
 
 local DRAG_THRESHOLD = 4
 local DRAG_THRESHOLD_SQUARED = DRAG_THRESHOLD * DRAG_THRESHOLD

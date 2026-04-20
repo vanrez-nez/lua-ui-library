@@ -3,9 +3,9 @@ local CustomRules = require('lib.ui.schema.custom_rules')
 local Motion = require('lib.ui.motion')
 
 local CONTAINER_SCHEMA = {
-    id = Rule.string({ non_empty = true }),
-    name = Rule.string({ non_empty = true }),
-    tag = Rule.string({ non_empty = true }),
+    id = Rule.string({ non_empty = true, optional = true }),
+    name = Rule.string({ non_empty = true, optional = true }),
+    tag = Rule.string({ non_empty = true, optional = true }),
     internal = Rule.boolean(false),
     visible = Rule.boolean({ default = true }),
     interactive = Rule.boolean(false),
@@ -27,18 +27,18 @@ local CONTAINER_SCHEMA = {
         default = 0,
         allow_content = true
     }),
-    minWidth = Rule.number(),
-    minHeight = Rule.number(),
-    maxWidth = Rule.number(),
-    maxHeight = Rule.number(),
+    minWidth = Rule.number({ optional = true }),
+    minHeight = Rule.number({ optional = true }),
+    maxWidth = Rule.number({ optional = true }),
+    maxHeight = Rule.number({ optional = true }),
     scaleX = Rule.number({ default = 1 }),
     scaleY = Rule.number({ default = 1 }),
     rotation = Rule.number({ default = 0 }),
     skewX = Rule.number({ default = 0 }),
     skewY = Rule.number({ default = 0 }),
-    breakpoints = Rule.table(),
-    motionPreset = Rule.custom(Motion.validate_motion_preset),
-    motion = Rule.custom(Motion.validate_motion),
+    breakpoints = Rule.table({ optional = true }),
+    motionPreset = Rule.custom(Motion.validate_motion_preset, { optional = true }),
+    motion = Rule.custom(Motion.validate_motion, { optional = true }),
 }
 
 return CONTAINER_SCHEMA

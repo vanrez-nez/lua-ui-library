@@ -4,6 +4,7 @@ local Button = require('lib.ui.controls.button')
 local ControlUtils = require('lib.ui.controls.control_utils')
 local Assert = require('lib.ui.utils.assert')
 local Rule = require('lib.ui.utils.rule')
+local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
@@ -24,7 +25,7 @@ local NotificationSchema = {
     safeAreaAware = Rule.boolean(true),
 }
 
-Notification._schema = ControlUtils.extend_schema(Container._schema, NotificationSchema)
+Notification.schema = Schema.extend(Container.schema, NotificationSchema)
 Notification:implements(ControlUtils.overlay_mixin)
 
 local function effective_open(self)
