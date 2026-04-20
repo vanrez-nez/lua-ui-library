@@ -36,7 +36,10 @@ end
 
 return {
     -- Spec: ui-controls 6.3 props: boolean | "indeterminate" | nil.
-    checked = Rule.any(),
+    checked = Rule.any_of({
+        Rule.boolean(),
+        Rule.literal('indeterminate')
+    }, { optional = true }),
     onCheckedChange = Rule.func({ optional = true }),
     disabled = Rule.boolean(false),
     -- Spec: ui-controls 6.3 anatomy/composition: optional associated content, non-interactive.

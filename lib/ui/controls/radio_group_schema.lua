@@ -5,22 +5,9 @@ local Enum = require('lib.ui.utils.enum')
 
 local enum_has = Enum.enum_has
 
-local function normalize_disabled_values(values)
-    local map = {}
-    if values == nil then
-        return map
-    end
-
-    Assert.table('RadioGroup.disabledValues', values, 3)
-    for index = 1, #values do
-        map[tostring(values[index])] = true
-    end
-    return map
-end
-
 return {
     -- Spec: ui-controls 6.5 props: string | nil; value must resolve against registered Radio values.
-    value = Rule.any(),
+    value = Rule.string({ optional = true }),
     onValueChange = Rule.func({ optional = true }),
     orientation = Rule.custom(function(_, value, _, level)
         value = value or Enums.Orientation.VERTICAL
@@ -29,8 +16,5 @@ return {
         end
         return value
     end, { default = Enums.Orientation.VERTICAL }),
-    disabledValues = Rule.custom(function(_, value)
-        normalize_disabled_values(value)
-        return value
-    end),
+    disabledValues = Rule.table({ optional = true, items = Rule.string() }),
 }

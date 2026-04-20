@@ -5,7 +5,7 @@ return {
     open = Rule.boolean(),
     onOpenChange = Rule.func({ optional = true }),
     -- Spec: ui-controls 6.15 props/defaults: "button" | "auto-dismiss", default "button".
-    closeMethod = Rule.any({ default = 'button' }),
+    closeMethod = Rule.enum({ 'button', 'auto-dismiss' }, { default = 'button' }),
     duration = Rule.number(),
     stackable = Rule.boolean(true),
     edge = Rule.enum(Enums.Edge, { default = Enums.Edge.TOP }),

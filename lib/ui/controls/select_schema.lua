@@ -1,22 +1,12 @@
 local Assert = require('lib.ui.utils.assert')
 local Rule = require('lib.ui.utils.rule')
 
-local function normalize_disabled_values(values)
-    local map = {}
-    if values == nil then
-        return map
-    end
-
-    Assert.table('Select.disabledValues', values, 3)
-    for index = 1, #values do
-        map[tostring(values[index])] = true
-    end
-    return map
-end
-
 return {
     -- Spec: ui-controls 6.10: single value is string | nil; multiple value is table | nil of unique strings.
-    value = Rule.any(),
+    value = Rule.any_of({
+        Rule.string(),
+        Rule.table({ items = Rule.string() })
+    }, { optional = true }),
     onValueChange = Rule.func({ optional = true }),
     open = Rule.boolean(),
     onOpenChange = Rule.func({ optional = true }),
@@ -28,11 +18,8 @@ return {
         return value
     end, { default = 'single' }),
     -- Spec: ui-controls 6.10 props/defaults: placeholder is string | nil, default "None selected".
-    placeholder = Rule.any({ default = 'None selected' }),
+    placeholder = Rule.string({ default = 'None selected' }),
     modal = Rule.boolean(false),
     disabled = Rule.boolean(false),
-    disabledValues = Rule.custom(function(_, value)
-        normalize_disabled_values(value)
-        return value
-    end),
+    disabledValues = Rule.table({ optional = true, items = Rule.string() }),
 }
