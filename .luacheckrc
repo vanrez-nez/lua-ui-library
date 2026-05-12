@@ -8,6 +8,7 @@ files["**/*.lua"] = {
 exclude_files = {
     ".luarocks/**",
     "_test/**",
+    "node_modules/**",
     "external/**",
     "lua_modules/**",
     "tmp/**",

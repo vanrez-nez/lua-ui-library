@@ -1,0 +1,16 @@
+{
+  "name": "lua-ui-library",
+  "private": true,
+  "scripts": {
+    "build:ts": "tstl -p tsconfig.json",
+    "watch:ts": "tstl -p tsconfig.json --watch",
+    "list:ts": "tsc -p tsconfig.json --noEmit --listFiles",
+    "check:lua": "./lua_modules/bin/luacheck ."
+  },
+  "devDependencies": {
+    "@typescript-to-lua/language-extensions": "^1.19.0",
+    "love-typescript-definitions": "^11.5.3",
+    "typescript": "^6.0.2",
+    "typescript-to-lua": "^1.36.0"
+  }
+}
