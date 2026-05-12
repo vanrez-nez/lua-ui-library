@@ -3,13 +3,13 @@ local Container = require('lib.ui.core.container')
 local Text = require('lib.ui.controls.text')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local StyleScope = require('lib.ui.render.style_scope')
 local SelectSchema = require('lib.ui.controls.select_schema')
 
-local Select = Drawable:extends('Select')
+local Select = Control:extends('Select')
 local SELECT_TRIGGER_SCOPE = StyleScope.create('select', 'trigger')
 local SELECT_POPUP_SCOPE = StyleScope.create('select', 'popup')
 
@@ -70,16 +70,14 @@ local function request_open_change(self, next_value)
         self._open_uncontrolled = next_value
     end
 
-    ControlUtils.call_if_function(self.onOpenChange, next_value)
+    Control.call_if_function(self.onOpenChange, next_value)
 end
 
 local raw_selected_value, request_value_change =
-    ControlUtils.controlled_value('value', nil)
+    Control.controlled_value('value', nil)
 
-Select._control_schema = SelectSchema
-Select.schema = Schema.extend(Drawable.schema, Select._control_schema)
+Select.schema = Schema.extend(Control.schema, SelectSchema)
 Select._overlay_root_key = '_popup_root'
-Select:implements(ControlUtils.overlay_mixin)
 
 local function sync_option_registry(self)
     local options = collect_options(self._popup_slot, {})
@@ -187,7 +185,7 @@ local function position_popup(self, stage)
 end
 
 local function next_enabled_option(self, direction)
-    local current_focus = ControlUtils.stage_focus_owner(self)
+    local current_focus = self:stageFocusOwner()
     local options = self._option_order
     local current_index = 0
 
@@ -217,11 +215,10 @@ function Select:constructor(opts)
     opts = opts or {}
     validate_value_shape(opts)
 
-    local drawable_opts = ControlUtils.base_opts(opts, {
+    Control.constructor(self, opts, {
         interactive = true,
         focusable = false,
     })
-    Drawable.constructor(self, drawable_opts)
     self.value = opts.value
     self.onValueChange = opts.onValueChange
     self.open = opts.open
@@ -231,12 +228,11 @@ function Select:constructor(opts)
     self.modal = opts.modal == true
     self.disabled = opts.disabled == true
     self.disabledValues = opts.disabledValues
-    ControlUtils.validate_control_schema(self, opts, Select._control_schema, 2)
 
     self._ui_select_control = true
 
-    ControlUtils.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
-    ControlUtils.assert_controlled_pair('open', opts.open, 'onOpenChange', opts.onOpenChange, 2)
+    Control.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
+    Control.assert_controlled_pair('open', opts.open, 'onOpenChange', opts.onOpenChange, 2)
 
     self._value_controlled = opts.value ~= nil
     self._value_uncontrolled = opts.value
@@ -313,7 +309,7 @@ function Select:constructor(opts)
     self._popup_slot = popup_slot
     self._summary_text = summary
 
-    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
+    self:addControlListener(self, 'ui.activate', function(event)
         if self.disabled then
             return
         end
@@ -329,20 +325,20 @@ function Select:constructor(opts)
         end
     end)
 
-    ControlUtils.add_control_listener(self, popup_root, 'ui.navigate', function(event)
+    self:addControlListener(popup_root, 'ui.navigate', function(event)
         if not effective_open(self) or event.navigationMode ~= Constants.NAVIGATION_MODE_DIRECTIONAL then
             return
         end
 
         local next_option = next_enabled_option(self, event.direction)
         if next_option ~= nil then
-            ControlUtils.request_focus(next_option)
+            self:requestFocus(next_option)
             event:preventDefault()
             event:stopPropagation()
         end
     end)
 
-    ControlUtils.add_control_listener(self, popup_root, 'ui.dismiss', function(event)
+    self:addControlListener(popup_root, 'ui.dismiss', function(event)
         if effective_open(self) then
             request_open_change(self, false)
             event:stopPropagation()
@@ -394,7 +390,7 @@ function Select:_activate_option(option)
         end
         request_value_change(self, value)
         request_open_change(self, false)
-        ControlUtils.request_focus(self.trigger)
+        self:requestFocus(self.trigger)
         return
     end
 
@@ -430,7 +426,7 @@ function Select:update(dt)
     sync_summary(self)
 
     local wants_open = effective_open(self)
-    local stage = ControlUtils.find_stage(self)
+    local stage = self:findStage()
     local was_open = self._last_open_state
 
     if wants_open and stage ~= nil then
@@ -440,7 +436,7 @@ function Select:update(dt)
             self:_raise_motion('open', { defaultTarget = 'popup' })
             local first = next_enabled_option(self, 'down') or self._option_order[1]
             if first ~= nil then
-                ControlUtils.request_focus(first)
+                self:requestFocus(first)
             end
         end
     else
@@ -472,7 +468,7 @@ function Select:_overlay_focus_contract()
 end
 
 function Select:on_destroy()
-    ControlUtils.remove_control_listeners(self)
+    self:removeControlListeners()
     self:_detach_overlay()
     self._popup_root:destroy()
     Container.on_destroy(self)

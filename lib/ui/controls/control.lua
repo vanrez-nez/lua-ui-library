@@ -1,75 +1,38 @@
 local Assert = require('lib.ui.utils.assert')
+local Drawable = require('lib.ui.core.drawable')
+local Schema = require('lib.ui.utils.schema')
 local Types = require('lib.ui.utils.types')
--- Proxy removed
-local Rule = require('lib.ui.utils.rule')
-local Common = require('lib.ui.utils.common')
+local ControlSchema = require('lib.ui.controls.control_schema')
 
-local Utils = {}
+local Control = Drawable:extends('Control')
 
-local BASE_KEYS = {
-    id = true,
-    name = true,
-    tag = true,
-    internal = true,
-    visible = true,
-    interactive = true,
-    enabled = true,
-    focusable = true,
-    clipChildren = true,
-    zIndex = true,
-    anchorX = true,
-    anchorY = true,
-    pivotX = true,
-    pivotY = true,
-    x = true,
-    y = true,
-    width = true,
-    height = true,
-    minWidth = true,
-    minHeight = true,
-    maxWidth = true,
-    maxHeight = true,
-    scaleX = true,
-    scaleY = true,
-    rotation = true,
-    skewX = true,
-    skewY = true,
-    breakpoints = true,
-    padding = true,
-    alignX = true,
-    alignY = true,
-    responsive = true,
-    skin = true,
-    shader = true,
-    opacity = true,
-    blendMode = true,
-    mask = true,
-    motionPreset = true,
-    motion = true,
-    style_scope = true,
-    style_variant = true,
-}
+Control.schema = Schema.extend(Drawable.schema, ControlSchema.rules)
 
-function Utils.base_opts(opts, defaults)
+function Control:constructor(opts, defaults)
     opts = opts or {}
-    local out = {}
+    local effective_opts = {}
+
+    for key, value in pairs(opts) do
+        effective_opts[key] = value
+    end
 
     if defaults ~= nil then
         for key, value in pairs(defaults) do
-            out[key] = value
+            if effective_opts[key] == nil then
+                effective_opts[key] = value
+            end
         end
     end
 
-    for key, value in pairs(opts) do
-        if BASE_KEYS[key] then
-            out[key] = value
-        end
-    end
-
-    return out
+    Drawable.constructor(self, effective_opts)
+    self._ui_control_instance = true
 end
 
-function Utils.assert_controlled_pair(value_name, value, callback_name, callback, level)
+function Control.new(opts)
+    return Control(opts)
+end
+
+function Control.assert_controlled_pair(value_name, value, callback_name, callback, level)
     if value ~= nil and not Types.is_function(callback) then
         Assert.fail(
             tostring(value_name) .. ' without ' .. tostring(callback_name) ..
@@ -79,74 +42,14 @@ function Utils.assert_controlled_pair(value_name, value, callback_name, callback
     end
 end
 
-function Utils.find_stage(node)
-    local current = node
-    while current ~= nil do
-        if current._ui_stage_instance == true then
-            return current
-        end
-        current = current.parent
-    end
-    return nil
-end
-
-function Utils.stage_focus_owner(node)
-    local stage = Utils.find_stage(node)
-    if stage == nil then
-        return nil
-    end
-    return stage._focus_owner
-end
-
-function Utils.request_focus(node)
-    local stage = Utils.find_stage(node)
-    if stage == nil then
-        return nil
-    end
-
-    local req = stage._request_focus_internal or stage._request_focus_internal
-    if Types.is_function(req) then
-        req(stage, node)
-    end
-    return stage
-end
-
-function Utils.clear_focus(node)
-    local stage = Utils.find_stage(node)
-    if stage == nil then
-        return nil
-    end
-
-    local req = stage._request_focus_internal or stage._request_focus_internal
-    if Types.is_function(req) then
-        req(stage, nil)
-    end
-    return stage
-end
-
-function Utils.call_if_function(fn, ...)
+function Control.call_if_function(fn, ...)
     if Types.is_function(fn) then
         return fn(...)
     end
     return nil
 end
 
-function Utils.is_disabled(node)
-    return node.disabled == true or node.enabled == false
-end
-
-function Utils.extend_schema(base, overrides)
-    return Common.merge_tables(Common.copy_table(base or {}), overrides or {})
-end
-
-function Utils.validate_control_schema(instance, opts, schema, level)
-    opts = opts or {}
-    for key, rule in pairs(schema or {}) do
-        Rule.validate(rule, key, opts[key], instance, level or 2, opts)
-    end
-end
-
-function Utils.controlled_value(prop_name, default_value, config)
+function Control.controlled_value(prop_name, default_value, config)
     config = config or {}
     local callback_name = config.callback or 'onValueChange'
     local controlled_key = config.controlled_key or ('_' .. prop_name .. '_controlled')
@@ -186,7 +89,7 @@ function Utils.controlled_value(prop_name, default_value, config)
     local function request(self, next_value)
         next_value = coerce(self, next_value)
         if self[controlled_key] then
-            Utils.call_if_function(self[callback_name], next_value)
+            Control.call_if_function(self[callback_name], next_value)
             return next_value
         end
 
@@ -195,14 +98,70 @@ function Utils.controlled_value(prop_name, default_value, config)
         if Types.is_function(mark_dirty) then
             mark_dirty(self)
         end
-        Utils.call_if_function(self[callback_name], next_value)
+        Control.call_if_function(self[callback_name], next_value)
         return next_value
     end
 
     return get_effective, request
 end
 
-function Utils.add_control_listener(owner, target, event_type, listener, phase)
+function Control:findStage()
+    local current = self
+    while current ~= nil do
+        if current._ui_stage_instance == true then
+            return current
+        end
+        current = current.parent
+    end
+    return self[self._overlay_mounted_stage_key or '_mounted_stage']
+end
+
+function Control:stageFocusOwner()
+    local stage = self:findStage()
+    if stage == nil then
+        return nil
+    end
+    return stage._focus_owner
+end
+
+function Control:requestFocus(node)
+    local stage = self:findStage()
+    if stage == nil and node ~= nil and node ~= self then
+        local current = node
+        while current ~= nil do
+            if current._ui_stage_instance == true then
+                stage = current
+                break
+            end
+            current = current.parent
+        end
+    end
+
+    if stage == nil then
+        return nil
+    end
+
+    local request = stage._request_focus_internal
+    if Types.is_function(request) then
+        request(stage, node or self)
+    end
+    return stage
+end
+
+function Control:clearFocus()
+    local stage = self:findStage()
+    if stage == nil then
+        return nil
+    end
+
+    local request = stage._request_focus_internal
+    if Types.is_function(request) then
+        request(stage, nil)
+    end
+    return stage
+end
+
+function Control:addControlListener(target, event_type, listener, phase)
     Assert.table('target', target, 2)
     if not Types.is_function(listener) then
         Assert.fail('listener must be a function', 2)
@@ -210,10 +169,10 @@ function Utils.add_control_listener(owner, target, event_type, listener, phase)
 
     target:_add_event_listener(event_type, listener, phase)
 
-    local registrations = owner._control_listener_registrations
+    local registrations = self._control_listener_registrations
     if registrations == nil then
         registrations = {}
-        owner._control_listener_registrations = registrations
+        self._control_listener_registrations = registrations
     end
 
     registrations[#registrations + 1] = {
@@ -226,8 +185,8 @@ function Utils.add_control_listener(owner, target, event_type, listener, phase)
     return listener
 end
 
-function Utils.remove_control_listeners(owner)
-    local registrations = owner._control_listener_registrations or {}
+function Control:removeControlListeners()
+    local registrations = self._control_listener_registrations or {}
     for index = #registrations, 1, -1 do
         local registration = registrations[index]
         local target = registration.target
@@ -242,14 +201,18 @@ function Utils.remove_control_listeners(owner)
     end
 end
 
-function Utils.set_interaction_state(node, enabled)
+function Control.set_interaction_state(node, enabled)
     enabled = enabled == true
     rawset(node, 'enabled', enabled)
     rawset(node, 'interactive', enabled)
     rawset(node, 'focusable', enabled)
 end
 
-function Utils.coerce_to_node(value, fallback_tag)
+function Control:setInteractionState(enabled)
+    Control.set_interaction_state(self, enabled)
+end
+
+function Control.coerce_to_node(value, fallback_tag)
     if value == nil then
         return nil
     end
@@ -288,20 +251,15 @@ function Utils.coerce_to_node(value, fallback_tag)
     Assert.fail('slot content must be a string, node, or nil', 2)
 end
 
-Utils.overlay_mixin = {
-    _overlay_root_key = '_overlay_root',
-    _overlay_mounted_stage_key = '_mounted_stage',
-}
-
-function Utils.overlay_mixin:_get_overlay_root()
+function Control:_get_overlay_root()
     return self[self._overlay_root_key or '_overlay_root']
 end
 
-function Utils.overlay_mixin._overlay_focus_contract()
+function Control:_overlay_focus_contract() -- luacheck: ignore self
     return nil
 end
 
-function Utils.overlay_mixin:_attach_overlay(stage)
+function Control:_attach_overlay(stage)
     local overlay_root = self:_get_overlay_root()
     if overlay_root == nil or stage == nil then
         return self
@@ -326,7 +284,7 @@ function Utils.overlay_mixin:_attach_overlay(stage)
     return self
 end
 
-function Utils.overlay_mixin:_detach_overlay()
+function Control:_detach_overlay()
     local mounted_stage = self[self._overlay_mounted_stage_key or '_mounted_stage']
     local overlay_root = self:_get_overlay_root()
 
@@ -345,4 +303,4 @@ function Utils.overlay_mixin:_detach_overlay()
     return self
 end
 
-return Utils
+return Control

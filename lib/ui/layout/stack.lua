@@ -105,7 +105,7 @@ local function resize_to_content(self, content_width, content_height)
 end
 
 function Stack:constructor(opts)
-    LayoutNode.constructor(self, opts, StackSchema, {
+    LayoutNode.constructor(self, opts, nil, {
         allow_content_width = true,
         allow_content_height = true,
     })

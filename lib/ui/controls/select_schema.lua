@@ -1,5 +1,6 @@
 local Assert = require('lib.ui.utils.assert')
 local Rule = require('lib.ui.utils.rule')
+local ControlSchema = require('lib.ui.controls.control_schema')
 
 return {
     -- Spec: ui-controls 6.10: single value is string | nil; multiple value is table | nil of unique strings.
@@ -7,9 +8,9 @@ return {
         Rule.string(),
         Rule.table({ items = Rule.string() })
     }, { optional = true }),
-    onValueChange = Rule.func({ optional = true }),
-    open = Rule.boolean(),
-    onOpenChange = Rule.func({ optional = true }),
+    onValueChange = ControlSchema.optional_callback(),
+    open = Rule.boolean({ optional = true }),
+    onOpenChange = ControlSchema.optional_callback(),
     selectionMode = Rule.custom(function(_, value, _, level)
         value = value or 'single'
         if value ~= 'single' and value ~= 'multiple' then

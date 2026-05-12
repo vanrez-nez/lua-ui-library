@@ -1,13 +1,9 @@
-local Assert = require('lib.ui.utils.assert')
-local Types = require('lib.ui.utils.types')
 local Rule = require('lib.ui.utils.rule')
+local ControlSchema = require('lib.ui.controls.control_schema')
 
 return {
-    value = Rule.custom(function(_, value, _, level)
-        if not Types.is_string(value) or value == '' then
-            Assert.fail('Radio.value is required', level or 1)
-        end
-        return value
-    end, { required = true }),
+    value = ControlSchema.required_string_value('Radio'),
     disabled = Rule.boolean(false),
+    label = ControlSchema.associated_content(),
+    description = ControlSchema.associated_content(),
 }

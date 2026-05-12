@@ -41,8 +41,7 @@ It is forbidden to modify, expand, or replace files under `lib/ui/utils` without
 
 For classes where the Specification mandates a specific property API:
 1. Use Rule and Schema helpers under `self.schema`.
-2. Properties must be scoped under `self.props`.
-3. Dirty tracking must use the `DirtyProps` class — do not implement custom dirty flags.
+2. Dirty tracking must use the `DirtyProps` class — do not implement custom dirty flags.
 
 ---
 
@@ -177,9 +176,6 @@ A nil dereference in internals is not a bug to catch — it is the error. The st
 - Base class for defining enums is inside `lib/ui/utils/enum.lua`
 - A class may own its constants and enums as long as no other module references them directly.
 - The moment a second module references a class-local constant or enum, promote it to global.
-- Class-local constants and enums are exported as static members of the class, not instance fields.
-- Class-local atoms follow the same naming rules: category prefix, uppercase snake case, opaque values.
-- Do not pre-promote. Keep atoms class-local until a concrete second consumer exists.
 
 ## Anti-patterns
 

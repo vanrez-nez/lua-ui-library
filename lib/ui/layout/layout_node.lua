@@ -40,7 +40,6 @@ end
 
 function LayoutNode:constructor(opts, schema, config)
     opts = opts or {}
-    schema = schema or LayoutNodeSchema
 
     assert_no_dual_responsive_breakpoints(
         opts.responsive,

@@ -2,7 +2,6 @@ std = "luajit+love"
 
 files["**/*.lua"] = {
     globals = {
-        "love",
     },
 }
 

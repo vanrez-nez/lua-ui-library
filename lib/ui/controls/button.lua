@@ -2,16 +2,16 @@ local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local StyleScope = require('lib.ui.render.style_scope')
 local ButtonSchema = require('lib.ui.controls.button_schema')
 
-local Button = Drawable:extends('Button')
+local Button = Control:extends('Button')
 local BUTTON_SURFACE_SCOPE = StyleScope.create('button', 'surface')
 
-Button.schema = Schema.extend(Drawable.schema, ButtonSchema)
+Button.schema = Schema.extend(Control.schema, ButtonSchema)
 
 local function effective_disabled(self)
     return self.disabled == true
@@ -23,7 +23,7 @@ local function set_pressed(self, value)
     local controlled = self._pressed_controlled == true
     if controlled then
         local on_change = self.onPressedChange
-        ControlUtils.call_if_function(on_change, value)
+        Control.call_if_function(on_change, value)
         return
     end
 
@@ -39,12 +39,11 @@ end
 
 function Button:constructor(opts)
     opts = opts or {}
-    local drawable_opts = ControlUtils.base_opts(opts, {
+    Control.constructor(self, opts, {
         interactive = true,
         focusable = true,
         style_scope = BUTTON_SURFACE_SCOPE,
     })
-    Drawable.constructor(self, drawable_opts)
     self.pressed = opts.pressed
     self.onPressedChange = opts.onPressedChange
     self.onActivate = opts.onActivate
@@ -58,7 +57,7 @@ function Button:constructor(opts)
     self._hovered = false
     self._pressing_pointer = false
 
-    ControlUtils.assert_controlled_pair('pressed', opts.pressed, 'onPressedChange', opts.onPressedChange, 2)
+    Control.assert_controlled_pair('pressed', opts.pressed, 'onPressedChange', opts.onPressedChange, 2)
 
     local content = Container({
         tag = 'button_content',
@@ -73,14 +72,14 @@ function Button:constructor(opts)
     self._content_slot = content
 
     if opts.content ~= nil then
-        self:_set_content_internal(opts.content)
+        self:_set_content_internal(Control.coerce_to_node(opts.content, 'button.content'))
     end
 
     self.surface = self
     self.border = self
     self._last_visual_variant = self:resolveStyleVariant()
 
-    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
+    self:addControlListener(self, 'ui.activate', function(event)
         if effective_disabled(self) then return end
 
         if event.defaultPrevented then
@@ -88,10 +87,10 @@ function Button:constructor(opts)
         end
 
         set_pressed(self, false)
-        ControlUtils.call_if_function(self.onActivate, self, event)
+        Control.call_if_function(self.onActivate, self, event)
     end)
 
-    ControlUtils.add_control_listener(self, self, 'ui.drag', function(event)
+    self:addControlListener(self, 'ui.drag', function(event)
         if effective_disabled(self) then return end
 
         if event.dragPhase == Constants.DRAG_PHASE_START then
@@ -164,7 +163,7 @@ function Button:update(dt)
     Drawable.update(self, dt)
 
     local disabled = effective_disabled(self)
-    ControlUtils.set_interaction_state(self, not disabled)
+    self:setInteractionState(not disabled)
 
     if disabled then
         self._hovered = false
@@ -197,7 +196,7 @@ function Button:update(dt)
 end
 
 function Button:on_destroy()
-    ControlUtils.remove_control_listeners(self)
+    self:removeControlListeners()
     Container.on_destroy(self)
 end
 

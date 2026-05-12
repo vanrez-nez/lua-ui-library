@@ -2,7 +2,7 @@ local Rule = require('lib.ui.utils.rule')
 
 return {
     wrap = Rule.boolean(true),
-    rows = Rule.number(),
+    rows = Rule.number({ optional = true }),
     scrollXEnabled = Rule.boolean(false),
     scrollYEnabled = Rule.boolean(true),
     momentum = Rule.boolean(false),

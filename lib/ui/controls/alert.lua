@@ -3,7 +3,7 @@ local Container = require('lib.ui.core.container')
 local Drawable = require('lib.ui.core.drawable')
 local Column = require('lib.ui.layout.column')
 local Row = require('lib.ui.layout.row')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local Schema = require('lib.ui.utils.schema')
 local AlertSchema = require('lib.ui.controls.alert_schema')
 local Constants = require('lib.ui.core.constants')
@@ -118,21 +118,18 @@ function Alert:constructor(opts)
     opts = opts or {}
     Assert.table('opts', opts, 2)
 
-    local modal_opts = ControlUtils.base_opts(opts, {
-        safeAreaAware = true,
-    })
+    local modal_opts = {}
 
-    modal_opts.open = opts.open
-    modal_opts.onOpenChange = opts.onOpenChange
-    modal_opts.dismissOnBackdrop = opts.dismissOnBackdrop
-    modal_opts.dismissOnEscape = opts.dismissOnEscape
-    modal_opts.trapFocus = opts.trapFocus
-    modal_opts.restoreFocus = opts.restoreFocus
-    modal_opts.safeAreaAware = opts.safeAreaAware
-    modal_opts.backdropDismissBehavior = opts.backdropDismissBehavior
+    for key, value in pairs(opts) do
+        modal_opts[key] = value
+    end
 
-    local title_node = ControlUtils.coerce_to_node(opts.title, 'alert.title')
-    local message_node = ControlUtils.coerce_to_node(opts.message, 'alert.message')
+    if modal_opts.safeAreaAware == nil then
+        modal_opts.safeAreaAware = true
+    end
+
+    local title_node = Control.coerce_to_node(opts.title, 'alert.title')
+    local message_node = Control.coerce_to_node(opts.message, 'alert.message')
     local actions_container = build_actions_container(opts.actions)
     local initial_variant = opts.variant or Constants.INTENT_DEFAULT
     local title_slot = build_slot('title', title_node, initial_variant)
@@ -199,7 +196,7 @@ function Alert:_handle_overlay_opened_internal()
     local target = resolve_initial_action(self, actions)
 
     if target ~= nil then
-        ControlUtils.request_focus(target)
+        self:requestFocus(target)
     end
 end
 

@@ -61,12 +61,12 @@ local function resolve_axis(value, available, min_value, max_value)
 end
 
 local function validate_effective_props(self)
-    local effective_values = effective_values(self)
-    local gap = effective_values.gap
-    local wrap = effective_values.wrap
-    local justify = effective_values.justify
-    local align = effective_values.align
-    local direction = effective_values.direction
+    local values = effective_values(self)
+    local gap = values.gap
+    local wrap = values.wrap
+    local justify = values.justify
+    local align = values.align
+    local direction = values.direction
 
     Assert.number('Flow.gap', gap, 3)
     Assert.boolean('Flow.wrap', wrap, 3)
@@ -313,7 +313,7 @@ local function place_invisible_children(invisible_children, content_rect)
 end
 
 function Flow:constructor(opts)
-    LayoutNode.constructor(self, opts, FlowSchema, {
+    LayoutNode.constructor(self, opts, nil, {
         allow_content_width = true,
         allow_content_height = true,
     })

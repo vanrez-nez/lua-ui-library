@@ -1,7 +1,7 @@
 local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local MathUtils = require('lib.ui.utils.math')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
@@ -9,11 +9,11 @@ local Enums = require('lib.ui.core.enums')
 local StyleScope = require('lib.ui.render.style_scope')
 local ProgressBarSchema = require('lib.ui.controls.progress_bar_schema')
 
-local ProgressBar = Drawable:extends('ProgressBar')
+local ProgressBar = Control:extends('ProgressBar')
 local PROGRESS_BAR_TRACK_SCOPE = StyleScope.create('progressBar', 'track')
 local PROGRESS_BAR_INDICATOR_SCOPE = StyleScope.create('progressBar', 'indicator')
 
-ProgressBar.schema = Schema.extend(Drawable.schema, ProgressBarSchema)
+ProgressBar.schema = Schema.extend(Control.schema, ProgressBarSchema)
 
 local function effective_value(self)
     local value = self.value
@@ -74,11 +74,10 @@ end
 
 function ProgressBar:constructor(opts)
     opts = opts or {}
-    local drawable_opts = ControlUtils.base_opts(opts, {
+    Control.constructor(self, opts, {
         interactive = false,
         focusable = false,
     })
-    Drawable.constructor(self, drawable_opts)
     self.value = opts.value
     self.min = opts.min or 0
     self.max = opts.max or 1
@@ -158,7 +157,7 @@ function ProgressBar:update(dt)
 end
 
 function ProgressBar:on_destroy()
-    ControlUtils.remove_control_listeners(self)
+    self:removeControlListeners()
     Container.on_destroy(self)
 end
 

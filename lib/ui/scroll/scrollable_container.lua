@@ -407,7 +407,7 @@ function ScrollableContainer.__newindex(self, key, value)
 end
 
 function ScrollableContainer:constructor(opts)
-    Container.constructor(self, opts, ScrollableContainerSchema)
+    Container.constructor(self, opts)
 
     for key, value in pairs(opts or {}) do
         self[key] = value

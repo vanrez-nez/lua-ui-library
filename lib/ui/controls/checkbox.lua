@@ -1,11 +1,11 @@
 local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local Schema = require('lib.ui.utils.schema')
 local StyleScope = require('lib.ui.render.style_scope')
 local CheckboxSchema = require('lib.ui.controls.checkbox_schema')
 
-local Checkbox = Drawable:extends('Checkbox')
+local Checkbox = Control:extends('Checkbox')
 local CHECKBOX_BOX_SCOPE = StyleScope.create('checkbox', 'box')
 local CHECKBOX_INDICATOR_SCOPE = StyleScope.create('checkbox', 'indicator')
 
@@ -22,13 +22,12 @@ local function normalize_checked(_, value)
 end
 
 local get_effective_checked, request_checked =
-    ControlUtils.controlled_value('checked', 'unchecked', {
+    Control.controlled_value('checked', 'unchecked', {
         callback = 'onCheckedChange',
         normalize = normalize_checked,
     })
 
-Checkbox._control_schema = CheckboxSchema
-Checkbox.schema = Schema.extend(Drawable.schema, Checkbox._control_schema)
+Checkbox.schema = Schema.extend(Control.schema, CheckboxSchema)
 
 local function resolve_next_state(self)
     local current = get_effective_checked(self)
@@ -55,18 +54,16 @@ end
 
 function Checkbox:constructor(opts)
     opts = opts or {}
-    local drawable_opts = ControlUtils.base_opts(opts, {
+    Control.constructor(self, opts, {
         interactive = true,
         focusable = true,
     })
-    Drawable.constructor(self, drawable_opts)
     self.checked = opts.checked
     self.onCheckedChange = opts.onCheckedChange
     self.disabled = opts.disabled == true
     self.label = opts.label
     self.description = opts.description
     self.toggleOrder = opts.toggleOrder
-    ControlUtils.validate_control_schema(self, opts, Checkbox._control_schema, 2)
     self.pointerFocusCoupling = 'before'
 
     self._ui_checkbox_control = true
@@ -97,9 +94,9 @@ function Checkbox:constructor(opts)
     self.box = box
     self.indicator = indicator
 
-    ControlUtils.assert_controlled_pair('checked', opts.checked, 'onCheckedChange', opts.onCheckedChange, 2)
+    Control.assert_controlled_pair('checked', opts.checked, 'onCheckedChange', opts.onCheckedChange, 2)
 
-    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
+    self:addControlListener(self, 'ui.activate', function(event)
         if self.disabled == true then return end
         if event.defaultPrevented then return end
 
@@ -141,7 +138,7 @@ function Checkbox:update(dt)
     Drawable.update(self, dt)
 
     local disabled = self.disabled == true
-    ControlUtils.set_interaction_state(self, not disabled)
+    self:setInteractionState(not disabled)
 
     local box = self.box
     local indicator = self.indicator
@@ -176,7 +173,7 @@ function Checkbox:update(dt)
 end
 
 function Checkbox:on_destroy()
-    ControlUtils.remove_control_listeners(self)
+    self:removeControlListeners()
     Container.on_destroy(self)
 end
 

@@ -1,18 +1,17 @@
 local Container = require('lib.ui.core.container')
 local Drawable = require('lib.ui.core.drawable')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local Constants = require('lib.ui.core.constants')
 local Assert = require('lib.ui.utils.assert')
 local Schema = require('lib.ui.utils.schema')
 local StyleScope = require('lib.ui.render.style_scope')
 local ModalSchema = require('lib.ui.controls.modal_schema')
 
-local Modal = Container:extends('Modal')
+local Modal = Control:extends('Modal')
 local MODAL_BACKDROP_SCOPE = StyleScope.create('modal', 'backdrop')
 local MODAL_SURFACE_SCOPE = StyleScope.create('modal', 'surface')
 
-Modal.schema = Schema.extend(Container.schema, ModalSchema)
-Modal:implements(ControlUtils.overlay_mixin)
+Modal.schema = Schema.extend(Control.schema, ModalSchema)
 
 local function get_effective_open(self)
     if self.open ~= nil then
@@ -37,7 +36,7 @@ local function request_open_change(self, next_value)
         self._open_uncontrolled = next_value
     end
 
-    ControlUtils.call_if_function(self.onOpenChange, next_value)
+    Control.call_if_function(self.onOpenChange, next_value)
 end
 
 local function should_close_from_backdrop(self)
@@ -68,7 +67,7 @@ function Modal:_before_overlay_detach(mounted_stage, overlay_root)
 end
 
 function Modal:_detach_overlay()
-    ControlUtils.overlay_mixin._detach_overlay(self)
+    Control._detach_overlay(self)
     self._opened_once_for_mount = false
     self._last_open_state = get_effective_open(self)
 end
@@ -103,7 +102,8 @@ function Modal:constructor(opts)
     Assert.table('opts', opts, 2)
 
     local content = opts.content
-    local modal_opts = ControlUtils.base_opts(opts, {
+
+    Control.constructor(self, opts, {
         width = 0,
         height = 0,
         visible = false,
@@ -111,16 +111,7 @@ function Modal:constructor(opts)
         focusable = false,
     })
 
-    modal_opts.open = opts.open
-    modal_opts.onOpenChange = opts.onOpenChange
-    modal_opts.dismissOnBackdrop = opts.dismissOnBackdrop
-    modal_opts.dismissOnEscape = opts.dismissOnEscape
-    modal_opts.trapFocus = opts.trapFocus
-    modal_opts.restoreFocus = opts.restoreFocus
-    modal_opts.safeAreaAware = opts.safeAreaAware
-    modal_opts.backdropDismissBehavior = opts.backdropDismissBehavior
-
-    ControlUtils.assert_controlled_pair(
+    Control.assert_controlled_pair(
         'open',
         opts.open,
         'onOpenChange',
@@ -128,7 +119,6 @@ function Modal:constructor(opts)
         2
     )
 
-    Container.constructor(self, modal_opts, ModalSchema)
     self.open = opts.open
     self.onOpenChange = opts.onOpenChange
     if opts.dismissOnBackdrop ~= nil then self.dismissOnBackdrop = opts.dismissOnBackdrop end
@@ -205,7 +195,7 @@ function Modal:constructor(opts)
     overlay_frame:addChild(surface)
     surface:addChild(content_slot)
 
-    ControlUtils.add_control_listener(self, backdrop, 'ui.activate', function(event)
+    self:addControlListener(backdrop, 'ui.activate', function(event)
         if should_close_from_backdrop(self) then
             request_open_change(self, false)
             event:stopPropagation()
@@ -216,7 +206,7 @@ function Modal:constructor(opts)
         event:stopPropagation()
     end)
 
-    ControlUtils.add_control_listener(self, overlay_root, 'ui.dismiss', function(event)
+    self:addControlListener(overlay_root, 'ui.dismiss', function(event)
         if self.dismissOnEscape == true then
             request_open_change(self, false)
             event:stopPropagation()
@@ -275,7 +265,7 @@ function Modal:close_internal()
 end
 
 function Modal:_sync_overlay_mount()
-    local stage = ControlUtils.find_stage(self)
+    local stage = self:findStage()
     local mounted_stage = self._mounted_stage
     local wants_open = get_effective_open(self)
 
@@ -319,7 +309,7 @@ function Modal:update(dt)
 end
 
 function Modal:on_destroy()
-    ControlUtils.remove_control_listeners(self)
+    self:removeControlListeners()
     self:_detach_overlay()
 
     self._overlay_root:destroy()

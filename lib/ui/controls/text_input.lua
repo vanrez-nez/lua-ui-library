@@ -2,14 +2,14 @@ local Drawable = require('lib.ui.core.drawable')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local FontCache = require('lib.ui.text.font_cache')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local MathUtils = require('lib.ui.utils.math')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local StyleScope = require('lib.ui.render.style_scope')
 local TextInputSchema = require('lib.ui.controls.text_input_schema')
 
-local TextInput = Drawable:extends('TextInput')
+local TextInput = Control:extends('TextInput')
 local TEXT_INPUT_FIELD_SCOPE = StyleScope.create('textInput', 'field')
 
 TextInput.InputMode = { text = 'text', numeric = 'numeric', email = 'email', url = 'url', search = 'search' }
@@ -20,13 +20,13 @@ local function strlen(value)
 end
 
 local get_effective_value, set_value_request =
-    ControlUtils.controlled_value('value', '', {
+    Control.controlled_value('value', '', {
         normalize = function(_, value)
             return tostring(value or '')
         end,
     })
 
-TextInput.schema = Schema.extend(Drawable.schema, TextInputSchema)
+TextInput.schema = Schema.extend(Control.schema, TextInputSchema)
 
 local function get_selection_pair(self)
     if self._selection_controlled then
@@ -49,13 +49,13 @@ local function set_selection_request(self, s, e)
     if e < s then s, e = e, s end
 
     if self._selection_controlled then
-        ControlUtils.call_if_function(self.onSelectionChange, s, e)
+        Control.call_if_function(self.onSelectionChange, s, e)
         return
     end
 
     self._selection_start = s
     self._selection_end = e
-    ControlUtils.call_if_function(self.onSelectionChange, s, e)
+    Control.call_if_function(self.onSelectionChange, s, e)
 end
 
 local function reset_blink(self)
@@ -64,7 +64,7 @@ local function reset_blink(self)
 end
 
 local function has_focus(self)
-    return ControlUtils.stage_focus_owner(self) == self
+    return self:stageFocusOwner() == self
 end
 
 local function apply_max_length(self, value)
@@ -117,13 +117,11 @@ end
 function TextInput:constructor(opts)
     opts = opts or {}
 
-    local drawable_opts = ControlUtils.base_opts(opts, {
+    Control.constructor(self, opts, {
         interactive = true,
         focusable = true,
         style_scope = TEXT_INPUT_FIELD_SCOPE,
     })
-
-    Drawable.constructor(self, drawable_opts)
     self.value = opts.value
     self.onValueChange = opts.onValueChange
     self.selectionStart = opts.selectionStart
@@ -158,7 +156,7 @@ function TextInput:constructor(opts)
         Assert.fail('TextInput.inputMode is invalid', 2)
     end
 
-    ControlUtils.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
+    Control.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
 
     local has_start = opts.selectionStart ~= nil
     local has_end = opts.selectionEnd ~= nil
@@ -181,10 +179,10 @@ function TextInput:constructor(opts)
     self._caret_blink_t = 0
     self._caret_blink_on = true
 
-    ControlUtils.add_control_listener(self, self, 'ui.activate', function()
+    self:addControlListener(self, 'ui.activate', function()
         if self.disabled then return end
 
-        ControlUtils.request_focus(self)
+        self:requestFocus()
 
         local value = get_effective_value(self)
         local at_end = strlen(value)
@@ -192,7 +190,7 @@ function TextInput:constructor(opts)
         reset_blink(self)
     end)
 
-    ControlUtils.add_control_listener(self, self, 'ui.text.input', function(event)
+    self:addControlListener(self, 'ui.text.input', function(event)
         if self.disabled or self.readOnly then return end
         if not has_focus(self) then return end
 
@@ -207,7 +205,7 @@ function TextInput:constructor(opts)
         event:stopPropagation()
     end)
 
-    ControlUtils.add_control_listener(self, self, 'ui.text.compose', function(event)
+    self:addControlListener(self, 'ui.text.compose', function(event)
         if self.disabled or self.readOnly then return end
         if not has_focus(self) then return end
 
@@ -216,7 +214,7 @@ function TextInput:constructor(opts)
         event:stopPropagation()
     end)
 
-    ControlUtils.add_control_listener(self, self, 'ui.navigate', function(event)
+    self:addControlListener(self, 'ui.navigate', function(event)
         if self.disabled then return end
         if not has_focus(self) then return end
 
@@ -247,7 +245,7 @@ function TextInput:constructor(opts)
         end
     end)
 
-    ControlUtils.add_control_listener(self, self, 'ui.submit', function(event)
+    self:addControlListener(self, 'ui.submit', function(event)
         if self.disabled then return end
         if not has_focus(self) then return end
 
@@ -258,13 +256,13 @@ function TextInput:constructor(opts)
         end
 
         if behavior == 'submit' then
-            ControlUtils.call_if_function(self.onSubmit, get_effective_value(self), self, event)
+            Control.call_if_function(self.onSubmit, get_effective_value(self), self, event)
             event:preventDefault()
             return
         end
 
         if behavior == 'blur' then
-            ControlUtils.clear_focus(self)
+            self:clearFocus()
             event:preventDefault()
             return
         end
@@ -349,7 +347,7 @@ function TextInput:update(dt)
 
     self._focused = focused
 
-    ControlUtils.set_interaction_state(self, not disabled)
+    self:setInteractionState(not disabled)
 
     if focused ~= was_focused and
         love ~= nil and
@@ -376,6 +374,11 @@ function TextInput:update(dt)
     end
 
     return self
+end
+
+function TextInput:on_destroy()
+    self:removeControlListeners()
+    Drawable.on_destroy(self)
 end
 
 function TextInput._measure_text(self)

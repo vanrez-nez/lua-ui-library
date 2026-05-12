@@ -53,7 +53,10 @@ return function(owner, helpers)
 
         return {
             title = 'Fixed / Fill / Percent Sizing',
-            description = 'Viewport fills the stage, Root uses fixed sizing, Root->A resolves percent sizing from Root, A->B resolves nested percentages, and B->C mixes fixed width with percentage height.',
+            description = [[
+                Viewport fills the stage, Root uses fixed sizing, Root->A resolves percent sizing from Root,
+                A->B resolves nested percentages, and B->C mixes fixed width with percentage height.
+            ]],
         }
     end)
 end

@@ -1,6 +1,6 @@
 local Assert = require('lib.ui.utils.assert')
 local Rule = require('lib.ui.utils.rule')
-local Container = require('lib.ui.core.container')
+local ControlSchema = require('lib.ui.controls.control_schema')
 
 local VALID_STATES = {
     checked = true,
@@ -40,19 +40,13 @@ return {
         Rule.boolean(),
         Rule.literal('indeterminate')
     }, { optional = true }),
-    onCheckedChange = Rule.func({ optional = true }),
+    onCheckedChange = ControlSchema.optional_callback(),
     disabled = Rule.boolean(false),
     -- Spec: ui-controls 6.3 anatomy/composition: optional associated content, non-interactive.
-    label = Rule.any_of({
-        Rule.string(),
-        Rule.instance(Container, 'Container')
-    }, { optional = true }),
+    label = ControlSchema.associated_content(),
     -- Spec: ui-controls 6.3 anatomy/composition: optional associated content, non-interactive.
-    description = Rule.any_of({
-        Rule.string(),
-        Rule.instance(Container, 'Container')
-    }, { optional = true }),
+    description = ControlSchema.associated_content(),
     toggleOrder = Rule.custom(function(_, value, _, level)
         return validate_toggle_order(value, level)
-    end),
+    end, { optional = true }),
 }

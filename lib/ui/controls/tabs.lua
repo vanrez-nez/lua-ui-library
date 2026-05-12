@@ -4,7 +4,7 @@ local Row = require('lib.ui.layout.row')
 local Column = require('lib.ui.layout.column')
 local ScrollableContainer = require('lib.ui.scroll.scrollable_container')
 local Assert = require('lib.ui.utils.assert')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local Schema = require('lib.ui.utils.schema')
 local Enums = require('lib.ui.core.enums')
 local Constants = require('lib.ui.core.constants')
@@ -14,7 +14,7 @@ local TabsSchema = require('lib.ui.controls.tabs_schema')
 
 local enum_has = Enum.enum_has
 
-local Tabs = Drawable:extends('Tabs')
+local Tabs = Control:extends('Tabs')
 local TABS_LIST_SCOPE = StyleScope.create('tabs', 'list')
 local TABS_INDICATOR_SCOPE = StyleScope.create('tabs', 'indicator')
 local TABS_TRIGGER_SCOPE = StyleScope.create('tabs', 'trigger')
@@ -74,11 +74,11 @@ local function normalize_tab_value(self, current)
 end
 
 local effective_value, request_value =
-    ControlUtils.controlled_value('value', nil, {
+    Control.controlled_value('value', nil, {
         normalize = normalize_tab_value,
     })
 
-Tabs.schema = Schema.extend(Drawable.schema, TabsSchema)
+Tabs.schema = Schema.extend(Control.schema, TabsSchema)
 
 local function find_trigger_value_from_target(self, target)
     local current = target
@@ -102,7 +102,7 @@ local function sync_visual_state(self)
     for key, node in pairs(triggers) do
         local disabled = trigger_is_disabled(self, key)
         local active = (value == key)
-        ControlUtils.set_interaction_state(node, not disabled)
+        Control.set_interaction_state(node, not disabled)
         node._tab_active = active
         node._tab_disabled = disabled
         node:setStyleVariant(self:_resolve_trigger_variant(node))
@@ -111,7 +111,7 @@ local function sync_visual_state(self)
     for key, node in pairs(panels) do
         local active = (value == key)
         node.props:raw_set('visible', active)
-        ControlUtils.set_interaction_state(node, active)
+        Control.set_interaction_state(node, active)
         node._tab_active = active
         node:setStyleVariant(self:_resolve_panel_variant(node))
     end
@@ -224,11 +224,10 @@ end
 
 function Tabs:constructor(opts)
     opts = opts or {}
-    local drawable_opts = ControlUtils.base_opts(opts, {
+    Control.constructor(self, opts, {
         interactive = true,
         focusable = false,
     })
-    Drawable.constructor(self, drawable_opts)
     self.value = opts.value
     self.onValueChange = opts.onValueChange
     self.orientation = opts.orientation or Enums.Orientation.HORIZONTAL
@@ -247,7 +246,7 @@ function Tabs:constructor(opts)
         Assert.fail('activationMode other than "manual" is invalid', 2)
     end
 
-    ControlUtils.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
+    Control.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
 
     self._value_controlled = opts.value ~= nil
     self._value_uncontrolled = opts.value
@@ -327,7 +326,7 @@ function Tabs:constructor(opts)
     self.indicator = indicator
     self.panel = panels
 
-    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
+    self:addControlListener(self, 'ui.activate', function(event)
         local val = find_trigger_value_from_target(self, event.target)
         if val == nil then
             return
@@ -342,10 +341,10 @@ function Tabs:constructor(opts)
         event:stopPropagation()
     end)
 
-    ControlUtils.add_control_listener(self, self, 'ui.navigate', function(event)
+    self:addControlListener(self, 'ui.navigate', function(event)
         if event.navigationMode ~= Constants.NAVIGATION_MODE_DIRECTIONAL then return end
 
-        local focus_owner = ControlUtils.stage_focus_owner(self)
+        local focus_owner = self:stageFocusOwner()
         if focus_owner == nil then return end
 
         local current = find_trigger_value_from_target(self, focus_owner)
@@ -370,7 +369,7 @@ function Tabs:constructor(opts)
 
         local trigger = self._trigger_nodes[next_value]
         if trigger ~= nil then
-            ControlUtils.request_focus(trigger)
+            self:requestFocus(trigger)
             event:preventDefault()
             event:stopPropagation()
         end
@@ -490,6 +489,11 @@ end
 
 function Tabs:_get_active_value()
     return effective_value(self)
+end
+
+function Tabs:on_destroy()
+    self:removeControlListeners()
+    Container.on_destroy(self)
 end
 
 return Tabs

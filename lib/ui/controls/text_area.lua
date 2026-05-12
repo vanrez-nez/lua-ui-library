@@ -3,7 +3,6 @@ local ScrollableContainer = require('lib.ui.scroll.scrollable_container')
 local Container = require('lib.ui.core.container')
 local Drawable = require('lib.ui.core.drawable')
 local Assert = require('lib.ui.utils.assert')
-local ControlUtils = require('lib.ui.controls.control_utils')
 local Schema = require('lib.ui.utils.schema')
 local StyleScope = require('lib.ui.render.style_scope')
 local TextAreaSchema = require('lib.ui.controls.text_area_schema')
@@ -59,7 +58,7 @@ function TextArea:constructor(opts)
     self.scrollRegion = region_surface
     self._scroll_region = region
 
-    ControlUtils.add_control_listener(self, self, 'ui.submit', function(event)
+    self:addControlListener(self, 'ui.submit', function(event)
         if self.disabled or self.readOnly then return end
         if not self:_is_focused() then return end
 
@@ -68,7 +67,7 @@ function TextArea:constructor(opts)
         event:stopImmediatePropagation()
     end, 'capture')
 
-    ControlUtils.add_control_listener(self, self, 'ui.scroll', function(event)
+    self:addControlListener(self, 'ui.scroll', function(event)
         if not self:_is_focused() then return end
         local region_ref = self._scroll_region
         if region_ref == nil then return end

@@ -1,14 +1,14 @@
 local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local Schema = require('lib.ui.utils.schema')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
 local Constants = require('lib.ui.core.constants')
 local RadioGroupSchema = require('lib.ui.controls.radio_group_schema')
 
-local RadioGroup = Drawable:extends('RadioGroup')
+local RadioGroup = Control:extends('RadioGroup')
 local enum_has = Enum.enum_has
 
 
@@ -88,15 +88,14 @@ local function normalize_value(self, current)
 end
 
 local effective_value, request_value =
-    ControlUtils.controlled_value('value', nil, {
+    Control.controlled_value('value', nil, {
         normalize = normalize_value,
     })
 
-RadioGroup._control_schema = RadioGroupSchema
-RadioGroup.schema = Schema.extend(Drawable.schema, RadioGroup._control_schema)
+RadioGroup.schema = Schema.extend(Control.schema, RadioGroupSchema)
 
 local function focused_radio(self)
-    local focus_owner = ControlUtils.stage_focus_owner(self)
+    local focus_owner = self:stageFocusOwner()
     local current = focus_owner
     while current ~= nil and current ~= self do
         if current._ui_radio_control == true then
@@ -109,16 +108,14 @@ end
 
 function RadioGroup:constructor(opts)
     opts = opts or {}
-    local drawable_opts = ControlUtils.base_opts(opts, {
+    Control.constructor(self, opts, {
         interactive = true,
         focusable = false,
     })
-    Drawable.constructor(self, drawable_opts)
     self.value = opts.value
     self.onValueChange = opts.onValueChange
     self.orientation = opts.orientation or Enums.Orientation.VERTICAL
     self.disabledValues = opts.disabledValues
-    ControlUtils.validate_control_schema(self, opts, RadioGroup._control_schema, 2)
 
     self._ui_radio_group_control = true
 
@@ -126,7 +123,7 @@ function RadioGroup:constructor(opts)
         Assert.fail('RadioGroup.orientation must be "horizontal" or "vertical"', 2)
     end
 
-    ControlUtils.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
+    Control.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
 
     self._value_controlled = opts.value ~= nil
     self._value_uncontrolled = opts.value
@@ -134,7 +131,7 @@ function RadioGroup:constructor(opts)
     self._radio_order = {}
     self._radio_by_value = {}
 
-    ControlUtils.add_control_listener(self, self, 'ui.navigate', function(event)
+    self:addControlListener(self, 'ui.navigate', function(event)
         if event.navigationMode ~= Constants.NAVIGATION_MODE_DIRECTIONAL then
             return
         end
@@ -176,7 +173,7 @@ function RadioGroup:constructor(opts)
             end
         until is_radio_enabled(self, radios[next_index])
 
-        ControlUtils.request_focus(radios[next_index])
+        self:requestFocus(radios[next_index])
         event:preventDefault()
         event:stopPropagation()
     end)
@@ -204,7 +201,7 @@ function RadioGroup:_activate_radio(radio)
         return
     end
 
-    ControlUtils.request_focus(radio)
+    self:requestFocus(radio)
     request_value(self, value)
 end
 
@@ -218,14 +215,14 @@ function RadioGroup:update(dt)
     if self._value_controlled == false then
         self._value_uncontrolled = resolved
     elseif self.value ~= resolved and resolved ~= nil then
-        ControlUtils.call_if_function(self.onValueChange, resolved)
+        Control.call_if_function(self.onValueChange, resolved)
     end
 
     return self
 end
 
 function RadioGroup:on_destroy()
-    ControlUtils.remove_control_listeners(self)
+    self:removeControlListeners()
     Container.on_destroy(self)
 end
 

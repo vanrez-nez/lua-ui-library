@@ -1,13 +1,13 @@
 local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local StyleScope = require('lib.ui.render.style_scope')
 local SwitchSchema = require('lib.ui.controls.switch_schema')
 
-local Switch = Drawable:extends('Switch')
+local Switch = Control:extends('Switch')
 local SWITCH_TRACK_SCOPE = StyleScope.create('switch', 'track')
 local SWITCH_THUMB_SCOPE = StyleScope.create('switch', 'thumb')
 
@@ -17,22 +17,21 @@ Switch.SnapBehavior = {
 }
 
 local checked_value, request_checked =
-    ControlUtils.controlled_value('checked', false, {
+    Control.controlled_value('checked', false, {
         callback = 'onCheckedChange',
         normalize = function(_, value)
             return value == true
         end,
     })
 
-Switch.schema = Schema.extend(Drawable.schema, SwitchSchema)
+Switch.schema = Schema.extend(Control.schema, SwitchSchema)
 
 function Switch:constructor(opts)
     opts = opts or {}
-    local drawable_opts = ControlUtils.base_opts(opts, {
+    Control.constructor(self, opts, {
         interactive = true,
         focusable = true,
     })
-    Drawable.constructor(self, drawable_opts)
     self.checked = opts.checked
     self.onCheckedChange = opts.onCheckedChange
     self.disabled = opts.disabled == true
@@ -82,9 +81,9 @@ function Switch:constructor(opts)
     self.track = track
     self.thumb = thumb
 
-    ControlUtils.assert_controlled_pair('checked', opts.checked, 'onCheckedChange', opts.onCheckedChange, 2)
+    Control.assert_controlled_pair('checked', opts.checked, 'onCheckedChange', opts.onCheckedChange, 2)
 
-    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
+    self:addControlListener(self, 'ui.activate', function(event)
         if self.disabled == true then return end
         if event.defaultPrevented then return end
         if self._dragging then return end
@@ -92,7 +91,7 @@ function Switch:constructor(opts)
         request_checked(self, not checked_value(self))
     end)
 
-    ControlUtils.add_control_listener(self, self, 'ui.drag', function(event)
+    self:addControlListener(self, 'ui.drag', function(event)
         if self.disabled == true then return end
 
         if event.dragPhase == Constants.DRAG_PHASE_START then
@@ -178,7 +177,7 @@ function Switch:update(dt)
     Drawable.update(self, dt)
 
     local disabled = self.disabled == true
-    ControlUtils.set_interaction_state(self, not disabled)
+    self:setInteractionState(not disabled)
 
     if disabled then
         self._dragging = false
@@ -218,7 +217,7 @@ function Switch:update(dt)
 end
 
 function Switch:on_destroy()
-    ControlUtils.remove_control_listeners(self)
+    self:removeControlListeners()
     Container.on_destroy(self)
 end
 

@@ -1,7 +1,7 @@
 local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local MathUtils = require('lib.ui.utils.math')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
@@ -10,7 +10,7 @@ local Enum = require('lib.ui.utils.enum')
 local StyleScope = require('lib.ui.render.style_scope')
 local SliderSchema = require('lib.ui.controls.slider_schema')
 
-local Slider = Drawable:extends('Slider')
+local Slider = Control:extends('Slider')
 local enum_has = Enum.enum_has
 local SLIDER_TRACK_SCOPE = StyleScope.create('slider', 'track')
 local SLIDER_THUMB_SCOPE = StyleScope.create('slider', 'thumb')
@@ -31,14 +31,13 @@ local function normalize_value(self, value)
 end
 
 local effective_value, request_value =
-    ControlUtils.controlled_value('value', function(self)
+    Control.controlled_value('value', function(self)
         return self.min or 0
     end, {
         normalize = normalize_value,
     })
 
-Slider._control_schema = SliderSchema
-Slider.schema = Schema.extend(Drawable.schema, Slider._control_schema)
+Slider.schema = Schema.extend(Control.schema, SliderSchema)
 
 local function ratio_for_value(self, value)
     local min_value = self.min or 0
@@ -107,11 +106,10 @@ end
 
 function Slider:constructor(opts)
     opts = opts or {}
-    local drawable_opts = ControlUtils.base_opts(opts, {
+    Control.constructor(self, opts, {
         interactive = true,
         focusable = true,
     })
-    Drawable.constructor(self, drawable_opts)
     self.value = opts.value
     self.onValueChange = opts.onValueChange
     self.min = opts.min or 0
@@ -119,7 +117,6 @@ function Slider:constructor(opts)
     self.step = opts.step
     self.orientation = opts.orientation or Enums.Orientation.HORIZONTAL
     self.disabled = opts.disabled == true
-    ControlUtils.validate_control_schema(self, opts, Slider._control_schema, 2)
     self.pointerFocusCoupling = Constants.POINTER_FOCUS_COUPLING_BEFORE
 
     self._ui_slider_control = true
@@ -136,7 +133,7 @@ function Slider:constructor(opts)
         Assert.fail('Slider.orientation must be "horizontal" or "vertical"', 2)
     end
 
-    ControlUtils.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
+    Control.assert_controlled_pair('value', opts.value, 'onValueChange', opts.onValueChange, 2)
 
     self._value_controlled = opts.value ~= nil
     self._value_uncontrolled = normalize_value(self, opts.value or self.min)
@@ -162,7 +159,7 @@ function Slider:constructor(opts)
     self.track = track
     self.thumb = thumb
 
-    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
+    self:addControlListener(self, 'ui.activate', function(event)
         if self.disabled or event.defaultPrevented then
             return
         end
@@ -173,7 +170,7 @@ function Slider:constructor(opts)
         end
     end)
 
-    ControlUtils.add_control_listener(self, self, 'ui.drag', function(event)
+    self:addControlListener(self, 'ui.drag', function(event)
         if self.disabled then
             return
         end
@@ -197,7 +194,7 @@ function Slider:constructor(opts)
         end
     end)
 
-    ControlUtils.add_control_listener(self, self, 'ui.scroll', function(event)
+    self:addControlListener(self, 'ui.scroll', function(event)
         if self.disabled then
             return
         end
@@ -214,7 +211,7 @@ function Slider:constructor(opts)
         event:stopPropagation()
     end)
 
-    ControlUtils.add_control_listener(self, self, 'ui.navigate', function(event)
+    self:addControlListener(self, 'ui.navigate', function(event)
         if self.disabled or event.navigationMode ~= Constants.NAVIGATION_MODE_DIRECTIONAL then
             return
         end
@@ -273,7 +270,7 @@ function Slider:update(dt)
     Drawable.update(self, dt)
 
     local disabled = self.disabled == true
-    ControlUtils.set_interaction_state(self, not disabled)
+    self:setInteractionState(not disabled)
 
     local value = effective_value(self)
     local previous = self._last_motion_value
@@ -294,7 +291,7 @@ function Slider:update(dt)
 end
 
 function Slider:on_destroy()
-    ControlUtils.remove_control_listeners(self)
+    self:removeControlListeners()
     Container.on_destroy(self)
 end
 

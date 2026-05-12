@@ -1,7 +1,7 @@
 local Container = require('lib.ui.core.container')
 local Drawable = require('lib.ui.core.drawable')
 local Button = require('lib.ui.controls.button')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local Assert = require('lib.ui.utils.assert')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
@@ -10,12 +10,11 @@ local Enum = require('lib.ui.utils.enum')
 local StyleScope = require('lib.ui.render.style_scope')
 local NotificationSchema = require('lib.ui.controls.notification_schema')
 
-local Notification = Container:extends('Notification')
+local Notification = Control:extends('Notification')
 local enum_has = Enum.enum_has
 local NOTIFICATION_SURFACE_SCOPE = StyleScope.create('notification', 'surface')
 
-Notification.schema = Schema.extend(Container.schema, NotificationSchema)
-Notification:implements(ControlUtils.overlay_mixin)
+Notification.schema = Schema.extend(Control.schema, NotificationSchema)
 
 local function effective_open(self)
     if self._open_controlled then
@@ -29,7 +28,7 @@ local function request_open_change(self, next_value)
     if not self._open_controlled then
         self._open_uncontrolled = next_value
     end
-    ControlUtils.call_if_function(self.onOpenChange, next_value)
+    Control.call_if_function(self.onOpenChange, next_value)
 end
 
 local function effective_duration(self)
@@ -133,15 +132,13 @@ function Notification:constructor(opts)
     opts = opts or {}
     Assert.table('opts', opts, 2)
 
-    local base_opts = ControlUtils.base_opts(opts, {
+    Control.constructor(self, opts, {
         width = 0,
         height = 0,
         visible = false,
         interactive = false,
         focusable = false,
     })
-
-    Container.constructor(self, base_opts)
     self.open = opts.open
     self.onOpenChange = opts.onOpenChange
     self.closeMethod = opts.closeMethod or 'button'
@@ -158,7 +155,7 @@ function Notification:constructor(opts)
     self._elapsed_ms = 0
     self._last_open_state = effective_open(self)
 
-    ControlUtils.assert_controlled_pair('open', opts.open, 'onOpenChange', opts.onOpenChange, 2)
+    Control.assert_controlled_pair('open', opts.open, 'onOpenChange', opts.onOpenChange, 2)
 
     if self.closeMethod ~= 'button' and self.closeMethod ~= 'auto-dismiss' then
         Assert.fail('Notification.closeMethod must be "button" or "auto-dismiss"', 2)
@@ -245,7 +242,7 @@ function Notification:update(dt)
     Container.update(self, dt)
 
     local wants_open = effective_open(self)
-    local stage = ControlUtils.find_stage(self)
+    local stage = self:findStage()
     local was_open = self._last_open_state
 
     if wants_open and stage ~= nil then
@@ -280,7 +277,7 @@ function Notification:update(dt)
 end
 
 function Notification:on_destroy()
-    ControlUtils.remove_control_listeners(self)
+    self:removeControlListeners()
     self:_detach_overlay()
     self._overlay_root:destroy()
     Container.on_destroy(self)

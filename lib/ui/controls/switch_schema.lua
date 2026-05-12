@@ -1,10 +1,10 @@
 local Assert = require('lib.ui.utils.assert')
 local Rule = require('lib.ui.utils.rule')
-local Container = require('lib.ui.core.container')
+local ControlSchema = require('lib.ui.controls.control_schema')
 
 return {
-    checked = Rule.boolean(),
-    onCheckedChange = Rule.func({ optional = true }),
+    checked = Rule.boolean({ optional = true }),
+    onCheckedChange = ControlSchema.optional_callback(),
     disabled = Rule.boolean(false),
     dragThreshold = Rule.custom(function(_, value, _, level)
         if value == nil then return 10 end
@@ -22,13 +22,7 @@ return {
         return value
     end, { default = 'nearest' }),
     -- Spec: ui-controls 6.6 anatomy/composition: optional associated content, non-interactive.
-    label = Rule.any_of({
-        Rule.string(),
-        Rule.instance(Container, 'Container')
-    }, { optional = true }),
+    label = ControlSchema.associated_content(),
     -- Spec: ui-controls 6.6 anatomy/composition: optional associated content, non-interactive.
-    description = Rule.any_of({
-        Rule.string(),
-        Rule.instance(Container, 'Container')
-    }, { optional = true }),
+    description = ControlSchema.associated_content(),
 }

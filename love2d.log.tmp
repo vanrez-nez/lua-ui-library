@@ -1,0 +1,1000 @@
+142413.603 [love2d:app:__user_main.lua:180] INFO images=4000 children=4000 fps=109 gc=13.91MB
+142414.607 [love2d:app:__user_main.lua:180] INFO images=4000 children=4000 fps=112 gc=13.97MB
+142415.607 [love2d:app:__user_main.lua:180] INFO images=4000 children=4000 fps=110 gc=14.02MB
+142416.613 [love2d:app:__user_main.lua:180] INFO images=4000 children=4000 fps=114 gc=14.08MB
+142417.620 [love2d:app:__user_main.lua:180] INFO images=4000 children=4000 fps=110 gc=14.14MB
+142418.626 [love2d:app:__user_main.lua:180] INFO images=4000 children=4000 fps=106 gc=14.20MB
+142419.638 [love2d:app:__user_main.lua:180] INFO images=4100 children=4100 fps=101 gc=15.02MB
+142420.644 [love2d:app:__user_main.lua:180] INFO images=4100 children=4100 fps=95 gc=15.07MB
+142421.650 [love2d:app:__user_main.lua:180] INFO images=4100 children=4100 fps=98 gc=15.12MB
+142422.658 [love2d:app:__user_main.lua:180] INFO images=4100 children=4100 fps=96 gc=15.17MB
+142423.662 [love2d:app:__user_main.lua:180] INFO images=4100 children=4100 fps=105 gc=15.22MB
+142424.674 [love2d:app:__user_main.lua:180] INFO images=4200 children=4200 fps=89 gc=15.82MB
+142425.686 [love2d:app:__user_main.lua:180] INFO images=4200 children=4200 fps=84 gc=15.86MB
+142426.693 [love2d:app:__user_main.lua:180] INFO images=4200 children=4200 fps=93 gc=15.91MB
+142427.705 [love2d:app:__user_main.lua:180] INFO images=4200 children=4200 fps=85 gc=15.96MB
+142428.711 [love2d:app:__user_main.lua:180] INFO images=4200 children=4200 fps=87 gc=16.00MB
+142429.722 [love2d:app:__user_main.lua:180] INFO images=4200 children=4200 fps=86 gc=16.05MB
+142430.723 [love2d:app:__user_main.lua:180] INFO images=4300 children=4300 fps=86 gc=16.64MB
+142431.723 [love2d:app:__user_main.lua:180] INFO images=4300 children=4300 fps=83 gc=16.69MB
+142432.729 [love2d:app:__user_main.lua:180] INFO images=4300 children=4300 fps=83 gc=16.73MB
+142433.735 [love2d:app:__user_main.lua:180] INFO images=4400 children=4400 fps=82 gc=17.32MB
+142434.735 [love2d:app:__user_main.lua:180] INFO images=4400 children=4400 fps=83 gc=17.36MB
+142435.741 [love2d:app:__user_main.lua:180] INFO images=4500 children=4500 fps=83 gc=17.96MB
+142436.747 [love2d:app:__user_main.lua:180] INFO images=4500 children=4500 fps=82 gc=18.00MB
+142437.754 [love2d:app:__user_main.lua:180] INFO images=4600 children=4600 fps=82 gc=18.59MB
+142438.759 [love2d:app:__user_main.lua:180] INFO images=4600 children=4600 fps=83 gc=18.64MB
+142439.766 [love2d:app:__user_main.lua:180] INFO images=4700 children=4700 fps=82 gc=19.23MB
+142440.772 [love2d:app:__user_main.lua:180] INFO images=4700 children=4700 fps=83 gc=19.27MB
+142441.778 [love2d:app:__user_main.lua:180] INFO images=4700 children=4700 fps=82 gc=19.32MB
+142442.784 [love2d:app:__user_main.lua:180] INFO images=4800 children=4800 fps=82 gc=19.91MB
+142443.790 [love2d:app:__user_main.lua:180] INFO images=4800 children=4800 fps=82 gc=19.95MB
+142444.796 [love2d:app:__user_main.lua:180] INFO images=4800 children=4800 fps=83 gc=20.00MB
+142445.802 [love2d:app:__user_main.lua:180] INFO images=4900 children=4900 fps=82 gc=20.59MB
+142446.808 [love2d:app:__user_main.lua:180] INFO images=4900 children=4900 fps=83 gc=20.63MB
+142447.814 [love2d:app:__user_main.lua:180] INFO images=4900 children=4900 fps=82 gc=20.68MB
+142448.821 [love2d:app:__user_main.lua:180] INFO images=5000 children=5000 fps=82 gc=21.27MB
+142449.826 [love2d:app:__user_main.lua:180] INFO images=5000 children=5000 fps=83 gc=21.31MB
+142450.832 [love2d:app:__user_main.lua:180] INFO images=5000 children=5000 fps=83 gc=21.35MB
+142451.839 [love2d:app:__user_main.lua:180] INFO images=5000 children=5000 fps=83 gc=21.40MB
+142452.845 [love2d:app:__user_main.lua:180] INFO images=5000 children=5000 fps=82 gc=21.44MB
+142453.851 [love2d:app:__user_main.lua:180] INFO images=5100 children=5100 fps=83 gc=22.03MB
+142454.857 [love2d:app:__user_main.lua:180] INFO images=5100 children=5100 fps=82 gc=22.08MB
+142455.869 [love2d:app:__user_main.lua:180] INFO images=5100 children=5100 fps=81 gc=22.12MB
+142456.876 [love2d:app:__user_main.lua:180] INFO images=5200 children=5200 fps=83 gc=22.71MB
+142457.881 [love2d:app:__user_main.lua:180] INFO images=5200 children=5200 fps=82 gc=22.76MB
+142458.887 [love2d:app:__user_main.lua:180] INFO images=5300 children=5300 fps=82 gc=23.35MB
+142459.893 [love2d:app:__user_main.lua:180] INFO images=5300 children=5300 fps=83 gc=23.39MB
+142460.900 [love2d:app:__user_main.lua:180] INFO images=5400 children=5400 fps=82 gc=23.98MB
+142461.905 [love2d:app:__user_main.lua:180] INFO images=5400 children=5400 fps=82 gc=24.03MB
+142462.912 [love2d:app:__user_main.lua:180] INFO images=5400 children=5400 fps=83 gc=24.07MB
+142463.918 [love2d:app:__user_main.lua:180] INFO images=5400 children=5400 fps=82 gc=24.12MB
+142464.924 [love2d:app:__user_main.lua:180] INFO images=5500 children=5500 fps=82 gc=24.71MB
+142465.930 [love2d:app:__user_main.lua:180] INFO images=5500 children=5500 fps=82 gc=24.75MB
+142466.936 [love2d:app:__user_main.lua:180] INFO images=5500 children=5500 fps=83 gc=24.79MB
+142467.942 [love2d:app:__user_main.lua:180] INFO images=5500 children=5500 fps=83 gc=24.84MB
+142468.948 [love2d:app:__user_main.lua:180] INFO images=5600 children=5600 fps=82 gc=25.43MB
+142469.954 [love2d:app:__user_main.lua:180] INFO images=5600 children=5600 fps=83 gc=25.47MB
+142470.960 [love2d:app:__user_main.lua:180] INFO images=5600 children=5600 fps=83 gc=25.52MB
+142471.966 [love2d:app:__user_main.lua:180] INFO images=5600 children=5600 fps=82 gc=25.56MB
+142472.973 [love2d:app:__user_main.lua:180] INFO images=5700 children=5700 fps=82 gc=26.15MB
+142473.979 [love2d:app:__user_main.lua:180] INFO images=5700 children=5700 fps=83 gc=26.20MB
+142474.985 [love2d:app:__user_main.lua:180] INFO images=5700 children=5700 fps=82 gc=26.24MB
+142475.991 [love2d:app:__user_main.lua:180] INFO images=5800 children=5800 fps=83 gc=26.83MB
+142476.997 [love2d:app:__user_main.lua:180] INFO images=5800 children=5800 fps=82 gc=26.88MB
+142478.002 [love2d:app:__user_main.lua:180] INFO images=5800 children=5800 fps=83 gc=26.92MB
+142479.009 [love2d:app:__user_main.lua:180] INFO images=5800 children=5800 fps=81 gc=26.96MB
+142480.015 [love2d:app:__user_main.lua:180] INFO images=5900 children=5900 fps=83 gc=27.56MB
+142481.021 [love2d:app:__user_main.lua:180] INFO images=5900 children=5900 fps=83 gc=27.60MB
+142482.033 [love2d:app:__user_main.lua:180] INFO images=5900 children=5900 fps=81 gc=27.64MB
+142483.039 [love2d:app:__user_main.lua:180] INFO images=6000 children=6000 fps=82 gc=28.23MB
+142484.045 [love2d:app:__user_main.lua:180] INFO images=6000 children=6000 fps=82 gc=28.28MB
+142485.051 [love2d:app:__user_main.lua:180] INFO images=6000 children=6000 fps=83 gc=28.32MB
+142486.057 [love2d:app:__user_main.lua:180] INFO images=6000 children=6000 fps=82 gc=28.36MB
+142487.063 [love2d:app:__user_main.lua:180] INFO images=6000 children=6000 fps=82 gc=28.41MB
+142488.070 [love2d:app:__user_main.lua:180] INFO images=6000 children=6000 fps=83 gc=28.45MB
+142489.076 [love2d:app:__user_main.lua:180] INFO images=6100 children=6100 fps=82 gc=29.04MB
+142490.082 [love2d:app:__user_main.lua:180] INFO images=6100 children=6100 fps=82 gc=29.09MB
+142491.088 [love2d:app:__user_main.lua:180] INFO images=6200 children=6200 fps=83 gc=29.68MB
+142492.094 [love2d:app:__user_main.lua:180] INFO images=6200 children=6200 fps=82 gc=29.72MB
+142493.100 [love2d:app:__user_main.lua:180] INFO images=6200 children=6200 fps=82 gc=29.77MB
+142494.106 [love2d:app:__user_main.lua:180] INFO images=6300 children=6300 fps=83 gc=30.36MB
+142495.112 [love2d:app:__user_main.lua:180] INFO images=6300 children=6300 fps=82 gc=30.40MB
+142496.124 [love2d:app:__user_main.lua:180] INFO images=6300 children=6300 fps=82 gc=30.45MB
+142497.131 [love2d:app:__user_main.lua:180] INFO images=6400 children=6400 fps=82 gc=31.04MB
+142498.136 [love2d:app:__user_main.lua:180] INFO images=6400 children=6400 fps=83 gc=31.08MB
+142499.143 [love2d:app:__user_main.lua:180] INFO images=6400 children=6400 fps=83 gc=31.13MB
+142500.155 [love2d:app:__user_main.lua:180] INFO images=6500 children=6500 fps=82 gc=31.72MB
+142501.161 [love2d:app:__user_main.lua:180] INFO images=6500 children=6500 fps=82 gc=31.76MB
+142502.173 [love2d:app:__user_main.lua:180] INFO images=6500 children=6500 fps=80 gc=31.80MB
+142503.179 [love2d:app:__user_main.lua:180] INFO images=6600 children=6600 fps=82 gc=32.40MB
+142504.185 [love2d:app:__user_main.lua:180] INFO images=6600 children=6600 fps=83 gc=32.44MB
+142505.191 [love2d:app:__user_main.lua:180] INFO images=6600 children=6600 fps=82 gc=32.48MB
+142506.197 [love2d:app:__user_main.lua:180] INFO images=6600 children=6600 fps=82 gc=32.53MB
+142507.203 [love2d:app:__user_main.lua:180] INFO images=6700 children=6700 fps=82 gc=33.12MB
+142508.209 [love2d:app:__user_main.lua:180] INFO images=6700 children=6700 fps=83 gc=33.16MB
+142509.216 [love2d:app:__user_main.lua:180] INFO images=6700 children=6700 fps=83 gc=33.21MB
+142510.228 [love2d:app:__user_main.lua:180] INFO images=6800 children=6800 fps=82 gc=33.80MB
+142511.233 [love2d:app:__user_main.lua:180] INFO images=6800 children=6800 fps=82 gc=33.84MB
+142512.233 [love2d:app:__user_main.lua:180] INFO images=6800 children=6800 fps=82 gc=33.89MB
+142513.246 [love2d:app:__user_main.lua:180] INFO images=6800 children=6800 fps=82 gc=33.93MB
+142514.252 [love2d:app:__user_main.lua:180] INFO images=6900 children=6900 fps=83 gc=34.52MB
+142515.253 [love2d:app:__user_main.lua:180] INFO images=6900 children=6900 fps=81 gc=34.56MB
+142516.259 [love2d:app:__user_main.lua:180] INFO images=7000 children=7000 fps=81 gc=28.12MB
+142517.265 [love2d:app:__user_main.lua:180] INFO images=7000 children=7000 fps=79 gc=27.63MB
+142518.277 [love2d:app:__user_main.lua:180] INFO images=7000 children=7000 fps=78 gc=27.16MB
+142519.282 [love2d:app:__user_main.lua:180] INFO images=7000 children=7000 fps=78 gc=26.67MB
+142520.283 [love2d:app:__user_main.lua:180] INFO images=7000 children=7000 fps=77 gc=26.21MB
+142520.297 [love2d:app] INFO [hot] bridge runtime stopped: normal shutdown
+142662.630 [love2d:app] INFO [hot] bridge client connected
+142662.630 [love2d:app] INFO [hot] proxyErrorLogs enabled; runtime callback errors will be proxied
+142662.630 [love2d:app:__user_main.lua:180] INFO images=500 children=500 fps=0 gc=2.79MB
+142663.553 [love2d:app:__user_main.lua:180] INFO images=500 children=500 fps=52 gc=2.61MB
+142664.558 [love2d:app:__user_main.lua:180] INFO images=500 children=500 fps=165 gc=2.14MB
+142665.560 [love2d:app:__user_main.lua:180] INFO images=600 children=600 fps=164 gc=2.80MB
+142666.566 [love2d:app:__user_main.lua:180] INFO images=700 children=700 fps=163 gc=3.44MB
+142667.566 [love2d:app:__user_main.lua:180] INFO images=800 children=800 fps=165 gc=4.07MB
+142668.566 [love2d:app:__user_main.lua:180] INFO images=1100 children=1100 fps=164 gc=4.04MB
+142669.572 [love2d:app:__user_main.lua:180] INFO images=1500 children=1500 fps=164 gc=6.32MB
+142670.572 [love2d:app:__user_main.lua:180] INFO images=1800 children=1800 fps=164 gc=8.05MB
+142671.578 [love2d:app:__user_main.lua:180] INFO images=1900 children=1900 fps=164 gc=8.68MB
+142672.578 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=9.31MB
+142673.579 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=162 gc=10.06MB
+142674.584 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=158 gc=10.14MB
+142675.584 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=157 gc=10.22MB
+142676.585 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=162 gc=10.30MB
+142677.591 [love2d:app:__user_main.lua:180] INFO images=2200 children=2200 fps=156 gc=10.43MB
+142678.597 [love2d:app:__user_main.lua:180] INFO images=2200 children=2200 fps=146 gc=9.52MB
+142679.598 [love2d:app:__user_main.lua:180] INFO images=2200 children=2200 fps=158 gc=8.57MB
+142680.603 [love2d:app:__user_main.lua:180] INFO images=2200 children=2200 fps=136 gc=7.96MB
+142681.603 [love2d:app:__user_main.lua:180] INFO images=2300 children=2300 fps=106 gc=8.32MB
+142682.603 [love2d:app:__user_main.lua:180] INFO images=2300 children=2300 fps=147 gc=8.38MB
+142683.609 [love2d:app:__user_main.lua:180] INFO images=2300 children=2300 fps=121 gc=8.46MB
+142684.615 [love2d:app:__user_main.lua:180] INFO images=2300 children=2300 fps=142 gc=8.53MB
+142685.621 [love2d:app:__user_main.lua:180] INFO images=2300 children=2300 fps=135 gc=8.60MB
+142686.634 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=146 gc=9.22MB
+142687.646 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=120 gc=9.29MB
+142688.651 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=132 gc=9.35MB
+142689.652 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=151 gc=9.43MB
+142690.658 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=140 gc=9.50MB
+142691.658 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=131 gc=9.55MB
+142692.664 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=99 gc=9.62MB
+142693.670 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=146 gc=9.70MB
+142694.676 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=155 gc=9.78MB
+142695.682 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=143 gc=9.85MB
+142696.682 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=145 gc=9.93MB
+142697.688 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=128 gc=9.98MB
+142698.689 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=114 gc=10.59MB
+142699.701 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=104 gc=10.63MB
+142700.707 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=83 gc=10.68MB
+142701.707 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=83 gc=10.72MB
+142702.713 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=82 gc=10.76MB
+142703.719 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=83 gc=10.81MB
+142704.725 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=83 gc=10.85MB
+142705.738 [love2d:app:__user_main.lua:180] INFO images=2600 children=2600 fps=83 gc=11.45MB
+142706.744 [love2d:app:__user_main.lua:180] INFO images=2700 children=2700 fps=83 gc=12.04MB
+142707.750 [love2d:app:__user_main.lua:180] INFO images=2700 children=2700 fps=83 gc=12.08MB
+142708.756 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=12.67MB
+142709.762 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=12.72MB
+142710.768 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=12.76MB
+142711.774 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=83 gc=12.80MB
+142712.781 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=12.85MB
+142713.786 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=83 gc=12.89MB
+142714.792 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=12.93MB
+142715.798 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=12.98MB
+142716.805 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=83 gc=13.02MB
+142717.811 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=83 gc=13.07MB
+142718.818 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=13.11MB
+142719.823 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=13.15MB
+142720.829 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=83 gc=13.20MB
+142721.835 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=13.24MB
+142722.841 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=13.28MB
+142723.847 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=13.33MB
+142724.853 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=13.37MB
+142725.859 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=83 gc=13.41MB
+142726.866 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=13.46MB
+142727.626 [love2d:app] INFO [hot] bridge runtime stopped: normal shutdown
+142744.740 [love2d:app] INFO [hot] bridge client connected
+142744.740 [love2d:app] INFO [hot] proxyErrorLogs enabled; runtime callback errors will be proxied
+142744.740 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=0 gc=8.56MB
+142745.676 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=70 gc=8.64MB
+142746.676 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=162 gc=8.72MB
+142747.676 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=147 gc=8.80MB
+142748.682 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=148 gc=8.88MB
+142749.688 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=159 gc=8.96MB
+142750.688 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=163 gc=9.05MB
+142751.688 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=164 gc=9.13MB
+142752.694 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=9.21MB
+142753.700 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=164 gc=9.30MB
+142754.706 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=164 gc=9.38MB
+142755.706 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=162 gc=9.47MB
+142756.706 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=160 gc=10.21MB
+142757.706 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=161 gc=10.29MB
+142758.712 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=164 gc=10.38MB
+142759.712 [love2d:app:__user_main.lua:180] INFO images=2200 children=2200 fps=157 gc=11.00MB
+142760.718 [love2d:app:__user_main.lua:180] INFO images=2200 children=2200 fps=162 gc=11.09MB
+142761.725 [love2d:app:__user_main.lua:180] INFO images=2300 children=2300 fps=158 gc=11.72MB
+142762.731 [love2d:app:__user_main.lua:180] INFO images=2300 children=2300 fps=145 gc=11.79MB
+142763.737 [love2d:app:__user_main.lua:180] INFO images=2300 children=2300 fps=149 gc=11.87MB
+142764.737 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=157 gc=8.36MB
+142765.743 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=140 gc=8.30MB
+142766.743 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=138 gc=8.36MB
+142767.744 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=130 gc=8.96MB
+142768.756 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=83 gc=9.01MB
+142769.762 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=83 gc=9.05MB
+142770.774 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=83 gc=9.09MB
+142771.780 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=82 gc=9.14MB
+142772.786 [love2d:app:__user_main.lua:180] INFO images=2600 children=2600 fps=83 gc=9.73MB
+142773.786 [love2d:app:__user_main.lua:180] INFO images=2600 children=2600 fps=82 gc=9.77MB
+142774.792 [love2d:app:__user_main.lua:180] INFO images=2600 children=2600 fps=83 gc=9.82MB
+142775.798 [love2d:app:__user_main.lua:180] INFO images=2700 children=2700 fps=83 gc=10.41MB
+142776.811 [love2d:app:__user_main.lua:180] INFO images=2700 children=2700 fps=83 gc=10.45MB
+142777.817 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=82 gc=11.05MB
+142778.823 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=83 gc=11.09MB
+142779.829 [love2d:app:__user_main.lua:180] INFO images=2900 children=2900 fps=82 gc=11.68MB
+142780.835 [love2d:app:__user_main.lua:180] INFO images=2900 children=2900 fps=82 gc=11.72MB
+142781.841 [love2d:app:__user_main.lua:180] INFO images=3000 children=3000 fps=82 gc=12.32MB
+142782.848 [love2d:app:__user_main.lua:180] INFO images=3100 children=3100 fps=82 gc=12.91MB
+142783.854 [love2d:app:__user_main.lua:180] INFO images=3100 children=3100 fps=82 gc=12.95MB
+142784.861 [love2d:app:__user_main.lua:180] INFO images=3200 children=3200 fps=82 gc=13.55MB
+142785.866 [love2d:app:__user_main.lua:180] INFO images=3200 children=3200 fps=83 gc=13.59MB
+142786.867 [love2d:app:__user_main.lua:180] INFO images=3300 children=3300 fps=82 gc=14.18MB
+142787.872 [love2d:app:__user_main.lua:180] INFO images=3400 children=3400 fps=82 gc=14.77MB
+142788.879 [love2d:app:__user_main.lua:180] INFO images=3400 children=3400 fps=83 gc=14.82MB
+142789.885 [love2d:app:__user_main.lua:180] INFO images=3500 children=3500 fps=82 gc=15.41MB
+142790.891 [love2d:app:__user_main.lua:180] INFO images=3500 children=3500 fps=83 gc=15.45MB
+142791.897 [love2d:app:__user_main.lua:180] INFO images=3600 children=3600 fps=82 gc=16.05MB
+142792.904 [love2d:app:__user_main.lua:180] INFO images=3700 children=3700 fps=82 gc=16.64MB
+142793.916 [love2d:app:__user_main.lua:180] INFO images=3700 children=3700 fps=83 gc=16.68MB
+142794.922 [love2d:app:__user_main.lua:180] INFO images=3800 children=3800 fps=82 gc=17.27MB
+142795.928 [love2d:app:__user_main.lua:180] INFO images=3900 children=3900 fps=82 gc=17.87MB
+142796.940 [love2d:app:__user_main.lua:180] INFO images=3900 children=3900 fps=83 gc=17.91MB
+142797.946 [love2d:app:__user_main.lua:180] INFO images=3900 children=3900 fps=82 gc=17.95MB
+142798.952 [love2d:app:__user_main.lua:180] INFO images=4000 children=4000 fps=82 gc=18.55MB
+142799.959 [love2d:app:__user_main.lua:180] INFO images=4000 children=4000 fps=83 gc=18.59MB
+142800.965 [love2d:app:__user_main.lua:180] INFO images=4100 children=4100 fps=82 gc=19.40MB
+142801.977 [love2d:app:__user_main.lua:180] INFO images=4200 children=4200 fps=82 gc=19.99MB
+142802.978 [love2d:app:__user_main.lua:180] INFO images=4200 children=4200 fps=82 gc=20.04MB
+142803.989 [love2d:app:__user_main.lua:180] INFO images=4300 children=4300 fps=82 gc=20.63MB
+142804.996 [love2d:app:__user_main.lua:180] INFO images=4300 children=4300 fps=82 gc=20.67MB
+142806.002 [love2d:app:__user_main.lua:180] INFO images=4400 children=4400 fps=82 gc=21.26MB
+142807.008 [love2d:app:__user_main.lua:180] INFO images=4500 children=4500 fps=82 gc=21.86MB
+142808.013 [love2d:app:__user_main.lua:180] INFO images=4500 children=4500 fps=75 gc=21.90MB
+142809.021 [love2d:app:__user_main.lua:180] INFO images=4600 children=4600 fps=82 gc=20.05MB
+142810.026 [love2d:app:__user_main.lua:180] INFO images=4700 children=4700 fps=75 gc=15.73MB
+142811.032 [love2d:app:__user_main.lua:180] INFO images=4700 children=4700 fps=81 gc=15.77MB
+142812.040 [love2d:app:__user_main.lua:180] INFO images=4800 children=4800 fps=72 gc=16.36MB
+142813.051 [love2d:app:__user_main.lua:180] INFO images=4800 children=4800 fps=74 gc=16.40MB
+142814.064 [love2d:app:__user_main.lua:180] INFO images=4800 children=4800 fps=74 gc=16.43MB
+142815.069 [love2d:app:__user_main.lua:180] INFO images=4800 children=4800 fps=61 gc=16.47MB
+142816.070 [love2d:app:__user_main.lua:180] INFO images=4800 children=4800 fps=79 gc=16.51MB
+142817.075 [love2d:app:__user_main.lua:180] INFO images=4800 children=4800 fps=59 gc=16.54MB
+142818.083 [love2d:app:__user_main.lua:180] INFO images=4800 children=4800 fps=61 gc=16.57MB
+142818.096 [love2d:app] INFO [hot] bridge runtime stopped: normal shutdown
+143054.518 [love2d:app] INFO [hot] bridge client connected
+143054.518 [love2d:app] INFO [hot] proxyErrorLogs enabled; runtime callback errors will be proxied
+143054.518 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=0 gc=8.43MB
+143055.385 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=40 gc=8.51MB
+143056.387 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=8.59MB
+143057.393 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=161 gc=9.33MB
+143058.398 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=164 gc=9.42MB
+143059.398 [love2d:app:__user_main.lua:180] INFO images=2200 children=2200 fps=164 gc=10.05MB
+143060.405 [love2d:app:__user_main.lua:180] INFO images=2300 children=2300 fps=164 gc=10.69MB
+143061.411 [love2d:app:__user_main.lua:180] INFO images=2300 children=2300 fps=163 gc=10.77MB
+143062.417 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=163 gc=11.40MB
+143063.423 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=151 gc=12.03MB
+143064.423 [love2d:app:__user_main.lua:180] INFO images=2600 children=2600 fps=159 gc=12.66MB
+143065.423 [love2d:app:__user_main.lua:180] INFO images=2600 children=2600 fps=161 gc=12.74MB
+143066.429 [love2d:app:__user_main.lua:180] INFO images=2700 children=2700 fps=159 gc=9.24MB
+143067.437 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=154 gc=9.87MB
+143068.442 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=138 gc=9.95MB
+143069.449 [love2d:app:__user_main.lua:180] INFO images=2900 children=2900 fps=147 gc=10.57MB
+143070.455 [love2d:app:__user_main.lua:180] INFO images=3000 children=3000 fps=149 gc=11.18MB
+143071.462 [love2d:app:__user_main.lua:180] INFO images=3100 children=3100 fps=101 gc=11.78MB
+143072.473 [love2d:app:__user_main.lua:180] INFO images=3100 children=3100 fps=98 gc=11.83MB
+143073.485 [love2d:app:__user_main.lua:180] INFO images=3100 children=3100 fps=94 gc=11.87MB
+143074.491 [love2d:app:__user_main.lua:180] INFO images=3100 children=3100 fps=84 gc=11.92MB
+143075.503 [love2d:app:__user_main.lua:180] INFO images=3200 children=3200 fps=94 gc=12.52MB
+143076.503 [love2d:app:__user_main.lua:180] INFO images=3300 children=3300 fps=97 gc=13.12MB
+143077.509 [love2d:app:__user_main.lua:180] INFO images=3300 children=3300 fps=84 gc=13.16MB
+143078.516 [love2d:app:__user_main.lua:180] INFO images=3400 children=3400 fps=87 gc=13.75MB
+143079.522 [love2d:app:__user_main.lua:180] INFO images=3500 children=3500 fps=82 gc=14.35MB
+143080.528 [love2d:app:__user_main.lua:180] INFO images=3500 children=3500 fps=83 gc=14.39MB
+143081.534 [love2d:app:__user_main.lua:180] INFO images=3600 children=3600 fps=82 gc=14.98MB
+143082.541 [love2d:app:__user_main.lua:180] INFO images=3600 children=3600 fps=83 gc=15.03MB
+143083.546 [love2d:app:__user_main.lua:180] INFO images=3600 children=3600 fps=82 gc=15.07MB
+143084.552 [love2d:app:__user_main.lua:180] INFO images=3700 children=3700 fps=83 gc=15.66MB
+143085.558 [love2d:app:__user_main.lua:180] INFO images=3700 children=3700 fps=83 gc=15.71MB
+143086.565 [love2d:app:__user_main.lua:180] INFO images=3800 children=3800 fps=83 gc=16.30MB
+143087.571 [love2d:app:__user_main.lua:180] INFO images=3900 children=3900 fps=82 gc=16.89MB
+143088.577 [love2d:app:__user_main.lua:180] INFO images=3900 children=3900 fps=83 gc=16.93MB
+143089.583 [love2d:app:__user_main.lua:180] INFO images=4000 children=4000 fps=82 gc=17.53MB
+143090.589 [love2d:app:__user_main.lua:180] INFO images=4100 children=4100 fps=83 gc=18.34MB
+143091.596 [love2d:app:__user_main.lua:180] INFO images=4100 children=4100 fps=82 gc=18.38MB
+143092.602 [love2d:app:__user_main.lua:180] INFO images=4200 children=4200 fps=83 gc=18.97MB
+143093.608 [love2d:app:__user_main.lua:180] INFO images=4300 children=4300 fps=83 gc=19.57MB
+143094.614 [love2d:app:__user_main.lua:180] INFO images=4400 children=4400 fps=83 gc=20.16MB
+143095.621 [love2d:app:__user_main.lua:180] INFO images=4400 children=4400 fps=82 gc=20.20MB
+143096.626 [love2d:app:__user_main.lua:180] INFO images=4500 children=4500 fps=83 gc=20.79MB
+143097.632 [love2d:app:__user_main.lua:180] INFO images=4600 children=4600 fps=82 gc=21.39MB
+143098.639 [love2d:app:__user_main.lua:180] INFO images=4700 children=4700 fps=82 gc=21.98MB
+143099.645 [love2d:app:__user_main.lua:180] INFO images=4700 children=4700 fps=83 gc=22.02MB
+143100.651 [love2d:app:__user_main.lua:180] INFO images=4800 children=4800 fps=83 gc=22.62MB
+143101.658 [love2d:app:__user_main.lua:180] INFO images=4900 children=4900 fps=82 gc=23.21MB
+143102.670 [love2d:app:__user_main.lua:180] INFO images=5000 children=5000 fps=83 gc=23.80MB
+143103.676 [love2d:app:__user_main.lua:180] INFO images=5000 children=5000 fps=82 gc=23.84MB
+143104.682 [love2d:app:__user_main.lua:180] INFO images=5100 children=5100 fps=82 gc=24.44MB
+143105.682 [love2d:app:__user_main.lua:180] INFO images=5200 children=5200 fps=82 gc=20.82MB
+143106.688 [love2d:app:__user_main.lua:180] INFO images=5300 children=5300 fps=82 gc=17.64MB
+143107.688 [love2d:app:__user_main.lua:180] INFO images=5300 children=5300 fps=81 gc=17.68MB
+143108.688 [love2d:app:__user_main.lua:180] INFO images=5400 children=5400 fps=82 gc=18.27MB
+143109.689 [love2d:app:__user_main.lua:180] INFO images=5400 children=5400 fps=77 gc=18.31MB
+143110.695 [love2d:app:__user_main.lua:180] INFO images=5500 children=5500 fps=73 gc=18.90MB
+143111.701 [love2d:app:__user_main.lua:180] INFO images=5500 children=5500 fps=70 gc=18.94MB
+143112.556 [love2d:app] INFO [hot] bridge runtime stopped: normal shutdown
+143145.367 [love2d:app] INFO [hot] bridge client connected
+143145.367 [love2d:app] INFO [hot] proxyErrorLogs enabled; runtime callback errors will be proxied
+143145.367 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=0 gc=8.75MB
+143146.150 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=58 gc=8.84MB
+143147.151 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=160 gc=8.92MB
+143148.151 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=162 gc=9.00MB
+143149.151 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=165 gc=9.75MB
+143150.157 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=163 gc=9.83MB
+143151.157 [love2d:app:__user_main.lua:180] INFO images=2200 children=2200 fps=163 gc=10.46MB
+143152.163 [love2d:app:__user_main.lua:180] INFO images=2300 children=2300 fps=164 gc=11.10MB
+143153.164 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=163 gc=11.36MB
+143154.169 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=162 gc=10.38MB
+143155.176 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=162 gc=8.79MB
+143156.182 [love2d:app:__user_main.lua:180] INFO images=2600 children=2600 fps=161 gc=9.42MB
+143157.188 [love2d:app:__user_main.lua:180] INFO images=2600 children=2600 fps=159 gc=9.51MB
+143158.194 [love2d:app:__user_main.lua:180] INFO images=2700 children=2700 fps=160 gc=10.14MB
+143159.200 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=159 gc=10.77MB
+143160.206 [love2d:app:__user_main.lua:180] INFO images=2900 children=2900 fps=156 gc=11.39MB
+143161.206 [love2d:app:__user_main.lua:180] INFO images=2900 children=2900 fps=141 gc=11.47MB
+143162.212 [love2d:app:__user_main.lua:180] INFO images=3000 children=3000 fps=138 gc=12.07MB
+143163.213 [love2d:app:__user_main.lua:180] INFO images=3100 children=3100 fps=100 gc=12.67MB
+143164.213 [love2d:app:__user_main.lua:180] INFO images=3100 children=3100 fps=84 gc=12.71MB
+143165.225 [love2d:app:__user_main.lua:180] INFO images=3200 children=3200 fps=83 gc=13.31MB
+143166.238 [love2d:app:__user_main.lua:180] INFO images=3200 children=3200 fps=87 gc=13.35MB
+143167.244 [love2d:app:__user_main.lua:180] INFO images=3200 children=3200 fps=83 gc=13.40MB
+143168.175 [love2d:app] INFO [hot] bridge runtime stopped: normal shutdown
+143179.615 [love2d:app] INFO [hot] bridge client connected
+143179.615 [love2d:app] INFO [hot] proxyErrorLogs enabled; runtime callback errors will be proxied
+143179.615 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=0 gc=8.25MB
+143180.545 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=68 gc=8.34MB
+143181.545 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=8.42MB
+143182.545 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=165 gc=9.16MB
+143183.545 [love2d:app:__user_main.lua:180] INFO images=2200 children=2200 fps=165 gc=9.80MB
+143184.551 [love2d:app:__user_main.lua:180] INFO images=2200 children=2200 fps=163 gc=9.88MB
+143185.551 [love2d:app:__user_main.lua:180] INFO images=2300 children=2300 fps=162 gc=10.51MB
+143186.552 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=161 gc=11.15MB
+143187.552 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=162 gc=11.77MB
+143188.558 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=135 gc=11.85MB
+143189.564 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=159 gc=11.93MB
+143190.570 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=159 gc=12.01MB
+143191.576 [love2d:app:__user_main.lua:180] INFO images=2600 children=2600 fps=152 gc=12.64MB
+143192.582 [love2d:app:__user_main.lua:180] INFO images=2600 children=2600 fps=160 gc=12.72MB
+143193.589 [love2d:app:__user_main.lua:180] INFO images=2700 children=2700 fps=150 gc=13.35MB
+143194.595 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=151 gc=9.55MB
+143195.601 [love2d:app:__user_main.lua:180] INFO images=2800 children=2800 fps=133 gc=9.62MB
+143196.601 [love2d:app:__user_main.lua:180] INFO images=2900 children=2900 fps=139 gc=10.23MB
+143197.607 [love2d:app:__user_main.lua:180] INFO images=3000 children=3000 fps=86 gc=10.82MB
+143198.614 [love2d:app:__user_main.lua:180] INFO images=3000 children=3000 fps=86 gc=10.87MB
+143199.620 [love2d:app:__user_main.lua:180] INFO images=3100 children=3100 fps=82 gc=11.46MB
+143200.626 [love2d:app:__user_main.lua:180] INFO images=3100 children=3100 fps=83 gc=11.50MB
+143201.632 [love2d:app:__user_main.lua:180] INFO images=3100 children=3100 fps=82 gc=11.55MB
+143202.638 [love2d:app:__user_main.lua:180] INFO images=3100 children=3100 fps=83 gc=11.59MB
+143203.638 [love2d:app:__user_main.lua:180] INFO images=3200 children=3200 fps=82 gc=12.18MB
+143204.644 [love2d:app:__user_main.lua:180] INFO images=3300 children=3300 fps=83 gc=12.78MB
+143205.651 [love2d:app:__user_main.lua:180] INFO images=3400 children=3400 fps=83 gc=13.37MB
+143206.657 [love2d:app:__user_main.lua:180] INFO images=3600 children=3600 fps=82 gc=14.51MB
+143207.657 [love2d:app:__user_main.lua:180] INFO images=3700 children=3700 fps=82 gc=15.10MB
+143208.663 [love2d:app:__user_main.lua:180] INFO images=3900 children=3900 fps=83 gc=16.24MB
+143209.670 [love2d:app:__user_main.lua:180] INFO images=4000 children=4000 fps=82 gc=16.83MB
+143210.676 [love2d:app:__user_main.lua:180] INFO images=4200 children=4200 fps=83 gc=18.19MB
+143211.682 [love2d:app:__user_main.lua:180] INFO images=4300 children=4300 fps=82 gc=18.79MB
+143212.690 [love2d:app:__user_main.lua:180] INFO images=4300 children=4300 fps=82 gc=18.83MB
+143213.701 [love2d:app:__user_main.lua:180] INFO images=4300 children=4300 fps=82 gc=18.87MB
+143214.516 [love2d:app] INFO [hot] bridge runtime stopped: normal shutdown
+203040.135 [love2d:app] INFO [hot] bridge client connected
+203040.135 [love2d:app] INFO [hot] proxyErrorLogs enabled; runtime callback errors will be proxied
+203040.135 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=0 gc=8.26MB
+203041.064 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=34 gc=8.33MB
+203042.064 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=141 gc=8.41MB
+203043.071 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=163 gc=8.49MB
+203044.077 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=163 gc=8.58MB
+203045.082 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=8.66MB
+203046.089 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=162 gc=8.75MB
+203047.096 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=8.83MB
+203048.101 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=160 gc=8.91MB
+203049.101 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=159 gc=9.00MB
+203050.101 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=163 gc=9.08MB
+203051.107 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=162 gc=9.16MB
+203052.113 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=152 gc=9.24MB
+203053.119 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=157 gc=9.32MB
+203054.125 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=9.41MB
+203055.131 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=9.49MB
+203056.137 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=163 gc=9.58MB
+203057.143 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=9.66MB
+203058.143 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=9.74MB
+203059.150 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=9.83MB
+203060.155 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=164 gc=9.91MB
+203061.162 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=10.00MB
+203062.162 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=10.08MB
+203063.168 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=10.17MB
+203064.174 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=157 gc=10.25MB
+203065.180 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=158 gc=10.33MB
+203066.186 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=10.42MB
+203067.192 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=160 gc=10.50MB
+203068.192 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=164 gc=10.59MB
+203069.198 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=10.66MB
+203070.199 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=149 gc=10.74MB
+203071.204 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=151 gc=10.82MB
+203072.204 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=10.91MB
+203073.210 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=162 gc=10.99MB
+203074.216 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=163 gc=11.07MB
+203075.222 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=159 gc=11.16MB
+203076.233 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=11.24MB
+203077.234 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=164 gc=11.33MB
+203078.234 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=164 gc=11.41MB
+203079.234 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=11.49MB
+203080.241 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=164 gc=11.58MB
+203081.246 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=164 gc=11.66MB
+203082.247 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=11.75MB
+203083.253 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=164 gc=11.83MB
+203084.258 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=162 gc=11.92MB
+203085.259 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=163 gc=12.00MB
+203086.265 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=12.09MB
+203087.271 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=12.17MB
+203088.277 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=12.25MB
+203089.971 [love2d:app] INFO [hot] bridge client connected
+203089.972 [love2d:app] INFO [hot] proxyErrorLogs enabled; runtime callback errors will be proxied
+203089.972 [love2d:app:__user_main.lua:167] INFO 11	5	0	Mysterious Mysteries
+203089.972 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=0 gc=8.73MB
+203090.847 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=68 gc=8.81MB
+203091.847 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=147 gc=8.89MB
+203092.852 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=159 gc=8.97MB
+203093.858 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=164 gc=9.06MB
+203094.865 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=164 gc=9.14MB
+203095.865 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=165 gc=9.22MB
+203096.871 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=146 gc=9.30MB
+203097.122 [love2d:app] INFO [hot] bridge runtime stopped: normal shutdown
+285827.529 [love2d:app] INFO [hot] bridge client connected
+285827.529 [love2d:app] INFO [hot] proxyErrorLogs enabled; runtime callback errors will be proxied
+285827.530 [love2d:app:__user_main.lua:167] INFO 11	5	0	Mysterious Mysteries
+285827.530 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=0 gc=8.66MB
+285828.453 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=53 gc=8.75MB
+285829.459 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=159 gc=8.83MB
+285830.465 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=164 gc=8.92MB
+285831.466 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=163 gc=9.00MB
+285832.471 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=161 gc=9.08MB
+285832.971 [love2d:app] INFO [hot] bridge runtime stopped: normal shutdown
+285997.013 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+_test/performance_scratch/container.lua:3: module 'lib.ui.dirty_props' not found:
+	no field package.preload['lib.ui.dirty_props']
+	no 'lib/ui/dirty_props' in LOVE game directories.
+	no file 'lib/ui/dirty_props' in LOVE paths.
+	no file '/Users/vanrez/Documents/game-dev/lua-ui-library/_test/performance_scratch/lib/ui/dirty_props.lua'
+	no file '/Users/vanrez/Documents/game-dev/lua-ui-library/_test/performance_scratch/lib/ui/dirty_props/init.lua'
+	no file '/Users/vanrez/Documents/game-dev/lua-ui-library/lib/ui/dirty_props.lua'
+	no file '/Users/vanrez/Documents/game-dev/lua-ui-library/lib/ui/dirty_props/init.lua'
+	no file './lib/ui/dirty_props.lua'
+	no file '/usr/local/share/luajit-2.1/lib/ui/dirty_props.lua'
+	no file '/usr/local/share/lua/5.1/lib/ui/dirty_props.lua'
+	no file '/usr/local/share/lua/5.1/lib/ui/dirty_props/init.lua'
+	no file './lib/ui/dirty_props.lua'
+	no file './lib/ui/dirty_props/init.lua'
+	no file '../lib/ui/dirty_props.lua'
+	no file '../lib/ui/dirty_props/init.lua'
+	no file '../../lib/ui/dirty_props.lua'
+	no file '../../lib/ui/dirty_props/init.lua'
+	no file './lib/ui/dirty_props.so'
+	no file '/usr/local/lib/lua/5.1/lib/ui/dirty_props.so'
+	no file '/usr/local/lib/lua/5.1/loadall.so'
+	no file './lib.so'
+	no file '/usr/local/lib/lua/5.1/lib.so'
+	no file '/usr/local/lib/lua/5.1/loadall.so'
+stack traceback:
+	_test/performance_scratch/container.lua:3: in main chunk
+	[C]: in function 'require'
+	_test/performance_scratch/stage.lua:1: in main chunk
+	[C]: in function 'require'
+	__user_main.lua:15: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+285997.013 [love2d:process] ERROR startup error forwarded from temp file
+286009.385 [love2d:app] INFO [hot] bridge client connected
+286009.385 [love2d:app] INFO [hot] proxyErrorLogs enabled; runtime callback errors will be proxied
+286009.385 [love2d:app:__user_main.lua:167] INFO 11	5	0	Mysterious Mysteries
+286009.385 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=0 gc=8.58MB
+286010.188 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=93 gc=8.66MB
+286011.194 [love2d:app:__user_main.lua:181] INFO images=2000 children=2000 fps=161 gc=8.75MB
+286011.897 [love2d:app] INFO [hot] bridge runtime stopped: normal shutdown
+286042.087 [love2d:runtime] ERROR callback load failed: __user_main.lua:110: attempt to index field 'props' (a nil value)
+stack traceback:
+	__user_main.lua:110: in function 'populate_stage'
+	__user_main.lua:172: in function <__user_main.lua:165>
+	[C]: in function 'xpcall'
+	__hot__.lua:358: in function 'load'
+	[love "callbacks.lua"]:136: in function 'original_run'
+	__hot__.lua:511: in function <__hot__.lua:510>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:368: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+286042.087 [love2d:process] ERROR startup error forwarded from temp file
+286077.367 [love2d:runtime] ERROR callback load failed: __user_main.lua:110: attempt to index field 'props' (a nil value)
+stack traceback:
+	__user_main.lua:110: in function 'populate_stage'
+	__user_main.lua:171: in function <__user_main.lua:164>
+	[C]: in function 'xpcall'
+	__hot__.lua:358: in function 'load'
+	[love "callbacks.lua"]:136: in function 'original_run'
+	__hot__.lua:511: in function <__hot__.lua:510>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:368: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+286077.367 [love2d:process] ERROR startup error forwarded from temp file
+286092.756 [love2d:runtime] ERROR callback load failed: __user_main.lua:110: attempt to index field 'props' (a nil value)
+stack traceback:
+	__user_main.lua:110: in function 'populate_stage'
+	__user_main.lua:171: in function <__user_main.lua:164>
+	[C]: in function 'xpcall'
+	__hot__.lua:358: in function 'load'
+	[love "callbacks.lua"]:136: in function 'original_run'
+	__hot__.lua:511: in function <__hot__.lua:510>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:368: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+286092.756 [love2d:process] ERROR startup error forwarded from temp file
+286104.027 [love2d:runtime] ERROR callback update failed: __user_main.lua:133: attempt to index field 'props' (a nil value)
+stack traceback:
+	__user_main.lua:133: in function 'update_positions'
+	__user_main.lua:175: in function <__user_main.lua:174>
+	[C]: in function 'xpcall'
+	__hot__.lua:358: in function 'update'
+	[love "callbacks.lua"]:162: in function 'step'
+	__hot__.lua:514: in function <__hot__.lua:512>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+286104.027 [love2d:process] ERROR startup error forwarded from temp file
+286119.235 [love2d:runtime] ERROR callback update failed: _test/performance_scratch/stage.lua:14: attempt to index local 'props' (a nil value)
+stack traceback:
+	_test/performance_scratch/stage.lua:14: in function 'update'
+	__user_main.lua:176: in function <__user_main.lua:174>
+	[C]: in function 'xpcall'
+	__hot__.lua:358: in function 'update'
+	[love "callbacks.lua"]:162: in function 'step'
+	__hot__.lua:514: in function <__hot__.lua:512>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+286119.235 [love2d:process] ERROR startup error forwarded from temp file
+286190.781 [love2d:runtime] ERROR callback update failed: _test/performance_scratch/stage.lua:14: attempt to index local 'props' (a nil value)
+stack traceback:
+	_test/performance_scratch/stage.lua:14: in function 'update'
+	__user_main.lua:176: in function <__user_main.lua:174>
+	[C]: in function 'xpcall'
+	__hot__.lua:358: in function 'update'
+	[love "callbacks.lua"]:162: in function 'step'
+	__hot__.lua:514: in function <__hot__.lua:512>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+286190.781 [love2d:process] ERROR startup error forwarded from temp file
+286211.552 [love2d:runtime] ERROR callback update failed: _test/performance_scratch/container.lua:113: attempt to index local 'props' (a nil value)
+stack traceback:
+	_test/performance_scratch/container.lua:113: in function 'update'
+	_test/performance_scratch/stage.lua:15: in function 'update'
+	__user_main.lua:176: in function <__user_main.lua:174>
+	[C]: in function 'xpcall'
+	__hot__.lua:358: in function 'update'
+	[love "callbacks.lua"]:162: in function 'step'
+	__hot__.lua:514: in function <__hot__.lua:512>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+286211.552 [love2d:process] ERROR startup error forwarded from temp file
+286263.054 [love2d:app] INFO [hot] bridge client connected
+286263.054 [love2d:app] INFO [hot] proxyErrorLogs enabled; runtime callback errors will be proxied
+286263.054 [love2d:app:__user_main.lua:166] INFO 11	5	0	Mysterious Mysteries
+286263.054 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=0 gc=8.44MB
+286264.014 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=72 gc=8.53MB
+286265.020 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=165 gc=8.62MB
+286265.471 [love2d:app] INFO [hot] bridge runtime stopped: normal shutdown
+286313.166 [love2d:runtime] ERROR callback update failed: _test/performance_scratch/container.lua:108: attempt to call method 'sync_dirty_props' (a nil value)
+stack traceback:
+	_test/performance_scratch/container.lua:108: in function 'update'
+	_test/performance_scratch/stage.lua:15: in function 'update'
+	__user_main.lua:176: in function <__user_main.lua:174>
+	[C]: in function 'xpcall'
+	__hot__.lua:358: in function 'update'
+	[love "callbacks.lua"]:162: in function 'step'
+	__hot__.lua:514: in function <__hot__.lua:512>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+286313.166 [love2d:process] ERROR startup error forwarded from temp file
+286420.661 [love2d:app] INFO [hot] bridge client connected
+286420.662 [love2d:app] INFO [hot] proxyErrorLogs enabled; runtime callback errors will be proxied
+286420.662 [love2d:app:__user_main.lua:166] INFO 11	5	0	Mysterious Mysteries
+286420.665 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=0 gc=8.03MB
+286421.671 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=60 gc=8.11MB
+286422.671 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=8.19MB
+286423.676 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=159 gc=8.28MB
+286424.682 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=8.36MB
+286425.683 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=8.44MB
+286426.683 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=8.52MB
+286427.689 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=158 gc=8.61MB
+286428.689 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=164 gc=8.69MB
+286429.689 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=162 gc=8.77MB
+286430.695 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=8.86MB
+286431.701 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=161 gc=8.94MB
+286432.707 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=162 gc=9.03MB
+286433.713 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=163 gc=9.11MB
+286434.713 [love2d:app:__user_main.lua:180] INFO images=2000 children=2000 fps=163 gc=9.19MB
+286435.719 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=157 gc=9.93MB
+286436.725 [love2d:app:__user_main.lua:180] INFO images=2100 children=2100 fps=157 gc=10.01MB
+286437.725 [love2d:app:__user_main.lua:180] INFO images=2200 children=2200 fps=157 gc=10.63MB
+286438.725 [love2d:app:__user_main.lua:180] INFO images=2300 children=2300 fps=161 gc=11.26MB
+286439.732 [love2d:app:__user_main.lua:180] INFO images=2400 children=2400 fps=143 gc=11.85MB
+286440.739 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=100 gc=12.45MB
+286441.744 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=90 gc=12.49MB
+286442.757 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=82 gc=12.54MB
+286443.763 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=88 gc=12.58MB
+286444.763 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=92 gc=12.63MB
+286445.769 [love2d:app:__user_main.lua:180] INFO images=2500 children=2500 fps=86 gc=12.68MB
+286445.792 [love2d:app] INFO [hot] bridge runtime stopped: normal shutdown
+287787.971 [love2d:app] INFO [hot] bridge client connected
+287787.971 [love2d:app] INFO [hot] proxyErrorLogs enabled; runtime callback errors will be proxied
+287787.971 [love2d:app:profiler/timing_profiler.lua:151] INFO [timing] started output=tmp/memoize-timing-20260416-234359.txt
+287794.134 [love2d:app] INFO [hot] callback update failed: profiler/timing_profiler.lua:168: tmp/memoize-timing-20260416-234359.txt: No such file or directory
+stack traceback:
+	[C]: in function 'error'
+	profiler/timing_profiler.lua:74: in function 'write_report'
+	profiler/timing_profiler.lua:168: in function 'stop'
+	_test/memoize/memoize_profile.lua:213: in function 'stop_profile'
+	_test/memoize/memoize_profile.lua:237: in function <_test/memoize/memoize_profile.lua:227>
+	[C]: in function 'xpcall'
+	__hot__.lua:358: in function 'update'
+	[love "callbacks.lua"]:162: in function 'step'
+	__hot__.lua:514: in function <__hot__.lua:512>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+287794.134 [love2d:app] INFO [hot] bridge runtime stopped: callback update failed: profiler/timing_profiler.lua:168: tmp/memoize-timing-20260416-234359.txt: No such file or directory
+stack traceback:
+	[C]: in function 'error'
+	profiler/timing_profiler.lua:74: in function 'write_report'
+	profiler/timing_profiler.lua:168: in function 'stop'
+	_test/memoize/memoize_profile.lua:213: in function 'stop_profile'
+	_test/memoize/memoize_profile.lua:237: in function <_test/memoize/memoize_profile.lua:227>
+	[C]: in function 'xpcall'
+	__hot__.lua:358: in function 'update'
+	[love "callbacks.lua"]:162: in function 'step'
+	__hot__.lua:514: in function <__hot__.lua:512>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+287794.182 [love2d:runtime] ERROR callback update failed: profiler/timing_profiler.lua:168: tmp/memoize-timing-20260416-234359.txt: No such file or directory
+stack traceback:
+	[C]: in function 'error'
+	profiler/timing_profiler.lua:74: in function 'write_report'
+	profiler/timing_profiler.lua:168: in function 'stop'
+	_test/memoize/memoize_profile.lua:213: in function 'stop_profile'
+	_test/memoize/memoize_profile.lua:237: in function <_test/memoize/memoize_profile.lua:227>
+	[C]: in function 'xpcall'
+	__hot__.lua:358: in function 'update'
+	[love "callbacks.lua"]:162: in function 'step'
+	__hot__.lua:514: in function <__hot__.lua:512>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+287794.182 [love2d:process] ERROR startup error forwarded from temp file
+343836.165 [love2d:runtime] ERROR callback update failed: __user_main.lua:40: attempt to perform arithmetic on local 'frame_id' (a nil value)
+stack traceback:
+	__user_main.lua:40: in function 'fn'
+	lib/ui/utils/memoize.lua:12: in function 'fn'
+	__user_main.lua:164: in function 'run_memoize_call_pass'
+	__user_main.lua:212: in function <__user_main.lua:206>
+	[C]: in function 'xpcall'
+	__hot__.lua:358: in function 'update'
+	[love "callbacks.lua"]:162: in function 'step'
+	__hot__.lua:514: in function <__hot__.lua:512>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+343836.165 [love2d:process] ERROR startup error forwarded from temp file
+374601.783 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+lib/ui/controls/radio.lua:11: Rule: unknown option "required"
+stack traceback:
+	lib/ui/utils/assert.lua:5: in function 'fail'
+	lib/ui/utils/rule.lua:35: in function 'check_opts'
+	lib/ui/utils/rule.lua:322: in function 'custom'
+	lib/ui/controls/radio.lua:11: in main chunk
+	[C]: in function 'require'
+	lib/ui/init.lua:27: in main chunk
+	[C]: in function 'require'
+	demos/01-container/screens/bounds.lua:1: in main chunk
+	[C]: in function 'require'
+	demos/01-container/screens/init.lua:2: in main chunk
+	[C]: in function 'require'
+	__user_main.lua:3: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+374601.783 [love2d:process] ERROR startup error forwarded from temp file
+213.004 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+lib/ui/core/spacing_schema.lua:87: attempt to call field 'normalize' (a nil value)
+stack traceback:
+	lib/ui/core/drawable_schema.lua:40: in main chunk
+	[C]: in function 'require'
+	lib/ui/render/styling.lua:11: in main chunk
+	[C]: in function 'require'
+	lib/ui/core/drawable.lua:9: in main chunk
+	[C]: in function 'require'
+	lib/ui/init.lua:7: in main chunk
+	[C]: in function 'require'
+	demos/common/transparent_grid.lua:2: in main chunk
+	[C]: in function 'require'
+	...
+	[C]: in function 'require'
+	__user_main.lua:3: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+213.004 [love2d:process] ERROR startup error forwarded from temp file
+7123.872 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+lib/ui/core/drawable_schema.lua:52: attempt to call field 'side_quad' (a nil value)
+stack traceback:
+	[C]: in function 'require'
+	lib/ui/render/styling.lua:11: in main chunk
+	[C]: in function 'require'
+	lib/ui/core/drawable.lua:9: in main chunk
+	[C]: in function 'require'
+	lib/ui/init.lua:7: in main chunk
+	[C]: in function 'require'
+	demos/common/transparent_grid.lua:2: in main chunk
+	[C]: in function 'require'
+	demos/04-graphics/screens/opacity.lua:1: in main chunk
+	...
+	[C]: in function 'require'
+	__user_main.lua:3: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+7123.872 [love2d:process] ERROR startup error forwarded from temp file
+7137.029 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+lib/ui/core/drawable_schema.lua:52: attempt to call field 'side_quad' (a nil value)
+stack traceback:
+	[C]: in function 'require'
+	lib/ui/render/styling.lua:11: in main chunk
+	[C]: in function 'require'
+	lib/ui/core/drawable.lua:9: in main chunk
+	[C]: in function 'require'
+	lib/ui/init.lua:7: in main chunk
+	[C]: in function 'require'
+	demos/01-container/screens/bounds.lua:1: in main chunk
+	[C]: in function 'require'
+	demos/01-container/screens/init.lua:2: in main chunk
+	[C]: in function 'require'
+	__user_main.lua:3: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+7137.029 [love2d:process] ERROR startup error forwarded from temp file
+7553.401 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+lib/ui/schema/custom_rules.lua:120: attempt to index local 'opts' (a nil value)
+stack traceback:
+	lib/ui/core/drawable_schema.lua:52: in main chunk
+	[C]: in function 'require'
+	lib/ui/render/styling.lua:11: in main chunk
+	[C]: in function 'require'
+	lib/ui/core/drawable.lua:9: in main chunk
+	[C]: in function 'require'
+	lib/ui/init.lua:7: in main chunk
+	[C]: in function 'require'
+	demos/01-container/screens/bounds.lua:1: in main chunk
+	[C]: in function 'require'
+	demos/01-container/screens/init.lua:2: in main chunk
+	[C]: in function 'require'
+	__user_main.lua:3: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+7553.401 [love2d:process] ERROR startup error forwarded from temp file
+7583.578 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+lib/ui/core/drawable_schema.lua:52: Rule: unknown option "min"
+stack traceback:
+	lib/ui/utils/assert.lua:5: in function 'fail'
+	lib/ui/utils/rule.lua:28: in function 'check_opts'
+	lib/ui/utils/rule.lua:232: in function 'border_width'
+	lib/ui/core/drawable_schema.lua:52: in main chunk
+	[C]: in function 'require'
+	lib/ui/render/styling.lua:11: in main chunk
+	[C]: in function 'require'
+	lib/ui/core/drawable.lua:9: in main chunk
+	[C]: in function 'require'
+	lib/ui/init.lua:7: in main chunk
+	...
+	[C]: in function 'require'
+	__user_main.lua:3: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+7583.578 [love2d:process] ERROR startup error forwarded from temp file
+7658.523 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+lib/ui/core/drawable_schema.lua:52: Rule: unknown option "min"
+stack traceback:
+	lib/ui/utils/assert.lua:5: in function 'fail'
+	lib/ui/utils/rule.lua:28: in function 'check_opts'
+	lib/ui/utils/rule.lua:232: in function 'border_width'
+	lib/ui/core/drawable_schema.lua:52: in main chunk
+	[C]: in function 'require'
+	lib/ui/render/styling.lua:11: in main chunk
+	[C]: in function 'require'
+	lib/ui/core/drawable.lua:9: in main chunk
+	[C]: in function 'require'
+	lib/ui/init.lua:7: in main chunk
+	...
+	[C]: in function 'require'
+	__user_main.lua:3: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+7658.523 [love2d:process] ERROR startup error forwarded from temp file
+7713.141 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+lib/ui/core/drawable_schema.lua:66: Rule: unknown option "min"
+stack traceback:
+	lib/ui/utils/assert.lua:5: in function 'fail'
+	lib/ui/utils/rule.lua:28: in function 'check_opts'
+	lib/ui/utils/rule.lua:232: in function 'corner_quad'
+	lib/ui/core/drawable_schema.lua:66: in main chunk
+	[C]: in function 'require'
+	lib/ui/render/styling.lua:11: in main chunk
+	[C]: in function 'require'
+	lib/ui/core/drawable.lua:9: in main chunk
+	[C]: in function 'require'
+	lib/ui/init.lua:7: in main chunk
+	...
+	[C]: in function 'require'
+	__user_main.lua:3: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+7713.141 [love2d:process] ERROR startup error forwarded from temp file
+7744.468 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+lib/ui/core/drawable_schema.lua:66: Rule: unknown option "min"
+stack traceback:
+	lib/ui/utils/assert.lua:5: in function 'fail'
+	lib/ui/utils/rule.lua:28: in function 'check_opts'
+	lib/ui/utils/rule.lua:232: in function 'corner_quad'
+	lib/ui/core/drawable_schema.lua:66: in main chunk
+	[C]: in function 'require'
+	lib/ui/render/styling.lua:11: in main chunk
+	[C]: in function 'require'
+	lib/ui/core/drawable.lua:9: in main chunk
+	[C]: in function 'require'
+	lib/ui/init.lua:7: in main chunk
+	...
+	[C]: in function 'require'
+	__user_main.lua:3: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+7744.468 [love2d:process] ERROR startup error forwarded from temp file
+7756.169 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+lib/ui/core/shape_schema.lua:9: Rule: unknown option "1"
+stack traceback:
+	lib/ui/utils/assert.lua:5: in function 'fail'
+	lib/ui/utils/rule.lua:28: in function 'check_opts'
+	lib/ui/utils/rule.lua:232: in function 'color'
+	lib/ui/core/shape_schema.lua:9: in main chunk
+	[C]: in function 'require'
+	lib/ui/core/shape.lua:11: in main chunk
+	[C]: in function 'require'
+	lib/ui/init.lua:8: in main chunk
+	[C]: in function 'require'
+	demos/01-container/screens/bounds.lua:1: in main chunk
+	...
+	[C]: in function 'require'
+	__user_main.lua:3: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+7756.169 [love2d:process] ERROR startup error forwarded from temp file
+7837.665 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+lib/ui/controls/button.lua:13: attempt to call field 'any' (a nil value)
+stack traceback:
+	[C]: in function 'require'
+	lib/ui/init.lua:24: in main chunk
+	[C]: in function 'require'
+	demos/01-container/screens/bounds.lua:1: in main chunk
+	[C]: in function 'require'
+	demos/01-container/screens/init.lua:2: in main chunk
+	[C]: in function 'require'
+	__user_main.lua:3: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+7837.665 [love2d:process] ERROR startup error forwarded from temp file
+16981.601 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+lib/ui/controls/checkbox.lua:60: attempt to call field 'any' (a nil value)
+stack traceback:
+	[C]: in function 'require'
+	lib/ui/init.lua:25: in main chunk
+	[C]: in function 'require'
+	demos/01-container/screens/bounds.lua:1: in main chunk
+	[C]: in function 'require'
+	demos/01-container/screens/init.lua:2: in main chunk
+	[C]: in function 'require'
+	__user_main.lua:3: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+16981.601 [love2d:process] ERROR startup error forwarded from temp file
+99326.829 [love2d:runtime] ERROR [love2d] Error while running main.lua:
+lib/ui/controls/radio_schema.lua:6: Rule: unknown option "required"
+stack traceback:
+	lib/ui/utils/assert.lua:5: in function 'fail'
+	lib/ui/utils/rule.lua:28: in function 'check_opts'
+	lib/ui/utils/rule.lua:313: in function 'custom'
+	lib/ui/controls/radio_schema.lua:6: in main chunk
+	[C]: in function 'require'
+	lib/ui/controls/radio.lua:8: in main chunk
+	[C]: in function 'require'
+	lib/ui/init.lua:27: in main chunk
+	[C]: in function 'require'
+	demos/01-container/screens/bounds.lua:1: in main chunk
+	...
+	[C]: in function 'require'
+	__user_main.lua:3: in main chunk
+	[C]: in function 'xpcall'
+	main.lua:44: in main chunk
+	[C]: in function 'require'
+	[love "boot.lua"]:323: in function <[love "boot.lua"]:126>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:362: in function <[love "boot.lua"]:355>
+	[C]: in function 'xpcall'
+	[love "boot.lua"]:377: in function <[love "boot.lua"]:344>
+99326.829 [love2d:process] ERROR startup error forwarded from temp file

@@ -281,7 +281,7 @@ end
 Drawable.__index = Drawable
 
 function Drawable:constructor(opts)
-    Container.constructor(self, opts, DrawableSchema, {
+    Container.constructor(self, opts, nil, {
         allow_content_width = true,
         allow_content_height = true,
     })

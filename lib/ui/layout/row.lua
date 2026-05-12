@@ -7,7 +7,7 @@ local Row = LayoutNode:extends('Row')
 Row.schema = Schema.extend(LayoutNode.schema, RowSchema)
 
 function Row:constructor(opts)
-    LayoutNode.constructor(self, opts, RowSchema, {
+    LayoutNode.constructor(self, opts, nil, {
         allow_content_width = true,
         allow_content_height = true,
     })

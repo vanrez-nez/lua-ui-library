@@ -2,7 +2,7 @@ local Rule = require('lib.ui.utils.rule')
 local Enums = require('lib.ui.core.enums')
 
 return {
-    value = Rule.number(),
+    value = Rule.number({ optional = true }),
     min = Rule.number({ default = 0 }),
     max = Rule.number({ default = 1 }),
     indeterminate = Rule.boolean(false),

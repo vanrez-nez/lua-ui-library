@@ -7,7 +7,7 @@ local Column = LayoutNode:extends('Column')
 Column.schema = Schema.extend(LayoutNode.schema, ColumnSchema)
 
 function Column:constructor(opts)
-    LayoutNode.constructor(self, opts, ColumnSchema, {
+    LayoutNode.constructor(self, opts, nil, {
         allow_content_width = true,
         allow_content_height = true,
     })

@@ -236,7 +236,7 @@ end
 
 
 function SafeAreaContainer:constructor(opts)
-    LayoutNode.constructor(self, opts, SafeAreaContainerSchema, {
+    LayoutNode.constructor(self, opts, nil, {
         allow_content_width = true,
         allow_content_height = true,
     })

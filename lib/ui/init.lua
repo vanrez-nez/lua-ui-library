@@ -20,6 +20,7 @@ return {
     Flow = require('lib.ui.layout.flow'),
     SafeAreaContainer = require('lib.ui.layout.safe_area_container'),
     ScrollableContainer = require('lib.ui.scroll.scrollable_container'),
+    Control = require('lib.ui.controls.control'),
     Text = require('lib.ui.controls.text'),
     Button = require('lib.ui.controls.button'),
     Checkbox = require('lib.ui.controls.checkbox'),

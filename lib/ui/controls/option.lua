@@ -2,13 +2,13 @@ local Drawable = require('lib.ui.core.drawable')
 local Container = require('lib.ui.core.container')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local Schema = require('lib.ui.utils.schema')
 local OptionSchema = require('lib.ui.controls.option_schema')
 
-local Option = Drawable:extends('Option')
+local Option = Control:extends('Option')
 
-Option.schema = Schema.extend(Drawable.schema, OptionSchema)
+Option.schema = Schema.extend(Control.schema, OptionSchema)
 
 local function assert_string_or_node(name, value, level)
     if value == nil or Types.is_string(value) or Types.is_table(value) then
@@ -20,11 +20,10 @@ end
 
 function Option:constructor(opts)
     opts = opts or {}
-    local drawable_opts = ControlUtils.base_opts(opts, {
+    Control.constructor(self, opts, {
         interactive = true,
         focusable = true,
     })
-    Drawable.constructor(self, drawable_opts)
     self.pointerFocusCoupling = 'before'
 
     if not Types.is_string(opts.value) or opts.value == '' then
@@ -75,7 +74,7 @@ function Option:constructor(opts)
         description_slot.text = opts.description
     end
 
-    ControlUtils.add_control_listener(self, self, 'ui.activate', function(event)
+    self:addControlListener(self, 'ui.activate', function(event)
         if self.disabled == true then
             return
         end
@@ -139,9 +138,14 @@ function Option:update(dt)
     Drawable.update(self, dt)
 
     local disabled = self:_is_effectively_disabled()
-    ControlUtils.set_interaction_state(self, not disabled)
+    self:setInteractionState(not disabled)
 
     return self
+end
+
+function Option:on_destroy()
+    self:removeControlListeners()
+    Container.on_destroy(self)
 end
 
 return Option

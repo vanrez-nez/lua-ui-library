@@ -4,7 +4,6 @@ local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Rectangle = require('lib.ui.core.rectangle')
 local Texture = require('lib.ui.graphics.texture')
-local ControlUtils = require('lib.ui.controls.control_utils')
 local Schema = require('lib.ui.utils.schema')
 local Constants = require('lib.ui.core.constants')
 local Enum = require('lib.ui.utils.enum')
@@ -14,6 +13,7 @@ local Image = Drawable:extends('Image')
 local max = math.max
 local min = math.min
 local enum = Enum.enum
+local DRAWABLE_RULES = Drawable.schema:get_rules()
 
 Image.FIT_CONTAIN = 'contain'
 Image.FIT_COVER = 'cover'
@@ -39,6 +39,23 @@ Image.Sampling = enum(
 )
 
 Image.schema = Schema.extend(Drawable.schema, ImageSchema)
+
+local function drawable_opts(opts, defaults)
+    local out = {}
+    opts = opts or {}
+
+    for key, value in pairs(defaults or {}) do
+        out[key] = value
+    end
+
+    for key, value in pairs(opts) do
+        if DRAWABLE_RULES[key] ~= nil then
+            out[key] = value
+        end
+    end
+
+    return out
+end
 
 local function resolve_source_view(source)
     if Types.is_instance(source, Texture) then
@@ -188,20 +205,20 @@ end
 
 function Image:constructor(opts)
     opts = opts or {}
-    local drawable_opts = ControlUtils.base_opts(opts, {
+    local base_opts = drawable_opts(opts, {
         interactive = false,
         focusable = false,
     })
 
-    drawable_opts.source = opts.source
-    drawable_opts.fit = opts.fit
-    drawable_opts.alignX = opts.alignX
-    drawable_opts.alignY = opts.alignY
-    drawable_opts.sampling = opts.sampling
-    drawable_opts.decorative = opts.decorative
-    drawable_opts.accessibleName = opts.accessibleName
+    base_opts.source = opts.source
+    base_opts.fit = opts.fit
+    base_opts.alignX = opts.alignX
+    base_opts.alignY = opts.alignY
+    base_opts.sampling = opts.sampling
+    base_opts.decorative = opts.decorative
+    base_opts.accessibleName = opts.accessibleName
 
-    Drawable.constructor(self, drawable_opts)
+    Drawable.constructor(self, base_opts)
 
     self._ui_image_control = true
     self.root = self

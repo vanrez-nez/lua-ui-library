@@ -317,6 +317,38 @@ function TestSchema.test_derived_class_schema_includes_parent_and_local_rules()
   luaunit.assertNotNil(Drawable.schema:get_rule('padding'))
 end
 
+function TestSchema.test_control_schema_inherits_drawable_without_concrete_control_props()
+  local Control = require('lib.ui.controls.control')
+
+  luaunit.assertNotNil(Control.schema:get_rule('width'))
+  luaunit.assertNotNil(Control.schema:get_rule('padding'))
+  luaunit.assertNil(Control.schema:get_rule('disabled'))
+  luaunit.assertNil(Control.schema:get_rule('open'))
+  luaunit.assertNil(Control.schema:get_rule('value'))
+end
+
+function TestSchema.test_control_inheritance_matches_migrated_hierarchy()
+  local Control = require('lib.ui.controls.control')
+  local Button = require('lib.ui.controls.button')
+  local Select = require('lib.ui.controls.select')
+  local Modal = require('lib.ui.controls.modal')
+  local Alert = require('lib.ui.controls.alert')
+  local TextArea = require('lib.ui.controls.text_area')
+  local TextInput = require('lib.ui.controls.text_input')
+  local Image = require('lib.ui.graphics.image')
+  local Shape = require('lib.ui.core.shape')
+  local Text = require('lib.ui.controls.text')
+
+  luaunit.assertTrue(Button:derivedFrom(Control))
+  luaunit.assertTrue(Select:derivedFrom(Control))
+  luaunit.assertTrue(Modal:derivedFrom(Control))
+  luaunit.assertTrue(Alert:derivedFrom(Modal))
+  luaunit.assertTrue(TextArea:derivedFrom(TextInput))
+  luaunit.assertFalse(Image:derivedFrom(Control))
+  luaunit.assertFalse(Shape:derivedFrom(Control))
+  luaunit.assertFalse(Text:derivedFrom(Control))
+end
+
 function TestSchema.test_omitted_spec_optional_fields_do_not_fail_validate_all()
   local Drawable = require('lib.ui.core.drawable')
   local node = Drawable.new({})

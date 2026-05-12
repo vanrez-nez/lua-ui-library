@@ -89,7 +89,7 @@ end
 Shape.__index = Shape
 
 function Shape:constructor(opts)
-    Container.constructor(self, opts, ShapeSchema)
+    Container.constructor(self, opts)
     self.shape_dirty = DirtyProps.create({
         _paint_flag = {
             val = false,

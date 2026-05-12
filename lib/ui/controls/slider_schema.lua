@@ -2,13 +2,14 @@ local Assert = require('lib.ui.utils.assert')
 local Rule = require('lib.ui.utils.rule')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
+local ControlSchema = require('lib.ui.controls.control_schema')
 
 local enum_has = Enum.enum_has
 
 return {
     -- Spec: ui-controls 6.7 props: number | nil; effective value clamps to [min, max] and quantizes by step.
     value = Rule.number({ optional = true }),
-    onValueChange = Rule.func({ optional = true }),
+    onValueChange = ControlSchema.optional_callback(),
     min = Rule.number({ default = 0 }),
     max = Rule.custom(function(_, value, _, level, full_opts)
         value = (value == nil) and 1 or value
@@ -26,7 +27,7 @@ return {
             Assert.fail('Slider.step must be > 0 when provided', level or 1)
         end
         return value
-    end),
+    end, { optional = true }),
     orientation = Rule.custom(function(_, value, _, level)
         value = value or Enums.Orientation.HORIZONTAL
         if not enum_has(Enums.Orientation, value) then

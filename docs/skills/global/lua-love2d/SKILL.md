@@ -136,7 +136,7 @@ For NYI reference: https://luajit.org/extensions.html and the `jit.p` profiler f
 ## Code Style
 
 **Naming**
-- `snake_case` for variables, functions, instances. `PascalCase` for factories/classes.
+- `snake_case` for variables, methods, functions, instances. `PascalCase` for factories/classes names.
 - `_` for ignored loop variables.
 
 **Formatting**

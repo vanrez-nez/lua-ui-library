@@ -2,13 +2,30 @@ local Drawable = require('lib.ui.core.drawable')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local FontCache = require('lib.ui.text.font_cache')
-local ControlUtils = require('lib.ui.controls.control_utils')
 local Constants = require('lib.ui.core.constants')
 local Enums = require('lib.ui.core.enums')
 local Enum = require('lib.ui.utils.enum')
 
 local Text = Drawable:extends('Text')
 local enum_has = Enum.enum_has
+local DRAWABLE_RULES = Drawable.schema:get_rules()
+
+local function drawable_opts(opts, defaults)
+    local out = {}
+    opts = opts or {}
+
+    for key, value in pairs(defaults or {}) do
+        out[key] = value
+    end
+
+    for key, value in pairs(opts) do
+        if DRAWABLE_RULES[key] ~= nil then
+            out[key] = value
+        end
+    end
+
+    return out
+end
 
 local function count_lines(text)
     if text == nil or text == '' then
@@ -70,12 +87,12 @@ end
 function Text:constructor(opts)
     opts = opts or {}
 
-    local drawable_opts = ControlUtils.base_opts(opts, {
+    local base_opts = drawable_opts(opts, {
         interactive = false,
         focusable = false,
     })
 
-    Drawable.constructor(self, drawable_opts)
+    Drawable.constructor(self, base_opts)
 
     self._ui_text_control = true
     self.text = opts.text or ''

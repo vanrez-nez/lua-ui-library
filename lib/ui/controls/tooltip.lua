@@ -1,6 +1,6 @@
 local Container = require('lib.ui.core.container')
 local Drawable = require('lib.ui.core.drawable')
-local ControlUtils = require('lib.ui.controls.control_utils')
+local Control = require('lib.ui.controls.control')
 local Assert = require('lib.ui.utils.assert')
 local Types = require('lib.ui.utils.types')
 local Schema = require('lib.ui.utils.schema')
@@ -10,7 +10,7 @@ local Enum = require('lib.ui.utils.enum')
 local StyleScope = require('lib.ui.render.style_scope')
 local TooltipSchema = require('lib.ui.controls.tooltip_schema')
 
-local Tooltip = Container:extends('Tooltip')
+local Tooltip = Control:extends('Tooltip')
 local enum = Enum.enum
 local enum_has = Enum.enum_has
 local TOOLTIP_SURFACE_SCOPE = StyleScope.create('tooltip', 'surface')
@@ -31,8 +31,7 @@ Tooltip.Placement = Enums.Edge
 Tooltip.Align = Enums.SourceAlign
 Tooltip.TriggerMode = TriggerMode
 
-Tooltip.schema = Schema.extend(Container.schema, TooltipSchema)
-Tooltip:implements(ControlUtils.overlay_mixin)
+Tooltip.schema = Schema.extend(Control.schema, TooltipSchema)
 
 local function effective_open(self)
     if self._open_controlled then
@@ -46,7 +45,7 @@ local function request_open_change(self, next_value)
     if not self._open_controlled then
         self._open_uncontrolled = next_value
     end
-    ControlUtils.call_if_function(self.onOpenChange, next_value)
+    Control.call_if_function(self.onOpenChange, next_value)
 end
 
 local function hovered(self)
@@ -59,7 +58,7 @@ local function hovered(self)
 end
 
 local function focused(self)
-    local focus_owner = ControlUtils.stage_focus_owner(self)
+    local focus_owner = self:stageFocusOwner()
     local current = focus_owner
     local trigger = self.trigger
     while current ~= nil do
@@ -177,11 +176,10 @@ function Tooltip:constructor(opts)
     opts = opts or {}
     Assert.table('opts', opts, 2)
 
-    local base_opts = ControlUtils.base_opts(opts, {
+    Control.constructor(self, opts, {
         interactive = false,
         focusable = false,
     })
-    Container.constructor(self, base_opts)
     self.open = opts.open
     self.onOpenChange = opts.onOpenChange
     self.placement = opts.placement or Enums.Edge.TOP
@@ -197,7 +195,7 @@ function Tooltip:constructor(opts)
     self._last_open_state = effective_open(self)
     self._resolved_placement = self.placement
 
-    ControlUtils.assert_controlled_pair('open', opts.open, 'onOpenChange', opts.onOpenChange, 2)
+    Control.assert_controlled_pair('open', opts.open, 'onOpenChange', opts.onOpenChange, 2)
 
     if not enum_has(Enums.Edge, self.placement) then
         Assert.fail('Tooltip.placement is invalid', 2)
@@ -266,7 +264,7 @@ function Tooltip:constructor(opts)
         content:addChild(opts.content)
     end
 
-    ControlUtils.add_control_listener(self, overlay_root, 'ui.dismiss', function(event)
+    self:addControlListener(overlay_root, 'ui.dismiss', function(event)
         request_open_change(self, false)
         event:stopPropagation()
     end)
@@ -284,7 +282,7 @@ function Tooltip:update(dt)
     end
 
     local wants_open = effective_open(self)
-    local stage = ControlUtils.find_stage(self)
+    local stage = self:findStage()
     local was_open = self._last_open_state
 
     if wants_open and stage ~= nil then
@@ -321,7 +319,7 @@ function Tooltip._overlay_focus_contract()
 end
 
 function Tooltip:on_destroy()
-    ControlUtils.remove_control_listeners(self)
+    self:removeControlListeners()
     self:_detach_overlay()
     self._overlay_root:destroy()
     Container.on_destroy(self)
