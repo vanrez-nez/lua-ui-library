@@ -11,5 +11,6 @@ exclude_files = {
     "node_modules/**",
     "external/**",
     "lua_modules/**",
+    "src/generated/**",
     "tmp/**",
 }

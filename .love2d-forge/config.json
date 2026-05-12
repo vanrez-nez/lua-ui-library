@@ -6,16 +6,16 @@
   "watcherScope": "project",
   "watchExclude": [
     "docs/**",
-    "spec/**"
+    "src/lua/spec/**"
   ],
   "locations": [
     "_test/performance-native",
-    "demos/01-container",
-    "demos/02-shape",
-    "demos/03-drawable",
-    "demos/04-graphics",
-    "demos/05-controls",
-    "demos/06-performance"
+    "src/lua/demos/01-container",
+    "src/lua/demos/02-shape",
+    "src/lua/demos/03-drawable",
+    "src/lua/demos/04-graphics",
+    "src/lua/demos/05-controls",
+    "src/lua/demos/06-performance"
   ],
   "logFilter": [
     "app",

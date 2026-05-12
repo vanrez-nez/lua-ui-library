@@ -5,8 +5,12 @@
 Run the current headless spec module with the project LuaJIT wrapper:
 
 ```bash
-./lua -e 'require("spec.core_math_spec").run()'
+./lua -e 'require("spec.rule_spec").run()'
 ```
+
+Runtime Lua code lives under `src/lua`. The `./lua` wrapper adds that directory
+to `package.path`, so existing module names such as `spec.*`, `lib.ui.*`, and
+`profiler.*` continue to resolve from the repository root.
 
 Smoke-check LuaUnit availability:
 
@@ -59,3 +63,9 @@ Run Luacheck:
 
 The Luacheck configuration targets LuaJIT and excludes generated, vendor, output,
 and ignored manual-test paths.
+
+Run the LÖVE app:
+
+```bash
+love src/lua
+```

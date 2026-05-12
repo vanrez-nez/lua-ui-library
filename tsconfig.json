@@ -22,12 +22,10 @@
   "exclude": [
     "node_modules",
     "lua_modules",
+    "src/lua",
     "src/generated",
     "tmp",
-    "external",
-    "lib",
-    "demos",
-    "spec"
+    "external"
   ],
   "tstl": {
     "luaTarget": "JIT",
