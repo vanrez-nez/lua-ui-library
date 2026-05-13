@@ -47,6 +47,12 @@ Do not package:
 - `lua_modules`
 - temporary profiling output
 
+Use the repository boundary check to enforce this setup invariant:
+
+```bash
+npm run check:boundaries
+```
+
 ## LÖVE Boundary
 
 The direct app target after the project refactor should be:
@@ -77,3 +83,4 @@ Root `love .` is not the target runtime path after setup.
 - Runtime launch docs point at `src/lua`.
 - Rockspec source paths point at reviewed Lua only.
 - No setup task requires TypeScript source to overwrite runtime Lua.
+- `npm run check:boundaries` passes.

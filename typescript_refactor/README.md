@@ -49,6 +49,9 @@ wrappers. Runtime Lua and runtime assets belong under `src/lua`.
    Define the checks required before each setup step is accepted.
 6. [Deferred Migration Work](05-deferred-migration-work.md)
    Record what is deliberately out of scope until setup is stable.
+   Future migration candidates should use the
+   [intake template](future-migration-intake-template.md) after setup is
+   accepted.
 
 ## Setup Acceptance
 

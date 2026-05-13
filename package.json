@@ -5,6 +5,8 @@
     "build:ts": "tstl -p tsconfig.json",
     "watch:ts": "tstl -p tsconfig.json --watch",
     "list:ts": "tsc -p tsconfig.json --noEmit --listFiles",
+    "check:boundaries": "sh scripts/check-boundaries.sh",
+    "check:setup": "sh scripts/check-setup.sh",
     "check:lua": "./lua_modules/bin/luacheck ."
   },
   "devDependencies": {

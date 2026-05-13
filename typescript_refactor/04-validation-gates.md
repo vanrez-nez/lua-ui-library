@@ -5,6 +5,18 @@
 Define the checks required for setup changes. These gates protect the current
 Lua runtime while TypeScript tooling is introduced.
 
+## Automated Setup Gate
+
+Run the non-GUI setup gate before accepting a setup task:
+
+```bash
+npm run check:setup
+```
+
+This script runs the TypeScript gates, Lua smoke gates, documentation gates,
+build/package boundary checks, and Luacheck. The LÖVE app launch gates remain
+manual because they open GUI applications.
+
 ## TypeScript Gates
 
 Run after TypeScript config, declaration, or folder-layout changes:
@@ -71,6 +83,9 @@ Expected results:
 does not need to fix unrelated warnings unless it creates new warnings or moves
 files in a way that changes the warning count unexpectedly.
 
+`npm run check:setup` accepts this exact warning count as the known baseline and
+fails if the Luacheck total changes unexpectedly.
+
 The latest observed baseline was:
 
 ```text
@@ -83,3 +98,4 @@ The latest observed baseline was:
 - Any skipped gate has a reason.
 - New warnings, module resolution errors, or generated tracked files block the
   task.
+- `npm run check:setup` passes for non-GUI validation.

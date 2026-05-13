@@ -47,9 +47,32 @@ Before porting a module, the repo should have:
 - Runtime smoke checks for the module.
 - Focused LuaUnit coverage for the module's public behavior.
 
+## Future Work Recording Rule
+
+Do not append a source-file checklist to this setup roadmap. After setup is
+accepted, evaluate one candidate at a time with the intake template:
+
+```text
+typescript_refactor/future-migration-intake-template.md
+```
+
+Each future migration record should describe:
+
+- The candidate category and one candidate module.
+- Why it is low risk.
+- Which Lua dependencies already have declarations.
+- Which runtime smoke checks and LuaUnit specs prove parity.
+- How the generated Lua diff will be reviewed before any promotion.
+
+If a candidate needs a new external declaration, add that declaration before
+porting. If the candidate depends on a protected optimized utility, keep that
+utility handwritten and import it through declarations.
+
 ## Acceptance Criteria
 
 - No setup task contains a per-file port list.
 - No setup task promotes generated Lua.
 - Future migration candidates are described by category and entry requirements,
   not by a full port schedule.
+- Future migration work uses the intake template instead of editing setup tasks
+  into a migration backlog.

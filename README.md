@@ -69,3 +69,37 @@ Run the LÖVE app:
 ```bash
 love src/lua
 ```
+
+Run a focused demo from its `src/lua` app directory:
+
+```bash
+love src/lua/demos/03-drawable
+```
+
+Root `love .` is not the canonical runtime target after the TypeScriptToLua
+setup refactor.
+
+## Build and Packaging Boundaries
+
+TypeScriptToLua output is validation and review output only. `npm run build:ts`
+writes to ignored `src/generated/tstl`; generated Lua is not runtime source
+until a later explicit promotion step reviews and moves it into `src/lua`.
+
+LuaRocks packaging consumes reviewed Lua from `src/lua/lib` through the
+rockspec module map. It must not package `src/ts`, `src/types`,
+`src/generated`, dependency directories, or temporary output.
+
+Check those boundaries with:
+
+```bash
+npm run check:boundaries
+```
+
+Run the non-GUI setup validation gates with:
+
+```bash
+npm run check:setup
+```
+
+This includes TypeScript checks, Lua module smoke checks, stale documentation
+path checks, packaging boundary checks, and the current Luacheck baseline.
