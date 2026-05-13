@@ -70,6 +70,6 @@ Keep scripts focused on setup validation:
 
 - `npm run list:ts` includes files under `src/types`.
 - `npm run build:ts` passes with no TypeScript source files present.
-- `find src/generated -type f` is empty after a build unless a later task adds
-  actual TypeScript source.
+- `test ! -d src/generated || find src/generated -type f` prints no files
+  after a build unless a later task adds actual TypeScript source.
 - `git status --short` does not show generated TSTL output.

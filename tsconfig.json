@@ -3,6 +3,7 @@
   "compilerOptions": {
     "target": "ESNext",
     "lib": ["ESNext"],
+    "module": "Preserve",
     "moduleResolution": "Bundler",
     "types": [
       "love-typescript-definitions",
@@ -32,6 +33,13 @@
     "luaLibImport": "require-minimal",
     "noImplicitGlobalVariables": true,
     "noImplicitSelf": true,
+    "noResolvePaths": [
+      "lib.ui.utils.reactive",
+      "lib.ui.utils.dirty_props",
+      "lib.ui.utils.memoize",
+      "lib.ui.utils.schema",
+      "lib.ui.utils.rule"
+    ],
     "sourceMapTraceback": true
   }
 }
